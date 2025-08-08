@@ -27,10 +27,13 @@ public class TestExecutionDirStack {
 	
 	@BeforeAll
 	public static void setup() throws IOException {
+		System.setProperty("user.home", "/home");
 		String names [] = {"one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"};
 		FileSourceFactory.setDefaultFactory(new MemoryFileSourceFactory());
 		FileSource home = FileSourceFactory.getDefaultFactory().createFileSource("/home");
 		home.mkdirs();
+		
+		
 		
 		FileSource dirStack = home.getChild("dirstack");
 		dirStack.mkdir();

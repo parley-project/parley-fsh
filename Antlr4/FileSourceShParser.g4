@@ -256,8 +256,10 @@ redirectionOperator
 	
 
 			
-path_segment: TILDE 
+path_segment: 
+		  TILDE 
 		| ID
+		| variable
         | DOT_DOT
         | DOT
         | STAR

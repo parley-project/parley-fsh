@@ -98,7 +98,7 @@ public class DirStack extends ShellCommand{
 
 		int direrction = 1;
 		int cnt = 0;
-
+		
 		for(int idx=1; idx < args.length; idx++) {
 			String a = ""+args[idx].getValue(ctx);
 			if( a.startsWith("-")) {
@@ -125,6 +125,7 @@ public class DirStack extends ShellCommand{
 					}
 					FileSource dir = dirs.get(0);
 					dirStack.add(0,dir);
+					print(dirStack,ctx);
 					return 0;
 				}
 			}
@@ -136,6 +137,22 @@ public class DirStack extends ShellCommand{
 
 		return ret;
 
+	}
+
+	private void print(FsshList stack,ShellContext ctx) {
+		String tmp = ""+ctx.getVariable("HOME");
+		StringBuilder buf = new StringBuilder();
+		for (int idx = 0,sz=stack.size(); idx < sz; idx++) {
+			if( idx > 0 ) {
+				buf.append(' ');
+			}
+			String path = stack.get(idx).toString();
+			if( path.startsWith(tmp)) {
+				path = path.replace(tmp, "~");
+			}
+			buf.append(path);
+		}
+		ctx.stdout.println(buf);
 	}
 
 	private int rotate(int direrction, int cnt, ShellContext ctx,FsshList dirStack) {

@@ -92,7 +92,8 @@ public class ForStatement extends LoopStatement{
 				List<FileSource> list = ShellCommand.getFiles(ctx, val);
 				if( list.size()>0) {
 					for(FileSource file : list) {
-						ret.add(file.getAbsolutePath());						
+						String name = val.replaceAll("\\*", file.getName());						
+						ret.add(name);						
 					}		
 				} else {
 					ret.add(val);

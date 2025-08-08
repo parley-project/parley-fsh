@@ -391,6 +391,8 @@ public class Console extends BaseThread {
 			mountFactory = new MountFactory();
 			factories.put(mountFactory.getTypeId(), mountFactory);
 			String home = System.getProperty("user.home");
+			//  the java environment HOME does not match the java property user.home
+			environmentVariables.put("HOME", home);
 			homeDir = mountFactory.createFileSource(home);
 			if( homeDir.exists()) {
 				mountFactory.setCurrentDirectory(homeDir);
