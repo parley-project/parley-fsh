@@ -48,6 +48,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/antlr-4.13.2-complete.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSyetmViewer"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystemViewer"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
