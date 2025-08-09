@@ -211,7 +211,7 @@ public class TestLs {
 
 
 		String expect1 = 
-				    "-rw-r--r--1tonystaff1547Jun162025AbcFileA.js-rwxr-xr-x1tonystaff3710Jun162025AbcFileB.php-rwxr-xr-x1tonystaff20Jun162025AbcFileC.txt-rwxr-xr-x1tonystaff20Jun162025AbcFileD.propertiesdrwxr-xr-x1tonystaff224Nov132022Folder01"
+				    "-rw-r--r--1tonystaff1547Jun162025AbcFileA.js-rwxr-xr-x1tonystaff3710Jun162025AbcFileB.php-rwxr-xr-x1tonystaff20Jun162025AbcFileC.txt-rwxr-xr-x1tonystaff20Jun162025AbcFileD.propertiesdrwxr-xr-x1tonystaff238Nov132022Folder01"
 				  
 				  ;
 		String expect = expect1.replaceAll("\\s", "");
@@ -231,11 +231,11 @@ public class TestLs {
 
 
 		String expect1 = 
-				    "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				    "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
-				    + "drwxr-xr-x 1 tony  staff   224  Nov 13 2022 Folder01"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01"
 				  
 				  ;
 		String expect = expect1.replaceAll("\\s", "");
@@ -256,11 +256,11 @@ public class TestLs {
 
 
 		String expect1 = 
-				    "drwxr-xr-x 1 tony  staff   224  Nov 13 2022 Folder01\n"
-				    + "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
-				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				    "drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
+				    + "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
 				  
 				  ;
 		String expect = expect1.replaceAll("\\s", "");

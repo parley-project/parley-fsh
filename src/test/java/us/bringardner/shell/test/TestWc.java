@@ -125,9 +125,9 @@ public class TestWc {
 	@Test
 	public void testWc_All() throws IOException {
 		String expect1 = (""
-				+ "     45     168    1547      79 AbcFile.js\n"
-				+ "      45     314    2048      76 AbcFile.properties\n"
+				+ "      45     168    1547      79 AbcFile.js\n"
 				+ "     156     537    3710      86 AbcFile.php\n"
+				+ "      45     314    2048      76 AbcFile.properties\n"
 				+ "     122     679    4958     126 AbcFile.txt\n"
 				+ "     368    1698   12263     126 total\n");
 		

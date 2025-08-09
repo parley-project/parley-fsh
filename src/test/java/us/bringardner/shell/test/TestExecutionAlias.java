@@ -116,11 +116,11 @@ public class TestExecutionAlias {
 				;
 		
 		String expect = 
-				"drwxr-xr-x 1 tony  staff   224  Nov 13 2022 Folder01\n"
-				+ "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
-				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				"drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01\n"
 				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
+				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
+				+ "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
 				+ ""
 				;
 		
@@ -141,11 +141,12 @@ public class TestExecutionAlias {
 				;
 		
 		String expect = 
-				"drwxr-xr-x 1 tony  staff   224  Jul 18 2013 Folder01abc.1\n"
-				+ "drwxr-xr-x 1 tony  staff   160  Jun 16 2025 Folder01def.2\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.txt\n"
+				"-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.php\n"
 				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.properties\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.php\n"
+				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.txt\n"
+				+ "drwxr-xr-x 1 tony  staff   238  Jul 18 2013 Folder01abc.1\n"
+				+ "drwxr-xr-x 1 tony  staff   170  Jun 16 2025 Folder01def.2\n"
+				+ ""
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
@@ -165,11 +166,11 @@ public class TestExecutionAlias {
 				;
 		
 		String expect = 
-				"drwxr-xr-x 1 tony  staff   224  Jul 18 2013 Folder01abc.1\n"
-				+ "drwxr-xr-x 1 tony  staff   160  Jun 16 2025 Folder01def.2\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.txt\n"
+				"-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.php\n"
 				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.properties\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.php\n"
+				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFile01.txt\n"
+				+ "drwxr-xr-x 1 tony  staff   238  Jul 18 2013 Folder01abc.1\n"
+				+ "drwxr-xr-x 1 tony  staff   170  Jun 16 2025 Folder01def.2\n"
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
@@ -193,7 +194,7 @@ public class TestExecutionAlias {
 				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
 				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
 				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
-				+ "drwxr-xr-x 1 tony  staff   224  Nov 13 2022 Folder01\n"
+				+ "drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01\n"
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
@@ -268,11 +269,11 @@ public class TestExecutionAlias {
 				;
 		
 		String expect = 
-				"drwxr-xr-x 1 tony  staff   224  Nov 13 2022 Folder01\n"
-				+ "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
-				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				"drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01\n"
 				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
+				+ "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
+				+ "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
 				+ ""
 			
 				;
