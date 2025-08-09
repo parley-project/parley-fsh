@@ -56,8 +56,7 @@ argument
 		} else if(context.NUMBER()!=null) {
 			ret = context.NUMBER().getText();
 		} else if(context.path()!=null) {
-			// TODO: Expand path here???
-			ret = context.path().getText();
+			ret = FileSourceShPreProcessorVisitorImpl.processString(context.path().getText(),ctx);
 		} else if(context.arg_command_substitution()!=null) {
 			CommandSubstitutionStatement cs = new CommandSubstitutionStatement(context.arg_command_substitution());
 			try {
