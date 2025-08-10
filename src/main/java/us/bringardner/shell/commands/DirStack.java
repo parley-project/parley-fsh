@@ -1,10 +1,10 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.io.filesource.FileSource;
-import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 
@@ -44,11 +44,14 @@ public class DirStack extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		Object tmp = ctx.getVariable(DIRSTACK);
 		if( tmp == null ) {
-			tmp = new FsshList();
+			// can't use fssshlist becouse it really a map :-(
+
+			tmp = new ArrayList<>();
 			ctx.setVariable(DIRSTACK, tmp);
 		}
-		if (tmp instanceof FsshList) {
-			FsshList dirStack = (FsshList) tmp;
+		if (tmp instanceof List) {
+			@SuppressWarnings("unchecked")
+			List<Object> dirStack = (List<Object>) tmp;
 			if( ctx.args[0].equals("pushd")) {
 				return pushd(ctx,dirStack);
 			} else if( ctx.args[0].equals("popd")) {
@@ -63,20 +66,48 @@ public class DirStack extends ShellCommand{
 		}
 	}
 
-	private int dirs(ShellContext ctx, FsshList dirStack2) {
+	private int dirs(ShellContext ctx, List<?> dirStack2) {
 
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	private int popd(ShellContext ctx, FsshList dirStack2) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	private int pushd(ShellContext ctx, FsshList dirStack) throws IOException {
+	private int popd(ShellContext ctx, List<Object> stack) throws IOException {
 		int ret = 0;
-		if( ctx.args.length== 0 ) {
+		if(stack.size()>0) {
+			boolean n=false;
+			int idx =0;
+
+			for(String a : ctx.args) {
+				if( a.equals("-n")) {
+					n = true;
+					break;
+				} else if( a.startsWith("+")) {
+					idx = Integer.parseInt(a.substring(1));					
+				} else if( a.startsWith("-")) {
+					idx = stack.size()-Integer.parseInt(a.substring(1))-1;
+				}
+			}
+			if( idx >=0 && idx < stack.size()) {
+				stack.remove(idx);
+				if( !n && stack.size()>0) {
+					Cd cd = new Cd();
+					String [] aa = {"cd",stack.get(0).toString()};
+					ctx.args = aa;
+					ret = cd.process(ctx);
+					if( ret == 0 ) {
+						print(stack,ctx);
+					}
+					return ret;		
+				}
+			}
+		}
+		return ret;
+	}
+
+	private int pushd(ShellContext ctx, List<Object> dirStack) throws IOException {
+		int ret = 0;
+		if( ctx.args.length== 1 ) {
 			//With no arguments, pushd exchanges the top two elements of the directory stack.
 			if( dirStack.size()>1) {
 				Object o = dirStack.remove(1);
@@ -86,7 +117,7 @@ public class DirStack extends ShellCommand{
 				return 1;
 			}
 		}
-		
+
 		boolean n=false;
 
 		for(String a : ctx.args) {
@@ -96,10 +127,16 @@ public class DirStack extends ShellCommand{
 			} 
 		}
 
+		// first replace the top element with cwd
+		if( dirStack.size()==0) {
+			dirStack.add(ctx.console.getCurrentDirectory());
+		} else {
+			dirStack.set(0, ctx.console.getCurrentDirectory());
+		}
 		int direrction = 1;
 		int cnt = 0;
-		
-		for(int idx=1; idx < args.length; idx++) {
+
+		for(int idx=0; idx < args.length; idx++) {
 			String a = ""+args[idx].getValue(ctx);
 			if( a.startsWith("-")) {
 				cnt = Integer.parseInt(a.substring(1));
@@ -113,8 +150,9 @@ public class DirStack extends ShellCommand{
 					ctx.args = aa;
 					ret = cd.process(ctx);
 					if( ret == 0 ) {
-						dirStack.add(0, ctx.console.getCurrentDirectory());						
+						dirStack.add(0,ctx.console.getCurrentDirectory());						
 					}
+					print(dirStack,ctx);
 					return ret;
 				} else {
 					// change stack but not cwd
@@ -139,7 +177,7 @@ public class DirStack extends ShellCommand{
 
 	}
 
-	private void print(FsshList stack,ShellContext ctx) {
+	private void print(@SuppressWarnings("rawtypes") List stack,ShellContext ctx) {
 		String tmp = ""+ctx.getVariable("HOME");
 		StringBuilder buf = new StringBuilder();
 		for (int idx = 0,sz=stack.size(); idx < sz; idx++) {
@@ -155,11 +193,11 @@ public class DirStack extends ShellCommand{
 		ctx.stdout.println(buf);
 	}
 
-	private int rotate(int direrction, int cnt, ShellContext ctx,FsshList dirStack) {
+	private int rotate(int direrction, int cnt, ShellContext ctx,List dirStack) {
 		int ret = 0;
 		if( cnt > 0 && dirStack.size()> cnt) {
 			FileSource d1 = null;
-			
+
 			while(cnt-->=0) {
 				if( direrction==1) {
 					d1 = (FileSource) dirStack.remove(0);
@@ -172,7 +210,7 @@ public class DirStack extends ShellCommand{
 		}else {
 			ret = 1;
 		}
-		
+
 		return ret;
 	}
 

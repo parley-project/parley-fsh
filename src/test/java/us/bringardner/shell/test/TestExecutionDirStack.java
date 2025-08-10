@@ -24,7 +24,7 @@ import us.bringardner.shell.Console;
 public class TestExecutionDirStack {
 
 	private static Console console;
-	
+	private static FileSource dirStack;
 	@BeforeAll
 	public static void setup() throws IOException {
 		System.setProperty("user.home", "/home");
@@ -35,14 +35,16 @@ public class TestExecutionDirStack {
 		
 		
 		
-		FileSource dirStack = home.getChild("dirstack");
+		dirStack = home.getChild("dirstack");
 		dirStack.mkdir();
 		FileSourceFactory.getDefaultFactory().setCurrentDirectory(dirStack);
-		
+		FileSource dir = dirStack;
 		for(String name : names) {
-			FileSource d = dirStack.getChild(name);
+			FileSource d = dir.getChild(name);
 			d.mkdir();
+			dir = d;
 		}
+		
 		
 		
 		console = new Console();
@@ -55,8 +57,9 @@ public class TestExecutionDirStack {
 		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
 	}
 	
-	public static ExecuteResult executeCommand(String command,String stdIn,int expectedExitCode) {
-		
+	public static ExecuteResult executeCommand(String command,String stdIn,int expectedExitCode) throws IOException {
+		console = new Console();
+		console.setCurrentDirectory(dirStack);
 		PrintStream stdout= System.out;
 		PrintStream stderr= System.err;
 		InputStream stdin = System.in;
@@ -84,6 +87,171 @@ public class TestExecutionDirStack {
 	@Test
 	@Order(1)
 	public void testDirStack01() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(2)
+	public void testDirStack02() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(3)
+	public void testDirStack03() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(4)
+	public void testDirStack04() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "popd\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(5)
+	public void testDirStack05() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "popd -1\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(6)
+	public void testDirStack06() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "popd +2\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	
+	public void testDirStackxxx() throws Exception{
 		
 		String cmd = "dir=`pwd`\n"
 				+ "echo \"start wd = $dir\"\n"
@@ -113,5 +281,6 @@ public class TestExecutionDirStack {
 		
 		
 	}
+	
 	
 }

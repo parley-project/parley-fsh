@@ -1,4 +1,4 @@
-// Generated from /Volumes/SanDisk1/eclipse-workspace-jmail/BjlShell/Antlr4/FileSourceShParser.g4 by ANTLR 4.13.2
+// Generated from /Volumes/Data/eclipse-git/BjlShell/Antlr4/FileSourceShParser.g4 by ANTLR 4.13.2
 package us.bringardner.filesource.sh;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -58,6 +58,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitArgument(FileSourceShParser.ArgumentContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#signed_number}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSigned_number(FileSourceShParser.Signed_numberContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#operator}.
 	 * @param ctx the parse tree

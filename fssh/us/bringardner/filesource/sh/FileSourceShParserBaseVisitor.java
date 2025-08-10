@@ -1,4 +1,4 @@
-// Generated from /Volumes/SanDisk1/eclipse-workspace-jmail/BjlShell/Antlr4/FileSourceShParser.g4 by ANTLR 4.13.2
+// Generated from /Volumes/Data/eclipse-git/BjlShell/Antlr4/FileSourceShParser.g4 by ANTLR 4.13.2
 package us.bringardner.filesource.sh;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
@@ -68,6 +68,13 @@ public class FileSourceShParserBaseVisitor<T> extends AbstractParseTreeVisitor<T
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitArgument(FileSourceShParser.ArgumentContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitSigned_number(FileSourceShParser.Signed_numberContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

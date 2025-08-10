@@ -73,12 +73,14 @@ argument
     | ID 
     | assignStatement
     | variable
-    | NUMBER    
+    | signed_number    
     | mathExpression
     | parameter
     | operator
 
     ;
+    
+signed_number: (MINUS|PLUS)? NUMBER;    
 
 operator: MINUS|PLUS|DIVIDE|PERC|STAR
 		|MINUS_MINUS|PLUS_PLUS|EQUALITY|NOT_EQ

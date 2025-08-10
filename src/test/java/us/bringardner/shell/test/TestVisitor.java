@@ -26,6 +26,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Signed_numberContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
@@ -150,9 +151,9 @@ public class TestVisitor {
 		assertEquals(string, ctx3.getText());
 
 		a = parseAurgument("1234");
-		ctx = a.getContext().NUMBER();
-		assertNotNull(ctx, "number");
-		assertEquals("1234", ctx.getText());
+		Signed_numberContext ctx1 = a.getContext().signed_number();
+		assertNotNull(ctx1, "number");
+		assertEquals("1234", ctx1.getText());
 
 		/*
 mathExpression

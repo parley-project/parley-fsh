@@ -53,8 +53,8 @@ argument
 			ret = p.evaluate(ctx);
 		} else if(context.TEXT()!=null) {
 			ret = context.TEXT().getText();
-		} else if(context.NUMBER()!=null) {
-			ret = context.NUMBER().getText();
+		} else if(context.signed_number()!=null) {
+			ret = context.signed_number().getText();
 		} else if(context.path()!=null) {
 			ret = FileSourceShPreProcessorVisitorImpl.processString(context.path().getText(),ctx);
 		} else if(context.arg_command_substitution()!=null) {
