@@ -39,19 +39,19 @@ public class DirStack extends ShellCommand{
 	public DirStack() {
 		super(name, help);
 	}
+	//dirs [-clpv] [+N | -N]
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		Object tmp = ctx.getVariable(DIRSTACK);
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		List<FileSource> tmp = (List)ctx.getVariable(DIRSTACK);
 		if( tmp == null ) {
 			// can't use fssshlist becouse it really a map :-(
-
 			tmp = new ArrayList<>();
 			ctx.setVariable(DIRSTACK, tmp);
 		}
 		if (tmp instanceof List) {
-			@SuppressWarnings("unchecked")
-			List<Object> dirStack = (List<Object>) tmp;
+			List<FileSource> dirStack = tmp;
 			if( ctx.args[0].equals("pushd")) {
 				return pushd(ctx,dirStack);
 			} else if( ctx.args[0].equals("popd")) {
@@ -66,13 +66,57 @@ public class DirStack extends ShellCommand{
 		}
 	}
 
-	private int dirs(ShellContext ctx, List<?> dirStack2) {
-
-		// TODO Auto-generated method stub
-		return 0;
+	private int dirs(ShellContext ctx, List<FileSource> stack) throws IOException {
+		int ret = 0;
+		boolean fullPath= false;
+		boolean onePerLine= false;
+		boolean showIndex= false;
+		Integer N=null;
+		for(String a : ctx.args) {
+			if( a.equals("dirs")) {
+				continue;
+			}
+			
+			if( a.startsWith("+")) {
+				N = Integer.parseInt(a.substring(1));	
+			} else if( a.startsWith("-")) {
+				if(Character.isDigit(a.charAt(1))) {
+					N = stack.size()-Integer.parseInt(a.substring(1))-1;
+				} else {
+					for(int i=1; i < a.length(); i++) {
+						switch (a.charAt(i)) {
+						case 'c':stack.clear();return 0;
+						case 'l':fullPath = true;break;
+						case 'p':onePerLine = true;break;
+						case 'v':showIndex = onePerLine = true; break;
+						default:
+							throw new IllegalArgumentException("Unexpected value: " + a.charAt(i));
+						}
+					}
+				}
+			}
+		}
+		List<FileSource> tmp = new ArrayList<>();
+		tmp.addAll(stack);
+		if( tmp.size()==0) {
+			tmp.add(ctx.console.getCurrentDirectory());
+		} else {
+			tmp.set(0, ctx.console.getCurrentDirectory());
+		}
+		if( N != null ) {
+			if( N<0 || N>=tmp.size()) {
+				ctx.stderr.println("dirs: "+N+": directory stack index out of range");
+				ret = 1;
+			} else {
+				print(tmp, ctx, onePerLine, showIndex, fullPath,N);
+			}
+		} else {		
+			print(tmp, ctx, onePerLine, showIndex, fullPath,N);
+		}
+		return ret;
 	}
 
-	private int popd(ShellContext ctx, List<Object> stack) throws IOException {
+	private int popd(ShellContext ctx, List<FileSource> stack) throws IOException {
 		int ret = 0;
 		if(stack.size()>0) {
 			boolean n=false;
@@ -96,7 +140,7 @@ public class DirStack extends ShellCommand{
 					ctx.args = aa;
 					ret = cd.process(ctx);
 					if( ret == 0 ) {
-						print(stack,ctx);
+						print(stack,ctx,false,false,false,null);
 					}
 					return ret;		
 				}
@@ -105,12 +149,12 @@ public class DirStack extends ShellCommand{
 		return ret;
 	}
 
-	private int pushd(ShellContext ctx, List<Object> dirStack) throws IOException {
+	private int pushd(ShellContext ctx, List<FileSource> dirStack) throws IOException {
 		int ret = 0;
 		if( ctx.args.length== 1 ) {
 			//With no arguments, pushd exchanges the top two elements of the directory stack.
 			if( dirStack.size()>1) {
-				Object o = dirStack.remove(1);
+				FileSource o = dirStack.remove(1);
 				dirStack.add(0,o);
 				return ret;
 			} else {
@@ -142,7 +186,7 @@ public class DirStack extends ShellCommand{
 				cnt = Integer.parseInt(a.substring(1));
 				direrction = -1;
 			} else if( a.startsWith("+")) {
-				cnt = Integer.parseInt(a.substring(1));
+				cnt = Integer.parseInt(a.substring(1))-1;
 			}else {
 				if( !n ) {
 					Cd cd = new Cd();
@@ -152,7 +196,7 @@ public class DirStack extends ShellCommand{
 					if( ret == 0 ) {
 						dirStack.add(0,ctx.console.getCurrentDirectory());						
 					}
-					print(dirStack,ctx);
+					print(dirStack,ctx,false,false,false,null);
 					return ret;
 				} else {
 					// change stack but not cwd
@@ -163,29 +207,45 @@ public class DirStack extends ShellCommand{
 					}
 					FileSource dir = dirs.get(0);
 					dirStack.add(0,dir);
-					print(dirStack,ctx);
+					print(dirStack,ctx,false,false,false,null);
 					return 0;
 				}
 			}
 		}
 		ret = rotate(direrction,cnt,ctx,dirStack);
-		if( n ) {
+		if( !n ) {
 			ctx.console.setCurrentDirectory((FileSource) dirStack.get(0));
 		}
+		print(dirStack, ctx,false,false,false,null);
 
 		return ret;
 
 	}
 
-	private void print(@SuppressWarnings("rawtypes") List stack,ShellContext ctx) {
+	private void print(List<FileSource> stack,ShellContext ctx,boolean onePerLine,boolean showIndex,boolean fullPath,Integer N) {
 		String tmp = ""+ctx.getVariable("HOME");
 		StringBuilder buf = new StringBuilder();
+
 		for (int idx = 0,sz=stack.size(); idx < sz; idx++) {
+			if(N!=null && N!=idx) {
+				continue;
+			}
 			if( idx > 0 ) {
-				buf.append(' ');
+				if( onePerLine) {
+					if( !buf.isEmpty()) {
+						buf.append('\n');
+					}
+				} else {
+					if( !buf.isEmpty()) {
+						buf.append(' ');
+					}
+				}
+			}
+			if( showIndex) {
+				buf.append(""+idx+"\t");
 			}
 			String path = stack.get(idx).toString();
-			if( path.startsWith(tmp)) {
+			if(!fullPath && path.startsWith(tmp)) {
 				path = path.replace(tmp, "~");
 			}
 			buf.append(path);
@@ -193,9 +253,9 @@ public class DirStack extends ShellCommand{
 		ctx.stdout.println(buf);
 	}
 
-	private int rotate(int direrction, int cnt, ShellContext ctx,List dirStack) {
+	private int rotate(int direrction, int cnt, ShellContext ctx,List<FileSource> dirStack) {
 		int ret = 0;
-		if( cnt > 0 && dirStack.size()> cnt) {
+		if( cnt >= 0 && dirStack.size()> cnt) {
 			FileSource d1 = null;
 
 			while(cnt-->=0) {

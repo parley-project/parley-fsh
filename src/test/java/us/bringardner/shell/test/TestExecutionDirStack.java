@@ -250,26 +250,342 @@ public class TestExecutionDirStack {
 		
 	}
 	
-	
-	public void testDirStackxxx() throws Exception{
+	@Test
+	@Order(7)
+	public void testDirStack07() throws Exception{
 		
-		String cmd = "dir=`pwd`\n"
-				+ "echo \"start wd = $dir\"\n"
-				+ "for name in *;\n"
-				+ "do\n"
-				+ "        if [ -d \"$name\" ]; then\n"
-				+ "                echo \"echo dir=$dir name=$name\"\n"
-				+ "                pushd -n $dir/$name\n"
-				+ "                dir2=`pwd`\n"
-				+ "                echo \"pwd2 = $dir2\"\n"
-				+ "                cd $dir\n"
-				+ "        fi\n"
-				+ "done\n"
-				+ ""
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "pushd six\n"
+				+ "pushd seven\n"
+				+ "pushd -1\n"
+				+ "pwd\n"
+				
 				;
 		
 		String expect = 
-				""
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one ~/dirstack ~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two\n"
+				+ "/home/dirstack/one\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(8)
+	public void testDirStack08() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "pushd six\n"
+				+ "pushd seven\n"
+				+ "pushd +1\n"
+				+ "pwd\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack ~/dirstack/one/two/three/four/five/six/seven\n"
+				+ "/home/dirstack/one/two/three/four/five/six\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(9)
+	public void testDirStack09() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "pushd six\n"
+				+ "pushd seven\n"
+				+ "pushd -4\n"
+				+ "pwd\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack ~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five\n"
+				+ "/home/dirstack/one/two/three/four\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	
+	@Test
+	@Order(10)
+	public void testDirStack10() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "pushd six\n"
+				+ "pushd seven\n"
+				+ "pushd +4\n"
+				+ "pwd\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack ~/dirstack/one/two/three/four/five/six/seven ~/dirstack/one/two/three/four/five/six ~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four\n"
+				+ "/home/dirstack/one/two/three\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(11)
+	public void testDirStack11() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pwd\n"
+				+ "dirs\n"
+				+ "dirs -c\n"
+				+ "dirs\n"
+				+ "pwd\n"
+				
+				;
+		
+		String expect = 
+				 "~/dirstack/one ~/dirstack\n" // push one
+				+ "~/dirstack/one/two ~/dirstack/one ~/dirstack\n" // push two
+				+"/home/dirstack/one/two\n"	// pwd
+				+ "~/dirstack/one/two ~/dirstack/one ~/dirstack\n" // dirs
+				// dirs -c not output
+				+ "~/dirstack/one/two\n" //dirs
+				
+				+ "/home/dirstack/one/two\n" // pwd
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(12)
+	public void testDirStack12() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "dirs -l\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "/home/dirstack/one/two/three/four/five /home/dirstack/one/two/three/four /home/dirstack/one/two/three /home/dirstack/one/two /home/dirstack/one /home/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(13)
+	public void testDirStack13() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "dirs -lp\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "/home/dirstack/one/two/three/four/five\n"
+				+ "/home/dirstack/one/two/three/four\n"
+				+ "/home/dirstack/one/two/three\n"
+				+ "/home/dirstack/one/two\n"
+				+ "/home/dirstack/one\n"
+				+ "/home/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(14)
+	public void testDirStack14() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "dirs -v\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "0	~/dirstack/one/two/three/four/five\n"
+				+ "1	~/dirstack/one/two/three/four\n"
+				+ "2	~/dirstack/one/two/three\n"
+				+ "3	~/dirstack/one/two\n"
+				+ "4	~/dirstack/one\n"
+				+ "5	~/dirstack\n"
+						
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"", 0);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+		
+		
+	}
+	
+	@Test
+	@Order(15)
+	public void testDirStack15() throws Exception{
+		
+		String cmd = ""
+				+ "pushd one\n"
+				+ "pushd two\n"
+				+ "pushd three\n"
+				+ "pushd four\n"
+				+ "pushd five\n"
+				+ "dirs -2\n"
+				+ "dirs +2\n"
+				+ "dirs -lpv +2\n"
+				
+				;
+		
+		String expect = 
+				"~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
+				+ "~/dirstack/one/two\n"
+				+ "~/dirstack/one/two/three\n"
+				+ "2\t/home/dirstack/one/two/three\n"
+						
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
