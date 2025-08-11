@@ -12,8 +12,8 @@ import us.bringardner.shell.antlr.Argument;
 
 public class Set extends ShellCommand{
 	/*
-	 * re write to conform with https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_25
-	 * Ecluding the -o option
+	 * re write to conform to https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_25
+	 * Excluding the -o option
 	 */
 	static String name = "set";
 	static String help = "If no options or arguments are supplied, set displays the names and values of all shell variables and functions, sorted according to the current locale, in a format that may be reused as input for setting or resetting the currently-set variables. Read-only variables cannot be reset.\n"

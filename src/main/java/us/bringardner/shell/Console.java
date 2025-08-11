@@ -1136,8 +1136,11 @@ stderr	2
 				for(Statement stmt : stmts) {
 					ret = stmt.process(sc);
 					if( ret!=0) {
+						if(isInteractive && options.contains(Option.ExitImediately)) {
+							System.exit(ret);
+						}
 						return ret;
-					}
+					}					
 				}
 			}
 		} catch(ExitException e) {
