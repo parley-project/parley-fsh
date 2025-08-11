@@ -15,10 +15,10 @@ import us.bringardner.filesource.sh.FileSourceShLexer;
 
 public class ExprVisitorImpl extends ExprParserBaseVisitor<Object>  {
 
-	public static Expr parse(String preProcessedCode)  {
+	public static Expr parse(String rawCode)  {
 		AtomicReference<Exception> error = new AtomicReference<>();
 		
-		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(preProcessedCode));
+		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(rawCode));
 		lexer.removeErrorListeners();
 		lexer.addErrorListener(new BaseErrorListener() {
 			@Override
@@ -48,9 +48,9 @@ public class ExprVisitorImpl extends ExprParserBaseVisitor<Object>  {
 	}
 	
 	@Override
-	public Expr visitExpr(ExprContext ctx) {
-		Expr ret = new Expr(ctx);
-		return ret;
+	public Expr visitExpr(ExprContext ctx)  {
+		//Expr ret = new Expr(ctx);
+		throw new RuntimeException("Expr is not implemented");
 	}
 
 

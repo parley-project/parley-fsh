@@ -8,6 +8,14 @@ public class Expr {
 
 	private ParserRuleContext context;
 	
+	public ParserRuleContext getContext() {
+		return context;
+	}
+
+	public void setContext(ParserRuleContext context) {
+		this.context = context;
+	}
+
 	public Expr(ExprContext ctx) {
 		this.context = ctx;
 	}
