@@ -26,7 +26,7 @@ public abstract class AbstractConsoleTest {
 	public static Console console;
 	public static File testFilesDir;
 	
-	
+		
 	public static void setup(String home) throws IOException {
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 		testFilesDir = new File(home).getCanonicalFile();

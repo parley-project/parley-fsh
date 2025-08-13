@@ -17,13 +17,12 @@ import java.util.Random;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 
 import us.bringardner.shell.Console;
-
-import org.junit.jupiter.api.Order;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestLs {
@@ -31,13 +30,11 @@ public class TestLs {
 	public static String fileDate;
 	public static Console console;
 
+	
 	@BeforeAll
 	public static void beforeAll() throws IOException, InterruptedException {
 
 		File file = new File("LsTestFiles");
-		//setAccessDate();
-
-		//System.exit(0);
 		System.setProperty("user.home", file.getAbsolutePath());
 		console = new Console();
 	}
@@ -150,7 +147,7 @@ public class TestLs {
 	public void testLs() throws IOException {
 
 
-		String cmd = "ls -1aAbBcCdFgGhHIlLoQrRStuUxX";
+	
 		String expect = 
 				  "AbcFileA.js\n"
 				+ "AbcFileB.php\n"
@@ -158,7 +155,7 @@ public class TestLs {
 				+ "AbcFileD.properties\n"
 				+ "Folder01";
 		
-		cmd = "ls";
+		String cmd = "ls";
 
 		String actual = executeCommand(cmd).trim();		
 		assertEquals(expect, actual);
@@ -170,7 +167,6 @@ public class TestLs {
 	public void testLs_X() throws IOException {
 
 
-		String cmd = "ls -1aAbBcCdFgGhHIlLoQrRStuUxX";
 		String expect = 
 				  "Folder01\n"
 				  + "AbcFileA.js\n"
@@ -178,7 +174,7 @@ public class TestLs {
 				  + "AbcFileD.properties\n"
 				  + "AbcFileC.txt";
 		
-		cmd = "ls -X";
+		String cmd = "ls -X";
 
 		String actual = executeCommand(cmd).trim();		
 		assertEquals(expect, actual);
@@ -210,17 +206,18 @@ public class TestLs {
 	public void testLs_l() throws IOException {
 
 
-		String expect1 = 
-				    "-rw-r--r--1tonystaff1547Jun162025AbcFileA.js-rwxr-xr-x1tonystaff3710Jun162025AbcFileB.php-rwxr-xr-x1tonystaff20Jun162025AbcFileC.txt-rwxr-xr-x1tonystaff20Jun162025AbcFileD.propertiesdrwxr-xr-x1tonystaff238Nov132022Folder01"
+		String expect = 
+				    "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
+				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"
 				  
 				  ;
-		String expect = expect1.replaceAll("\\s", "");
 		
 		String cmd = "ls -l";
 
-		String actual1 = executeCommand(cmd).trim();
-		//System.out.println(actual1);
-		String actual = actual1.replaceAll("\\s", "");
+		String actual = executeCommand(cmd).trim();
 		
 		assertEquals(expect, actual);
 	}
@@ -231,11 +228,11 @@ public class TestLs {
 
 
 		String expect1 = 
-				    "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
+				      "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
-				    + "drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
+				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"
 				  
 				  ;
 		String expect = expect1.replaceAll("\\s", "");
@@ -256,11 +253,11 @@ public class TestLs {
 
 
 		String expect1 = 
-				    "drwxr-xr-x 1 tony  staff   238  Nov 13 2022 Folder01\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileD.properties\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 16 2025 AbcFileC.txt\n"
+				      "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
+				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rw-r--r-- 1 tony  staff  1547  Jun 16 2025 AbcFileA.js\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
 				  
 				  ;
 		String expect = expect1.replaceAll("\\s", "");

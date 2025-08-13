@@ -22,7 +22,7 @@ public class TestPwd {
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		File file = new File("PwdTestFiles/SymFolder01");
+		File file = new File("PwdTestFiles/SymLink2Folder01");
 		System.setProperty("user.home", file.getAbsolutePath());
 		console = new Console();
 	}
@@ -55,7 +55,7 @@ public class TestPwd {
 	@Test
 	public void testPwd() throws IOException {
 		String actual = executeCommand("pwd").trim();
-		assertTrue(actual.endsWith("PwdTestFiles/SymFolder01"));
+		assertTrue(actual.endsWith("PwdTestFiles/SymLink2Folder01"));
 	}
 	
 	@Test
