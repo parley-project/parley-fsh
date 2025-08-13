@@ -15,6 +15,7 @@ package us.bringardner.shell.ide;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -26,6 +27,7 @@ import org.fife.ui.rsyntaxtextarea.SyntaxScheme;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Marshaller;
+import jakarta.xml.bind.Unmarshaller;
 import jakarta.xml.bind.annotation.XmlAccessType;
 import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -62,11 +64,6 @@ public class Configuration {
 
 
 
-	/**
-	 * templates2 is given to other objects so templates can not be modified
-	 */
-	private transient List<Template> templates2;
-
 	public static Configuration getInstance()  {
 		if( global == null ) {
 			synchronized (Configuration.class) {
@@ -74,11 +71,10 @@ public class Configuration {
 					Configuration tmp = null;
 					File file = getConfigFile();
 					if( file.exists()) {
-						try {
-							
-							//JAXBContext ctx = JAXBContext.newInstance(Configuration.class);
-							//Unmarshaller um = ctx.createUnmarshaller();
-							//tmp = (Configuration) um.unmarshal(file);
+						try {							
+							JAXBContext ctx = JAXBContext.newInstance(Configuration.class);
+							Unmarshaller um = ctx.createUnmarshaller();
+							tmp = (Configuration) um.unmarshal(file);
 							tmp = createDefault();
 						} catch (Exception e) {
 							JOptionPane.showMessageDialog(null, e.getMessage(), "Error managing configuration", JOptionPane.ERROR_MESSAGE);
@@ -148,29 +144,15 @@ public class Configuration {
 	}
 
 	public List<Template> getTemplates() {
-		if( templates2 == null ) {
-			List<Template> tmp = new ArrayList<>();
-			populateDefault(tmp);
-			if( templates != null ) {
-					if( templates2 == null && templates != null ) {
-						for (Template t : templates) {
-							if( !tmp.contains(t)) {
-								tmp.add(t.copy());	
-							}							
-						}						
-					}
-			}
-			templates2 = tmp;
-		}
-
-		return templates2;
+		List<Template> ret= Collections.unmodifiableList(templates);
+		
+		return ret;
 	}
 
 
 	public void setTemplates(List<Template> templates) {
 		this.templates = new ArrayList<Template>();
-		populateDefault(this.templates);
-		templates2 = null;
+		populateDefault(this.templates);		
 	}
 
 	
@@ -209,13 +191,13 @@ public class Configuration {
 					"if [ ${condition} ]; then\n"
 					+ "  # code to be executed if the condition is true\n"
 					+ "fi"),
-			new Template( "if", "if-else", 
+			new Template( "if-else", "if-else", 
 					"if [ ${condition} ]; then\n"
 					+ "  # code to be executed if the condition is true\n"
 					+ "else\n"
 					+ "  # code to be executed if the condition is false\n"
 					+ "fi"),
-			new Template( "expression", "$((x % 2))", "$$(( ${cursor} ))"),
+			new Template( "expression", "expression $((x % 2))", "$$(( ${cursor} ))"),
 			new Template( "do", "do-statement", 
 					"do\n"
 					+ "	# code goes here\n"
@@ -237,6 +219,14 @@ public class Configuration {
 					+ "do\n"
 					+ "  ${echo}\n"
 					+ "done"),
+			
+			new Template( "select01", "select", 
+					"select ${name} in ${list};\n"
+					+ "do\n"
+					+ "	echo you picked ${name}\n"
+					+ "	break;\n"
+					+ "done"
+					),
 			
 			new Template( "name", "name2", ""),
 			

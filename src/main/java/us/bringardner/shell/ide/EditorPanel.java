@@ -76,9 +76,6 @@ public class EditorPanel extends JPanel {
 
 	private List<BreakpointListner> breakpointListners = new ArrayList<EditorPanel.BreakpointListner>();
 
-	private Object autocompleteMutex = new Object();
-
-
 	private AutoCompletion autoComplete;
 	private int fontHeight;
 	private BjlShellIDETextArea editorPane = new BjlShellIDETextArea(200,200) {
@@ -116,8 +113,7 @@ public class EditorPanel extends JPanel {
 
 	private List<String> variables = new ArrayList<>();
 	private RTextScrollPane scrollPane;
-	private boolean stopAutoComplete = false;
-
+	
 	private FileSource scriptDir;
 	private Icon breakpointIcon = new ImageIcon(Toolkit.getDefaultToolkit().getImage(BjlShellIDE.class.getResource("/img/eclipse_brkp_obj.png")));
 	private Icon errorIcon      = new ImageIcon(Toolkit.getDefaultToolkit().getImage(BjlShellIDE.class.getResource("/img/eclipse_err_obj.png")));
@@ -452,21 +448,7 @@ public class EditorPanel extends JPanel {
 		});
 
 		
-		new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				while(true) {
-					try {
-						Thread.sleep(4000);
-					} catch (InterruptedException e) {
-					}
-					if( !stopAutoComplete) {
-						updateAutoComplete(false);
-					}
-				}
-			}
-		}).start();
+		
 		lineNumberTextArea.setFont(editorPane.getFont());
 		
 	}
@@ -475,53 +457,6 @@ public class EditorPanel extends JPanel {
 	
 	
 	
-
-	public void stopAutoComplete(boolean val) {
-		stopAutoComplete = val;
-	}
-
-	
-	@SuppressWarnings("unused")
-	private  void updateAutoComplete(boolean forceUpdate) {
-
-		synchronized (autocompleteMutex) {
-
-
-			//  This should never be called from the dispatch thread but we'll protect against it anyway.
-			if( !SwingUtilities.isEventDispatchThread()) {
-				boolean changed = false;
-				String code = editorPane.getText();
-				/*
-				FileSourceShParserListener l=null;
-				try {
-					l = new FileSourceShParserListener();//.getInstance(code,scriptDir);
-				} catch (IOException e) {
-					e.printStackTrace();
-					return;
-				}
-
-				List<ModuleAutoCompleteManager> tmp = l.getMethods();
-
-				if(!modules.equals(tmp)) {
-					modules = tmp;
-					changed = true;						
-				} 
-
-				List<String> vars = l.getVars();
-				if( !vars.equals(variables)) {
-					variables = vars;
-					changed = true;
-				}
-
-				if( changed) {
-					createAutoComplete();
-				}
-				*/
-			}
-
-		} 
-
-	}
 
 	private void actionNew() {
 		firePropertyChange(ACTION_NEW, true, false);
@@ -565,7 +500,8 @@ public class EditorPanel extends JPanel {
 		try {
 			config = Configuration.getInstance();	
 		} catch (Throwable e) {
-			System.out.println("e="+e);
+			System.out.println("Configuration.getInstance e="+e);
+			e.printStackTrace();
 			System.exit(0);
 		}
 		

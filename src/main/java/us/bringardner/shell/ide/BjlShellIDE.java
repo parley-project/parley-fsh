@@ -57,7 +57,6 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSplitPane;
@@ -65,6 +64,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.text.BadLocationException;
 
@@ -83,13 +83,12 @@ import us.bringardner.io.filesource.FileSourceChooserDialog;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.DebugContext;
-import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.DebugContext.RunState;
+import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.Compare;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.statement.LoopStatement.LoopControlException;
-import javax.swing.border.EtchedBorder;
 
 
 public class BjlShellIDE extends JFrame  {
@@ -473,8 +472,6 @@ public class BjlShellIDE extends JFrame  {
 
 	private JButton executeButton;
 
-	private JRadioButtonMenuItem stopAutoCompleteCheckbox;
-
 	private JCheckBoxMenuItem useSelectedCodeCheckItem;
 
 	private JCheckBoxMenuItem autoExecuteCheckItem;
@@ -677,14 +674,6 @@ public class BjlShellIDE extends JFrame  {
 		JMenu mnNewMenu = new JMenu("Debug");
 		menuBar.add(mnNewMenu);
 
-
-		stopAutoCompleteCheckbox = new JRadioButtonMenuItem("StopAutoComplete");
-		stopAutoCompleteCheckbox.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				actionStopAutoComplete();
-			}
-		});
-		mnNewMenu.add(stopAutoCompleteCheckbox);
 
 		useSelectedCodeCheckItem = new JCheckBoxMenuItem("Use selected code");
 		useSelectedCodeCheckItem.setSelected(true);
@@ -1032,10 +1021,7 @@ public class BjlShellIDE extends JFrame  {
 
 
 
-	protected void actionStopAutoComplete() {
-		editorPane.stopAutoComplete(stopAutoCompleteCheckbox.isSelected());		
-	}
-
+	
 	protected void actionNewWindow() {
 		main(new String[0]);
 
@@ -1211,16 +1197,11 @@ public class BjlShellIDE extends JFrame  {
 		}
 		try {
 			if( scriptFile != null && scriptFile.exists()) {
-				try {
 					String code =  (new String(Files.readAllBytes(Paths.get(scriptFile.getCanonicalPath())), "UTF-8"));
 					setCode(code,autoExecuteCheckItem.isSelected());
-				} catch (IOException ex) {
-					showError(ex, "Can't write file");
-				}
-			}
+			}			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			showError(e, "Can't read file");			
 		}
 
 	}
@@ -1249,8 +1230,7 @@ public class BjlShellIDE extends JFrame  {
 				saveRecentList(recentFiles);
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			showError(e, "Can't save");
 		}
 	}
 
@@ -1277,9 +1257,7 @@ public class BjlShellIDE extends JFrame  {
 		if( lastFile!=null ) {
 			try {
 				fc.setCurrentDirectory(lastFile.getParentFile());
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			} catch (IOException e) {				
 			}
 		}
 
@@ -1338,7 +1316,6 @@ public class BjlShellIDE extends JFrame  {
 				recentFiles.add(0, scriptFile.getAbsolutePath());
 				saveRecentList(recentFiles);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
