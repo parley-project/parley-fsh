@@ -1,6 +1,5 @@
 package us.bringardner.shell;
 
-import java.awt.EventQueue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -247,13 +246,13 @@ public class Console extends BaseThread {
 
 	public static void main(String args[]) throws IOException {
 
-		System.out.println("Enter main arg.len="+args.length);
 		try {
 
 			Console c = new Console();
 			int ret = c.execute(args);
 
 			if(ret==0 && c.isInteractive) {
+				/*
 				EventQueue.invokeLater(new Runnable() {
 					public void run() {
 						try {
@@ -263,7 +262,7 @@ public class Console extends BaseThread {
 						}
 					}
 				});
-
+				 */
 				c.setName("Console");
 				c.setDaemon(false);
 				c.start();
@@ -273,8 +272,7 @@ public class Console extends BaseThread {
 		} catch (ExitException e) {
 			System.exit(e.exitCode);
 		}
-
-		System.out.println("exit main");
+		 
 	}
 
 	public static void close(OutputStream out) {
