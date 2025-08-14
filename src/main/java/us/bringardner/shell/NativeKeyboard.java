@@ -321,9 +321,11 @@ public class NativeKeyboard extends InputStream 	{
 		boolean eof = false;
 		if( !eof) {
 			while(i>=0 && !done) {
+				/*
 				if( isEcho()) {
 					print((char)i);
 				}
+				*/
 				char c = (char)i;
 				if( c =='\\') {
 					// escape next char
