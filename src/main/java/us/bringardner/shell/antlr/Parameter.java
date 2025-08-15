@@ -379,6 +379,8 @@ ${parameter:-word}
 		return ret;
 	}
 
+	enum CaseType {Lower,Upper,FirstLower,FirstUpper}
+	
 	private Object patternChageCase(Object val, String bodyText, PbodyContext bc) {
 		if (val instanceof List<?>) {
 			List<?> list = (List<?>) val;
@@ -394,20 +396,20 @@ ${parameter:-word}
 			return buf.toString();
 		}
 
-		enum Type {Lower,Upper,FirstLower,FirstUpper}
-		Type type = null;
+		
+		CaseType type = null;
 		String pat = null;
 		if( bodyText.startsWith("^^")) {
-			type = Type.Upper;
+			type = CaseType.Upper;
 			pat = bodyText.substring(2);	
 		} else if( bodyText.startsWith("^")) {
-			type = Type.FirstUpper;
+			type = CaseType.FirstUpper;
 			pat = bodyText.substring(1);	
 		} else if( bodyText.startsWith(",,")) {
-			type = Type.Lower;
+			type = CaseType.Lower;
 			pat = bodyText.substring(2);	
 		} else if( bodyText.startsWith(",")) {
-			type = Type.FirstLower;
+			type = CaseType.FirstLower;
 			pat = bodyText.substring(1);	
 		}
 		if( pat.trim().isEmpty()) {
@@ -442,7 +444,7 @@ ${parameter:-word}
 				throw new IllegalArgumentException("Unexpected value: " + type);
 			}
 			ret = left+tmp+right;
-			if( type == Type.FirstLower || type == Type.FirstUpper) {
+			if( type == CaseType.FirstLower || type == CaseType.FirstUpper) {
 				break;
 			}
 		}
@@ -450,12 +452,13 @@ ${parameter:-word}
 		
 		return ret;
 	}
-
+	enum PatternType {One,All,Start,End};
+	
 	private Object patternSearchReplace(Object val, String bodyText, PbodyContext bc) {
 		String ret = ""+val;
-		enum Type {One,All,Start,End};
 		
-		Type type = Type.One;
+		
+		PatternType type = PatternType.One;
 
 		String tmp = bodyText.substring(1);
 		int idx = tmp.lastIndexOf('/');
@@ -466,20 +469,20 @@ ${parameter:-word}
 			// # match start % match end
 			if( target.charAt(0)== '/') {
 				target = target.substring(1);
-				type = Type.All;
+				type = PatternType.All;
 			} else if( target.charAt(0)== '|') {
 				target = target.substring(1);
-				type = Type.Start;
+				type = PatternType.Start;
 			} else if( target.charAt(0)== '%') {
 				target = target.substring(1);
-				type = Type.End;
+				type = PatternType.End;
 			}
 			
 			String preped = ShellCommand.prepWildCards(target,true);
 
-			if(type == Type.Start) {
+			if(type == PatternType.Start) {
 				preped = "^"+preped;
-			} else if(type == Type.End) {
+			} else if(type == PatternType.End) {
 				preped = preped + "$";
 			}
 			
@@ -488,7 +491,7 @@ ${parameter:-word}
 			
 			
 			if(m.find()) {
-				if( type == Type.One) {
+				if( type == PatternType.One) {
 					ret = m.replaceFirst(replace);
 				} else {
 					ret = m.replaceAll(replace);
