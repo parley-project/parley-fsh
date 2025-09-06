@@ -550,7 +550,6 @@ public class TreeViewFrame extends JFrame {
 			@Override
 			public void reportContextSensitivity(Parser recognizer, DFA dfa, int startIndex, int stopIndex,
 					int prediction, ATNConfigSet configs) {
-				System.out.println("preportContextSensitivity ");
 				super.reportContextSensitivity(recognizer, dfa, startIndex, stopIndex, prediction, configs);
 			}
 

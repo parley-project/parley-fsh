@@ -11,9 +11,9 @@ script: SHEBANG? statement+ EOF;
 	
 		
 statement
-	: WS? statement1 WS? (NL|SEMI|EOF)
-	| left=statement WS? op=OR WS? right=statement
-    | left=statement WS? op=AND WS? right=statement
+	: white* statement1 white* (NL|SEMI|EOF)
+	| left=statement white* op=OR white* right=statement
+    | left=statement white* op=AND white* right=statement
     
 		;
 	
@@ -282,13 +282,13 @@ redirectionOperator
 
 	
 
-			
+white: NL | WS;			
 
 ifStatement
-    : IF compare WS? SEMI WS? NL? THEN WS? NL? WS? statement_block NL? 
-           (ELIF compare (SEMI|NL) THEN statement_block)*
-        (ELSE statement_block)?
-      FI
+    : IF compare white* (SEMI|NL) white* THEN white* statement_block white* 
+           (ELIF white* compare white* (SEMI|NL) white* THEN white* statement_block)*
+        (white* ELSE white* statement_block)?
+      white* FI white*
     ;
 
 statement_block:     (WS? statement WS?)+

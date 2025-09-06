@@ -388,6 +388,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitRedirectionOperator(FileSourceShParser.RedirectionOperatorContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#white}.
+	 * @param ctx the parse tree
+	 */
+	void enterWhite(FileSourceShParser.WhiteContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#white}.
+	 * @param ctx the parse tree
+	 */
+	void exitWhite(FileSourceShParser.WhiteContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#ifStatement}.
 	 * @param ctx the parse tree
 	 */
