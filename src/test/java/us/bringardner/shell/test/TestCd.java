@@ -1,6 +1,7 @@
 package us.bringardner.shell.test;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,7 +49,7 @@ public class TestCd {
 		System.setErr(new PrintStream(bae));
 		System.setIn(new ByteArrayInputStream(new byte[0]));
 		
-		console.executeWithoutAntlr(command);
+		console.executeUsingAntlr(command);
 		String actual = new String(bao.toByteArray());
 		System.setIn(stdin);
 		System.setOut(stdout);
@@ -61,4 +62,44 @@ public class TestCd {
 		String actual = executeCommand("pwd").trim();
 		assertTrue(actual.endsWith("TestFiles"));
 	}
+	
+	@Test
+	public void testCd_01() throws IOException {
+		String actual = executeCommand("cd Folder01").trim();		
+		assertEquals("",actual);
+		actual = executeCommand("pwd").trim();
+		assertTrue(actual.endsWith("Folder01"));
+		
+		actual = executeCommand("cd Folder01abc.1").trim();		
+		assertEquals("",actual);
+		actual = executeCommand("pwd").trim();
+		assertTrue(actual.endsWith("Folder01abc.1"));
+		actual = executeCommand("cd ..").trim();		
+		assertEquals("",actual);
+		actual = executeCommand("pwd").trim();
+		assertTrue(actual.endsWith("Folder01"));
+		
+		actual = executeCommand("cd ..").trim();		
+		assertEquals("",actual);
+		actual = executeCommand("pwd").trim();
+		assertTrue(actual.endsWith("TestFiles"));
+		
+		
+	}
+	
+	@Test
+	public void testCd_02() throws IOException {
+		String actual = executeCommand("cd Folder01/Folder01abc.1").trim();		
+		assertEquals("",actual);
+		actual = executeCommand("pwd").trim();
+		assertTrue(actual.endsWith("Folder01/Folder01abc.1"));
+		actual = executeCommand("cd ..").trim();		
+		assertEquals("",actual);
+		actual = executeCommand("pwd").trim();
+		assertTrue(actual.endsWith("TestFiles"));
+		
+		
+	}
+	
+	
 }

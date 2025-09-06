@@ -76,7 +76,7 @@ assignStatement
 		} else if( actx.boolean_()!=null) {
 			val = actx.boolean_().TRUE() !=null;
 		} else if( actx.path()!=null) {
-			val = actx.path().getText();
+			val = Argument.visit(actx.path(), ctx);
 		} else if( actx.parameter()!=null) {
 			Parameter p = new Parameter(actx.parameter());
 			val= p.evaluate(ctx);

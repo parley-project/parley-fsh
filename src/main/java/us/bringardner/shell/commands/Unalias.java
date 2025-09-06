@@ -23,19 +23,18 @@ public class Unalias extends ShellCommand{
 		int ret = 0;
 		for(Argument arg : args) {
 			ArgumentContext actx = arg.getContext();
-			if( actx.ID() != null) {
-				String name = actx.ID().getText(); 
-				ctx.console.removeAlias(name);
-			} else if( actx.ARG_ID() != null) {
+			if( actx.ARG_ID() != null) {
 				if(actx.ARG_ID().getText().equals("-a")) {
 					ctx.console.clearAliases();
 				} else {
 					// invalid??
 					throw new IOException("Don't know what to do for '"+actx.getText()+"'");
 				}
-			}  else {
-				throw new IOException("Don't know what to do for '"+actx.getText()+"'");
-			}
+			} else  {
+				String name = actx.getText(); 
+				ctx.console.removeAlias(name);
+			
+			}  
 		}
 		
 		return ret;

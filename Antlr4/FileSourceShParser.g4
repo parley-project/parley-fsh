@@ -62,10 +62,26 @@ assignStatement
     ;
 
 boolean: TRUE | FALSE;
-path: path_segment? PATH_START PATH_BODY  ;
+path_segment: 
+		  TILDE 
+		| ID
+		| variable
+        | DOT_DOT
+        | DOT
+        | STAR
+        | QUESTION
+        | string
+        | MINUS
+        | MINUS_MINUS
+		;
+
+path: path_segment? PATH_START PATH_BODY?
+	|   path_segment
+	;
 
 argument
     :  arg_command_substitution
+    | signed_number
     | path
    	| TEXT
     | string
@@ -73,7 +89,7 @@ argument
     | ID 
     | assignStatement
     | variable
-    | signed_number    
+        
     | mathExpression
     | parameter
     | operator
@@ -258,18 +274,6 @@ redirectionOperator
 	
 
 			
-path_segment: 
-		  TILDE 
-		| ID
-		| variable
-        | DOT_DOT
-        | DOT
-        | STAR
-        | QUESTION
-        | string
-        | MINUS
-        | MINUS_MINUS
-		;
 
 ifStatement
     : IF compare (SEMI|NL) THEN statement_block

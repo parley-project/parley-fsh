@@ -286,7 +286,7 @@ public class CommandStatement extends Statement{
 			String val = ""+a.getValue(ctx);
 			
 			//TODO: probably need a more comprehensive way to generate file lists
-			if( a.getContext().path() != null || (a.getContext().operator() != null && a.getContext().operator().getText().equals("*")) ) {
+			if(val.contains("*") || (a.getContext().operator() != null && a.getContext().operator().getText().equals("*")) ) {
 
 				List<FileSource> list = ShellCommand.getFiles(ctx, val);
 				if( list.size()>0) {

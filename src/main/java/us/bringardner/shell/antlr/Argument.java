@@ -3,6 +3,10 @@ package us.bringardner.shell.antlr;
 import java.io.IOException;
 
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Path_segmentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.StringContext;
+import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.statement.CommandSubstitutionStatement;
 
@@ -56,7 +60,7 @@ argument
 		} else if(context.signed_number()!=null) {
 			ret = context.signed_number().getText();
 		} else if(context.path()!=null) {
-			ret = FileSourceShPreProcessorVisitorImpl.processString(context.path().getText(),ctx);
+			ret = visit(context.path(),ctx);						
 		} else if(context.arg_command_substitution()!=null) {
 			CommandSubstitutionStatement cs = new CommandSubstitutionStatement(context.arg_command_substitution());
 			try {
@@ -79,6 +83,67 @@ argument
 		}
 		
 
+		return ret;
+	}
+
+	//path: path_segment? PATH_START PATH_BODY  ;
+	public static String visit(PathContext path, ShellContext ctx) {
+		StringBuilder ret = new StringBuilder();
+		if(path.path_segment() != null ) {
+			String tmp =  visit(path.path_segment(),ctx);
+			ret.append(tmp);
+		} 
+		if(path.PATH_START() != null ) {
+			ret.append(path.PATH_START().getText());
+		}
+		if(path.PATH_BODY() != null ) {
+			ret.append(path.PATH_BODY().getText());
+		}
+		
+		
+		return ret.toString();
+	}
+
+	/*
+	 * path_segment: 
+		  TILDE 
+		| ID
+		| variable
+        | DOT_DOT
+        | DOT
+        | STAR
+        | QUESTION
+        | string
+        | MINUS
+        | MINUS_MINUS
+		;
+
+	 */
+	public static String visit(Path_segmentContext path_segment, ShellContext ctx) {
+		if( path_segment.string() != null ) {
+			return visit(path_segment.string(), ctx);
+		} else if( path_segment.variable()!=null ) {
+			return visit(path_segment.variable(),ctx);
+		} 
+		return path_segment.getText();
+	}
+
+	/*
+	 * variable:
+        idOnly=ID ( associative_index | array_index)?
+        |VARIABLE (associative_index | array_index)?
+
+	 */
+	public static String visit(VariableContext variable, ShellContext ctx) {
+		Object obj = ctx.getVariable(variable);
+		String ret = ""+obj;
+		return ret;
+	}
+
+	//string : DQ_STRING | SQ_STRING | ESC;
+	public static String visit(StringContext string, ShellContext ctx) {
+		String ret = ctx.expandString(string);
+		
 		return ret;
 	}
 

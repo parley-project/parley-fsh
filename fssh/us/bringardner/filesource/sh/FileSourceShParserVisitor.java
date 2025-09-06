@@ -47,6 +47,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitBoolean(FileSourceShParser.BooleanContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#path_segment}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPath_segment(FileSourceShParser.Path_segmentContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#path}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -214,12 +220,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitRedirectionOperator(FileSourceShParser.RedirectionOperatorContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#path_segment}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitPath_segment(FileSourceShParser.Path_segmentContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#ifStatement}.
 	 * @param ctx the parse tree

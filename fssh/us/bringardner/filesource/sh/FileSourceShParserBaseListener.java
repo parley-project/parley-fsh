@@ -89,6 +89,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterPath_segment(FileSourceShParser.Path_segmentContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPath_segment(FileSourceShParser.Path_segmentContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPath(FileSourceShParser.PathContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -420,18 +432,6 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitRedirectionOperator(FileSourceShParser.RedirectionOperatorContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterPath_segment(FileSourceShParser.Path_segmentContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitPath_segment(FileSourceShParser.Path_segmentContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

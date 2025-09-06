@@ -68,6 +68,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitBoolean(FileSourceShParser.BooleanContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#path_segment}.
+	 * @param ctx the parse tree
+	 */
+	void enterPath_segment(FileSourceShParser.Path_segmentContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#path_segment}.
+	 * @param ctx the parse tree
+	 */
+	void exitPath_segment(FileSourceShParser.Path_segmentContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#path}.
 	 * @param ctx the parse tree
 	 */
@@ -347,16 +357,6 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitRedirectionOperator(FileSourceShParser.RedirectionOperatorContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link FileSourceShParser#path_segment}.
-	 * @param ctx the parse tree
-	 */
-	void enterPath_segment(FileSourceShParser.Path_segmentContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link FileSourceShParser#path_segment}.
-	 * @param ctx the parse tree
-	 */
-	void exitPath_segment(FileSourceShParser.Path_segmentContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#ifStatement}.
 	 * @param ctx the parse tree

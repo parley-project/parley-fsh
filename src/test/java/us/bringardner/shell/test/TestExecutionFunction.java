@@ -176,7 +176,7 @@ public class TestExecutionFunction {
 				"34\n"
 				;
 		
-		//System.out.println(cmd);
+		System.out.println(cmd);
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());

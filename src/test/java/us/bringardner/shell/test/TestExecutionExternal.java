@@ -431,6 +431,7 @@ public class TestExecutionExternal {
 				+ "EOF\n"
 				;
 
+		System.out.println(cmd);
 		String expectOut = 
 				"       4      36     184\n"
 				;
