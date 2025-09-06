@@ -9,9 +9,16 @@ options {
 script: SHEBANG? statement+ EOF;
 
 	
+		
 statement
-    : stmt_only=statement SEMI
-    | backgroundCommand
+	: WS? statement1 WS? (NL|SEMI|EOF)
+	| left=statement WS? op=OR WS? right=statement
+    | left=statement WS? op=AND WS? right=statement
+    
+		;
+	
+statement1
+    : backgroundCommand
     | ifStatement
     | mathStatement
     | pipeStatement
@@ -26,9 +33,6 @@ statement
     | commandStatement
     | loop_controll_statement
     | declareAssociativeArrayStatement
-    | NL
-    | left=statement op=OR  right=statement
-    | left=statement op=AND right=statement
     | boolean_statement
     | compareStatement
     | statement_group // Includes parenthesized groups
@@ -47,24 +51,26 @@ loop_controll_statement: BREAK NUMBER?
             | CONTINUE NUMBER?
             ;
 
-assignStatement
-    : LOCAL? id1=ID EQ arrayInitializer // Specific rule for array init
-    | LOCAL? id1=ID (associative_index | array_index)? EQ command_substitution
-    | LOCAL? id1=ID (associative_index | array_index)? EQ boolean
-    | LOCAL? id1=ID (associative_index | array_index)? EQ string
-    | LOCAL? id1=ID (associative_index | array_index)? EQ path
-    | LOCAL? id1=ID (associative_index | array_index)? EQ variable
-    | LOCAL? id1=ID (associative_index | array_index)? EQ expression
-    | LOCAL? id1=ID (associative_index | array_index)? EQ mathExpression
-    | LOCAL? id1=ID (associative_index | array_index)? EQ parameter
-    | LOCAL? id1=ID (associative_index | array_index)? EQ list // Could be single element
-    | LOCAL? id1=ID (associative_index | array_index)? EQ id2=ID
+assignStatement: assignment WS?
+		;
+		
+assignment		
+    : (LOCAL WS)? WS? id1=ID WS? EQ WS? arrayInitializer // Specific rule for array init
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? command_substitution
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? boolean
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? string
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? path
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? variable
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? expression
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? mathExpression
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? parameter
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? list // Could be single element
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? id2=ID
     ;
 
 boolean: TRUE | FALSE;
 path_segment: 
 		  TILDE 
-		| ID
 		| variable
         | DOT_DOT
         | DOT
@@ -75,8 +81,8 @@ path_segment:
         | MINUS_MINUS
 		;
 
-path: path_segment? PATH_START PATH_BODY?
-	|   path_segment
+path:  (path_segment| SLASH)+ 
+	
 	;
 
 argument
@@ -113,9 +119,13 @@ operator: MINUS|PLUS|DIVIDE|PERC|STAR
 		|ESC_OR
 		;
 
-commandStatement
-    :	redirect1=redirect? command (argument)* hereDocument redirect2=redirect? CMD_TERMINATOR? 
-    | 	redirect1=redirect? command (argument)* redirect2=redirect? CMD_TERMINATOR?    
+commandStatement:
+    WS? command WS? (WS argument)* WS?     
+    ;
+
+commandStatement2
+    :	redirect1=redirect? command WS (argument WS)* hereDocument redirect2=redirect? 
+    | 	redirect1=redirect? command WS (argument WS)* redirect2=redirect?     
     ;
     
 redirect 
@@ -131,10 +141,9 @@ file_address:
 
 
 
-command
-    : path
-    | ID
-    ;
+command: ID
+		| path
+		;
 
 
 pipeStatement
@@ -165,12 +174,12 @@ mathExpression
 
 boolean_statement: boolean;
 
-compare : compare_prime
-        | LSQUARE compare_prime RSQUARE
-        | LSQUARE simpleCompare=compare RSQUARE
-        | NOT notCompare=compare
-        | left=compare AND right=compare
-        | left=compare OR right=compare
+compare : WS? compare_prime
+        | WS? LSQUARE WS? compare_prime WS? RSQUARE
+        | WS? LSQUARE WS? simpleCompare=compare WS? RSQUARE
+        | WS? NOT notCompare=compare
+        | left=compare WS? AND WS? right=compare
+        | left=compare WS? OR WS?  right=compare
         ;
 
 compare_prime
@@ -178,12 +187,12 @@ compare_prime
     | NUMBER
     | string
     | file_test
-    | left=compare_prime EQUALITY right=compare_prime    
-    | left=compare_prime NOT_EQ right=compare_prime
-    | left=compare_prime LT_EQ right=compare_prime
-    | left=compare_prime GT_EQ right=compare_prime
-    | left=compare_prime LT right=compare_prime
-    | left=compare_prime GT right=compare_prime
+    | left=compare_prime WS? EQUALITY WS? right=compare_prime    
+    | left=compare_prime WS? NOT_EQ WS? right=compare_prime
+    | left=compare_prime WS? LT_EQ WS? right=compare_prime
+    | left=compare_prime WS? GT_EQ WS? right=compare_prime
+    | left=compare_prime WS? LT WS? right=compare_prime
+    | left=compare_prime WS? GT WS? right=compare_prime
     | expression
     ;
 
@@ -276,13 +285,13 @@ redirectionOperator
 			
 
 ifStatement
-    : IF compare (SEMI|NL) THEN statement_block
-        (ELIF compare (SEMI|NL) THEN statement_block)*
+    : IF compare WS? SEMI WS? NL? THEN NL? statement_block NL? 
+           (ELIF compare (SEMI|NL) THEN statement_block)*
         (ELSE statement_block)?
       FI
     ;
 
-statement_block:     statement+
+statement_block:     (WS? statement WS?)+
 		;
 
 
@@ -405,7 +414,7 @@ pbody: ~RCURLY*;
 
 // New rule to support 'declare -A my_array' and 'declare -A my_array=([key1]=value1 [key2]=value2)'
 declareAssociativeArrayStatement
-    : DECLARE_A id1=ID (NL? EQ NL? associativeArrayInitializer)? NL? CMD_TERMINATOR?
+    : DECLARE_A id1=ID (NL? EQ NL? associativeArrayInitializer)? (NL|SEMI)
     ;
 
 associativeArrayInitializer

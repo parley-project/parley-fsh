@@ -23,6 +23,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitStatement(FileSourceShParser.StatementContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#statement1}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitStatement1(FileSourceShParser.Statement1Context ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#backgroundCommand}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -40,6 +46,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitAssignStatement(FileSourceShParser.AssignStatementContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#assignment}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitAssignment(FileSourceShParser.AssignmentContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#boolean}.
 	 * @param ctx the parse tree
@@ -82,6 +94,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCommandStatement(FileSourceShParser.CommandStatementContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#commandStatement2}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCommandStatement2(FileSourceShParser.CommandStatement2Context ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#redirect}.
 	 * @param ctx the parse tree

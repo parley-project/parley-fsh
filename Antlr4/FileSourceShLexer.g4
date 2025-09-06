@@ -55,11 +55,6 @@ lexer grammar FileSourceShLexer;
 }
 
 
-PATH_START: SLASH {
-	String tmppath = getText();
-	pathBuffer = new StringBuilder ();	
-	}  -> pushMode(PathMode) ;
-
 
 PARAMETER_START: '${' ->pushMode(ParameterMode);
 
@@ -75,8 +70,10 @@ SEMI_AMP:';&';
 SEMI_SEMI_AMP:';;&';
 DOLLAR_PAREM:'$(';
 HASH:'#';
+
 NL:  '\n';
-CMD_TERMINATOR:(SEMI|NL);
+
+
 LT:'<';
 LT_EQ:'<=';
 GT:'>';
@@ -122,7 +119,7 @@ SQ_STRING
 ESC: '\\' .;
 
 
-WS: [ \t\r]+ -> skip ;
+WS: [ \t\r]+ ;
 
 
 

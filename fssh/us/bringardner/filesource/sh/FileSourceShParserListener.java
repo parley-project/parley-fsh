@@ -28,6 +28,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitStatement(FileSourceShParser.StatementContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#statement1}.
+	 * @param ctx the parse tree
+	 */
+	void enterStatement1(FileSourceShParser.Statement1Context ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#statement1}.
+	 * @param ctx the parse tree
+	 */
+	void exitStatement1(FileSourceShParser.Statement1Context ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#backgroundCommand}.
 	 * @param ctx the parse tree
 	 */
@@ -57,6 +67,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitAssignStatement(FileSourceShParser.AssignStatementContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#assignment}.
+	 * @param ctx the parse tree
+	 */
+	void enterAssignment(FileSourceShParser.AssignmentContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#assignment}.
+	 * @param ctx the parse tree
+	 */
+	void exitAssignment(FileSourceShParser.AssignmentContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#boolean}.
 	 * @param ctx the parse tree
@@ -127,6 +147,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCommandStatement(FileSourceShParser.CommandStatementContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#commandStatement2}.
+	 * @param ctx the parse tree
+	 */
+	void enterCommandStatement2(FileSourceShParser.CommandStatement2Context ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#commandStatement2}.
+	 * @param ctx the parse tree
+	 */
+	void exitCommandStatement2(FileSourceShParser.CommandStatement2Context ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#redirect}.
 	 * @param ctx the parse tree
