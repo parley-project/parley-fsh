@@ -285,7 +285,7 @@ redirectionOperator
 			
 
 ifStatement
-    : IF compare WS? SEMI WS? NL? THEN NL? statement_block NL? 
+    : IF compare WS? SEMI WS? NL? THEN WS? NL? WS? statement_block NL? 
            (ELIF compare (SEMI|NL) THEN statement_block)*
         (ELSE statement_block)?
       FI
