@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import us.bringardner.filesource.sh.FileSourceShParser.SelectStatementContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -65,86 +66,108 @@ public class SelectStatement extends LoopStatement{
 
 
 	public int execute(ShellContext sc) throws IOException {
+
+
 		int ret = 0;
 
-		if( args.length>0) {
-			entries = new ArrayList<>();
+		SelectStatementContext context = (SelectStatementContext)getContext();
+		entries = new ArrayList<>();
 
-			for (int idx = 0; idx < args.length; idx++) {
-				String av = ""+args[idx].getValue(sc);
-				if( ShellCommand.hasWildcard(av)) {
-					List<FileSource> files = ShellCommand.getFiles(sc, av);
-					if( files == null || files.isEmpty()) {
-						entries.add(av);
-						maxLen = Math.max(maxLen, av.length());
-					} else {
-						Collections.sort(files, new Comparator<FileSource>() {
+		if( context.path() !=null) {
+			String path = context.path().getText();
+			List<FileSource> files = ShellCommand.getFiles(sc, path);
+			String clean = ShellCommand.removeWildcards(path);
 
-							@Override
-							public int compare(FileSource o1, FileSource o2) {
-								return o1.getName().compareTo(o2.getName());
-							}						
-						});
-						String clean = ShellCommand.removeWildcards(av);
-						for(FileSource f : files) {
-							String path = f.getAbsolutePath();
-							int pos = path.indexOf(clean);
-							if( pos >0) {
-								path = path.substring(pos);
-								entries.add(path);
-							} else {
-								entries.add(f.getName());
-							}
-							maxLen = Math.max(maxLen, entries.getLast().length());
-						}
-					}
+			for(FileSource f : files) {
+
+				path = f.getAbsolutePath();
+				int pos = path.indexOf(clean);
+				if( pos >0) {
+					path = path.substring(pos);
+					entries.add(path);
 				} else {
+					entries.add(f.getName());
+				}
+			}			
+		}
+
+		for (int idx = 0; idx < args.length; idx++) {
+			String av = ""+args[idx].getValue(sc);
+			if( ShellCommand.hasWildcard(av)) {
+				List<FileSource> files = ShellCommand.getFiles(sc, av);
+				if( files == null || files.isEmpty()) {
 					entries.add(av);
-					maxLen = Math.max(maxLen, av.length());
+				} else {
+					Collections.sort(files, new Comparator<FileSource>() {
+
+						@Override
+						public int compare(FileSource o1, FileSource o2) {
+							return o1.getName().compareTo(o2.getName());
+						}						
+					});
+					String clean = ShellCommand.removeWildcards(av);
+					for(FileSource f : files) {
+						String path = f.getAbsolutePath();
+						int pos = path.indexOf(clean);
+						if( pos >0) {
+							path = path.substring(pos);
+							entries.add(path);
+						} else {
+							entries.add(f.getName());
+						}
+					}
+				}
+			} else {
+				entries.add(av);
+			}
+		}
+		maxLen = 0;
+
+		for(String s : entries) {
+			maxLen = Math.max(maxLen, s.length());
+		}
+
+
+		maxLen += 6;
+		Object tmp1 = sc.getVariable("PS3");
+		if( tmp1 == null ) {
+			tmp1 = "#? ";
+		}
+		String prompt = ""+tmp1;
+		ShellContext.LoopControl tmp = null;
+		Read r = new Read();
+
+		while(!ShellContext.LoopControl.Break.equals(tmp)) {
+			display(sc);
+
+			String res = r.readLine(sc, prompt);
+			sc.setVariable("REPLY", res);
+			if( !res.isEmpty() ) {
+				try {
+					int pos = Integer.parseInt(res)-1;
+					if( pos >=0 && pos < entries.size()) {
+						res = entries.get(pos);
+					}
+					sc.setLocalVariable(varName, res);
+				} catch (Exception e) {				
+					sc.setLocalVariable(varName, "");
 				}
 
-			}
-
-			maxLen += 6;
-			Object tmp1 = sc.getVariable("PS3");
-			if( tmp1 == null ) {
-				tmp1 = "#? ";
-			}
-			String prompt = ""+tmp1;
-			ShellContext.LoopControl tmp = null;
-			Read r = new Read();
-
-			while(!ShellContext.LoopControl.Break.equals(tmp)) {
-				display(sc);
-
-				String res = r.readLine(sc, prompt);
-				sc.setVariable("REPLY", res);
-				if( !res.isEmpty() ) {
+				for(Statement stmt : stmts) {
 					try {
-						int pos = Integer.parseInt(res)-1;
-						if( pos >=0 && pos < entries.size()) {
-							res = entries.get(pos);
+						ret = stmt.process(sc);
+					} catch(LoopControlException e) {
+						if(e.howFar>1) {
+							throw new LoopControlException(e.type, e.howFar-1);
 						}
-						sc.setLocalVariable(varName, res);
-					} catch (Exception e) {				
-						sc.setLocalVariable(varName, "");
-					}
-
-					for(Statement stmt : stmts) {
-						try {
-							ret = stmt.process(sc);
-						} catch(LoopControlException e) {
-							if(e.howFar>1) {
-								throw new LoopControlException(e.type, e.howFar-1);
-							}
-							tmp = e.type;
-							break;
-						}
+						tmp = e.type;
+						break;
 					}
 				}
 			}
+		}
 
-		}	
+
 		return ret;
 	}
 
@@ -153,7 +176,7 @@ public class SelectStatement extends LoopStatement{
 
 	private void display(ShellContext sc) {
 		int sz = entries.size();
-		
+
 		int l = getLines(sc);
 
 		l = 11;
@@ -170,8 +193,8 @@ public class SelectStatement extends LoopStatement{
 				l++;
 			}			
 		}
-		
-		
+
+
 		int digits = sz>=100?3:sz>=10?2:1;
 		String fmt = "%"+digits+"d) %-"+maxLen+"s ";
 		for(int line = 0; line < l; line++) {

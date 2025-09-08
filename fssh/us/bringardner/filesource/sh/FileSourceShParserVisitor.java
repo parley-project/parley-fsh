@@ -17,6 +17,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitScript(FileSourceShParser.ScriptContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#conditionalStatement}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitConditionalStatement(FileSourceShParser.ConditionalStatementContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -71,6 +77,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPath(FileSourceShParser.PathContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#argument_list}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitArgument_list(FileSourceShParser.Argument_listContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#argument}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -94,12 +106,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCommandStatement(FileSourceShParser.CommandStatementContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#commandStatement2}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitCommandStatement2(FileSourceShParser.CommandStatement2Context ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#redirect}.
 	 * @param ctx the parse tree
@@ -340,6 +346,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitList(FileSourceShParser.ListContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#statement_or_statement1}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitStatement_or_statement1(FileSourceShParser.Statement_or_statement1Context ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#statement_group}.
 	 * @param ctx the parse tree

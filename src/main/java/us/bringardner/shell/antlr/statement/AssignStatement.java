@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.AssignmentContext;
 import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
@@ -42,12 +43,13 @@ assignStatement
 	protected int execute(ShellContext ctx) throws IOException {
 		int ret = 0;
 		AssignStatementContext actx = (AssignStatementContext) getContext();
-		name = actx.id1.getText();
+		AssignmentContext assignment = actx.assignment();
+		name = assignment.id1.getText();
 		Object val = getValue(ctx);
 		
 		
 		
-		if( actx.LOCAL()!=null) {
+		if( assignment.LOCAL()!=null) {
 			ctx.setLocalVariable(name, val);
 		} else {
 			ctx.setVariable(name, val);
@@ -56,7 +58,9 @@ assignStatement
 	}
 
 	public Object getValue(ShellContext ctx) throws IOException {
-		AssignStatementContext actx = (AssignStatementContext) getContext();
+		AssignStatementContext aactx = (AssignStatementContext) getContext();
+		AssignmentContext actx = aactx.assignment();
+		
 		Object val = null;
 		
 		if(actx.id2 !=null) {
@@ -82,7 +86,7 @@ assignStatement
 			val= p.evaluate(ctx);
 		} else if( actx.arrayInitializer()!=null) {
 			List<Object> list = new FsshList();
-			for(ArgumentContext ac : actx.arrayInitializer().argument()) {
+			for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
 				Argument arg = new Argument(ac);
 				Object v = arg.getValue(ctx);
 				list.add(v);

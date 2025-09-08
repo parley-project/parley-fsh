@@ -217,7 +217,7 @@ RPAREN_RPAREN:  '))';
 LPAREN_LPAREN: '((';
 AT:'@';
 NOT_CURLY: [ \t]|~[}];
-DECLARE_A : 'declare' SPACE? '-' DECLARE_OP+;
+DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
 

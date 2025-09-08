@@ -86,22 +86,9 @@ argument
 		return ret;
 	}
 
-	//path: path_segment? PATH_START PATH_BODY  ;
+	//path:  (path_segment| SLASH)+
 	public static String visit(PathContext path, ShellContext ctx) {
-		StringBuilder ret = new StringBuilder();
-		if(path.path_segment() != null ) {
-			String tmp =  visit(path.path_segment(),ctx);
-			ret.append(tmp);
-		} 
-		if(path.PATH_START() != null ) {
-			ret.append(path.PATH_START().getText());
-		}
-		if(path.PATH_BODY() != null ) {
-			ret.append(path.PATH_BODY().getText());
-		}
-		
-		
-		return ret.toString();
+		return path.getText();
 	}
 
 	/*

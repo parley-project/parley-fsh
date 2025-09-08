@@ -24,6 +24,8 @@ import us.bringardner.filesource.sh.FileSourceShParser.Command_substitutionConte
 import us.bringardner.filesource.sh.FileSourceShParser.CompareContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CompareStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Compare_primeContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ConditionalStatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.DoStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.FactorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ForStatementContext;
@@ -41,10 +43,12 @@ import us.bringardner.filesource.sh.FileSourceShParser.PipeableStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectionOperatorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ScriptContext;
 import us.bringardner.filesource.sh.FileSourceShParser.SelectStatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Statement1Context;
 import us.bringardner.filesource.sh.FileSourceShParser.StatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_blockContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_group1Context;
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_groupContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Statement_or_statement1Context;
 import us.bringardner.filesource.sh.FileSourceShParser.TermContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Until_statementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
@@ -102,9 +106,46 @@ public class FileSourceShVisitorImpl extends FileSourceShParserBaseVisitor<Objec
 
 	}
 
+	/*
+		
+statement
+	: white* statement1 WS* (NL|SEMI|EOF)
+	| conditionalStatement (NL|SEMI|EOF) 
+    
+		;
+	 */
 
 	@Override
 	public Statement visitStatement(StatementContext ctx) {
+		Statement ret = null;
+		if( ctx.statement1()!=null ) {
+			ret = visitStatement1(ctx.statement1());
+		} else if( ctx.conditionalStatement()!=null) {
+			ret = visitConditionalStatement(ctx.conditionalStatement());
+		}
+			
+		return ret;
+	}
+	
+	@Override
+	public Statement visitConditionalStatement(ConditionalStatementContext ctx) {
+		Statement ret = null;
+		Statement left = null;
+		if( ctx.left!=null  ) {
+			left = visitStatement1(ctx.left);
+		} else {
+			left = visitConditionalStatement(ctx.conditionalStatement());			
+		}
+		
+		Statement right = visitStatement1(ctx.right);
+		
+		ret = new LogicStatement(ctx,left,ctx.op,right);
+
+		return ret;
+	}
+	
+	@Override
+	public Statement visitStatement1(Statement1Context ctx) {
 		Statement ret = null;
 		//String txt = ctx.getText();
 		if(ctx.commandStatement()!=null ) {
@@ -127,8 +168,6 @@ public class FileSourceShVisitorImpl extends FileSourceShParserBaseVisitor<Objec
 			ret = new DeclareAssociateArrayStatement(ctx.declareAssociativeArrayStatement());
 		} else if(ctx.functionDefinition()!=null ) {
 			ret = visitFunctionDefinition(ctx.functionDefinition());		
-		} else if(ctx.NL()!=null ) {
-			ret = null;
 		} else if(ctx.loop_controll_statement()!=null  ) {
 			if( ctx.loop_controll_statement().CONTINUE()!=null) {
 				ret = new ContinueStatement(ctx.loop_controll_statement());	
@@ -137,11 +176,7 @@ public class FileSourceShVisitorImpl extends FileSourceShParserBaseVisitor<Objec
 			} else {
 				throw new RuntimeException("No valid break or continue statement '"+ctx.getText()+"'");
 			}
-		} else if (ctx.op!=null) {
-			Statement left = visitStatement(ctx.left);
-			Statement right = visitStatement(ctx.right);
-			ret = new LogicStatement(ctx,left,right);
-		} else if (ctx.boolean_statement()!=null) {
+		}  else if (ctx.boolean_statement()!=null) {
 			ret = new LogicStatement(ctx,ctx.boolean_statement());
 		} else if (ctx.caseStatement()!=null) {
 			ret = visitCaseStatement(ctx.caseStatement());
@@ -155,9 +190,7 @@ public class FileSourceShVisitorImpl extends FileSourceShParserBaseVisitor<Objec
 			ret = visitBackgroundCommand(ctx.backgroundCommand());
 		}else if(ctx.selectStatement()!=null ) {
 			ret = visitSelectStatement(ctx.selectStatement());
-		} else if( ctx.stmt_only!=null) {
-			ret = visitStatement(ctx.stmt_only);
-		} else  {
+		}  else  {
 			throw new RuntimeException("No known statement '"+ctx.getText()+"'");
 		} 
 
@@ -187,6 +220,7 @@ backgroundCommand:
 		return new BackgroundStatement(ctx,stmt);
 	}
 
+	//compareStatement:  LSQUARE simpleCompare=compare RSQUARE statement?;
 	@Override
 	public Statement visitCompareStatement(CompareStatementContext ctx) {
 		Compare compare = new Compare(ctx.compare());
@@ -390,8 +424,8 @@ ifStatement
 		for(Statement_blockContext sb : stmtsList) {
 			List<Statement> stmts = new ArrayList<>();
 			stmtList.add(stmts);
-			for(StatementContext s: sb.statement()) {
-				Statement tmp = visitStatement(s);
+			for(Statement_or_statement1Context s: sb.statement_or_statement1()) {
+				Statement tmp = visitStatement_or_statement1(s);
 				if( tmp != null) {
 					stmts.add(tmp);
 				}
@@ -409,11 +443,23 @@ ifStatement
 	}
 
 	@Override
+	public Statement visitStatement_or_statement1(Statement_or_statement1Context ctx) {
+		if( ctx.statement()!=null) {
+			return visitStatement(ctx.statement());
+		}
+		if( ctx.statement1()!=null) {
+			return visitStatement1(ctx.statement1());
+		}
+		
+		return null;
+	}
+	
+	@Override
 	public StatementGroup1 visitStatement_group1(Statement_group1Context ctx) {
 
 		List<Statement> ret = new ArrayList<>();
-		for(StatementContext s: ctx.statement()) {
-			Statement tmp = visitStatement(s);
+		for(Statement_or_statement1Context s: ctx.statement_or_statement1()) {
+			Statement tmp = visitStatement_or_statement1(s);
 			if( tmp != null) {
 				ret.add(tmp);
 			}
@@ -425,8 +471,8 @@ ifStatement
 	@Override
 	public List<Statement> visitStatement_block(Statement_blockContext ctx) {
 		List<Statement> ret = new ArrayList<>();
-		for(StatementContext s: ctx.statement()) {
-			Statement tmp = visitStatement(s);
+		for(Statement_or_statement1Context s: ctx.statement_or_statement1()) {
+			Statement tmp = visitStatement_or_statement1(s);
 			if( tmp != null) {
 				ret.add(tmp);
 			}
@@ -472,17 +518,24 @@ caseClause
 	}
 
 	@Override
+	public List<Statement> visitDoStatement(DoStatementContext ctx) {
+		List<Statement> ret = new ArrayList<>();
+		for(StatementContext s:ctx.statement()) {
+			Statement stmt = visitStatement(s);
+			if( stmt !=null) {
+				ret.add(stmt);	
+			}			
+		}
+		
+		return ret;
+	}
+	
+	@Override
 	public Statement visitWhileStatement(WhileStatementContext ctx) {
 		//|'while' compare DO statement+ DONE
 		Compare compare = visitCompare(ctx.compare());
-		List<Statement> stmts = new ArrayList<>();
-		for(StatementContext s: ctx.statement()) {
-			Statement tmp = visitStatement(s);
-			if( tmp != null) {
-				stmts.add(tmp);
-			}
-		}
-
+		List<Statement> stmts = visitDoStatement(ctx.doStatement());
+		
 		return new WhileStatement(ctx,compare,stmts);
 	}
 
@@ -518,15 +571,7 @@ forStatement
 			}
 			ret.setArgs(args.toArray(new Argument[args.size()]));
 		}
-		List<Statement> stmts = new ArrayList<>();
-		if( ctx.statement() !=null) {
-			for(StatementContext lctx : ctx.statement()) {
-				Statement ls = visitStatement(lctx);
-				if( ls !=null ) {
-					stmts.add(ls);
-				}
-			}
-		}
+		List<Statement> stmts = visitDoStatement(ctx.doStatement());
 		ret.setStmts(stmts);
 
 		return ret;
@@ -542,6 +587,7 @@ forStatement
 		}
 		List<Argument> args = new ArrayList<>();
 		ListContext list = ctx.list();
+		
 		if( list !=null) {
 			for(ArgumentContext actx : list.argument()) {
 				Argument a = visitArgument(actx);
@@ -551,15 +597,7 @@ forStatement
 			}
 			ret.setArgs(args.toArray(new Argument[args.size()]));
 		}
-		List<Statement> stmts = new ArrayList<>();
-		if( ctx.statement() !=null) {
-			for(StatementContext lctx : ctx.statement()) {
-				Statement ls = visitStatement(lctx);
-				if( ls !=null ) {
-					stmts.add(ls);
-				}
-			}
-		}
+		List<Statement> stmts = visitDoStatement(ctx.doStatement());
 		ret.setStmts(stmts);
 
 		return ret;
@@ -625,14 +663,8 @@ argument
 	public Statement visitUntil_statement(Until_statementContext ctx) {
 		//  : 'until' compare NL? DO statement+ DONE	    		  
 		Compare compare = visitCompare(ctx.compare());
-		List<Statement> stmts = new ArrayList<>();
-		for(StatementContext s: ctx.statement()) {
-			Statement tmp = visitStatement(s);
-			if( tmp != null) {
-				stmts.add(tmp);
-			}
-		}
-
+		List<Statement> stmts = visitDoStatement(ctx.doStatement());
+		
 		return new UntilStatement(ctx,compare,stmts);
 
 	}

@@ -123,12 +123,12 @@ public class TestVisitor {
 		string = "'the quick brown fox jumpped over the lazy dog.'";
 		a = parseAurgument(string);
 
-		TerminalNode ctx = a.getContext().path().path_segment().string().SQ_STRING();
+		TerminalNode ctx = a.getContext().string().SQ_STRING();
 		assertNotNull(ctx, "string");
 		assertEquals(string, ctx.getText());
 
 		a = parseAurgument("name");
-		ctx = a.getContext().path().path_segment().ID();
+		ctx = a.getContext().ID();
 		assertNotNull(ctx, "ID");
 		assertEquals("name", ctx.getText());
 
@@ -140,7 +140,7 @@ public class TestVisitor {
 		assertEquals("-name", ctx.getText());
 
 		a = parseAurgument("$v");
-		VariableContext ctx2 = a.getContext().path().path_segment().variable();
+		VariableContext ctx2 = a.getContext().variable();
 		assertNotNull(ctx2, "variable");
 		assertEquals("$v", ctx2.getText());
 

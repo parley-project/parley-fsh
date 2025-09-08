@@ -211,7 +211,7 @@ ${parameter:-word}
 				if( bc.children.size()>1) {
 					TerminalNode tn = (TerminalNode) bc.children.get(0);
 					int type = tn.getSymbol().getType();
-					if(type == FileSourceShParser.PATH_START || type == FileSourceShParser.SLASH) {
+					if( type == FileSourceShParser.SLASH) {
 						return patternSearchReplace(ret,bodyText,bc);
 					} 
 				}
@@ -249,7 +249,7 @@ ${parameter:-word}
 					}
 					
 					//System.out.println("n1="+n1+" "+n2+" "+n3);
-					int offset = Integer.parseInt(n1);
+					int offset = Integer.parseInt(n1.trim());
 
 
 					if (ret instanceof String) {

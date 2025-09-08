@@ -179,7 +179,7 @@ public class TestExecutionSelectStatement extends AbstractConsoleTest {
 				 + "done\n"
 				;
 		
-		
+		System.out.println(cmd);
 		String expectOut = 	"#? you picked Folder01/AbcFile.properties (2)\n";
 		String expectErr = 	
 				  "1) Folder01/AbcFile.php                \n"

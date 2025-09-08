@@ -1,9 +1,5 @@
-declare -A STAR_PLAYERS=( 
-
-[0]="Messi"
-
- [Brazil]=$d
-
- [England]="Rooney"
-
+declare -A STAR_PLAYERS=(
+	[0]="Messi"
+	 [Brazil]=$d
+	 [England]="Rooney"
 )

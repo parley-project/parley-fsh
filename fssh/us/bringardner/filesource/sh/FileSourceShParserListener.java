@@ -18,6 +18,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitScript(FileSourceShParser.ScriptContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#conditionalStatement}.
+	 * @param ctx the parse tree
+	 */
+	void enterConditionalStatement(FileSourceShParser.ConditionalStatementContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#conditionalStatement}.
+	 * @param ctx the parse tree
+	 */
+	void exitConditionalStatement(FileSourceShParser.ConditionalStatementContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#statement}.
 	 * @param ctx the parse tree
 	 */
@@ -108,6 +118,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitPath(FileSourceShParser.PathContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#argument_list}.
+	 * @param ctx the parse tree
+	 */
+	void enterArgument_list(FileSourceShParser.Argument_listContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#argument_list}.
+	 * @param ctx the parse tree
+	 */
+	void exitArgument_list(FileSourceShParser.Argument_listContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#argument}.
 	 * @param ctx the parse tree
 	 */
@@ -147,16 +167,6 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCommandStatement(FileSourceShParser.CommandStatementContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link FileSourceShParser#commandStatement2}.
-	 * @param ctx the parse tree
-	 */
-	void enterCommandStatement2(FileSourceShParser.CommandStatement2Context ctx);
-	/**
-	 * Exit a parse tree produced by {@link FileSourceShParser#commandStatement2}.
-	 * @param ctx the parse tree
-	 */
-	void exitCommandStatement2(FileSourceShParser.CommandStatement2Context ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#redirect}.
 	 * @param ctx the parse tree
@@ -557,6 +567,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitList(FileSourceShParser.ListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#statement_or_statement1}.
+	 * @param ctx the parse tree
+	 */
+	void enterStatement_or_statement1(FileSourceShParser.Statement_or_statement1Context ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#statement_or_statement1}.
+	 * @param ctx the parse tree
+	 */
+	void exitStatement_or_statement1(FileSourceShParser.Statement_or_statement1Context ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#statement_group}.
 	 * @param ctx the parse tree

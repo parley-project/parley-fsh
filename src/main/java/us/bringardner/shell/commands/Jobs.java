@@ -61,6 +61,8 @@ public class Jobs extends ShellCommand{
 				if(options.options.contains(Options.l)) {
 					ctx.stdout.println("["+(idx+1)+"] "+job.pid+" "+state+" "+job.toString());
 				} else {
+					String tmp1 = job.toString();
+					String tmp2 = "["+(idx+1)+"] "+state+" "+job.toString();
 					ctx.stdout.println("["+(idx+1)+"] "+state+" "+job.toString());
 				}
 			}

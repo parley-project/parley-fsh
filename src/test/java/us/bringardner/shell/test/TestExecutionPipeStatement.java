@@ -207,8 +207,8 @@ public class TestExecutionPipeStatement {
 		String expect = 
 				"[1] 0\n"
 				+ "[2] 1\n"
-				+ "[1] Running sleep 100  &\n"
-				+ "[2] Running sleep 200  &"
+				+ "[1] Running sleep   100    &\n"
+				+ "[2] Running sleep   200    &"
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");

@@ -343,8 +343,8 @@ public class Console extends BaseThread {
 		if(!code.isEmpty()) {
 			// set runtime options and the positional parameters
 			code.insert(0, "set -main ");
-			code.append('\n');
-			ret = executeUsingAntlr(code.toString());
+			String tmp= code.toString().trim();
+			ret = executeUsingAntlr(tmp);
 			code.setLength(0);
 		}
 
@@ -358,7 +358,7 @@ public class Console extends BaseThread {
 				code.append(a);
 				code.append(' ');
 			}
-			ret = executeUsingAntlr(code.toString());
+			ret = executeUsingAntlr(code.toString().trim());
 		}
 
 		return ret;
@@ -1123,7 +1123,7 @@ stderr	2
 			if( in == System_in) {
 				sc.stdin = new NativeKeyboard();
 			}
-
+			code = code.trim();
 			String ppCode = preProcess(code, sc);
 			if( isOptionEnabled(Option.PrintCommandTrace)) {
 				System.out.println(ppCode);

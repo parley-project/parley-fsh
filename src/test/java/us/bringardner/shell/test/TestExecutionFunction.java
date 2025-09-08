@@ -106,7 +106,7 @@ public class TestExecutionFunction {
 				+ "\n"
 				+ ""
 				;
-		//System.out.println(cmd);
+		System.out.println(cmd);
 		String expect = 
 				"0\n"
 				+ "1\n"

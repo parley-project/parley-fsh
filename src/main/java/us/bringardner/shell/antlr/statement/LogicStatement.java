@@ -2,8 +2,11 @@ package us.bringardner.shell.antlr.statement;
 
 import java.io.IOException;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+
 import us.bringardner.filesource.sh.FileSourceShParser.Boolean_statementContext;
-import us.bringardner.filesource.sh.FileSourceShParser.StatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ConditionalStatementContext;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
 
@@ -11,14 +14,17 @@ public class LogicStatement extends Statement{
 
 	Statement left;
 	Statement right;
+	Token op;
 	Boolean_statementContext boolean_statement;
-	public LogicStatement(StatementContext context,Statement left, Statement right) {
+	
+	public LogicStatement(ParserRuleContext context,Statement left,Token op ,Statement right) {
 		super(context);		 
 		this.left = left;
+		this.op = op;
 		this.right = right;
 	}
 
-	public LogicStatement(StatementContext ctx, Boolean_statementContext boolean_statement) {
+	public LogicStatement(ParserRuleContext ctx, Boolean_statementContext boolean_statement) {
 		super(ctx);
 		this.boolean_statement = boolean_statement;
 	}
@@ -26,7 +32,6 @@ public class LogicStatement extends Statement{
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		
-		StatementContext ctx = (StatementContext)getContext();
 		
 		if( boolean_statement!=null) {
 			int ret = boolean_statement.boolean_().TRUE() != null?0:1;
@@ -35,18 +40,19 @@ public class LogicStatement extends Statement{
 		
 		int ret = left.process(sc);
 		
-		if( ctx.OR()!=null) {
+		if( op.getText().equals("||")) {
 			if( ret!=0) {
 				ret = right.process(sc); 
 			}
-		} else if( ctx.AND()!=null) {
+		} else if( op.getText().equals("&&")) {
 			if( ret==0) {
 				ret = right.process(sc); 
 			}
 		} else {
-			sc.stderr.println("Invalid logic statement="+ctx.getText());
+			sc.stderr.println("Invalid logic statement="+getContext().getText());
 			return 1;
 		}
+		
 		return ret;
 	}
 

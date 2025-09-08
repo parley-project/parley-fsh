@@ -141,6 +141,18 @@ public class TreeViewFrame extends JFrame {
 			actionOpen();
 		});
 
+		recent = new RecentFileMenu(getClass());
+		recent.addActionListener((e)->{
+			Object source =  e.getSource();
+			if (source instanceof FileSource) {
+				file = (FileSource) source;
+				actionReload();	
+			} else {
+				JOptionPane.showMessageDialog(this, "Did not get a FileSOurce as source of event.", source.getClass().getName(), JOptionPane.ERROR_MESSAGE);
+			}
+
+		});
+		fileMenu.add(recent);
 
 		item = new JMenuItem("Save");
 		fileMenu.add(item);
@@ -175,21 +187,7 @@ public class TreeViewFrame extends JFrame {
 			actionExit();
 		});
 
-		/*
-		recent = new RecentFileMenu(getClass());
-		recent.addActionListener((e)->{
-			Object source =  e.getSource();
-			if (source instanceof FileSource) {
-				file = (FileSource) source;
-				actionReload();	
-			} else {
-				JOptionPane.showMessageDialog(this, "Did not get a FileSOurce as source of event.", source.getClass().getName(), JOptionPane.ERROR_MESSAGE);
-			}
-
-		});
-*/
-
-
+		
 		menuBar.add(fileMenu);
 
 
@@ -393,7 +391,7 @@ public class TreeViewFrame extends JFrame {
 				actionCodeChanged();
 			}
 		});
-		useOriginalCheckBox.setSelected(true);
+		useOriginalCheckBox.setSelected(false);
 		controlPanel.add(useOriginalCheckBox);
 
 		codeSplitPane = new JSplitPane();
@@ -407,6 +405,7 @@ public class TreeViewFrame extends JFrame {
 		codeSplitPane.setRightComponent(processedCodeScrollPane);
 
 		processedCodeEditorPane = new JEditorPane();
+		processedCodeEditorPane.getDocument().putProperty(PlainDocument.tabSizeAttribute, 2);
 		processedCodeScrollPane.setViewportView(processedCodeEditorPane);
 		originalCodeEditorPane.getDocument().addDocumentListener(new DocumentListener() {
 

@@ -268,7 +268,7 @@ public class TestParameter {
 		String code = ""
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:7}\n";
-		//System.out.println(code);
+		System.out.println(code);
 		TestExecutionForStatement.ExecuteResult res = TestExecutionForStatement.executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
@@ -387,9 +387,9 @@ public class TestParameter {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18\n";
-		String code = "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)"
+		String code = "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${!array[*]}\n";
-		//System.out.println(code);
+		System.out.println(code);
 		TestExecutionForStatement.ExecuteResult res = TestExecutionForStatement.executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);

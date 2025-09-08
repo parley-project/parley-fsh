@@ -35,7 +35,8 @@ public class BackgroundStatement extends Statement{
 				}
 			}
 			Console.jobs.add(thread);
-			nc.stdout.println("["+Console.jobs.size()+"] "+thread.pid);
+			String tmp = "["+Console.jobs.size()+"] "+thread.pid;
+			nc.stdout.println(tmp);
 		} catch (Exception e) {
 			ret = 1;
 			nc.stderr.println(e.toString());

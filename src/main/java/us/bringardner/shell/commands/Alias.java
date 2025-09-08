@@ -48,7 +48,7 @@ public class Alias extends ShellCommand{
 				}
 			} else if( actx.assignStatement() != null) {
 				AssignStatement as = new AssignStatement(actx.assignStatement());
-				String name = actx.assignStatement().id1.getText();				
+				String name = actx.assignStatement().assignment().id1.getText();				
 				String val = ""+as.getValue(ctx);
 				ctx.console.setAlias(name, val);
 				
