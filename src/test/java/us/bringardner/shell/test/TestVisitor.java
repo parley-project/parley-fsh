@@ -128,7 +128,8 @@ public class TestVisitor {
 		assertEquals(string, ctx.getText());
 
 		a = parseAurgument("name");
-		ctx = a.getContext().ID();
+		
+		ctx = a.getContext().variable().ID();
 		assertNotNull(ctx, "ID");
 		assertEquals("name", ctx.getText());
 

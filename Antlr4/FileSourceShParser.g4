@@ -84,6 +84,7 @@ path_segment:
         | MINUS
         | MINUS_MINUS
         | NUMBER
+        | ID
 		;
 
 path:  (path_segment| SLASH)+ 
@@ -99,14 +100,14 @@ argument
     | NUMBER    
    	| TEXT
     | string
-    | ARG_ID
-    | ID 
+    | ARG_ID     
     | assignStatement
     | variable        
     | mathExpression
     | parameter
     | operator
 	| path
+	| ID
     ;
     
 signed_number: (MINUS|PLUS)? NUMBER;    
