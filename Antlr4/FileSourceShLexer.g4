@@ -12,29 +12,6 @@ lexer grammar FileSourceShLexer;
     return true;
   }
 
-	StringBuilder pathBuffer;
-	boolean inQuote = false;
-	  
-	boolean pathEndAhead() {
-		int i =  _input.LA(1);
-		char nx =  (char)i;
-		if(nx == '"') {
-			inQuote = !inQuote;
-		} else {
-			if(i<0 ||  Character.isWhitespace(nx) && !inQuote) {
-				return true;
-			}
-			switch (nx) {
-				case '<':
-				case '>':
-				case '[':
-				case ']':
-				case ';':
-					return true;
-				}
-		}
-	    return false;
-	  }
 	
 	boolean parameterEndAhead() {
 		 char nx =  (char)_input.LA(1);
@@ -220,21 +197,6 @@ NOT_CURLY: [ \t]|~[}];
 DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
-
-
-
-mode PathMode;
-
-PATH_BODY
- : ({!pathEndAhead()}? . )+ -> popMode
- ;
- 
- /*
-PATH_END
- : {pathEndAhead()}? . -> popMode
- ;
- */
-
 
 
 mode ParameterMode;

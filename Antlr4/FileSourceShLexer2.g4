@@ -24,6 +24,14 @@ lexer grammar FileSourceShLexer;
 			if(i<0 ||  Character.isWhitespace(nx) && !inQuote) {
 				return true;
 			}
+			switch (nx) {
+				case '<':
+				case '>':
+				case '[':
+				case ']':
+				case ';':
+					return true;
+				}
 		}
 	    return false;
 	  }
@@ -36,11 +44,21 @@ lexer grammar FileSourceShLexer;
 	    return false;
 	  }
 	  
-  
+  	boolean exprEndAhead() {
+		 char nx =  (char)_input.LA(1);
+		 if( nx == ';' || nx == '\n'|| nx == EOF) {
+			 return true;
+		 }		 
+	    return false;
+	 }
+	
 }
+
+
 
 PARAMETER_START: '${' ->pushMode(ParameterMode);
 
+EXPR_START: 'expr' ->pushMode(ExprMode);
 
 HERE_START:'<<';
 HERE_START_RM_TABS:'<<-';
@@ -52,8 +70,10 @@ SEMI_AMP:';&';
 SEMI_SEMI_AMP:';;&';
 DOLLAR_PAREM:'$(';
 HASH:'#';
+
 NL:  '\n';
-CMD_TERMINATOR:(SEMI|NL);
+
+
 LT:'<';
 LT_EQ:'<=';
 GT:'>';
@@ -61,6 +81,9 @@ GT_EQ:'>=';
 NOT: '!';
 AND: '&&';
 OR:  '||';
+ESC_AND: '\\&&';
+ESC_OR:  '\\||';
+
 
 
 NUMBER :
@@ -93,9 +116,10 @@ SQ_STRING
     : '\'' ( ~['\\] | '\\' . )* '\''
     ;
 
+ESC: '\\' .;
 
 
-WS: [ \t\r]+ -> skip ;
+WS: [ \t\r]+ ;
 
 
 
@@ -122,6 +146,7 @@ BACKQUOTE:'`';
 CONTINUE:'continue';
 BREAK:'break';
 FOR:'for';
+SELECT: 'select';
 IN:'in';
 WHILE:'while';
 DONE:'done';
@@ -146,6 +171,7 @@ DOT_DOT:'..';
 PERC:'%';
 PLUS:'+';
 STAR:'*';
+POW:'**';
 DO:'do';
 EQ:'=';
 EQUALITY:'=='|'-eq';
@@ -176,6 +202,7 @@ REDIRECT_TO_ID:REDIRECT_FROM_ID|MINUS;
 DIGIT: [0-9];
 SPECIAL_UNIX: [-_+=~];
 SPECIAL_WINDOWS: [-_+=~];
+POS:'^';
 
 ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
@@ -190,26 +217,19 @@ RPAREN_RPAREN:  '))';
 LPAREN_LPAREN: '((';
 AT:'@';
 NOT_CURLY: [ \t]|~[}];
-DECLARE_A : 'declare' SPACE? '-' DECLARE_OP+;
+DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
 
-PATH_START: SLASH {
-	String tmppath = getText();
-	pathBuffer = new StringBuilder ();	
-	}  -> pushMode(PathMode) ;
 
+fragment PATH_CHAR
+    : [a-zA-Z0-9._-]
+    ;
 
-mode PathMode;
+PATH_SEGMENT
+    : PATH_CHAR+
+    ;
 
-PATH_BODY
- : ({!pathEndAhead()}? . )+
- ;
- 
-PATH_END
- : {pathEndAhead()}? . -> popMode
- ;
- 
 
 
 mode ParameterMode;
@@ -223,6 +243,10 @@ PARAMETER_END
  : {parameterEndAhead()}? '}' -> popMode
  ;
 
+mode ExprMode;
+EXPR_BODY: ({!exprEndAhead()}? . )+ ;
+ 
+EXPR_END: {exprEndAhead()}? (';'|'\n'|EOF) -> popMode;
  
 
 

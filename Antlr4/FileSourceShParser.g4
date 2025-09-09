@@ -75,7 +75,7 @@ assignment
 boolean: TRUE | FALSE;
 path_segment: 
 		  TILDE 
-		| variable
+		//| variable
         | DOT_DOT
         | DOT
         | STAR
@@ -87,9 +87,11 @@ path_segment:
         | ID
 		;
 
-path:  (path_segment| SLASH)+ 
-	
-	;
+
+path
+    : SLASH path_segment (SLASH path_segment)*   # absolutePath
+    | path_segment (SLASH path_segment?)*        # relativePath
+    ;
 
 argument_list: (argument WS*)*
 	;
@@ -101,13 +103,13 @@ argument
    	| TEXT
     | string
     | ARG_ID     
-    | assignStatement
-    | variable        
+    | assignStatement            
     | mathExpression
     | parameter
     | operator
-	| path
+	| path	
 	| ID
+	| variable
     ;
     
 signed_number: (MINUS|PLUS)? NUMBER;    
@@ -145,8 +147,8 @@ file_address:
 
 
 
-command: ID
-		| path
+command: path
+		| ID
 		;
 
 

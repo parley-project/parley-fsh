@@ -13,11 +13,15 @@ import java.io.PrintStream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
 
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
 
+@TestMethodOrder(OrderAnnotation.class)
 public class TestCd {
 
 	public static String fileDate;
@@ -56,14 +60,16 @@ public class TestCd {
 		System.setErr(stderr);
 		return actual;
 	}
-	//TODO:  test -P.  need to be able to create a link
+
 	@Test
+	@Order(1)
 	public void testPwd_01() throws IOException {
 		String actual = executeCommand("pwd").trim();
 		assertTrue(actual.endsWith("TestFiles"));
 	}
 	
 	@Test
+	@Order(2)
 	public void testCd_01() throws IOException {
 		String actual = executeCommand("cd Folder01").trim();		
 		assertEquals("",actual);
@@ -88,6 +94,7 @@ public class TestCd {
 	}
 	
 	@Test
+	@Order(3)
 	public void testCd_02() throws IOException {
 		String actual = executeCommand("cd Folder01/Folder01abc.1").trim();		
 		assertEquals("",actual);
@@ -96,7 +103,7 @@ public class TestCd {
 		actual = executeCommand("cd ..").trim();		
 		assertEquals("",actual);
 		actual = executeCommand("pwd").trim();
-		assertTrue(actual.endsWith("TestFiles"));
+		assertTrue(actual.endsWith("TestFiles/Folder01"));
 		
 		
 	}

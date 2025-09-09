@@ -36,7 +36,6 @@ import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.MathStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Parameter1Context;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
-import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeOpContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeableStatementContext;
@@ -674,10 +673,7 @@ argument
 		throw new RuntimeException("Not implemented");
 	}
 
-	@Override
-	public Object visitPath(PathContext ctx) {
-		throw new RuntimeException("Not implemented");
-	}
+	
 
 
 	@Override

@@ -109,9 +109,9 @@ argument
 	public static String visit(Path_segmentContext path_segment, ShellContext ctx) {
 		if( path_segment.string() != null ) {
 			return visit(path_segment.string(), ctx);
-		} else if( path_segment.variable()!=null ) {
-			return visit(path_segment.variable(),ctx);
-		} 
+		} //else if( path_segment.variable()!=null ) {
+			//return visit(path_segment.variable(),ctx);
+		//} 
 		return path_segment.getText();
 	}
 

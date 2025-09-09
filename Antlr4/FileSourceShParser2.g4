@@ -8,15 +8,25 @@ options {
 
 script: SHEBANG? statement+ EOF;
 
+conditionalStatement
+	: white* left=statement1 white* op=(OR|AND) white* right=statement1 white*
+	| conditionalStatement white* op=(OR|AND) white* right=statement1 white*
+	;
 	
+		
 statement
-    : statement SEMI
-    | backgroundCommand
+	: white* statement1 WS* (NL|SEMI|EOF)
+	| conditionalStatement  (NL|SEMI|EOF)
+	;
+	
+statement1
+    : backgroundCommand
     | ifStatement
     | mathStatement
     | pipeStatement
     | whileStatement
     | forStatement
+    | selectStatement
     | caseStatement
     | assignStatement
     | functionDefinition
@@ -25,13 +35,12 @@ statement
     | commandStatement
     | loop_controll_statement
     | declareAssociativeArrayStatement
-    | NL
-    | left=statement op=OR  right=statement
-    | left=statement op=AND right=statement
     | boolean_statement
     | compareStatement
     | statement_group // Includes parenthesized groups
     | command_substitution
+    | exprStatement
+    
     
     ;
 
@@ -41,53 +50,96 @@ backgroundCommand:
 				| commandStatement AMP
 				;
 
-loop_controll_statement: BREAK NUMBER?
-            | CONTINUE NUMBER?
+loop_controll_statement
+			: BREAK WS* NUMBER?
+            | CONTINUE WS* NUMBER?
             ;
 
-assignStatement
-    : LOCAL? id1=ID EQ arrayInitializer // Specific rule for array init
-    | LOCAL? id1=ID (associative_index | array_index)? EQ command_substitution
-    | LOCAL? id1=ID (associative_index | array_index)? EQ boolean
-    | LOCAL? id1=ID (associative_index | array_index)? EQ string
-    | LOCAL? id1=ID (associative_index | array_index)? EQ path
-    | LOCAL? id1=ID (associative_index | array_index)? EQ variable
-    | LOCAL? id1=ID (associative_index | array_index)? EQ expression
-    | LOCAL? id1=ID (associative_index | array_index)? EQ mathExpression
-    | LOCAL? id1=ID (associative_index | array_index)? EQ parameter
-    | LOCAL? id1=ID (associative_index | array_index)? EQ list // Could be single element
-    | LOCAL? id1=ID (associative_index | array_index)? EQ id2=ID
+assignStatement: assignment WS?
+		;
+		
+assignment		
+    : (LOCAL WS)? WS? id1=ID WS? EQ WS? arrayInitializer // Specific rule for array init
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? command_substitution
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? boolean
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? string    
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? variable
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? expression
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? mathExpression
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? parameter
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? list // Could be single element
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? id2=ID
+    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? path
     ;
 
 boolean: TRUE | FALSE;
+path_segment
+  		 : TILDE 
+		| variable
+        | DOT_DOT
+        | DOT
+        | STAR
+        | QUESTION
+        | string
+        | MINUS
+        | MINUS_MINUS
+        | NUMBER
+        | ID
+		;
 
+
+
+path
+    : SLASH path_segment (SLASH path_segment)*   # absolutePath
+    | path_segment (SLASH path_segment)+        # relativePath
+    ;
+
+argument_list: (argument WS*)*
+	;
+	
 argument
-    :  arg_command_substitution
-   	| MINUS_MINUS
+    : arg_command_substitution
+    | signed_number
+    | NUMBER    
     | TEXT
     | string
-    | ARG_ID
-    | ID 
+    | ARG_ID     
     | assignStatement
-    | variable
-    | NUMBER
-    | path
+    | variable        
     | mathExpression
     | parameter
-    | STAR
-
+    | operator
+    | path
+    | ID
     ;
 
+signed_number: (MINUS|PLUS)? NUMBER;    
+
+operator: MINUS|PLUS|DIVIDE|PERC|STAR
+		|MINUS_MINUS|PLUS_PLUS|EQUALITY|NOT_EQ
+		| MINUS_ASSIGN
+		| STAR_ASSIGN
+		| DIV_ASSIGN
+		| MOD_ASSIGN
+		| ESC LT
+		|LT_EQ
+		|ESC GT
+		|GT_EQ
+		|NOT
+		|ESC_AND
+		|ESC_OR
+		;
 
 commandStatement
-    :	redirect1=redirect? command (argument)* hereDocument redirect2=redirect? CMD_TERMINATOR? 
-    | 	redirect1=redirect? command (argument)* redirect2=redirect? CMD_TERMINATOR?    
+    : WS*	redirect1=redirect? WS* command WS* (argument WS*)* hereDocument WS* redirect2=redirect? 
+    | WS*	redirect1=redirect? WS* command WS* (argument WS*)* redirect2=redirect?     
     ;
-    
+
+
 redirect 
-		: (redirectionOperator (path | ID))
+		: redirectionOperator white* (path | ID)
 		| file_address
-		| (redirectionOperator (path | ID)) file_address
+		| (redirectionOperator white* (path | ID)) white* file_address
 		;    
 
 file_address:
@@ -104,7 +156,7 @@ command
 
 
 pipeStatement
-    : TIME? parg=ARG_ID? NOT? pipeableStatement (pipeOp pipeableStatement)+ 
+    : white* (TIME white*)? parg=ARG_ID? white* (NOT white*)? pipeableStatement (pipeOp pipeableStatement)+ 
     ;
     
 pipeableStatement:
@@ -113,7 +165,7 @@ pipeableStatement:
 		;
 		    
 pipeOp:
-	PIPE AMP?
+	PIPE white* AMP?
 	;    
 
 compareStatement:  LSQUARE simpleCompare=compare RSQUARE statement?;
@@ -131,12 +183,12 @@ mathExpression
 
 boolean_statement: boolean;
 
-compare : compare_prime
-        | LSQUARE compare_prime RSQUARE
-        | LSQUARE simpleCompare=compare RSQUARE
-        | NOT notCompare=compare
-        | left=compare AND right=compare
-        | left=compare OR right=compare
+compare : WS? compare_prime
+        | WS? LSQUARE WS? compare_prime WS? RSQUARE
+        | WS? LSQUARE WS? simpleCompare=compare WS? RSQUARE
+        | WS? NOT notCompare=compare
+        | left=compare WS? AND WS? right=compare
+        | left=compare WS? OR WS?  right=compare
         ;
 
 compare_prime
@@ -144,16 +196,16 @@ compare_prime
     | NUMBER
     | string
     | file_test
-    | left=compare_prime EQUALITY right=compare_prime    
-    | left=compare_prime NOT_EQ right=compare_prime
-    | left=compare_prime LT_EQ right=compare_prime
-    | left=compare_prime GT_EQ right=compare_prime
-    | left=compare_prime LT right=compare_prime
-    | left=compare_prime GT right=compare_prime
+    | left=compare_prime WS? EQUALITY WS? right=compare_prime    
+    | left=compare_prime WS? NOT_EQ WS? right=compare_prime
+    | left=compare_prime WS? LT_EQ WS? right=compare_prime
+    | left=compare_prime WS? GT_EQ WS? right=compare_prime
+    | left=compare_prime WS? LT WS? right=compare_prime
+    | left=compare_prime WS? GT WS? right=compare_prime
     | expression
     ;
 
-file_test: op=argument target=argument;
+file_test: WS* op=argument WS* target=argument WS*;
 
 associative_index:
 		(LSQUARE ID RSQUARE)
@@ -177,27 +229,25 @@ expression
 
 term
     : factor
-    | term op=(STAR | DIVIDE | PERC) factor
+    | term op=(STAR | DIVIDE | PERC | POW) factor
     ;
 
 
 caseStatement
-    :   CASE expression IN NL caseClause+ ESAC
+    :   CASE WS* expression WS* IN NL caseClause+ ESAC
     
     ;
 
 
 
 caseClause
-    :   patternList NL? RPAREN NL? statement_block NL? op=';;' NL?
-    |   patternList NL? RPAREN NL? statement_block NL? op=';&' NL?
-    |   patternList NL? RPAREN NL? statement_block NL? op=';;&' NL?
+    :   patternList white* RPAREN white* statement_block white* op=(SEMI_SEMI|SEMI_AMP|SEMI_SEMI_AMP) white
 
     ;
 
 
 patternList
-    :   pattern (PIPE pattern)*
+    :   WS* pattern (white* PIPE white* pattern)*
     ;
 
 pattern
@@ -237,51 +287,47 @@ redirectionOperator
 
 
 
+	
 
-//path: (SLASH|TILDE|(TILDE SLASH))? path_segment (SLASH (path_segment| NUMBER))* SLASH?  ;
-
-path: path_segment? PATH_START PATH_BODY PATH_END ;
-			
-path_segment: TILDE 
-		| ID
-        | DOT_DOT
-        | DOT
-        | STAR
-        | QUESTION
-        | string
-        | MINUS
-        | MINUS_MINUS
-		;
+white: NL | WS;			
 
 ifStatement
-    : IF compare (SEMI|NL) THEN statement_block
-        (ELIF compare (SEMI|NL) THEN statement_block)*
-        (ELSE statement_block)?
-      FI
+    : IF white* compare white* (SEMI|NL) white* THEN white* statement_block white* 
+           (ELIF white* compare white* (SEMI|NL) white* THEN white* statement_block)*
+        (white* ELSE white* statement_block)?
+      white* FI white*
     ;
 
-statement_block:     statement+
+statement_block
+		: (white* statement_or_statement1 white*)*
 		;
 
 
 whileStatement
-    :  'while' compare NL? DO statement+ DONE
-    |'while' compare NL? DO statement+ DONE
+    :  white* WHILE white* compare white* doStatement
     ;
 
 until_statement
-    : 'until' compare NL? DO statement+ DONE
-    | 'until' compare NL? DO statement+ NL? DONE
+    : white* UNTIL white* compare white*  doStatement
     ;
 
 doStatement
-    :   DO statement+ DONE
+    : white* DO white* statement* white* DONE
     ;
 
 forStatement
-    : FOR ID IN list SEMI? DO statement+ DONE
+    : white* FOR white* ID white* IN white* list white* SEMI? doStatement
+    | white* FOR white* for_loop_control doStatement
     ;
 
+selectStatement
+    :white* SELECT white* ID white* (IN white* path)? white* SEMI? white*  NL?white*  doStatement
+    |white* SELECT white* ID white* (IN white* list)? white* SEMI? white*  NL?white*  doStatement
+     ;
+
+for_loop_control: LPAREN_LPAREN white* assignStatement white* SEMI white* for_compare white* SEMI white* expression white* RPAREN_RPAREN;
+
+for_compare: compare;
 
 variable:
         idOnly=ID ( associative_index | array_index)?
@@ -297,37 +343,40 @@ array_index:
 
 
 // <<- is converted by preprocessor to <<
-hereDocument: HERE_START  ID;
+hereDocument: HERE_START WS* ID;
 
 functionDefinition
-    :   ID LPAREN RPAREN compoundCommand
-    |   FUNCTION ID LPAREN RPAREN compoundCommand
-    |   FUNCTION ID compoundCommand
+    : white* (FUNCTION white*)? ID white* (LPAREN white* RPAREN white*)? compoundCommand
+    
     ;
 
-
-string : DQ_STRING | SQ_STRING ;
+string : DQ_STRING | SQ_STRING | ESC;
 
 arrayInitializer
-    : LPAREN argument* RPAREN
+    : LPAREN argument_list RPAREN
     ;
 
 list
-    : argument+
-    | LSQUARE argument* RSQUARE
+    : (argument white*)+
+    | white* LSQUARE white* argument white* RSQUARE white*
     ;
+
+statement_or_statement1: (statement|statement1);
 
 statement_group: redirect1=redirect? statement_group1 redirect2=redirect? 
     	;
 		
 statement_group1
-        :  LCURLY statement+ SEMI? RCURLY
-        |  LPAREN statement+ SEMI? RPAREN
-        ;
+ 		: redirect1=redirect?  LCURLY white* statement_or_statement1* white* RCURLY redirect1=redirect?
+        | redirect1=redirect?  LPAREN white* statement_or_statement1* white* RPAREN redirect1=redirect?
+		;
+
+
 
 compoundCommand
-        :   LCURLY statement+ RCURLY
-        |   LPAREN statement+ RPAREN
+        : redirect1=redirect?  LCURLY white* statement* white* RCURLY redirect1=redirect?
+        | redirect1=redirect? LPAREN white* statement* white* RPAREN redirect1=redirect?
+        
         ;
 
 command_substitution:
@@ -340,8 +389,11 @@ arg_command_substitution:
 			| '`' ~'`'* '`'
 			;
 
-parameter: PARAMETER_START PARAMETER_BODY PARAMETER_END
-		;
+exprStatement: expr;
+
+expr: EXPR_START EXPR_BODY (EXPR_END|EOF);
+
+parameter: PARAMETER_START PARAMETER_BODY PARAMETER_END;
 		
 parameter1:
      (NOT|PIPE)? ID parameter_index?  parameter_body 
@@ -372,15 +424,15 @@ pbody: ~RCURLY*;
 
 // New rule to support 'declare -A my_array' and 'declare -A my_array=([key1]=value1 [key2]=value2)'
 declareAssociativeArrayStatement
-    : DECLARE_A id1=ID (NL? EQ NL? associativeArrayInitializer)? NL? CMD_TERMINATOR?
+    : white* DECLARE_A WS* id1=ID (WS* EQ WS* associativeArrayInitializer)? 
     ;
 
 associativeArrayInitializer
-    : NL? LPAREN NL? (associativeArrayElement NL?) * RPAREN
+    : white* LPAREN white* (associativeArrayElement white*) * RPAREN
     ;
 
 associativeArrayElement
-    :NL? LSQUARE key=argument RSQUARE EQ value=argument NL?
+    :white* LSQUARE key=argument RSQUARE WS* EQ WS* value=argument white*
     ;
 
 associativeArrayValue

@@ -129,9 +129,9 @@ public class TestVisitor {
 
 		a = parseAurgument("name");
 		
-		ctx = a.getContext().variable().ID();
-		assertNotNull(ctx, "ID");
-		assertEquals("name", ctx.getText());
+		PathContext xxx = a.getContext().path();
+		assertNotNull(xxx, "ID");
+		assertEquals("name", xxx.getText());
 
 		a = parseAurgument("-name");
 		assertNotNull(a.getContext().ARG_ID(), "argId");
@@ -390,7 +390,6 @@ file_address:
 
 
 
-				System.out.println();
 				//assertEquals(expect.rdop,tmp,"rdop");
 				// May not work
 				//assertEquals(expect.file,cs.getRedirect().getText(),"file / target");
