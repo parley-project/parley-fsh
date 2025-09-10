@@ -17,7 +17,7 @@ import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 public class TestParameter {
 
 	@Test
-	public void testParameter01() {
+	public void testParameter01() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", "tony");
 		String expect = "hello tony";
@@ -29,7 +29,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter02() {
+	public void testParameter02() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		//ctx.setVariable("name", "tony");
 		String expect = "hello unset";
@@ -40,7 +40,7 @@ public class TestParameter {
 
 	}
 	@Test
-	public void testParameter03() {
+	public void testParameter03() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", "tony");
 		String expect = "hello tony";
@@ -52,7 +52,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter04() {
+	public void testParameter04() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		//ctx.setVariable("name", "tony");
 		String expect = "hello unset";
@@ -63,7 +63,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter05() {
+	public void testParameter05() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		//ctx.setVariable("name", "tony");
 		String expect = "hello tony";
@@ -76,25 +76,19 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter06() {
+	public void testParameter06() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		int exitCode=0;		
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
 		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-
-		System.setOut(new PrintStream(bao));
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream("".getBytes()));
+		
+		ctx.console.setStdOut(new PrintStream(bao));
+		ctx.console.setStdErr(new PrintStream(bae));
+		ctx.console.setStdIn(new ByteArrayInputStream("".getBytes()));
 
 		String code = "echo hello ${name:?bad stuff is happending}";
 		exitCode= ctx.console.executeUsingAntlr(code);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-
+		
 
 		//ctx.setVariable("name", "tony");
 		String expect = "";
@@ -109,7 +103,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter07() {
+	public void testParameter07() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "7890abcdefgh";
@@ -121,7 +115,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter07_1() {
+	public void testParameter07_1() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		ctx.setVariable("start", "7");
@@ -134,7 +128,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter08() {
+	public void testParameter08() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "";
@@ -148,7 +142,7 @@ public class TestParameter {
 	
 	
 	@Test
-	public void testParameter09() {
+	public void testParameter09() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "78";
@@ -159,7 +153,7 @@ public class TestParameter {
 
 	}
 	@Test
-	public void testParameter10() {
+	public void testParameter10() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "7890abcdef";
@@ -171,7 +165,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter11() {
+	public void testParameter11() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "bcdefgh";
@@ -182,7 +176,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter12() {
+	public void testParameter12() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "";
@@ -193,7 +187,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter13() {
+	public void testParameter13() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "bc";
@@ -204,7 +198,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter14() {
+	public void testParameter14() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "bcdef";
@@ -215,7 +209,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter15() {
+	public void testParameter15() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("array",0, "01234567890abcdefgh");
 		String expect = "bc";
@@ -226,7 +220,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter16() {
+	public void testParameter16() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("array",0, "01234567890abcdefgh");
 		String expect = "bcdef";
@@ -237,7 +231,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter17() {
+	public void testParameter17() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "tony\n";
@@ -261,7 +255,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter18() {
+	public void testParameter18() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "7 8 9 0 a b c d e f g h\n";
@@ -276,7 +270,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter19() {
+	public void testParameter19() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "7 8\n";
@@ -291,7 +285,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter20() {
+	public void testParameter20() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "b c\n";
@@ -306,7 +300,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter21() {
+	public void testParameter21() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "java.lang.RuntimeException: -2: substring expression < 0\n";
@@ -321,7 +315,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter22() {
+	public void testParameter22() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h\n";
@@ -336,7 +330,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter23() {
+	public void testParameter23() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "0 1\n";
@@ -351,7 +345,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter24() {
+	public void testParameter24() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "\n";
@@ -366,7 +360,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter25() {
+	public void testParameter25() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "var1 var2 var3\n";
@@ -383,7 +377,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter26() {
+	public void testParameter26() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18\n";
@@ -397,7 +391,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter27() {
+	public void testParameter27() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "0\n";
@@ -411,7 +405,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter28() {
+	public void testParameter28() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "22\n";
@@ -426,7 +420,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter29() {
+	public void testParameter29() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "5\n";
@@ -441,7 +435,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter30() {
+	public void testParameter30() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "resolv.conf\n";
@@ -456,7 +450,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter31() {
+	public void testParameter31() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "/dns.measurement-factory.com/tools/dnstop/src/dnstop-20090128.tar.gz\n"
@@ -475,7 +469,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter32() {
+	public void testParameter32() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "_one two\n";
@@ -491,7 +485,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter33() {
+	public void testParameter33() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "xcache\n";
@@ -506,7 +500,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter34() {
+	public void testParameter34() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "hello:world:of\n"
@@ -524,7 +518,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter35() {
+	public void testParameter35() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "hello_world_of\n"
@@ -542,7 +536,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter36() {
+	public void testParameter36() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "hello_world_of\n"
@@ -560,7 +554,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter37() {
+	public void testParameter37() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "linux is great. Use unix or die or kill unix\n"
@@ -590,7 +584,7 @@ public class TestParameter {
 	}
 
 	@Test
-	public void testParameter38() {
+	public void testParameter38() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
 		String expect = "Tony\n"

@@ -4,58 +4,24 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-
-import us.bringardner.shell.Console;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import us.bringardner.shell.Console;
+
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionExport {
+public class TestExecutionExport extends AbstractConsoleTest {
 
 	
-	public static void setup(String home) throws IOException {
-	}
-
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
-	
-	public static ExecuteResult executeCommand(Console console,String command,String stdIn,int exitCode) {
-		
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		String err = new String(ret.bae.toByteArray());
-		if( !err.isEmpty()) {
-			System.out.println(command);
-			System.out.println(err);
-		}
-		assertEquals(exitCode, ret.exitCode);
-		
+		public static ExecuteResult executeCommand(Console console1,String command,String stdIn,int exitCode) throws IOException {
+		console = console1;
+		ExecuteResult ret = executeCommand(command, stdIn, exitCode);
 		return ret;
 	}
 	

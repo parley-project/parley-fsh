@@ -180,7 +180,6 @@ DIGIT: [0-9];
 SPECIAL_UNIX: [-_+=~];
 SPECIAL_WINDOWS: [-_+=~];
 POS:'^';
-
 ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
 LETTER_OR_DIGIT:[a-zA-Z_0-9.];
@@ -188,7 +187,6 @@ fragment COLON: ':';
 P1:COLON MINUS;
 TEXT:~[ \t\r\n];
 
-WORD:LETTER_OR_DIGIT+;
 DOLLAR_LPAREN_LPAREN: '$((';
 RPAREN_RPAREN:  '))';
 LPAREN_LPAREN: '((';

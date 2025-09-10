@@ -428,6 +428,9 @@ $
 
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
+		ret.stdout = stdout;
+		ret.stdin = stdin;
+		ret.stderr = stderr;
 		return ret;
 	}
 

@@ -1,10 +1,11 @@
 package us.bringardner.shell.test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -46,20 +47,51 @@ public abstract class AbstractConsoleTest {
 		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
 	}
 	
+	public static ExecuteResult executeCommand(String command,String stdIn,String ... args) {
+	
+		ExecuteResult ret = new ExecuteResult();
+		Console console = new Console(args);
+		console.setStdOut(new PrintStream(ret.bao));
+		console.setStdErr(new PrintStream(ret.bae));
+		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
+		
+		ret.exitCode=console.executeUsingAntlr(command);
+	
+		if(showError && ret.bae.size()!=0) {
+			System.out.println(new String(ret.bae.toByteArray()));
+		}
+		return ret;
+	}
+	
+	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode) throws IOException {
+		ExecuteResult ret = executeCommand(command, stdIn);
+		assertEquals(exitCode, ret.exitCode);
+		return ret;
+	}
+	
+	public String executeCommand(String command) throws IOException {
+		us.bringardner.shell.test.AbstractConsoleTest.ExecuteResult tmp = executeCommand(command, "");
+		String ret = new String(tmp.bao.toByteArray());
+		return ret;
+	}
+	
+	public static boolean showError = true;
 	public static ExecuteResult executeCommand(String command,String stdIn) throws IOException {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
 		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
+		PrintStream out = (new PrintStream(ret.bao));
+		PrintStream err = (new PrintStream(ret.bae));
+		ByteArrayInputStream in = (new ByteArrayInputStream(stdIn.getBytes()));
+		console.setStdIn(in);
+		console.setStdOut(out);
+		console.setStdErr(err);
 		
-		ret.exitCode=console.executeWithoutAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
+		ret.exitCode=console.executeUsingAntlr(command);
+		String errMsg = new String(ret.bae.toByteArray());
+		if(showError && !errMsg.isEmpty()) {
+			System.out.println(command);
+			System.out.println(errMsg);
+		}
 		
 		return ret;
 	}

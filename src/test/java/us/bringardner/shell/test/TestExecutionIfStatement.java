@@ -2,48 +2,27 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.IOException;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
-import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionIfStatement {
+public class TestExecutionIfStatement extends AbstractConsoleTest{
 
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
+	@BeforeAll
+	public static void beforeAll() throws IOException {
+		AbstractConsoleTest.setup("LnTestFiles");		
+		
 	}
-
-	public static ExecuteResult executeCommand(String command,String stdIn) {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		Console console = new Console();
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-
-		return ret;
-	}
-
+	
 	@Test
 	public void testIfStatent01_1() throws Exception{
 		String cmd = "if [ true ] ; then\n"
@@ -409,7 +388,10 @@ public class TestExecutionIfStatement {
 				;
 
 		String expect = "";
+		boolean tmp = showError;
+		showError = false;
 		ExecuteResult res = executeCommand(cmd,"");
+		showError = tmp;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(2, res.exitCode);

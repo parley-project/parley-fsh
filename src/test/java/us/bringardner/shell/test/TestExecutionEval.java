@@ -3,14 +3,11 @@ package us.bringardner.shell.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -19,43 +16,15 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionEval {
+public class TestExecutionEval  extends AbstractConsoleTest{
 
-	
-	public static void setup(String home) throws IOException {
-	}
-
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
+	@BeforeAll
+	public static void beforeAll() throws IOException {
+		AbstractConsoleTest.setup("TestFiles");		
+		
 	}
 	
-	public static ExecuteResult executeCommand(Console console,String command,String stdIn,int exitCode) {
-		
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		String err = new String(ret.bae.toByteArray());
-		if( !err.isEmpty()) {
-			//System.out.println(command);
-			//System.out.println(err);
-		}
-		assertEquals(exitCode, ret.exitCode);
-		
-		return ret;
-	}
+	
 	@Test
 	public void testExport01() throws Exception{
 		String cmd = "var=\"Test value\"\n"
@@ -68,7 +37,7 @@ public class TestExecutionEval {
 		int exitCode = 0;
 		String expect = "Test value\n";
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String out = new String(ret.bao.toByteArray());
 		String err = new String(ret.bae.toByteArray());
@@ -92,7 +61,7 @@ public class TestExecutionEval {
 		int exitCode = 0;
 		//String expect = "Test value\n";
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String out = new String(ret.bao.toByteArray());
 		String err = new String(ret.bae.toByteArray());
@@ -117,7 +86,7 @@ public class TestExecutionEval {
 		int exitCode = 1;
 		String expect = "";
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String out = new String(ret.bao.toByteArray());
 		String err = new String(ret.bae.toByteArray());

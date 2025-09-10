@@ -29,26 +29,6 @@ public class TestExecutionForStatement extends AbstractConsoleTest {
 		}
 	}
 	
-	public static ExecuteResult executeCommand(String command,String stdIn) {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		Console console = new Console();
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		if( ret.bae.size()!=0) {
-			//System.out.println(new String(ret.bae.toByteArray()));
-		}
-		return ret;
-	}
 	
 
 	@Test

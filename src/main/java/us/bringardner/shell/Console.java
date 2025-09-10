@@ -314,6 +314,31 @@ public class Console extends BaseThread {
 	}
 
 
+	
+	public InputStream getStdIn() {
+		return stdIn;
+	}
+
+	public void setStdIn(InputStream stdIn) {
+		this.stdIn = stdIn;
+	}
+
+	public PrintStream getStdOut() {
+		return stdOut;
+	}
+
+	public void setStdOut(PrintStream stdOut) {
+		this.stdOut = stdOut;
+	}
+
+	public PrintStream getStdErr() {
+		return stdErr;
+	}
+
+	public void setStdErr(PrintStream stdErr) {
+		this.stdErr = stdErr;
+	}
+
 	public DebugContext getDebugContext() {
 		return debugContext;
 	}
@@ -609,6 +634,10 @@ delimiter
 	public static PrintStream System_out = System.out;
 	public static PrintStream System_err = System.err;
 	public static InputStream System_in = System.in;
+	private InputStream stdIn = null;
+	private PrintStream stdOut = System.out;
+	private PrintStream stdErr = System.err;
+
 	public static ConsoleOutputFrame debugFrame = new ConsoleOutputFrame();
 	/**
 	 * 
@@ -814,10 +843,10 @@ delimiter
 
 			if( bae.size()>0) {
 				ret = -1;
-				System.err.print(new String(bae.toByteArray()));
+				getStdErr().print(new String(bae.toByteArray()));
 			}
 			if( lastout.length>0) {
-				System.out.print(new String(lastout));
+				getStdOut().print(new String(lastout));
 			}					
 		}
 		return ret;
@@ -880,10 +909,10 @@ stderr	2
 	 */
 
 	private static final Pattern rout = Pattern.compile("[012]?(>>|[<>])");
-	private static final int stdin = 0;
-	private static final int stdout = 1;
+	private static final int stdinId = 0;
+	private static final int stdoutId = 1;
 
-	private static final int stderr = 2;
+	private static final int stderrId = 2;
 	
 	private static String defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin";
 
@@ -920,7 +949,7 @@ stderr	2
 				}
 
 				//System.out.println("part="+part);
-				int id = stdout;
+				int id = stdoutId;
 				InputStream in = null;
 				OutputStream out = null;
 
@@ -940,24 +969,24 @@ stderr	2
 					out = getOutputStream(part.substring(1).trim(),false);
 				} else if( part.startsWith("<")) {
 					in = getInputStream(part.substring(1).trim());
-					id = stdin;
+					id = stdinId;
 				}
 				//System.out.println("part="+part+" id="+id);
 				switch (id) {
-				case stdin:
+				case stdinId:
 					if( in == null ) {
 						throw new IOException("Can't set stdin to null");
 					}
 					ctx.stdin = in;
 					break;
-				case stdout:
+				case stdoutId:
 					if( out == null ) {
 						throw new IOException("Can't set stdout to null");
 					}
 					ctx.stdout = new PrintStream(out);
 					break;
 
-				case stderr:
+				case stderrId:
 					if( out == null ) {
 						throw new IOException("Can't set stderr to null");
 					}
@@ -1108,25 +1137,33 @@ stderr	2
 		return Collections.unmodifiableMap(environmentVariables);
 	}
 
-	public int executeUsingAntlr(String code)  {
-		InputStream in = System.in;
-		PrintStream out = System.out;
-		PrintStream err = System.err;
 
-		if( isOptionEnabled(Option.PrintLinesAsRead)) {
-			System.out.println(code);
+	public int executeUsingAntlr(String code)  {
+		//TODO: REmove after testing is complete
+		if( stdIn == null) {
+			throw new RuntimeException("Streams have not been set");
+		}
+		int ret = 0;
+		ShellContext sc = new ShellContext(this);
+		
+		sc.stdin = getStdIn();
+		sc.stdout = getStdOut();
+		sc.stderr = getStdErr();
+		
+		if( sc.stdin == System_in) {
+			sc.stdin = new NativeKeyboard();
 		}
 
-		int ret = 0;
 		try {
-			ShellContext sc = new ShellContext(this);
-			if( in == System_in) {
-				sc.stdin = new NativeKeyboard();
+			
+			if( isOptionEnabled(Option.PrintLinesAsRead)) {
+				sc.stdout.println(code);
 			}
+
 			code = code.trim();
 			String ppCode = preProcess(code, sc);
 			if( isOptionEnabled(Option.PrintCommandTrace)) {
-				System.out.println(ppCode);
+				sc.stdout.println(ppCode);
 			}
 
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
@@ -1143,21 +1180,15 @@ stderr	2
 			}
 		} catch(ExitException e) {
 			ret = e.exitCode;
-			System.setErr(err);
-			System.err.println(e);
+			sc.stderr.println(e);
 			stop();
 		} catch(Exception e) {
 			//e.printStackTrace();
 			ret = 1;
-			System.setErr(err);
-			System.err.println(e);
+			sc.stderr.println(e);
 			logError("", e);
-		}finally {
-			System.setIn(in);
-			System.setOut(out);
-			System.setErr(err);			
 		}
-
+		
 		return ret;
 	}
 

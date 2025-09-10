@@ -2,48 +2,22 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.IOException;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-
-import us.bringardner.shell.Console;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionFunction {
+public class TestExecutionFunction extends AbstractConsoleTest{
 
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
 	
-	public static ExecuteResult executeCommand(String command,String stdIn) {
-		Console console = new Console();
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
+	@BeforeAll
+	public static void beforeAll() throws IOException {
+		AbstractConsoleTest.setup("TestFiles");		
 		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		if( ret.bae.size() !=0) {
-			System.out.println(new String(ret.bae.toByteArray()));
-		}
-		return ret;
 	}
 	
 	@Test

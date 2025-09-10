@@ -4,12 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -28,11 +24,8 @@ import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestLn {
+public class TestLn extends AbstractConsoleTest{
 
-	public static String fileDate;
-	public static Console console;
-	private static File testFilesDir;
 	private static File localSymlink;
 	
 	@BeforeAll
@@ -64,30 +57,7 @@ public class TestLn {
 		}
 	}
 	
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
 	
-	public ExecuteResult executeCommand(String command,String stdIn) throws IOException {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		console.executeWithoutAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		return ret;
-	}
-
 	
 	@Test
 	@Order(1)
@@ -177,7 +147,7 @@ public class TestLn {
 	public void testLn_f_File2File() throws IOException {
 		String linkPath = "target/AbcFileC.txt";
 		
-		File file = new File(linkPath).getCanonicalFile();
+		File file = new File(linkPath);
 		if( file.exists()) {
 			assertTrue(file.delete(),"Can't delete existing file");
 		}
@@ -283,8 +253,7 @@ public class TestLn {
 		}
 		
 		String source = "AbcFile*";
-		String target = "../"+linkPath;
-		String cmd = "ln -sv "+source+" "+target;
+		String cmd = "ln -sv "+source+" "+dir.getAbsolutePath();
 
 		ExecuteResult exit = executeCommand(cmd, "");
 		assertEquals(0, exit.exitCode,"ln exit code");

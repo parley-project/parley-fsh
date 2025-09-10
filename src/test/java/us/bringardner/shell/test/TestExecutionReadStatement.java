@@ -2,58 +2,22 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-
-import us.bringardner.shell.Console;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionReadStatement {
+public class TestExecutionReadStatement extends AbstractConsoleTest {
 
 	
-	public static void setup(String home) throws IOException {
-	}
-
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
-	
-	public static ExecuteResult executeCommand(Console console,String command,String stdIn,int exitCode) {
+	@BeforeAll
+	public static void beforeAll() throws IOException {
+		AbstractConsoleTest.setup("TestFiles");		
 		
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		String err = new String(ret.bae.toByteArray());
-		if( !err.isEmpty()) {
-			System.out.println(command);
-			System.out.println(err);
-		}
-		assertEquals(exitCode, ret.exitCode);
-		
-		return ret;
 	}
 	
 	@Test
@@ -67,7 +31,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -87,7 +51,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -107,7 +71,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -128,7 +92,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -155,7 +119,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -179,7 +143,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -203,7 +167,7 @@ public class TestExecutionReadStatement {
 		int exitCode = 0;
 		//System.out.println(cmd);
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -225,7 +189,7 @@ public class TestExecutionReadStatement {
 				;
 		int exitCode = 0;
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -247,7 +211,7 @@ public class TestExecutionReadStatement {
 				;
 		int exitCode = 0;
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -269,7 +233,7 @@ public class TestExecutionReadStatement {
 				;
 		int exitCode = 0;
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -290,7 +254,7 @@ public class TestExecutionReadStatement {
 				;
 		int exitCode = 0;
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -311,7 +275,7 @@ public class TestExecutionReadStatement {
 				;
 		int exitCode = 0;
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);
@@ -335,7 +299,7 @@ public class TestExecutionReadStatement {
 				;
 		int exitCode = 0;
 		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
 		String actual = new String(ret.bao.toByteArray());
 		assertEquals(expect, actual);

@@ -2,11 +2,7 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -21,10 +17,10 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionDirStack {
+public class TestExecutionDirStack extends AbstractConsoleTest{
 
-	private static Console console;
 	private static FileSource dirStack;
+	
 	@BeforeAll
 	public static void setup() throws IOException {
 		System.setProperty("user.home", "/home");
@@ -46,40 +42,15 @@ public class TestExecutionDirStack {
 		}
 		
 		
-		
 		console = new Console();
 		console.setCurrentDirectory(dirStack);
 	}
 
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
 	
 	public static ExecuteResult executeCommand(String command,String stdIn,int expectedExitCode) throws IOException {
 		console = new Console();
 		console.setCurrentDirectory(dirStack);
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		String err = new String(ret.bae.toByteArray());
-		if( !err.isEmpty()) {
-			System.out.println(command);
-			System.out.println(err);
-		}
-		assertEquals(expectedExitCode, ret.exitCode);
+		ExecuteResult ret = AbstractConsoleTest.executeCommand(command, stdIn, expectedExitCode);
 		
 		return ret;
 	}

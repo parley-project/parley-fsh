@@ -290,10 +290,11 @@ static DateConfig [] d_dateConfigs = {
 		 * milliseconds and Z are the only optional
 		 * YYYY-MM-DDThh:mm:SS[tz]
 		 */
+		new DateConfig(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"), "2020-07-23T06:30:10Z"),
 		new DateConfig(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), "2020-07-23 06:30:10Z"),
 		new DateConfig(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), "2020-07-23 06:30:10"),
 		
-		new DateConfig(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"), "2020-07-23T06:30:10Z"),
+		
 		new DateConfig(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"), "2020-07-23T06:30:10"),
 		
 };

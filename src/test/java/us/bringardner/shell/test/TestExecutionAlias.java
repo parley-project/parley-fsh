@@ -21,51 +21,12 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionAlias {
+public class TestExecutionAlias extends AbstractConsoleTest{
 
-	private static File testFilesDir;
-	private static Console console;
-	
 	@BeforeAll
-	public static void setup() throws IOException {
-		String home = "LsTestFiles";
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		testFilesDir = new File(home).getCanonicalFile();
-		System.setProperty("user.home", testFilesDir.getAbsolutePath());
-		console = new Console();
-	}
-
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
-	
-	public static ExecuteResult executeCommand(String command,String stdIn,int expectedExitCode) {
-		
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		String err = new String(ret.bae.toByteArray());
-		if( !err.isEmpty()) {
-			System.out.println(command);
-			System.out.println(err);
-		}
-		assertEquals(expectedExitCode, ret.exitCode);
-		
-		return ret;
-	}
+	public static void beforeAll() throws IOException {
+		AbstractConsoleTest.setup("LsTestFiles");				
+	}	
 	
 	@Test
 	@Order(1)

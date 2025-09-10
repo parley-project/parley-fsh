@@ -112,6 +112,10 @@ public class MountFactory extends FileSourceFactory {
 		}
 		
 		FileSource parent = null;
+		if( path.startsWith("..")) {
+			parent = getCurrentDirectory().getParentFile();
+		}
+		
 		if( path.startsWith("~") ) {
 			path = getCurrentDirectory().getAbsolutePath()+path.substring(1);
 		}

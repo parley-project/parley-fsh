@@ -7,11 +7,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
@@ -39,21 +38,15 @@ public class TestExecutionPipeStatement {
 	}
 	
 	public static ExecuteResult executeCommand(String command,String stdIn) {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
 		Console console = new Console();
+		ExecuteResult ret = new ExecuteResult();
+		console.setStdOut(new PrintStream(ret.bao));
+		console.setStdErr(new PrintStream(ret.bae));
+		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
+		
 		Console.jobs.clear();
 		Console.setNextPid(0);
 		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
 		
 		return ret;
 	}

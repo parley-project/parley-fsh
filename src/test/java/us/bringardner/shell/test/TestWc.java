@@ -37,16 +37,12 @@ public class TestWc {
 	}
 	
 	public String executeCommand(String command) throws IOException {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
 		
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
+		console.setStdOut(new PrintStream(bao));
 		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream(new byte[0]));
+		console.setStdErr(new PrintStream(bae));
+		console.setStdIn(new ByteArrayInputStream(new byte[0]));
 		
 		console.executeWithoutAntlr(command);
 		String actual = new String(bao.toByteArray());
@@ -55,11 +51,9 @@ public class TestWc {
 			actual+= err;
 		}
 		
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
 		return actual;
 	}
+	
 	/*
 	 default
  	  45     168    1547 AbcFile.js

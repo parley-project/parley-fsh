@@ -69,13 +69,12 @@ assignment
     | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? parameter
     | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? list // Could be single element
     | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? id2=ID
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? path
+    | (LOCAL WS)? WS? id1=(ID|ARG_ID) (WS? (associative_index | array_index))? WS? EQ WS? path
     ;
 
 boolean: TRUE | FALSE;
-path_segment: 
-		  TILDE 
-		//| variable
+path_segment: TILDE 
+		| ID
         | DOT_DOT
         | DOT
         | STAR
@@ -83,8 +82,7 @@ path_segment:
         | string
         | MINUS
         | MINUS_MINUS
-        | NUMBER
-        | ID
+        | NUMBER        
 		;
 
 
@@ -97,12 +95,12 @@ argument_list: (argument WS*)*
 	;
 	
 argument
-    :  arg_command_substitution
+    : ARG_ID 
+    | arg_command_substitution
     | signed_number
     | NUMBER    
    	| TEXT
-    | string
-    | ARG_ID     
+    | string         
     | assignStatement            
     | mathExpression
     | parameter
@@ -110,6 +108,7 @@ argument
 	| path	
 	| ID
 	| variable
+	
     ;
     
 signed_number: (MINUS|PLUS)? NUMBER;    

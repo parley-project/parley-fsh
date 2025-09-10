@@ -4,70 +4,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import us.bringardner.io.filesource.FileSource;
-import us.bringardner.io.filesource.FileSourceFactory;
-import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
-import us.bringardner.shell.Console;
-
 @TestMethodOrder(OrderAnnotation.class)
-public class TestCpRm {
+public class TestCpRm extends AbstractConsoleTest{
 
 	public static String fileDate;
-	public static Console console;
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		FileSource file = FileSourceFactory.getDefaultFactory().createFileSource("CpTestFiles");
-
-		System.setProperty("user.home", file.getAbsolutePath());
-		console = new Console();
+		AbstractConsoleTest.setup("CpTestFiles");
 	}
 	
-	@AfterAll
-	public static void afterAll() {
 		
-	}
-	
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
-	
-	public ExecuteResult executeCommand(String command,String stdIn) throws IOException {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		console.executeWithoutAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		return ret;
-	}
-
-	
 	@Test
 	@Order(1)
 	public void testCp_File2File() throws IOException {

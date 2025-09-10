@@ -30,7 +30,7 @@ public class TestExpantion {
 				+ "echo $s2 \n"
 						;
 
-		//System.out.println(cmd);
+		System.out.println(cmd);
 		List<Statement> stmts = parse(cmd);
 		assertEquals(4, stmts.size());
 

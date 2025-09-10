@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
@@ -11,37 +12,20 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 
 import us.bringardner.shell.Console;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionUntilStatement {
+public class TestExecutionUntilStatement extends AbstractConsoleTest {
 
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
+	@BeforeAll
+	public static void beforeAll() throws IOException {
+		AbstractConsoleTest.setup("TestFiles");		
+		
 	}
 	
-	public static ExecuteResult executeCommand(String command,String stdIn) {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		Console console = new Console();
-		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		
-		return ret;
-	}
-
 	@Test
 	public void testUntilStatent01_1() throws Exception{
 		String cmd = "i=0\n"

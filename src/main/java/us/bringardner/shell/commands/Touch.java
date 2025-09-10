@@ -134,14 +134,28 @@ public class Touch extends ShellCommand{
 	}
 
 	public static class Action_d implements ArgumentProcessor {
-		//[-d YYYY-MM-DDThh:mm:SS[tz]]
+		//     idx +1  +2  +3 +4+5 +6 +7
+		//[-d YYYY-MM-DDThh : mm : SS[tz]]
 		
 		@Override
 		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			String val = ctx.args[++idx].replace('T', ' ');
-			if( val.length()==10  && idx< ctx.args.length ) {
-				val += (" "+ctx.args[++idx]);				
+			//  the date parses as a series of signed numbers
+			//   Z ( time zone)?? parses as path
+			// idx should be 2
+			StringBuilder tmp = new StringBuilder();
+			int idx2 = idx+1;
+			for(;idx2<=4; idx2++) {
+				tmp.append(ctx.args[idx2]);
 			}
+			tmp.append(' ');
+			for(;idx2<ctx.args.length-1; idx2++) {
+				tmp.append(ctx.args[idx2]);
+			}
+			
+			String tm2 = tmp.toString();
+			
+			String val = tm2.replace("T","");
+			
 			boolean gmt = false;
 			if( val.endsWith("Z")) {
 				gmt = true;
@@ -160,7 +174,7 @@ public class Touch extends ShellCommand{
 				throw new IOException("Invalid date format "+e);
 			}
 
-			return idx;
+			return idx2-1;
 		}
 
 	}

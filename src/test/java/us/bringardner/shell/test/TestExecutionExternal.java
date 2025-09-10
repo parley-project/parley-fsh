@@ -7,7 +7,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,19 +40,13 @@ public class TestExecutionExternal {
 	
 	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode,String expectOut,String expectErr) {
 		Console console = new Console();
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
 		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
+		console.setStdOut(new PrintStream(ret.bao));
+		console.setStdErr(new PrintStream(ret.bae));
+		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 		
 		ret.exitCode=console.executeUsingAntlr(command);
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
 		
 		String out = new String(ret.bao.toByteArray());
 		String err = new String(ret.bae.toByteArray());
@@ -71,21 +64,14 @@ public class TestExecutionExternal {
 	
 	public static ExecuteResult executeCommand(String [] args,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
 		
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
 		Console console = new Console();
 		
+		ExecuteResult ret = new ExecuteResult();
+		console.setStdOut(new PrintStream(ret.bao));
+		console.setStdErr(new PrintStream(ret.bae));
+		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
+
 		ret.exitCode = console.execute(args);
-		
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
 		
 		
 		String out = new String(ret.bao.toByteArray());
@@ -520,22 +506,17 @@ public class TestExecutionExternal {
 
 
 	public static ExecuteResult executeCommand(String cmd,String stdIn,int exitCode) throws IOException {
-		
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
+		Console console = new Console();
 		
 		ExecuteResult ret = new ExecuteResult();
-		System.setOut(new PrintStream(ret.bao));
-		System.setErr(new PrintStream(ret.bae));
-		System.setIn(new ByteArrayInputStream(stdIn.getBytes()));
-		Console console = new Console();
+		console.setStdOut(new PrintStream(ret.bao));
+		console.setStdErr(new PrintStream(ret.bae));
+		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
+		
+		
 		
 		ret.exitCode = console.executeUsingAntlr(cmd);
 		
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
 		
 		
 		String err = new String(ret.bae.toByteArray());

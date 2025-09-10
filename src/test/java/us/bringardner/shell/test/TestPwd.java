@@ -13,44 +13,24 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
 
-public class TestPwd {
+public class TestPwd extends AbstractConsoleTest{
 
-	public static String fileDate;
-	public static Console console;
-	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		File file = new File("PwdTestFiles/SymLink2Folder01");
-		System.setProperty("user.home", file.getAbsolutePath());
+		// can't use AbstractConsoleTest.beforeAll because in uses a canonical file
+		String home = "PwdTestFiles/SymLink2Folder01";		
+		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
+		testFilesDir = new File(home);
+
+		System.setProperty("user.home", testFilesDir.getAbsolutePath());
 		console = new Console();
 	}
 	
-	@AfterAll
-	public static void afterAll() {
-		
-	}
 	
-	public String executeCommand(String command) throws IOException {
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
-		
-		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream(new byte[0]));
-		
-		console.executeWithoutAntlr(command);
-		String actual = new String(bao.toByteArray());
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		return actual;
-	}
 	//TODO:  test -P.  need to be able to create a link
 	@Test
 	public void testPwd() throws IOException {
