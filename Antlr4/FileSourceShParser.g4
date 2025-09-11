@@ -73,7 +73,10 @@ assignment
     ;
 
 boolean: TRUE | FALSE;
+id_star:ID STAR | STAR ID;
+
 path_segment: TILDE 
+		| id_star
 		| ID
         | DOT_DOT
         | DOT

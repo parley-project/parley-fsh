@@ -34,7 +34,7 @@ argument
 
 	 */
 	public Object getValue(ShellContext ctx) throws IOException {
-		Object ret = context.getText();
+		Object ret = context.getText().trim();
 
 		if( context.ARG_ID()!=null) {
 			ret = context.ARG_ID().getText().trim();

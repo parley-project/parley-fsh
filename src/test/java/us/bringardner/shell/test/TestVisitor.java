@@ -132,13 +132,13 @@ public class TestVisitor {
 		PathContext xxx = a.getContext().path();
 		assertNotNull(xxx, "ID");
 		assertEquals("name", xxx.getText());
-
-		a = parseAurgument("-name");
+		// arguments can not start at the begging of int=put
+		a = parseAurgument(" -name");
 		assertNotNull(a.getContext().ARG_ID(), "argId");
 
 		ctx = a.getContext().ARG_ID();
 		assertNotNull(ctx, "ARG_ID from -name");
-		assertEquals("-name", ctx.getText());
+		assertEquals("-name", ctx.getText().trim());
 
 		a = parseAurgument("$v");
 		VariableContext ctx2 = a.getContext().variable();

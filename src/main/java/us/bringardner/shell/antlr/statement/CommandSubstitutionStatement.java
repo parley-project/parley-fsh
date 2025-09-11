@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
@@ -52,7 +53,7 @@ public class CommandSubstitutionStatement extends Statement{
 			if( !tmp.isEmpty()) {
 				tmp.append(' ');
 			}
-			tmp.append(context.getChild(idx).getText());
+			tmp.append(context.getChild(idx).getText().trim());
 		}
 		String code = tmp.toString();
 		exitCode =execute(code,primary);

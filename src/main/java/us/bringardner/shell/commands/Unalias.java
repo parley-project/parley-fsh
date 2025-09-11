@@ -24,7 +24,7 @@ public class Unalias extends ShellCommand{
 		for(Argument arg : args) {
 			ArgumentContext actx = arg.getContext();
 			if( actx.ARG_ID() != null) {
-				if(actx.ARG_ID().getText().equals("-a")) {
+				if(actx.ARG_ID().getText().trim().equals("-a")) {
 					ctx.console.clearAliases();
 				} else {
 					// invalid??

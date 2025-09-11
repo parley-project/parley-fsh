@@ -65,6 +65,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitBoolean(FileSourceShParser.BooleanContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#id_star}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitId_star(FileSourceShParser.Id_starContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#path_segment}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

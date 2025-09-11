@@ -86,7 +86,7 @@ compare
 		Object ret = null;
 		try {
 
-			String opStr = ctx.file_test().op.getText();
+			String opStr = ctx.file_test().op.getText().trim();
 			
 			char op = opStr.toString().charAt(1);
 			Argument a = new Argument(ctx.file_test().target);

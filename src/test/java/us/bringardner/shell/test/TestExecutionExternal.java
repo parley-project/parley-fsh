@@ -224,7 +224,7 @@ public class TestExecutionExternal {
 
 		String expectOut = "";
 		String stdIn = "";
-		String expectErr = "fssh 1,4: -O: invalid option\n";
+		String expectErr = "fssh 1,3: -O: invalid option\n";
 		int exitCode = 1;
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 	}

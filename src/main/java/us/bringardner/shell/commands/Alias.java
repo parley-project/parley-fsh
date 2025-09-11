@@ -38,7 +38,7 @@ public class Alias extends ShellCommand{
 					printAlias(ctx,name,val);
 				}
 			} else if( actx.ARG_ID() != null) {
-				if(actx.ARG_ID().getText().equals("-p")) {
+				if(actx.ARG_ID().getText().trim().equals("-p")) {
 					for(String name : ctx.console.getAliases().keySet()) {
 						printAlias(ctx,name, ctx.console.getAlias(name));
 					}

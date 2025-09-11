@@ -330,7 +330,7 @@ pipeOp:
 	@Override
 	public Statement visitPipeStatement(PipeStatementContext ctx) {
 		if( ctx.parg !=null ) {
-			String tmp = ctx.parg.getText();
+			String tmp = ctx.parg.getText().trim();
 			if( !tmp.equals("-p")) {
 				throw new RuntimeException("Invalid pipe argument "+tmp);
 			}

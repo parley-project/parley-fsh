@@ -98,6 +98,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitBoolean(FileSourceShParser.BooleanContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#id_star}.
+	 * @param ctx the parse tree
+	 */
+	void enterId_star(FileSourceShParser.Id_starContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#id_star}.
+	 * @param ctx the parse tree
+	 */
+	void exitId_star(FileSourceShParser.Id_starContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#path_segment}.
 	 * @param ctx the parse tree
 	 */
