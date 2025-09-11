@@ -86,7 +86,7 @@ public class ForStatement extends LoopStatement{
 			String val = ""+a.getValue(ctx);
 			
 			//TODO: probably need a more comprehensive way to generate file lists
-			if( a.getContext().path() != null || (a.getContext().operator() != null && a.getContext().operator().getText().equals("*")) ) {
+			if( a.getContext().path() != null ) {
 
 				List<FileSource> list = ShellCommand.getFiles(ctx, val);
 				if( list.size()>0) {

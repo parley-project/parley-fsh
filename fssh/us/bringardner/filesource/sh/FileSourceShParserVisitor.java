@@ -103,12 +103,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitSigned_number(FileSourceShParser.Signed_numberContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#operator}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitOperator(FileSourceShParser.OperatorContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#commandStatement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

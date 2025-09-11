@@ -75,9 +75,7 @@ argument
 			}
 		} else if(context.assignStatement()!=null ) {
 			ret = context.getText();			
-		} else if(context.operator()!=null) {			
-			ret = context.getText();
-		} else {
+		}  else {
 
 			throw new RuntimeException("Not a valid argument "+context.getText());
 		}

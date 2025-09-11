@@ -104,7 +104,6 @@ argument
     | assignStatement            
     | mathExpression
     | parameter
-    | operator
 	| path	
 	| ID
 	| variable
@@ -113,20 +112,6 @@ argument
     
 signed_number: (MINUS|PLUS)? NUMBER;    
 
-operator: MINUS|PLUS|DIVIDE|PERC|STAR
-		|MINUS_MINUS|PLUS_PLUS|EQUALITY|NOT_EQ
-		| MINUS_ASSIGN
-		| STAR_ASSIGN
-		| DIV_ASSIGN
-		| MOD_ASSIGN
-		| ESC LT
-		|LT_EQ
-		|ESC GT
-		|GT_EQ
-		|NOT
-		|ESC_AND
-		|ESC_OR
-		;
 
 commandStatement
     : WS*	redirect1=redirect? WS* command WS* (argument WS*)* hereDocument WS* redirect2=redirect? 

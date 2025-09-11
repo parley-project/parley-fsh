@@ -162,16 +162,6 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitSigned_number(FileSourceShParser.Signed_numberContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link FileSourceShParser#operator}.
-	 * @param ctx the parse tree
-	 */
-	void enterOperator(FileSourceShParser.OperatorContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link FileSourceShParser#operator}.
-	 * @param ctx the parse tree
-	 */
-	void exitOperator(FileSourceShParser.OperatorContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#commandStatement}.
 	 * @param ctx the parse tree
 	 */
