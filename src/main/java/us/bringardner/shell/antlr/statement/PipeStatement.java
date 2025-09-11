@@ -9,7 +9,6 @@ import java.io.PrintStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
-import us.bringardner.shell.Console;
 import us.bringardner.shell.Console.CommandThread;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
@@ -34,26 +33,18 @@ public class PipeStatement extends Statement{
 	protected int execute(ShellContext ctx) throws IOException {
 		int ret = 0;
 
-		boolean isStdOut1 = ctx.stdout==Console.System_out;
-		boolean isStdIn1 = ctx.stdin==Console.System_in;
-		
 		CommandThread [] threads = new CommandThread[cmds.length];
 		threads[0] = new CommandThread(ctx,cmds[0]);
 		
 		//  Create the threads
 		for (int idx = 1; idx < cmds.length; idx++) {
 			ShellContext ctx2 = ctx.subShell();
-			boolean isStdOut = ctx2.stdout==Console.System_out;
-			boolean isStdIn = ctx2.stdin==Console.System_in;
 			threads[idx] = new CommandThread(ctx2,cmds[idx]);			
 		}
 		// set up pipes
 		long startTime = System.currentTimeMillis();
 		for (int idx = 0; idx < cmds.length-1; idx++) {
 			CommandThread t = threads[idx];
-			boolean isStdOut = t.ctx.stdout==Console.System_out;
-			boolean isStdIn = t.ctx.stdin==Console.System_in;
-
 			CommandThread t2 = threads[idx+1];			
 			PipedInputStream  in = new PipedInputStream();
 			PipedOutputStream out = new PipedOutputStream(in);

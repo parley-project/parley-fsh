@@ -12,8 +12,6 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import us.bringardner.shell.Console;
-
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestExecutionEval  extends AbstractConsoleTest{

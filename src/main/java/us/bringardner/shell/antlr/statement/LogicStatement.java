@@ -6,7 +6,6 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
 import us.bringardner.filesource.sh.FileSourceShParser.Boolean_statementContext;
-import us.bringardner.filesource.sh.FileSourceShParser.ConditionalStatementContext;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
 

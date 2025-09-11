@@ -6,7 +6,6 @@ import java.io.PrintStream;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTree;
 
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;

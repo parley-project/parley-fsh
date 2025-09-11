@@ -3,9 +3,9 @@ package us.bringardner.shell.commands;
 import java.io.IOException;
 
 import us.bringardner.shell.Console;
+import us.bringardner.shell.Console.CommandThread;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.Console.CommandThread;
 
 public class Jobs extends ShellCommand{
 	enum Options {l,n,p,r,s};
@@ -61,8 +61,6 @@ public class Jobs extends ShellCommand{
 				if(options.options.contains(Options.l)) {
 					ctx.stdout.println("["+(idx+1)+"] "+job.pid+" "+state+" "+job.toString());
 				} else {
-					String tmp1 = job.toString();
-					String tmp2 = "["+(idx+1)+"] "+state+" "+job.toString();
 					ctx.stdout.println("["+(idx+1)+"] "+state+" "+job.toString());
 				}
 			}
