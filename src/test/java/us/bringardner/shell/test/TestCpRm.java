@@ -9,6 +9,9 @@ import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+
+import us.bringardner.shell.test.AbstractConsoleTest.ExecuteResult;
+
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -35,16 +38,16 @@ public class TestCpRm extends AbstractConsoleTest{
 		String source = "AbcFile.txt";
 		String dest = "../target/Co01.txt";
 		String cmd = "cp "+source+" "+dest;
-
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"Cp exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		
+		assertEquals(0, res.exitCode,"Cp exit code");
 		
 		assertTrue(file.exists(),"File does not exist after cp");
 		
 		cmd = "rm "+dest;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		//file = new File("target/Co01.txt").getCanonicalFile();		
 		assertFalse(file.exists(),"File still exist after rm");
 		
@@ -66,15 +69,16 @@ public class TestCpRm extends AbstractConsoleTest{
 		String source = "AbcFile.txt";
 		String dest = "../target/CpTestDir/Co01.txt";
 		String cmd = "cp "+source+" "+dest;
-
-		int exit = console.executeWithoutAntlr(cmd);
+		ExecuteResult res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Cp exit code");		
+		
+		assertEquals(0, res.exitCode,"Cp exit code");		
 		assertTrue(file.exists(),"File does not exist after cp");
 		cmd = "rm "+dest;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");
+		
+		assertEquals(0, res.exitCode,"Rm exit code");
 		
 		assertFalse(file.exists(),"File still exist after rm");
 		
@@ -98,16 +102,14 @@ public class TestCpRm extends AbstractConsoleTest{
 		String dest = "../target/CpTestDir";
 		String cmd = "cp "+source+" "+dest;
 
-		int exit = console.executeWithoutAntlr(cmd);
-		
-		assertEquals(0, exit,"Cp exit code");		
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"Cp exit code");		
 		
 		assertEquals(4, dir.listFiles().length,"child count after cp");
 		
 		cmd = "rm -rf "+dest;
-		exit = console.executeWithoutAntlr(cmd);
-		
-		assertEquals(0, exit,"Rm 02 exit code only -rf should NOT fail");
+		res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"Rm 02 exit code only -rf should NOT fail");
 		
 		
 		assertFalse(dir.exists(),"Dir still exist after rm");
@@ -131,17 +133,14 @@ public class TestCpRm extends AbstractConsoleTest{
 		String source = "AbcFile.js AbcFile.txt AbcFile.php";
 		String dest = "../target/CpTestDir";
 		String cmd = "cp "+source+" "+dest;
-
-		int exit = console.executeWithoutAntlr(cmd);
-		
-		assertEquals(0, exit,"Cp exit code");		
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"Cp exit code");		
 		
 		assertEquals(3, dir.listFiles().length,"child count after cp");
 		
 		cmd = "rm -rf "+dest;
-		exit = console.executeWithoutAntlr(cmd);
-		
-		assertEquals(0, exit,"Rm 02 exit code only -rf should NOT fail");
+		res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"Rm 02 exit code only -rf should NOT fail");
 		
 		
 		assertFalse(dir.exists(),"Dir still exist after rm");
@@ -166,28 +165,27 @@ public class TestCpRm extends AbstractConsoleTest{
 		String dest = "../target/CpTestDir";
 		String cmd = "cp "+source+" "+dest;
 
-		int exit = console.executeWithoutAntlr(cmd);
-		
-		assertEquals(0, exit,"Cp exit code");		
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"Cp exit code");		
 		
 		assertEquals(3, dir.listFiles().length,"child count after cp");
 		
 		
 		cmd = "rm  ../target/CpTestDir/AbcFile.txt";
-		exit = console.executeWithoutAntlr(cmd);		
-		assertEquals(0, exit,"Rm 01 exit code only txt should NOT fail");
+		res = executeCommand(cmd, "");		
+		assertEquals(0, res.exitCode,"Rm 01 exit code only txt should NOT fail");
 		
 		cmd = "rm  ../target/CpTestDir/AbcFile.php";
-		exit = console.executeWithoutAntlr(cmd);		
-		assertEquals(0, exit,"Rm 02 exit code only php should NOT fail");
+		res = executeCommand(cmd, "");		
+		assertEquals(0, res.exitCode,"Rm 02 exit code only php should NOT fail");
 		
 		cmd = "rm  ../target/CpTestDir/AbcFile.js";
-		exit = console.executeWithoutAntlr(cmd);		
-		assertEquals(0, exit,"Rm 03 exit code only js should NOT fail");
+		res = executeCommand(cmd, "");		
+		assertEquals(0, res.exitCode,"Rm 03 exit code only js should NOT fail");
 
 		cmd = "rm -d "+dest;
-		exit = console.executeWithoutAntlr(cmd);		
-		assertEquals(0, exit,"Rm 04 exit code only dir should NOT fail");
+		res = executeCommand(cmd, "");		
+		assertEquals(0, res.exitCode,"Rm 04 exit code only dir should NOT fail");
 
 		
 		assertFalse(dir.exists(),"Dir still exist after rm");
@@ -206,8 +204,8 @@ public class TestCpRm extends AbstractConsoleTest{
 		String dest = "../target/Co01.txt";
 		String cmd = "cp "+source+" "+dest;
 
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"Cp exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"Cp exit code");
 		
 		assertTrue(file.exists(),"File does not exist after cp");
 		

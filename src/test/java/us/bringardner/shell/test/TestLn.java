@@ -73,15 +73,15 @@ public class TestLn extends AbstractConsoleTest{
 		String target = "../"+hardLinkPath;
 		String cmd = "ln "+source+" "+target;
 
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		assertTrue(file.exists(),"File does not exist after ln");
 		
 		cmd = "rm "+target;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
@@ -99,16 +99,17 @@ public class TestLn extends AbstractConsoleTest{
 		String source = "AbcFileA.js";
 		String target = "../"+linkPath;
 		String cmd = "ln -s "+source+" "+target;
-
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		assertTrue(file.exists(),"File does not exist after ln");
 		
 		cmd = "rm "+target;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");		
+		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
@@ -127,17 +128,17 @@ public class TestLn extends AbstractConsoleTest{
 		String target = "../"+linkPath;
 		String cmd = "ln -P "+source+" "+target;
 
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		assertTrue(file.exists(),"File does not exist after ln");
 		
 	
 		
 		cmd = "rm "+target;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
@@ -158,16 +159,15 @@ public class TestLn extends AbstractConsoleTest{
 		
 		
 		String cmd = "cp "+source+" "+target;
-
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		assertTrue(file.exists(),"File does not exist after cp");
 		
 		cmd = "ln -f "+source+" "+target;
 
-		exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		assertTrue(file.exists(),"File does not exist after cp");
 		
@@ -175,9 +175,9 @@ public class TestLn extends AbstractConsoleTest{
 	
 		
 		cmd = "rm "+target;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
@@ -196,18 +196,17 @@ public class TestLn extends AbstractConsoleTest{
 		String source = "SymLink2AbcFileA2.js";
 		String target = "../"+linkPath;
 		String cmd = "ln -h "+source+" "+target;
-
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		assertTrue(file.exists(),"File does not exist after ln");
 		
 	
 		
 		cmd = "rm "+target;
-		exit = console.executeWithoutAntlr(cmd);
+		res = executeCommand(cmd, "");
 		
-		assertEquals(0, exit,"Rm exit code");		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
@@ -227,8 +226,9 @@ public class TestLn extends AbstractConsoleTest{
 		String target = "../"+linkPath;
 		String cmd = "ln "+source+" "+target;
 
-		int exit = console.executeWithoutAntlr(cmd);
-		assertEquals(0, exit,"ln exit code");
+		ExecuteResult res = executeCommand(cmd, "");
+		
+		assertEquals(0, res.exitCode,"ln exit code");
 		
 		int cnt = 0;
 		for(File file : dir.listFiles()) {

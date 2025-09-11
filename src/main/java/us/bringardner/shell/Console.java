@@ -1,7 +1,5 @@
 package us.bringardner.shell;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -90,6 +88,7 @@ public class Console extends BaseThread {
 	}
 
 
+	private static String defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin";
 	public static final String PATH = "PATH";
 	public static final String VARIABLE_OLDPWD = "OLDPWD";
 	public static final String VARIABLE_PWD = "PWD";
@@ -811,47 +810,6 @@ delimiter
 		return code;
 	}
 
-	public int executeWithoutAntlr(String code) throws IOException  {
-
-		int ret = 0;
-		String cmds[] = code.split("[|]");
-		if( cmds.length>0) {
-			ShellContext ctx = new ShellContext(this);
-			ByteArrayOutputStream bao = new ByteArrayOutputStream();
-			ByteArrayOutputStream bae = new ByteArrayOutputStream();
-			ctx.stdout = new PrintStream(bao);
-			ctx.stderr = new PrintStream(bae);
-			byte [] lastout = null;
-			for (int idx = 0; idx < cmds.length; idx++) {
-				ShellCommand cmd = parseCommand(cmds[idx],ctx);
-
-				if( cmd == null ) {
-					throw new IOException("Unknown command="+cmds[idx]);
-				} else {
-					ctx.enterCommand();
-					lastExitCode = cmd.process(ctx);
-					ctx.exitCommand();
-					if( lastExitCode==0) {
-						lastout = bao.toByteArray();
-						ctx.stdin = new ByteArrayInputStream(lastout);
-						bao.reset();
-					} else {
-						throw new IOException(cmd.getName()+" terminated with "+lastExitCode);
-					}
-				}
-			}
-
-			if( bae.size()>0) {
-				ret = -1;
-				getStdErr().print(new String(bae.toByteArray()));
-			}
-			if( lastout.length>0) {
-				getStdOut().print(new String(lastout));
-			}					
-		}
-		return ret;
-	}
-
 	public String [] splitForArgs(String line) {
 		List<String> ret = new ArrayList<>();
 		byte data [] = line.getBytes();
@@ -879,44 +837,8 @@ delimiter
 		return ret.toArray(new String[ret.size()]);
 	}
 
-	private ShellCommand parseCommand(String line,ShellContext ctx) throws IOException {
-		ShellCommand ret = null;
-		if( line !=null && !line.isEmpty()) {
-			line = parserRedirect(line,ctx).trim();
-			while(line.indexOf("  ")>=0) {
-				line = line.replaceAll("  ", " ");
-			}
-			ctx.args = line.split("\\s");
-			if( ctx.args.length>0) {
-				String name = ctx.args[0];
-				ret = commands.get(name);				
-			}
-		} 
-		return ret;
-	}
-
-	/*
-   >> Append instead of clobber
- 	command < file
-
-	  Data Stream	Stream ID
-stdin	0
-stdout	1
-stderr	2
-
-2>&1
-
-	 */
-
-	private static final Pattern rout = Pattern.compile("[012]?(>>|[<>])");
-	private static final int stdinId = 0;
-	private static final int stdoutId = 1;
-
-	private static final int stderrId = 2;
 	
-	private static String defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin";
-
-
+	
 
 	public static String getDefaultPath() {
 		return defaultPath;
@@ -927,82 +849,6 @@ stderr	2
 	}
 
 
-
-	private String parserRedirect(String line, ShellContext ctx) throws IOException {
-		String ret = line;
-
-		Matcher m = rout.matcher(line);
-		//System.out.println("match="+m.matches());
-		List<Integer> hits = new ArrayList<>();
-		while(m.find()) {
-			hits.add(m.start());			
-		}	
-
-		if( hits.size()>0) {			
-			for(int idx=0,sz=hits.size(); idx < sz; idx++ ) {
-				String part = null;
-				if( idx == sz-1) {
-					// last one
-					part = line.substring(hits.get(idx)).trim();
-				} else {
-					part = line.substring(hits.get(idx),hits.get(idx+1)).trim();
-				}
-
-				//System.out.println("part="+part);
-				int id = stdoutId;
-				InputStream in = null;
-				OutputStream out = null;
-
-				if( Character.isDigit(part.charAt(0))) {
-					id = part.charAt(0) - '0';
-					part = part.substring(1);
-				}
-
-				int idx2 = part.indexOf('&') ;
-				if( idx2 > 0 ) {
-					throw new IOException("'&' not implimented");
-				}
-
-				if( part.startsWith(">>")) {
-					out = getOutputStream(part.substring(2).trim(),true);
-				} else if( part.startsWith(">")) {
-					out = getOutputStream(part.substring(1).trim(),false);
-				} else if( part.startsWith("<")) {
-					in = getInputStream(part.substring(1).trim());
-					id = stdinId;
-				}
-				//System.out.println("part="+part+" id="+id);
-				switch (id) {
-				case stdinId:
-					if( in == null ) {
-						throw new IOException("Can't set stdin to null");
-					}
-					ctx.stdin = in;
-					break;
-				case stdoutId:
-					if( out == null ) {
-						throw new IOException("Can't set stdout to null");
-					}
-					ctx.stdout = new PrintStream(out);
-					break;
-
-				case stderrId:
-					if( out == null ) {
-						throw new IOException("Can't set stderr to null");
-					}
-					ctx.stderr = new PrintStream(out);					
-					break;
-
-				default:
-					throw new IOException("invalide redirect file id="+id);					
-				}
-			}
-
-			ret = line.substring(0,hits.get(0)).trim();
-		}
-
-		return ret;
-	}
 
 	public InputStream getInputStream(String path) throws IOException {
 		FileSource file = mountFactory.createFileSource(path);

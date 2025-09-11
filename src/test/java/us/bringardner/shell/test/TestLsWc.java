@@ -21,7 +21,7 @@ import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.commands.Ls;
 
-public class TestLsWc {
+public class TestLsWc extends AbstractConsoleTest{
 
 	public static String fileDate;
 	
@@ -39,6 +39,7 @@ public class TestLsWc {
 		fileDate = Ls.DATE_FORMAT.format(new Date(time));
 	
 		FileSourceFactory.setDefaultFactory(factory);
+		console = new Console();
 	}
 	
 	private static void fillDir(FileSource dir,int i) throws IOException {
@@ -71,23 +72,11 @@ public class TestLsWc {
 				+ "Test7.txt\n"
 				+ "Test8.txt\n"
 				+ "Test9.txt\n";
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
+		String cmd = "ls";
+		ExecuteResult res = executeCommand(cmd,"");
+		String actual = new String(res.bao.toByteArray());
 		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream(new byte[0]));
-		
-		Console c = new Console();
-		c.executeWithoutAntlr("ls");
-		String actual = new String(bao.toByteArray());
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
 		assertEquals(expect, actual);
 		
 		
@@ -108,52 +97,22 @@ public class TestLsWc {
 				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test7.txt\n"
 				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test8.txt\n"
 				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test9.txt\n").replaceAll("DATE", fileDate);
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
-		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream(new byte[0]));
-		
-		Console c = new Console();
-		c.executeWithoutAntlr("ls -l");
-		
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		String actual = new String(bao.toByteArray());
-		//String actualErr = new String(bae.toByteArray());
-		
+		String cmd = "ls -l";
+		ExecuteResult res = executeCommand(cmd,"");
+		String actual = new String(res.bao.toByteArray());		
 		assertEquals(expect, actual);
-		//System.out.println(actual);
-		//System.out.println(actualErr);
 		
 	}
 	
 	@Test
 	public void testWc() throws IOException {
 		String expect = "0       9      44";
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
+		String stdin = "the quick brown fox jumped over the lasy dog";
 		
-		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream("the quick brown fox jumped over the lasy dog".getBytes()));
-		
-		Console c = new Console();
-		c.executeWithoutAntlr("wc");
-		String actual = new String(bao.toByteArray());
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
+		String cmd = "wc";
+		ExecuteResult res = executeCommand(cmd,stdin);
+		String actual = new String(res.bao.toByteArray());				
 		assertEquals(expect, actual.trim());
 		
 		
@@ -162,23 +121,14 @@ public class TestLsWc {
 	@Test
 	public void testWc_l() throws IOException {
 		String expect = "3";
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
 		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream("the quick \nbrown fox \njumped over \nthe lasy dog".getBytes()));
+		String stdin = "the quick \nbrown fox \njumped over \nthe lasy dog";
 		
-		Console c = new Console();
-		c.executeWithoutAntlr("wc -l");
-		String actual = new String(bao.toByteArray());
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
+		//c.executeWithoutAntlr("wc -l");
+		String cmd = "wc -l";
+		ExecuteResult res = executeCommand(cmd,stdin);
+		String actual = new String(res.bao.toByteArray());				
 		assertEquals(expect, actual.trim());
 		
 		
@@ -198,29 +148,12 @@ public class TestLsWc {
 				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test7.txt\n"
 				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test8.txt\n"
 				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test9.txt\n").replaceAll("DATE", fileDate);
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
-		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream(new byte[0]));
-		
-		Console c = new Console();
-		c.executeWithoutAntlr("ls -l *.txt");
-		
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		String actual = new String(bao.toByteArray());
-		//String actualErr = new String(bae.toByteArray());
+		String cmd = ("ls -l *.txt");
+		ExecuteResult res = executeCommand(cmd,"");
+		String actual = new String(res.bao.toByteArray());
 		
 		assertEquals(expect, actual);
-		//System.out.println(actual);
-		//System.out.println(actualErr);
 		
 	}
 	
@@ -238,29 +171,11 @@ public class TestLsWc {
 				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-7.txt\n"
 				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-8.txt\n"
 				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-9.txt\n").replaceAll("DATE", fileDate);
-		PrintStream stdout= System.out;
-		PrintStream stderr= System.err;
-		InputStream stdin = System.in;
 		
-		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		System.setOut(new PrintStream(bao));
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();
-		System.setErr(new PrintStream(bae));
-		System.setIn(new ByteArrayInputStream(new byte[0]));
-		
-		Console c = new Console();
-		c.executeWithoutAntlr("ls -l /Folder01/*.txt");
-		
-		System.setIn(stdin);
-		System.setOut(stdout);
-		System.setErr(stderr);
-		String actual = new String(bao.toByteArray());
-		//String actualErr = new String(bae.toByteArray());
-		
+		String cmd = "ls -l /Folder01/*.txt";
+		ExecuteResult res = executeCommand(cmd,"");
+		String actual = new String(res.bao.toByteArray());		
 		assertEquals(expect, actual);
-		//System.out.println(actual);
-		//System.out.println(actualErr);
 		
 	}
 }

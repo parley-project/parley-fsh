@@ -44,7 +44,7 @@ public class TestWc {
 		console.setStdErr(new PrintStream(bae));
 		console.setStdIn(new ByteArrayInputStream(new byte[0]));
 		
-		console.executeWithoutAntlr(command);
+		console.executeUsingAntlr(command);
 		String actual = new String(bao.toByteArray());
 		String err   = new String(bae.toByteArray()).trim();
 		if( !err.isEmpty()) {
