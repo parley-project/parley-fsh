@@ -75,7 +75,7 @@ public abstract class AbstractConsoleTest {
 		return ret;
 	}
 	
-	public static boolean showError = true;
+	public static boolean showError = false;
 	public static ExecuteResult executeCommand(String command,String stdIn) throws IOException {
 		
 		ExecuteResult ret = new ExecuteResult();

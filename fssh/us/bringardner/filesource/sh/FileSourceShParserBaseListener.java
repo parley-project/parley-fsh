@@ -149,6 +149,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterPath_segment_list(FileSourceShParser.Path_segment_listContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPath_segment_list(FileSourceShParser.Path_segment_listContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterAbsolutePath(FileSourceShParser.AbsolutePathContext ctx) { }
 	/**
 	 * {@inheritDoc}

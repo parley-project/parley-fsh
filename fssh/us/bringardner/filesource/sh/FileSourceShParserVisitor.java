@@ -77,6 +77,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPath_segment(FileSourceShParser.Path_segmentContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#path_segment_list}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPath_segment_list(FileSourceShParser.Path_segment_listContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code absolutePath}
 	 * labeled alternative in {@link FileSourceShParser#path}.
 	 * @param ctx the parse tree

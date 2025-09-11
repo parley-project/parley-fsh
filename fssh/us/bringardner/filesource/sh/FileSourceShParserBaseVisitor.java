@@ -95,6 +95,13 @@ public class FileSourceShParserBaseVisitor<T> extends AbstractParseTreeVisitor<T
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+	@Override public T visitPath_segment_list(FileSourceShParser.Path_segment_listContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
 	@Override public T visitAbsolutePath(FileSourceShParser.AbsolutePathContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}

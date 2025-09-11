@@ -73,6 +73,7 @@ assignment
     ;
 
 boolean: TRUE | FALSE;
+
 id_star:ID STAR | STAR ID;
 
 path_segment: TILDE 
@@ -88,10 +89,11 @@ path_segment: TILDE
         | NUMBER        
 		;
 
+path_segment_list: path_segment +;
 
 path
-    : SLASH path_segment (SLASH path_segment)*   # absolutePath
-    | path_segment (SLASH path_segment?)*        # relativePath
+    : SLASH path_segment_list (SLASH path_segment_list)*   # absolutePath
+    | path_segment_list (SLASH path_segment_list)*        # relativePath
     ;
 
 argument_list: (argument WS*)*
