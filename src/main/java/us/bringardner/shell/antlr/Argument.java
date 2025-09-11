@@ -37,7 +37,7 @@ argument
 		Object ret = context.getText();
 
 		if( context.ARG_ID()!=null) {
-			ret = context.ARG_ID().getText();
+			ret = context.ARG_ID().getText().trim();
 		} else if( context.ID()!=null) {
 			String name = context.ID().getText();
 			//ret = ctx.getVariable(name);

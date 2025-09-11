@@ -94,10 +94,13 @@ public class TestExecutionPipeStatement {
 	public void testLogicStatent03() throws Exception{
 		String cmd = 
 				"false || echo two\n"
-				+"true || echo two"
+				+"true || echo two\n"
 				+"false || echo two"
 				;
 
+		cmd = 
+				"false || echo two\n"
+				;
 		String expect = 
 				"two\n"
 				;

@@ -36,7 +36,6 @@ public class Echo extends ShellCommand{
 			ctx.stdout.println();
 		}
 		
-		
 		return ret;
 	}
 

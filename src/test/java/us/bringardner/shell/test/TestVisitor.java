@@ -659,6 +659,7 @@ file_address:
 				+ "done"
 				;
 
+		System.out.println(cmd);
 		List<Statement> stmts = parse(cmd);
 		assertEquals(1, stmts.size());
 		Statement stmt = stmts.get(0);
