@@ -484,6 +484,10 @@ public class Console extends BaseThread {
 	@Override
 	public void run() {
 		int exitCode = 0;
+		stdOut = System.out;
+		stdErr = System.err;
+		stdIn = System.in;
+		
 		readHistory();
 
 		try {
