@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -18,10 +20,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.text.BadLocationException;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 
-import us.bringardner.shell.antlr.signal.ExitException;
+public class ConsolPanel extends JPanel implements KeyboardReader {
 
-public class ConsolPanel extends JPanel {
+
 
 	private static final long serialVersionUID = 1L;
 
@@ -78,6 +82,16 @@ public class ConsolPanel extends JPanel {
 	private JLabel statusLabel;
 	private int lineStart = 0;
 	private int currentPos=0;
+	private QueueInputStream in;
+	private TextAreaOutputStream out;
+	private String prompt = "% ";
+	private AtomicReference<String> line = new AtomicReference<>();
+	private AtomicBoolean inReadline = new AtomicBoolean(false);
+	private Integer lineIndex;
+
+
+	private static final int UP = 38;
+	private static final int DN = 40;
 
 	/**
 	 * Create the panel.
@@ -105,6 +119,16 @@ public class ConsolPanel extends JPanel {
 		add(scrollPane, BorderLayout.CENTER);
 
 		textArea = new JTextArea();
+		textArea.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusGained(FocusEvent e) {
+				System.out.println("Gained focus");
+			}
+			@Override
+			public void focusLost(FocusEvent e) {
+				System.out.println("Lost focus");
+			}
+		});
 		scrollPane.setViewportView(textArea);
 		textArea.addKeyListener(new KeyAdapter() {
 
@@ -112,57 +136,102 @@ public class ConsolPanel extends JPanel {
 			public void keyPressed(KeyEvent e) {
 				//System.out.println(e);
 				Console.System_out.println(e);
-				StringBuilder db = new StringBuilder();
 
-				int pos = textArea.getCaretPosition();
-				db.append("cp="+currentPos+" ls="+lineStart+" pos="+pos);
+				StringBuilder db = new StringBuilder("inReadline="+inReadline+"\n");
 
-				if( pos < lineStart) {
+				if( !inReadline.get()) {
 					e.consume();
 					return;
 				}
 
+				int key = e.getKeyCode();
+				int pos = textArea.getCaretPosition();
+				db.append("cp="+currentPos+" ls="+lineStart+" pos="+pos);
 
-				switch (e.getKeyCode()) {
-				case 37: //left
+				if( e.isControlDown()) {
+					if( key == KeyEvent.VK_R) {
+						e.consume();
+						HistorySearchDialog d = new HistorySearchDialog();
+						d.setLocationRelativeTo(textArea);
+						String cmd = d.showDialog(console);
+						if( cmd !=null && !cmd.isEmpty()) {
+							String all = textArea.getText();
+							if( all.length()> lineStart) {
+								all = all.substring(0,lineStart-1);
+							}
+							all += cmd;
+							textArea.setText(all);
+							currentPos = all.length();
+						}
+					}
+				}
+
+
+				switch (key) {
+				case KeyEvent.VK_ESCAPE:
+					e.consume();
+					break;
+				case KeyEvent.VK_DELETE:
+				case KeyEvent.VK_BACK_SPACE:
+				case KeyEvent.VK_LEFT: 
 					if( pos<= lineStart) {
 						e.consume();
 					} else {
 						currentPos--;
-						return;
 					}
 					break;
-				case 38:// up
-				case 40:// down 
-					e.consume(); 
+				case KeyEvent.VK_RIGHT:
+					currentPos++;
+					if( currentPos> textArea.getText().length()) {
+						currentPos = textArea.getText().length();
+					}
 					break;
-				case 10: pos = textArea.getCaretPosition();
-				try {
-					String last = textArea.getText(pos-1,1);
-					if(last.charAt(0)!='\\') {							
-						String all = textArea.getText();
-						String cmd = all.substring(lineStart);
-						new Thread(()->{
-							PrintStream out = System.out;								
-							System.setOut(new PrintStream( new TextAreaOutputStream(textArea)));
-							int exitCode = console.executeUsingAntlr(cmd);
-							System.setOut(out);
-							SwingUtilities.invokeLater(()->{
-								debugLabel.setText("exit code="+exitCode);
-								lineStart = textArea.getText().length();
-								textArea.setCaretPosition(lineStart);
-							});
+				case KeyEvent.VK_UP: 
+				case KeyEvent.VK_DOWN: 
+					e.consume(); 
+					if( console.history.size()>0 ) {
 
-						}).start();
-						lineStart = all.length();
-						textArea.setCaretPosition(lineStart);
-						db.append(" new start="+lineStart);
+						if( e.getKeyCode()==KeyEvent.VK_UP) {
+							if(lineIndex>0) {
+								lineIndex --;
+							}
+						} else {
+							if( lineIndex < (console.history.size())) {
+								lineIndex ++;
+							}
+						}
 
-					} 
-				} catch (BadLocationException e1) {
-					e1.printStackTrace();
-				}
-				break;
+						if( lineIndex >=0 && lineIndex < console.history.size()) {
+							String tmp = console.history.get(lineIndex).command;
+							String all = textArea.getText();
+							if( all.length()> lineStart) {
+								all = all.substring(0,lineStart);
+							}
+							all += tmp;
+							textArea.setText(all);
+						} else if( lineIndex == console.history.size()) {
+							String all = textArea.getText();
+							if( all.length()> lineStart) {
+								all = all.substring(0,lineStart);
+							}							
+							textArea.setText(all);
+						}
+						
+					}
+					break;
+				case KeyEvent.VK_ENTER: 
+					try {
+						String last = textArea.getText(pos-1,1);
+						if(last.charAt(0)!='\\') {							
+							String all = textArea.getText();
+							String line = all.substring(lineStart);
+							ConsolPanel.this.line.set(line);
+							inReadline.set(false);						
+						} 
+					} catch (BadLocationException e1) {
+						e1.printStackTrace();
+					}
+					break;
 				default:
 					if(pos < lineStart) {
 						textArea.setCaretPosition(currentPos);
@@ -175,22 +244,73 @@ public class ConsolPanel extends JPanel {
 			}
 		});
 
-		QueueInputStream in = new QueueInputStream();
-		System.setIn(in);
-		TextAreaOutputStream out = new TextAreaOutputStream(textArea);
-		System.setOut(new PrintStream(out));
+		in = new QueueInputStream();		
+		out = new TextAreaOutputStream(textArea);
+
 
 	}
 
 	public void setConsole(Console c) {
 		this.console = c;
-	
-		c.setName("ConsolePanel");
-		c.setDaemon(false);
-		c.start();
+
+	}
+
+	@Override
+	public String readLine(Console console) throws IOException {
+		if( inReadline.get()) {
+			throw new IOException("Invalid read state");
+		}
+		setConsole(console);
+		line.set("");
+		inReadline.set(true);
+
+		try {
+			SwingUtilities.invokeAndWait(()->{
+				// make sure we're at a line start
+				int pos = textArea.getCaretPosition();
+				if( pos != lineStart) {
+					textArea.append("\n");			
+				}
+
+				textArea.append(prompt);
+				lineStart = textArea.getCaretPosition();
+				currentPos=lineStart;
+				lineIndex = console.history.size();
+				System.out.println("pos="+pos+" lisn="+lineStart+" len="+textArea.getText().length()+" idx="+lineIndex); 
+
+
+			});
+		} catch (InvocationTargetException | InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		while(inReadline.get()) {
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+			}
+		}
+
+
+		return line.get();
+	}
+
+	@Override
+	public void setPrompt(String prompt) {
+		this.prompt = prompt;
+
+	}
 
 
 
+	@Override
+	public PrintStream getStdErr() {
+		return new PrintStream(out);
+	}
+
+	@Override
+	public PrintStream getStdOut() {
+		return new PrintStream(out);
 	}
 
 }

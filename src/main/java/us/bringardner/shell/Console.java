@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,6 +13,8 @@ import java.util.Random;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.swing.SwingUtilities;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -484,8 +487,9 @@ public class Console extends BaseThread {
 	@Override
 	public void run() {
 		int exitCode = 0;
-		stdOut = System.out;
-		stdErr = System.err;
+		KeyboardReader kb = getKeyboadReader();
+		stdOut = kb.getStdOut();
+		stdErr = kb.getStdErr();
 		stdIn = System.in;
 		
 		readHistory();
@@ -494,9 +498,7 @@ public class Console extends BaseThread {
 			started = running = true;
 			while(running && !stopping) {
 				try {
-					String prompt2 = String.format(prompt,mountFactory.getCurrentDirectory().getAbsolutePath());
-					@SuppressWarnings("resource")
-					NativeKeyboard kb = new NativeKeyboard();
+					String prompt2 = String.format(prompt,mountFactory.getCurrentDirectory().getAbsolutePath());					
 					kb.setPrompt(prompt2);
 					String code = kb.readLine(this).trim();
 					if( !code.isEmpty()) {
@@ -518,6 +520,25 @@ public class Console extends BaseThread {
 	}
 
 
+
+	private KeyboardReader getKeyboadReader() {
+		ConsoleFrame ret = new ConsoleFrame();
+		
+		try {
+			SwingUtilities.invokeAndWait(()->{
+				ret.setLocationRelativeTo(null);			
+				ret.setVisible(true);			
+			});
+		} catch (InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return ret;
+	}
 
 	public void addHistory(String code) {
 		history.add(new HistoryEntry(code));
