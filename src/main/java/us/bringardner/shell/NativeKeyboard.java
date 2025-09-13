@@ -2,10 +2,11 @@ package us.bringardner.shell;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NativeKeyboard extends InputStream 	{
+public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 	private native int getChar();
 	private native int ready();
 
@@ -363,5 +364,13 @@ public class NativeKeyboard extends InputStream 	{
 	public void close() throws IOException {
 		//  do nothing...
 
+	}
+	@Override
+	public PrintStream getStdErr() {
+		return System.err;
+	}
+	@Override
+	public PrintStream getStdOut() {
+		return System.out;
 	}
 }

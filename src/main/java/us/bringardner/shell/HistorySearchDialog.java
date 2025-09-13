@@ -7,6 +7,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +21,6 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.xml.crypto.Data;
 
 import us.bringardner.shell.Console.HistoryEntry;
 
@@ -152,7 +152,7 @@ public class HistorySearchDialog extends JDialog {
 			@Override
 			public String getColumnName(int column) {
 				if( column==0) {
-					return "time";
+					return "Time";
 				} 
 				return "Command";
 			}
@@ -160,7 +160,7 @@ public class HistorySearchDialog extends JDialog {
 			@Override
 			public Class<?> getColumnClass(int columnIndex) {
 				if( columnIndex==0) {
-					return Data.class;
+					return String.class;
 				} 
 				return String.class;
 			}
@@ -173,7 +173,8 @@ public class HistorySearchDialog extends JDialog {
 			public Object getValueAt(int row, int column) {
 				HistoryEntry h = filterd.get(row);
 				if( column==0) {
-					return new Date(h.time);
+					SimpleDateFormat fmt = new SimpleDateFormat("MM-dd-YY HH:mm:SS");					
+					return fmt.format(new Date(h.time));
 				}
 				return h.command;
 			}

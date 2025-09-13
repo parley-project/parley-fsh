@@ -1,5 +1,6 @@
 package us.bringardner.shell;
 
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,6 +28,7 @@ import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
 import us.bringardner.shell.commands.Alias;
 import us.bringardner.shell.commands.Cd;
+import us.bringardner.shell.commands.Clear;
 import us.bringardner.shell.commands.Connect;
 import us.bringardner.shell.commands.Cp;
 import us.bringardner.shell.commands.DirStack;
@@ -50,11 +52,10 @@ import us.bringardner.shell.commands.Touch;
 import us.bringardner.shell.commands.Unalias;
 import us.bringardner.shell.commands.Unmount;
 import us.bringardner.shell.commands.Wc;
-import us.bringardner.shell.ide.ConsoleOutputFrame;
 
 public class Console extends BaseThread {
 
-// windows ?C4;ahNc&W?Tfk9KUBIX9oUrp4tGCB9r
+	// windows ?C4;ahNc&W?Tfk9KUBIX9oUrp4tGCB9r
 
 	public enum Option {
 		Unsupported("")
@@ -112,6 +113,7 @@ public class Console extends BaseThread {
 		commands.put("dirs", new DirStack());
 		commands.put("popd", new DirStack());
 		commands.put("pushd", new DirStack());
+		registerCommand(new Clear());
 		registerCommand(new Cd());
 		registerCommand(new Eval());
 		registerCommand(new History());
@@ -154,20 +156,20 @@ public class Console extends BaseThread {
 		public long time;
 		public boolean  saved;
 		public String command;
-		
+
 		public HistoryEntry(long time, boolean saved,String command) {
 			this.time = time;
 			this.saved = saved;
 			this.command = command;
 		}
-		
+
 		public HistoryEntry(String command) {
 			this.command = command;
 			time = System.currentTimeMillis();
 		}
 
-		
-		
+
+
 	}
 
 	public static class CommandThread extends BaseThread {
@@ -274,7 +276,7 @@ public class Console extends BaseThread {
 		} catch (ExitException e) {
 			System.exit(e.exitCode);
 		}
-		 
+
 	}
 
 	public static void close(OutputStream out) {
@@ -316,7 +318,7 @@ public class Console extends BaseThread {
 	}
 
 
-	
+
 	public InputStream getStdIn() {
 		return stdIn;
 	}
@@ -350,7 +352,7 @@ public class Console extends BaseThread {
 	}
 
 	public int execute(String ... args) {
-		
+
 		//  called only from main and TestExecutionExternal
 		int ret = 0;
 		StringBuilder code = new StringBuilder();
@@ -375,7 +377,7 @@ public class Console extends BaseThread {
 			code.setLength(0);
 		}
 
-		
+
 		if( ret == 0 && idx2!=null) {
 			isInteractive = false;
 			//  execute the code...  this is NOT an interactive invocation
@@ -491,7 +493,7 @@ public class Console extends BaseThread {
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
 		stdIn = System.in;
-		
+
 		readHistory();
 
 		try {
@@ -520,24 +522,32 @@ public class Console extends BaseThread {
 	}
 
 
+	KeyboardReader keyboardReader;
 
-	private KeyboardReader getKeyboadReader() {
-		ConsoleFrame ret = new ConsoleFrame();
-		
-		try {
-			SwingUtilities.invokeAndWait(()->{
-				ret.setLocationRelativeTo(null);			
-				ret.setVisible(true);			
-			});
-		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public KeyboardReader getKeyboadReader() {
+		if( keyboardReader==null ) {
+			synchronized (this) {
+				if( keyboardReader==null ) {
+					if( !GraphicsEnvironment.isHeadless()) {
+						ConsoleFrame ret = new ConsoleFrame();
+						try {
+							SwingUtilities.invokeAndWait(()->{
+								ret.setLocationRelativeTo(null);			
+								ret.setVisible(true);			
+							});
+						} catch (InvocationTargetException | InterruptedException e) {
+						}	
+						keyboardReader = ret;
+					} else {
+						keyboardReader = new NativeKeyboard();
+					}
+				}
+			}
 		}
-		
-		return ret;
+
+
+
+		return keyboardReader;
 	}
 
 	public void addHistory(String code) {
@@ -580,7 +590,7 @@ public class Console extends BaseThread {
 						hist_comment = tmp.charAt(2);
 					}
 				}
-				
+
 				try(InputStream in = file.getInputStream()) {
 					long loadTime = System.currentTimeMillis();
 					List<HistoryEntry> tmp = new ArrayList<>();
@@ -632,13 +642,13 @@ public class Console extends BaseThread {
 						hist_comment = tmp.charAt(2);
 					}
 				}
-				
+
 				for(HistoryEntry e : history) {
 					out.write((""+hist_comment+e.time+"\n").getBytes());
 					out.write((e.command+"\n").getBytes());
 				}
 			}
-			
+
 		} catch (IOException e) {
 			logError("save history", e);
 		}
@@ -662,7 +672,6 @@ delimiter
 	private PrintStream stdOut = System.out;
 	private PrintStream stdErr = System.err;
 
-	public static ConsoleOutputFrame debugFrame = new ConsoleOutputFrame();
 	/**
 	 * 
 	 * @param code
@@ -862,8 +871,8 @@ delimiter
 		return ret.toArray(new String[ret.size()]);
 	}
 
-	
-	
+
+
 
 	public static String getDefaultPath() {
 		return defaultPath;
@@ -1016,17 +1025,17 @@ delimiter
 		}
 		int ret = 0;
 		ShellContext sc = new ShellContext(this);
-		
+
 		sc.stdin = getStdIn();
 		sc.stdout = getStdOut();
 		sc.stderr = getStdErr();
-		
+
 		if( sc.stdin == System_in) {
 			sc.stdin = new NativeKeyboard();
 		}
 
 		try {
-			
+
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
 				sc.stdout.println(code);
 			}
@@ -1059,7 +1068,7 @@ delimiter
 			sc.stderr.println(e);
 			logError("", e);
 		}
-		
+
 		return ret;
 	}
 

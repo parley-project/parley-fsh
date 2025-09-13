@@ -87,4 +87,9 @@ public class ConsoleFrame extends JFrame implements KeyboardReader {
 		return consolePanel.getStdOut();
 	}
 
+	public void clear() {
+		consolePanel.clear();
+		
+	}
+
 }

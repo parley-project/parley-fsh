@@ -21,10 +21,10 @@ import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.shell.Console;
+import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.NativeKeyboard;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
@@ -42,7 +42,7 @@ public class CommandStatement extends Statement{
 		StringBuilder debug = new StringBuilder();
 		boolean isStdin = false;
 		boolean isNative= false;
-		
+
 		public StreamCopier(InputStream in, OutputStream out,String name) {
 			this.in = in;
 			this.out = out;
@@ -70,13 +70,13 @@ public class CommandStatement extends Statement{
 			} finally {
 				try {
 					if( in == Console.System_in) {
-						Console.debugFrame.append("Can't close stdin. "+getName()+"\n");
+						//Console.debugFrame.append("Can't close stdin. "+getName()+"\n");
 					} else {
-						Console.debugFrame.append("Closing 01 in."+getName()+"\n");
+						//Console.debugFrame.append("Closing 01 in."+getName()+"\n");
 						in.close();
-						Console.debugFrame.append("Closing 02 in."+getName()+"\n");
+						//Console.debugFrame.append("Closing 02 in."+getName()+"\n");
 						thread.interrupt();
-						Console.debugFrame.append("Closing 03 in."+getName()+"\n");
+						//Console.debugFrame.append("Closing 03 in."+getName()+"\n");
 					}
 				} catch (Exception e2) {}
 				try {
@@ -96,7 +96,7 @@ public class CommandStatement extends Statement{
 				//boolean isStdin = in == Console.System_in;
 				thread.interrupt();
 
-				Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
+				//Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -113,7 +113,7 @@ public class CommandStatement extends Statement{
 		byte [] buffer = new byte[1024*10];
 		StringBuilder debug = new StringBuilder();
 		private boolean echo;
-		
+
 		public NativeStreamCopier(NativeKeyboard in, OutputStream out,String name, boolean echo) {
 			this.in = in;
 			this.out = out;
@@ -126,7 +126,7 @@ public class CommandStatement extends Statement{
 			started = running = true;
 			try {
 				boolean isSystemOut = (out == Console.System_out) ;
-				
+
 				while(running && !stopping ) {
 					int key = in.read();
 					if( key > 0 ) {
@@ -145,13 +145,13 @@ public class CommandStatement extends Statement{
 			} finally {
 				try {
 					if( in == Console.System_in) {
-						Console.debugFrame.append("Can't close stdin. "+getName()+"\n");
+						//Console.debugFrame.append("Can't close stdin. "+getName()+"\n");
 					} else {
-						Console.debugFrame.append("Closing 01 in."+getName()+"\n");
+						//Console.debugFrame.append("Closing 01 in."+getName()+"\n");
 						in.close();
-						Console.debugFrame.append("Closing 02 in."+getName()+"\n");
+						//Console.debugFrame.append("Closing 02 in."+getName()+"\n");
 						thread.interrupt();
-						Console.debugFrame.append("Closing 03 in."+getName()+"\n");
+						//Console.debugFrame.append("Closing 03 in."+getName()+"\n");
 					}
 				} catch (Exception e2) {}
 				try {
@@ -171,7 +171,7 @@ public class CommandStatement extends Statement{
 				//boolean isStdin = in == Console.System_in;
 				thread.interrupt();
 
-				Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
+				//Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -181,17 +181,17 @@ public class CommandStatement extends Statement{
 
 	}
 
-	public class ExternalProcess extends BaseThread{
+	public static class ExternalProcess extends BaseThread{
 
 		List<String> cmd;
 		ShellContext ctx;
 		int exitCode;
 		Throwable error;
-		
+
 		public ExternalProcess(List<String> cmd, ShellContext ctx) {
 			this.cmd  = cmd;
 			this.ctx = ctx;	
-			
+
 		}
 
 		@Override
@@ -202,8 +202,7 @@ public class CommandStatement extends Statement{
 			StreamCopier sc3 = null;
 
 			try {
-				argsToString(cmd,ctx);
-				
+				String name = cmd.get(0);
 				ProcessBuilder builder = new ProcessBuilder(cmd);
 
 				FileSource dir = ctx.console.getCurrentDirectory();
@@ -221,16 +220,16 @@ public class CommandStatement extends Statement{
 					sc1 = new NativeStreamCopier((NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
 				} else {
 					sc1 = new StreamCopier(ctx.stdin,p.getOutputStream(),name+" stdin");
-					
+
 				}
-				
+
 				sc2 = new StreamCopier(p.getInputStream(),ctx.stdout,name+" stdout");
 				sc3 = new StreamCopier(p.getErrorStream(),ctx.stderr,name+" stderr");
-				
+
 				sc1.start();
 				sc2.start();
 				sc3.start();
-				
+
 				@SuppressWarnings("unused")
 				int time = 0;
 				while(p.isAlive()) {
@@ -284,7 +283,7 @@ public class CommandStatement extends Statement{
 
 			Argument a = args[idx];
 			String val = ""+a.getValue(ctx);
-			
+
 			//TODO: probably need a more comprehensive way to generate file lists
 			if(val.contains("*")  ) {
 
@@ -490,8 +489,8 @@ public class CommandStatement extends Statement{
 			tmp.append(' ');
 			tmp.append(ctx.args[idx]);
 		}
-		
-		
+
+
 		try {
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(tmp.toString());
 			for(Statement s : stmts) {
@@ -506,7 +505,7 @@ public class CommandStatement extends Statement{
 				throw new IOException(e);
 			}			
 		}
-		
+
 		return ret;
 	}
 
@@ -546,24 +545,36 @@ public class CommandStatement extends Statement{
 			}
 		} 
 
-		ExternalProcess ep = new ExternalProcess(cmd, ctx);
-		ep.setName(name);
-		ep.start();
+		argsToString(cmd, ctx);
+		
+		return execute(cmd, ctx);
+	}
 
-		while(!ep.hasStarted()) {
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-			}
-		};
-		while(ep.isRunning()) {
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-			}
-		};
+	public static int execute(List<String> cmd, ShellContext ctx) throws IOException {
+		int ret = 0;
+		if(cmd!=null && cmd.size()>0) {
+			ExternalProcess ep = new ExternalProcess(cmd, ctx);
+			ep.setName(cmd.get(0));
+			ep.start();
 
-		return ep.exitCode;
+			while(!ep.hasStarted()) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+				}
+			};
+			while(ep.isRunning()) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+				}
+			};
+
+			ret =  ep.exitCode;
+		} 
+
+		return ret;
+
 	}
 
 	private FileSource findExecutable(String execName, ShellContext ctx) throws IOException {

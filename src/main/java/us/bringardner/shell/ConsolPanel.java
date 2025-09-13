@@ -2,6 +2,8 @@ package us.bringardner.shell;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
@@ -20,8 +22,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.text.BadLocationException;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 
 public class ConsolPanel extends JPanel implements KeyboardReader {
 
@@ -82,6 +82,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	private JLabel statusLabel;
 	private int lineStart = 0;
 	private int currentPos=0;
+	@SuppressWarnings("unused")
 	private QueueInputStream in;
 	private TextAreaOutputStream out;
 	private String prompt = "% ";
@@ -89,9 +90,6 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	private AtomicBoolean inReadline = new AtomicBoolean(false);
 	private Integer lineIndex;
 
-
-	private static final int UP = 38;
-	private static final int DN = 40;
 
 	/**
 	 * Create the panel.
@@ -311,6 +309,22 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	@Override
 	public PrintStream getStdOut() {
 		return new PrintStream(out);
+	}
+
+	public void clear() {
+		try {
+			SwingUtilities.invokeAndWait(()->{
+				prompt = "";
+				textArea.setText("");
+				lineStart=currentPos=0;			
+			});
+		} catch (InvocationTargetException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
 	}
 
 }
