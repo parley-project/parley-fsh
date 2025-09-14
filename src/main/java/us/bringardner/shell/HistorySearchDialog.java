@@ -4,14 +4,18 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -34,6 +38,7 @@ public class HistorySearchDialog extends JDialog {
 	private List<HistoryEntry> filterd = new ArrayList<>();
 	
 	protected boolean canceled;
+	private JCheckBox consolidateCheckBox;
 	
 	/**
 	 * Launch the application.
@@ -114,15 +119,52 @@ public class HistorySearchDialog extends JDialog {
 				panel.add(filterTextField);
 				filterTextField.setColumns(20);
 			}
+			{
+				consolidateCheckBox = new JCheckBox("Consolidate");
+				consolidateCheckBox.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						actionConsolidate();
+					}
+				});
+				panel.add(consolidateCheckBox);
+			}
 		}
 	}
 
+	private List<HistoryEntry> consolidated = new ArrayList<>();
+	
+	protected void actionConsolidate() {
+		if( consolidateCheckBox.isSelected()) {
+			//List<HistoryEntry> tmp = console.history;
+			Map<String,HistoryEntry> map = new TreeMap<>();
+			for(HistoryEntry e : console.history) {
+				HistoryEntry e2 = map.get(e.command);
+				if( e2 == null ) {
+					map.put(e.command, e);
+				} else {
+					if( e2.time> e.time) {
+						map.put(e.command, e2);
+					}
+				}
+			}
+			List<HistoryEntry> tmp = new ArrayList<>();
+			for(HistoryEntry e : map.values()) {
+				tmp.add(e);
+			}
+			consolidated = tmp;			
+		} else {
+			consolidated = console.history;
+		}
+		actionFilter();
+	}
+
 	protected void actionFilter() {
+		
 		String filter = filterTextField.getText();
 		if( !filter.isEmpty()) {
 			List<HistoryEntry> tmp = new ArrayList<>();
-			for(int idx=0, sz=console.history.size(); idx < sz; idx++) {
-				HistoryEntry he = console.history.get(idx);
+			for(int idx=0, sz=consolidated.size(); idx < sz; idx++) {
+				HistoryEntry he = consolidated.get(idx);
 				if( he.command.contains(filter)) {
 					tmp.add(he);
 				}
@@ -130,7 +172,7 @@ public class HistorySearchDialog extends JDialog {
 			filterd = tmp;
 		
 		} else {
-			filterd = console.history;
+			filterd = consolidated;
 		}
 		((DefaultTableModel)table.getModel()).fireTableDataChanged();
 		
@@ -139,7 +181,7 @@ public class HistorySearchDialog extends JDialog {
 	public String showDialog(Console console) {
 		String ret = null;
 		this.console = console;
-		filterd = console.history;
+		consolidated = filterd = console.history;
 		
 		table.setModel(new DefaultTableModel() {
 			private static final long serialVersionUID = 1L;

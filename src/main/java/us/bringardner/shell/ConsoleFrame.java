@@ -32,10 +32,15 @@ public class ConsoleFrame extends JFrame implements KeyboardReader {
 					
 					frame.setVisible(true);
 					new Thread(()->{
+						int cnt = 0;
 						while(true) {
 							try {
 								String tmp = frame.readLine(console);
-								frame.getStdOut().println("You typed ~"+tmp+"~");
+								if( ++cnt % 2 == 0 ) {
+									frame.getStdOut().println("You typed ~"+tmp+"~");
+								} else {
+									frame.getStdErr().println("You typed ~"+tmp+"~");
+								}
 							} catch (IOException e) {								
 								e.printStackTrace(frame.getStdErr());
 							}
