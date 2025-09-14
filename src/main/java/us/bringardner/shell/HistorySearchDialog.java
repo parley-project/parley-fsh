@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.sql.Date;
@@ -142,8 +141,8 @@ public class HistorySearchDialog extends JDialog {
 				if( e2 == null ) {
 					map.put(e.command, e);
 				} else {
-					if( e2.time> e.time) {
-						map.put(e.command, e2);
+					if( e2.time < e.time) {
+						map.put(e.command, e);
 					}
 				}
 			}
