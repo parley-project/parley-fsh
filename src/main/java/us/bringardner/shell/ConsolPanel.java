@@ -1,6 +1,7 @@
 package us.bringardner.shell;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -19,9 +20,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
+import javax.swing.text.StyledDocument;
 
 public class ConsolPanel extends JPanel implements KeyboardReader {
 
@@ -31,20 +37,50 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 	private class TextAreaOutputStream extends OutputStream {
 
-		JTextArea textArea;
+		JTextPane textArea;
+		private Color color;
 
-		public TextAreaOutputStream(JTextArea text) {
+		public TextAreaOutputStream(JTextPane text,Color color) {
 			textArea = text;
+			this.color = color;
+
 		}
+		
+		
 
 		@Override
 		public void write(int b) throws IOException {
-			SwingUtilities.invokeLater(()->{
-				textArea.append(""+((char)b));
-				lineStart = currentPos = textArea.getCaretPosition();
-			});
+			try {
+				SwingUtilities.invokeAndWait(()->{
+					StyledDocument document = (StyledDocument) textArea.getDocument();
+					try {
+						document.insertString(document.getLength(), ""+((char)b), null);
+						lineStart = currentPos = textArea.getCaretPosition();
+					} catch (BadLocationException e) {
+					}
+
+
+				});
+			} catch (InvocationTargetException | InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
+		@Override
+		public void write(byte[] b, int off, int len) throws IOException {
+			final String str = new String(b,off,len);
+
+			try {
+				SwingUtilities.invokeAndWait(()->{
+						appendToPane(textArea, str, color);												
+				});
+			} catch (InvocationTargetException | InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
 	}
 
 	private class QueueInputStream extends InputStream  {
@@ -77,7 +113,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	QueueInputStream consoleIn;
 	TextAreaOutputStream consoleOut;
 
-	private JTextArea textArea;
+	private JTextPane textArea;
 	private Console console;
 	private JLabel statusLabel;
 	private int lineStart = 0;
@@ -89,6 +125,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	private AtomicReference<String> line = new AtomicReference<>();
 	private AtomicBoolean inReadline = new AtomicBoolean(false);
 	private Integer lineIndex;
+	private TextAreaOutputStream err;
 
 
 	/**
@@ -116,7 +153,8 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 		JScrollPane scrollPane = new JScrollPane();
 		add(scrollPane, BorderLayout.CENTER);
 
-		textArea = new JTextArea();
+		textArea = new JTextPane();
+
 		textArea.addFocusListener(new FocusAdapter() {
 			@Override
 			public void focusGained(FocusEvent e) {
@@ -214,7 +252,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 							}							
 							textArea.setText(all);
 						}
-						
+
 					}
 					break;
 				case KeyEvent.VK_ENTER: 
@@ -243,8 +281,8 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 		});
 
 		in = new QueueInputStream();		
-		out = new TextAreaOutputStream(textArea);
-
+		out = new TextAreaOutputStream(textArea,null);
+		err = new TextAreaOutputStream(textArea,Color.red);
 
 	}
 
@@ -267,10 +305,10 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 				// make sure we're at a line start
 				int pos = textArea.getCaretPosition();
 				if( pos != lineStart) {
-					textArea.append("\n");			
+					appendToPane(textArea,"\n",null);			
 				}
 
-				textArea.append(prompt);
+				appendToPane(textArea,prompt,null);
 				lineStart = textArea.getCaretPosition();
 				currentPos=lineStart;
 				lineIndex = console.history.size();
@@ -293,6 +331,40 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 		return line.get();
 	}
 
+	private void append(JTextPane textArea2, String string) {
+		StyledDocument document = (StyledDocument) textArea2.getDocument();
+		try {
+			int start = document.getLength();
+			int end = start+ string.length();
+
+			document.insertString(start, string, null);
+			textArea2.setCaretPosition(end);
+			lineStart = currentPos = end;
+			System.out.println("set pos ="+end);
+		} catch (BadLocationException e) {
+		}
+
+
+	}
+
+	 private void appendToPane(JTextPane tp, String msg, Color c){
+		 int len = tp.getDocument().getLength();
+		 
+		 if( c !=null) {
+	        StyleContext sc = StyleContext.getDefaultStyleContext();
+	        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+	        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
+	        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
+	        tp.setCaretPosition(len);
+	        tp.setCharacterAttributes(aset, false);
+	        tp.replaceSelection(msg);
+	        
+		 } else {
+			 append(tp, msg);
+		 }
+		 lineStart = currentPos = len+msg.length();
+	    }
+	 
 	@Override
 	public void setPrompt(String prompt) {
 		this.prompt = prompt;
@@ -303,7 +375,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 	@Override
 	public PrintStream getStdErr() {
-		return new PrintStream(out);
+		return new PrintStream(err);
 	}
 
 	@Override
@@ -322,9 +394,9 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
-		
+
+
+
 	}
 
 }
