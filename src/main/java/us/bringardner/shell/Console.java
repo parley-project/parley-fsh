@@ -6,8 +6,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -21,6 +25,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import us.bringardner.core.BaseThread;
+import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
@@ -98,11 +103,18 @@ public class Console extends BaseThread {
 	public static final String VARIABLE_PWD = "PWD";
 	public static final String VARIABLE_TERMINAL_WIDTH = "TERMINAL_WIDTH";
 	public static final String IFS = "IFS";
+	public static final String VARIABLE_PS0 = "PS0";
+	public static final String VARIABLE_PS1 = "PS1";
+	public static final String VARIABLE_PS2 = "PS2";
+	public static final String VARIABLE_PS3 = "PS3";
 	public static final String VARIABLE_PS4 = "PS4";
+
+
 	public static final String VARIABLE_HISTSIZE = "HISTSIZE";
 	public static final String VARIABLE_HISTFILE = "HISTFILE";
 	public static final String VARIABLE_HISTTIMEFORMAT = "HISTTIMEFORMAT";
 	private static final String VARIABLE_HISTCHARS = "histchars";
+	public static final String VERSION = "0.01";
 	private static String bashOps [] = {"-eq", "-ne", "-lt", "-le", "-gt", "-ge"};
 	private static String fsshOps [] = {"==" , "!=" , "<"  , "<=" , ">"  , ">="};
 
@@ -235,7 +247,7 @@ public class Console extends BaseThread {
 
 	public static List<CommandThread> jobs = new ArrayList<>();
 
-	String prompt = "%s > ";
+
 	boolean eof = false;
 	Map<String,Object> alias = new TreeMap<>();
 	public Map<String,FileSourceFactory> factories = new TreeMap<>();
@@ -427,6 +439,11 @@ public class Console extends BaseThread {
 			variables.put(VARIABLE_PWD, mountFactory.getCurrentDirectory().getAbsolutePath());
 			variables.put(VARIABLE_OLDPWD, mountFactory.getCurrentDirectory().getAbsolutePath());
 			variables.put(IFS, " \t\n");
+
+			variables.put(VARIABLE_PS0, "");
+			variables.put(VARIABLE_PS1, "\\s-\\v\\$ ");
+			variables.put(VARIABLE_PS2, "> ");
+			variables.put(VARIABLE_PS3, "#? ");
 			variables.put(VARIABLE_PS4, "+ ");
 			variables.put(VARIABLE_HISTCHARS, "!^#");
 			positionalParameters.add("fssh");
@@ -500,12 +517,16 @@ public class Console extends BaseThread {
 			started = running = true;
 			while(running && !stopping) {
 				try {
-					String prompt2 = String.format(prompt,mountFactory.getCurrentDirectory().getAbsolutePath());					
-					kb.setPrompt(prompt2);
+					String prompt = getPrompt(1);					
+					kb.setPrompt(prompt);
 					String code = kb.readLine(this).trim();
 					if( !code.isEmpty()) {
 						addHistory(code) ;
-
+						prompt = getPrompt(0);
+						if( prompt !=null && !prompt.isEmpty()) {
+							stdOut.append(prompt);
+						}
+						
 						exitCode = executeUsingAntlr(code);
 					}
 
@@ -521,6 +542,309 @@ public class Console extends BaseThread {
 		System.exit(exitCode);
 	}
 
+
+	public String getPrompt(int i) {
+		String ret = "";
+		String name = "PS"+i;
+		Object val = getVariable(name);
+		if( val !=null ) {
+			ret = expandPrompt(""+val,new Date());
+
+		}
+		return ret;
+	}
+
+	ThreadSafeDateFormat fmt = new ThreadSafeDateFormat("EE MMM dd");
+
+	public String strftimeToJava (String val) {
+		StringBuilder ret = new StringBuilder();
+
+		char [] chars = val.toCharArray();
+		for (int idx = 0; idx < chars.length; idx++) {
+			char c = chars[idx];
+			if( c == '%') {
+				c = chars[++idx];
+				switch (c) {
+					// %a	Abbreviated weekday name	Sun
+					case 'a': ret.append("E"); 
+					break;
+					// %A	Full weekday name	Sunday
+					case 'A': ret.append("EEEE"); 
+					break;
+			
+					// %b	Abbreviated month name	Mar
+					case 'b': ret.append("MMM"); 
+					break;
+				
+				// %B	Full month name	March
+					case 'B': ret.append("MMMM"); 
+					break;
+				
+				// %c	Date and time representation	Sun Aug 19 02:56:02 2012
+					case 'c': ret.append("EE MMM dd HH:mm:ss yyyy"); 
+					break;				
+				// %d	Day of the month (01-31)	19
+					case 'd': ret.append("dd"); 
+					break;
+				
+				// %H	Hour in 24h format (00-23)	14
+					case 'H': ret.append("HH"); 
+					break;
+				
+				// %I	Hour in 12h format (01-12)	05
+					case 'I': ret.append("hh"); 
+					break;
+				
+				// %j	Day of the year (001-366)	231
+					case 'j': ret.append("DDD"); 
+					break;
+				
+				// %m	Month as a decimal number (01-12)	08
+					case 'm': ret.append("MM"); 
+					break;
+				
+				// %M	Minute (00-59)	55
+					case 'M': ret.append("mm"); 
+					break;
+				
+				// %p	AM or PM designation	PM
+					case 'p': ret.append("a"); 
+					break;
+				
+				// %S	Second (00-61)	02
+					case 'S': ret.append("ss"); 
+					break;
+				
+				// %U	Week number with the first Sunday as the first day of week one (00-53)	33
+					case 'U': ret.append("www"); 
+					break;
+				
+				// %w	Weekday as a decimal number with Sunday as 0 (0-6)	4
+					case 'w': ret.append("uu"); 
+					break;
+				
+				// %W	Week number with the first Monday as the first day of week one (00-53)	34
+					case 'W': ret.append("www"); 
+					break;
+				
+				// %x	Date representation	08/19/12
+					case 'x': ret.append("MM/dd/yy"); 
+					break;
+				
+				// %X	Time representation	02:50:06
+					case 'X': ret.append("HH:mm:ss"); 
+					break;
+				
+				// %y	Year, last two digits (00-99)	01
+					case 'y': ret.append("yy"); 
+					break;
+				
+				// %Y	Year	2012
+					case 'Y': ret.append("yyyy"); 
+					break;
+				
+				// %Z	Timezone name or abbreviation	CDT
+					case 'Z': ret.append("z"); 
+					break;
+				
+				// %%	A % sign	%
+					case '%': ret.append("%"); 
+					break;
+				
+				default:
+					throw new IllegalArgumentException("Unexpected value: " + c);
+				}
+			} else {
+				ret.append(c);
+			}
+		}
+
+		return ret.toString();
+	}
+
+	public String expandPrompt(String val,Date date) {
+		StringBuilder ret = new StringBuilder();
+		
+		char [] chars = val.toCharArray();
+
+		for (int idx = 0; idx < chars.length; idx++) {
+			char c = chars[idx];
+			if( c == '\\') {
+				if( idx == chars.length-1) {
+					ret.append(c);
+					continue;
+				}
+				
+				char next = chars[++idx];
+
+				switch (next) {
+
+				// \a 	A bell character.
+				case 'a':
+					ret.append(((char)7));
+					break;
+				// \d 	The date, in "Weekday Month Date" format (e.g., "Tue May 26").
+				case 'd': 
+					ret.append(fmt.format(date));
+					break;
+					// \D{format} The format is passed to strftime(3) and the result is inserted into the prompt string; an empty format results in a locale-specific time representation. The braces are required.
+				case 'D': 
+					if( chars[++idx] == '{') {
+						StringBuilder tmp = new StringBuilder();
+						for(idx++; idx < chars.length && chars[idx] != '}';idx++) {
+							tmp.append(chars[idx]);
+						}
+						String fmt = strftimeToJava(tmp.toString());
+						SimpleDateFormat df = new SimpleDateFormat(fmt);
+						ret.append(df.format(date));
+					}
+					break;
+
+					// \e 	An escape character.
+				case 'e': ret.append((char)27); break;
+
+				// \h 	The hostname, up to the first ‘.’.
+				case 'h':
+					try {
+						String name = InetAddress.getLocalHost().getHostName();
+						int ii = name.indexOf('.');
+						if( ii > 0 ) {
+							name = name.substring(0,ii);
+						}
+						ret.append(name);
+					} catch (UnknownHostException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+					break;
+					// \H 	The hostname.
+				case 'H': try {
+					ret.append(InetAddress.getLocalHost().getHostName());
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} 
+				break;
+				// \j	The number of jobs currently managed by the shell.
+				case 'j':
+					ret.append(""+jobs.size());
+					break;
+					// \l	The basename of the shell’s terminal device name (e.g., "ttys0").
+				case 'l':ret.append("fssh"); 
+				break;
+				// \n	A newline.
+				case 'n': ret.append("\n"); 
+				break;
+				// \r 	A carriage return.
+				case 'r': ret.append("\r");
+				break;
+				// \s	The name of the shell: the basename of $0 (the portion following the final slash).
+				case 's':
+					Object p = getPositionalParameters().get(0);
+					if(p !=null ) {
+						ret.append(""+p);
+					} else {
+						ret.append("fssh");
+					}
+				break;
+
+				// \t	The time, in 24-hour HH:MM:SS format.
+				case 't':
+					SimpleDateFormat tfmt1 = new SimpleDateFormat("HH:mm:ss");
+					ret.append(tfmt1.format(date));
+					break;
+					// \T	The time, in 12-hour HH:MM:SS format.
+				case 'T': 
+					SimpleDateFormat tfmt2 = new SimpleDateFormat("hh:mm:ss");
+					ret.append(tfmt2.format(date)); 
+					break;
+					// \@ 	The time, in 12-hour am/pm format.
+				case '@':
+					SimpleDateFormat tfmt3 = new SimpleDateFormat("hh:mm:ss a");
+					ret.append(tfmt3.format(date));
+					break;
+					// \A	The time, in 24-hour HH:MM format.
+				case 'A':
+					SimpleDateFormat tfmt4 = new SimpleDateFormat("HH:mm");
+					ret.append(tfmt4.format(date));
+					break;
+					// \\u	The username of the current user.
+				case 'u':
+					ret.append(System.getProperty("user.name"));
+					break;
+					// \v	The Bash version (e.g., 2.00).
+				case 'v': 
+					ret.append(Console.VERSION);
+					break;
+					// \V	The Bash release, version + patchlevel (e.g., 2.00.0).
+				case 'V': 
+					ret.append(Console.VERSION);
+					break;
+
+				// \w	The value of the PWD shell variable ($PWD), with $HOME abbreviated with a tilde (uses the $PROMPT_DIRTRIM variable).
+				// \W	The basename of $PWD, with $HOME abbreviated with a tilde.
+				case 'w':
+				case 'W':
+					String home = System.getProperty("user.dir");
+					
+					String pwd = ""+getVariable(VARIABLE_PWD);
+					if( pwd.startsWith(home)) {
+						pwd = pwd.substring(home.length());
+						pwd = "~"+pwd;
+					}
+					ret.append(pwd);
+
+					break;
+
+				// \!	The history number of this command.
+				case '!': 
+				// \#	The command number of this command.
+				case '#': 
+					//  not really supported
+					ret.append(""+history.size());
+					break;
+				// \$ If the effective uid is 0, #, otherwise $.
+				case '$':
+					ret.append("$");
+					break;
+					// \nnn	The character whose ASCII code is the octal value nnn.
+					// \\ A backslash.
+				case '\\':
+					ret.append("\\");
+					break;
+
+					// \[Begin a sequence of non-printing characters. This could be used to embed a terminal control sequence into the prompt.
+					// \]End a sequence of non-printing characters.
+					
+				case '[':
+					char tc = chars[++idx];
+					while(tc != ']') {
+						ret.append(tc);
+						tc = chars[++idx];
+					}
+					break;
+				
+				default:
+					if(Character.isDigit(next) ) {
+						if(idx < chars.length-2) {
+							String tmp = ""+chars[idx]+chars[++idx]+chars[++idx];
+							int ascii = Integer.parseInt(tmp, 8);
+							char c2 = (char)ascii;
+							ret.append(c2);
+							continue;
+						}
+					}
+					throw new IllegalArgumentException("Unexpected value: " + next);
+				}
+
+			} else {
+				ret.append(c);
+			}
+		}
+
+		return ret.toString();
+	}
 
 	KeyboardReader keyboardReader;
 
@@ -1037,7 +1361,7 @@ delimiter
 		try {
 
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
-				sc.stdout.println(code);
+				sc.stdout.println(getPrompt(4)+code);
 			}
 
 			code = code.trim();
