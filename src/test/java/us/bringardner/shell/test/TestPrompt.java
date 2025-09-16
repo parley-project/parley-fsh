@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.DayOfWeek;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 import java.util.TreeMap;
@@ -232,7 +230,6 @@ public class TestPrompt extends AbstractConsoleTest {
 	@Test
 	@Order(4)
 	public void testPropmtPS1_04() throws IOException {
-		char bell = 7;
 		
 		String codes = "¢©®";
 		String prompt = "\\["+codes+"]";
