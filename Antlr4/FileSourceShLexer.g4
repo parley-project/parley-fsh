@@ -186,12 +186,13 @@ ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
 LETTER_OR_DIGIT:[a-zA-Z_0-9.];
 fragment COLON: ':';
 P1:COLON MINUS;
+AT:'@';
 TEXT:~[ \t\r\n];
 
 DOLLAR_LPAREN_LPAREN: '$((';
 RPAREN_RPAREN:  '))';
 LPAREN_LPAREN: '((';
-AT:'@';
+
 NOT_CURLY: [ \t]|~[}];
 DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];

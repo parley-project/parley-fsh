@@ -23,7 +23,7 @@ public class TestMountedFactory {
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		//System.out.println("In setup");
+		AbstractConsoleTest.setup("TestFiles");
 	}
 	
 

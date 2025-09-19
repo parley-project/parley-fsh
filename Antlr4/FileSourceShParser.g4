@@ -77,6 +77,7 @@ boolean: TRUE | FALSE;
 id_star:ID STAR | STAR ID;
 
 path_segment: TILDE 
+		| AT
 		| id_star
 		| ID
         | DOT_DOT
@@ -86,7 +87,8 @@ path_segment: TILDE
         | string
         | MINUS
         | MINUS_MINUS
-        | NUMBER        
+        | NUMBER
+                
 		;
 
 path_segment_list: path_segment +;
@@ -383,7 +385,7 @@ parameter: PARAMETER_START PARAMETER_BODY PARAMETER_END;
 		
 parameter1:
      (NOT|PIPE)? ID parameter_index?  parameter_body 
-    |  NOT? (TEXT|AMP|STAR) parameter_body 
+    |  NOT? (TEXT|AT|AMP|STAR) parameter_body 
     |  NOT? expression parameter_index?  parameter_body 
     
     ;
@@ -391,7 +393,7 @@ parameter1:
 
 parameter_index :
 
-		 LSQUARE TEXT RSQUARE
+		 LSQUARE (TEXT|AT) RSQUARE
 		
 		| associative_index
 		| array_index

@@ -63,10 +63,10 @@ import us.bringardner.filesource.sh.FileSourceShPreProcessorLexer;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceChooserDialog;
+import us.bringardner.io.filesource.RecentFileMenu;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.ide.TreeViewer.ShowType;
-import us.bringardner.swing.RecentFileMenu;
 
 public class TreeViewFrame extends JFrame {
 

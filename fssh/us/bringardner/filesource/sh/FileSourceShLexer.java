@@ -32,9 +32,9 @@ public class FileSourceShLexer extends Lexer {
 		REDIRECT_APPEND_OUT=85, COMMA=86, MINUS_ASSIGN=87, STAR_ASSIGN=88, DIV_ASSIGN=89, 
 		MOD_ASSIGN=90, REDIRECT_BOTH=91, REDIRECT_BOTH_2=92, REDIRECT_FROM_ID=93, 
 		REDIRECT_TO_ID=94, DIGIT=95, SPECIAL_UNIX=96, SPECIAL_WINDOWS=97, POS=98, 
-		ARG_ID=99, ID=100, LETTER_OR_DIGIT=101, P1=102, TEXT=103, DOLLAR_LPAREN_LPAREN=104, 
-		RPAREN_RPAREN=105, LPAREN_LPAREN=106, AT=107, NOT_CURLY=108, DECLARE_A=109, 
-		DIVIDE=110, PARAMETER_BODY=111, PARAMETER_END=112, EXPR_BODY=113, EXPR_END=114;
+		ARG_ID=99, ID=100, LETTER_OR_DIGIT=101, P1=102, AT=103, TEXT=104, DOLLAR_LPAREN_LPAREN=105, 
+		RPAREN_RPAREN=106, LPAREN_LPAREN=107, NOT_CURLY=108, DECLARE_A=109, DIVIDE=110, 
+		PARAMETER_BODY=111, PARAMETER_END=112, EXPR_BODY=113, EXPR_END=114;
 	public static final int
 		ParameterMode=1, ExprMode=2;
 	public static String[] channelNames = {
@@ -62,9 +62,9 @@ public class FileSourceShLexer extends Lexer {
 			"COMMA", "MINUS_ASSIGN", "STAR_ASSIGN", "DIV_ASSIGN", "MOD_ASSIGN", "REDIRECT_BOTH", 
 			"REDIRECT_BOTH_2", "REDIRECT_FROM_ID", "REDIRECT_TO_ID", "DIGIT", "SPECIAL_UNIX", 
 			"SPECIAL_WINDOWS", "POS", "ARG_ID", "ID", "LETTER_OR_DIGIT", "COLON", 
-			"P1", "TEXT", "DOLLAR_LPAREN_LPAREN", "RPAREN_RPAREN", "LPAREN_LPAREN", 
-			"AT", "NOT_CURLY", "DECLARE_A", "DECLARE_OP", "DIVIDE", "PARAMETER_BODY", 
-			"PARAMETER_END", "EXPR_BODY", "EXPR_END"
+			"P1", "AT", "TEXT", "DOLLAR_LPAREN_LPAREN", "RPAREN_RPAREN", "LPAREN_LPAREN", 
+			"NOT_CURLY", "DECLARE_A", "DECLARE_OP", "DIVIDE", "PARAMETER_BODY", "PARAMETER_END", 
+			"EXPR_BODY", "EXPR_END"
 		};
 	}
 	public static final String[] ruleNames = makeRuleNames();
@@ -82,7 +82,7 @@ public class FileSourceShLexer extends Lexer {
 			"'do'", "'='", null, null, "'-'", "'|'", "'&'", "'~'", "'?'", "'time'", 
 			"'('", "')'", "'['", "']'", "'&>>'", "'>>'", "','", "'-='", "'*='", "':^:='", 
 			"'%='", "'>&'", "'&>'", null, null, null, null, null, "'^'", null, null, 
-			null, null, null, "'$(('", "'))'", "'(('", "'@'", null, null, "':^:'"
+			null, null, "'@'", null, "'$(('", "'))'", "'(('", null, null, "':^:'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
@@ -102,8 +102,8 @@ public class FileSourceShLexer extends Lexer {
 			"REDIRECT_APPEND_OUT_2", "REDIRECT_APPEND_OUT", "COMMA", "MINUS_ASSIGN", 
 			"STAR_ASSIGN", "DIV_ASSIGN", "MOD_ASSIGN", "REDIRECT_BOTH", "REDIRECT_BOTH_2", 
 			"REDIRECT_FROM_ID", "REDIRECT_TO_ID", "DIGIT", "SPECIAL_UNIX", "SPECIAL_WINDOWS", 
-			"POS", "ARG_ID", "ID", "LETTER_OR_DIGIT", "P1", "TEXT", "DOLLAR_LPAREN_LPAREN", 
-			"RPAREN_RPAREN", "LPAREN_LPAREN", "AT", "NOT_CURLY", "DECLARE_A", "DIVIDE", 
+			"POS", "ARG_ID", "ID", "LETTER_OR_DIGIT", "P1", "AT", "TEXT", "DOLLAR_LPAREN_LPAREN", 
+			"RPAREN_RPAREN", "LPAREN_LPAREN", "NOT_CURLY", "DECLARE_A", "DIVIDE", 
 			"PARAMETER_BODY", "PARAMETER_END", "EXPR_BODY", "EXPR_END"
 		};
 	}
@@ -320,8 +320,8 @@ public class FileSourceShLexer extends Lexer {
 		"\u0001_\u0001_\u0001`\u0001`\u0001a\u0001a\u0001b\u0001b\u0001c\u0001"+
 		"c\u0004c\u0284\bc\u000bc\fc\u0285\u0001c\u0001c\u0005c\u028a\bc\nc\fc"+
 		"\u028d\tc\u0001d\u0001d\u0005d\u0291\bd\nd\fd\u0294\td\u0001e\u0001e\u0001"+
-		"f\u0001f\u0001g\u0001g\u0001g\u0001h\u0001h\u0001i\u0001i\u0001i\u0001"+
-		"i\u0001j\u0001j\u0001j\u0001k\u0001k\u0001k\u0001l\u0001l\u0001m\u0001"+
+		"f\u0001f\u0001g\u0001g\u0001g\u0001h\u0001h\u0001i\u0001i\u0001j\u0001"+
+		"j\u0001j\u0001j\u0001k\u0001k\u0001k\u0001l\u0001l\u0001l\u0001m\u0001"+
 		"m\u0003m\u02ad\bm\u0001n\u0001n\u0001n\u0001n\u0001n\u0001n\u0001n\u0001"+
 		"n\u0001n\u0005n\u02b8\bn\nn\fn\u02bb\tn\u0001n\u0001n\u0004n\u02bf\bn"+
 		"\u000bn\fn\u02c0\u0001o\u0001o\u0001p\u0001p\u0001p\u0001p\u0001q\u0001"+
@@ -446,8 +446,8 @@ public class FileSourceShLexer extends Lexer {
 		"\u0001\u0000\u0000\u0000\u00cb\u028e\u0001\u0000\u0000\u0000\u00cd\u0295"+
 		"\u0001\u0000\u0000\u0000\u00cf\u0297\u0001\u0000\u0000\u0000\u00d1\u0299"+
 		"\u0001\u0000\u0000\u0000\u00d3\u029c\u0001\u0000\u0000\u0000\u00d5\u029e"+
-		"\u0001\u0000\u0000\u0000\u00d7\u02a2\u0001\u0000\u0000\u0000\u00d9\u02a5"+
-		"\u0001\u0000\u0000\u0000\u00db\u02a8\u0001\u0000\u0000\u0000\u00dd\u02ac"+
+		"\u0001\u0000\u0000\u0000\u00d7\u02a0\u0001\u0000\u0000\u0000\u00d9\u02a4"+
+		"\u0001\u0000\u0000\u0000\u00db\u02a7\u0001\u0000\u0000\u0000\u00dd\u02ac"+
 		"\u0001\u0000\u0000\u0000\u00df\u02ae\u0001\u0000\u0000\u0000\u00e1\u02c2"+
 		"\u0001\u0000\u0000\u0000\u00e3\u02c4\u0001\u0000\u0000\u0000\u00e5\u02ca"+
 		"\u0001\u0000\u0000\u0000\u00e7\u02ce\u0001\u0000\u0000\u0000\u00e9\u02d5"+
@@ -659,12 +659,12 @@ public class FileSourceShLexer extends Lexer {
 		"\u0296\u0007\f\u0000\u0000\u0296\u00ce\u0001\u0000\u0000\u0000\u0297\u0298"+
 		"\u0005:\u0000\u0000\u0298\u00d0\u0001\u0000\u0000\u0000\u0299\u029a\u0003"+
 		"\u00cff\u0000\u029a\u029b\u0003\u0097J\u0000\u029b\u00d2\u0001\u0000\u0000"+
-		"\u0000\u029c\u029d\b\r\u0000\u0000\u029d\u00d4\u0001\u0000\u0000\u0000"+
-		"\u029e\u029f\u0005$\u0000\u0000\u029f\u02a0\u0005(\u0000\u0000\u02a0\u02a1"+
-		"\u0005(\u0000\u0000\u02a1\u00d6\u0001\u0000\u0000\u0000\u02a2\u02a3\u0005"+
-		")\u0000\u0000\u02a3\u02a4\u0005)\u0000\u0000\u02a4\u00d8\u0001\u0000\u0000"+
-		"\u0000\u02a5\u02a6\u0005(\u0000\u0000\u02a6\u02a7\u0005(\u0000\u0000\u02a7"+
-		"\u00da\u0001\u0000\u0000\u0000\u02a8\u02a9\u0005@\u0000\u0000\u02a9\u00dc"+
+		"\u0000\u029c\u029d\u0005@\u0000\u0000\u029d\u00d4\u0001\u0000\u0000\u0000"+
+		"\u029e\u029f\b\r\u0000\u0000\u029f\u00d6\u0001\u0000\u0000\u0000\u02a0"+
+		"\u02a1\u0005$\u0000\u0000\u02a1\u02a2\u0005(\u0000\u0000\u02a2\u02a3\u0005"+
+		"(\u0000\u0000\u02a3\u00d8\u0001\u0000\u0000\u0000\u02a4\u02a5\u0005)\u0000"+
+		"\u0000\u02a5\u02a6\u0005)\u0000\u0000\u02a6\u00da\u0001\u0000\u0000\u0000"+
+		"\u02a7\u02a8\u0005(\u0000\u0000\u02a8\u02a9\u0005(\u0000\u0000\u02a9\u00dc"+
 		"\u0001\u0000\u0000\u0000\u02aa\u02ad\u0007\u000e\u0000\u0000\u02ab\u02ad"+
 		"\b\u000f\u0000\u0000\u02ac\u02aa\u0001\u0000\u0000\u0000\u02ac\u02ab\u0001"+
 		"\u0000\u0000\u0000\u02ad\u00de\u0001\u0000\u0000\u0000\u02ae\u02af\u0005"+

@@ -46,7 +46,17 @@
 			<attribute name="optional" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/antlr-4.13.2-complete.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystemViewer"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystem"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlCore"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystemJdbc"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystemSftp"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlIo"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlNetFramework"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BjlNetworkCore"/>
+	<classpathentry kind="lib" path="lib/antlr-4.13.2-complete.jar">
+		<attributes>
+			<attribute name="org.eclipse.jst.component.dependency" value="../"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

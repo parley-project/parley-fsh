@@ -84,6 +84,8 @@ ${parameter:-word}
 		} else if( ctx.expression()!=null) {
 			Expression e = new Expression(ctx.expression());
 			name = ""+ e.evaluate(sc);
+		} else if(ctx.AT()!=null) {
+			name = "@";
 		} else if( bodyText.charAt(0)=='@' || bodyText.charAt(0)=='*') {
 			name = ""+bodyText.charAt(0);
 		} else {
@@ -151,6 +153,9 @@ ${parameter:-word}
 				} else {
 					throw new RuntimeException("No ID in associative array");
 				}
+			} else if( ctx.parameter_index().AT()!=null) {
+				index =  ctx.parameter_index().AT().getText();
+			
 			} else if( ctx.parameter_index().TEXT()!=null) {
 				index =  ctx.parameter_index().TEXT().getText();
 			}
