@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeMap;
 
@@ -249,6 +250,27 @@ public class MountFactory extends FileSourceFactory {
 			throw new IOException("Factories do not match "+f1.getTypeId()+" : "+f2.getTypeId());
 		}
 		return f1.createLink(newFileLink, existingFile);
+	}
+
+	public Map<String, FileSourceFactory> getMounts() {
+		return mounts;
+	}
+
+	public void setMounts(Map<String, FileSourceFactory> mounts) {
+		this.mounts = mounts;
+	}
+
+	public String getMountPoint(FileSourceFactory f) {
+		int id = f.getSessionId();
+		for(Entry<String, FileSourceFactory> m : mounts.entrySet()) {
+			if(m.getValue().getSessionId()==id) {
+				return m.getKey();
+			}
+		}
+		if( id == defaultFactory.getSessionId()) {
+			return "/";
+		}
+		return null;
 	}
 
 }

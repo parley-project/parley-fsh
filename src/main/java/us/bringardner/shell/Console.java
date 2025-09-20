@@ -1430,5 +1430,9 @@ delimiter
 		alias.clear();		
 	}
 
+	public void setMountFactory(MountFactory mount) {
+		mountFactory = mount;		
+	}
+
 
 }

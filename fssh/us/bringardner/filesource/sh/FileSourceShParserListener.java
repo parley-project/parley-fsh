@@ -128,29 +128,15 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitPath_segment_list(FileSourceShParser.Path_segment_listContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code absolutePath}
-	 * labeled alternative in {@link FileSourceShParser#path}.
+	 * Enter a parse tree produced by {@link FileSourceShParser#path}.
 	 * @param ctx the parse tree
 	 */
-	void enterAbsolutePath(FileSourceShParser.AbsolutePathContext ctx);
+	void enterPath(FileSourceShParser.PathContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code absolutePath}
-	 * labeled alternative in {@link FileSourceShParser#path}.
+	 * Exit a parse tree produced by {@link FileSourceShParser#path}.
 	 * @param ctx the parse tree
 	 */
-	void exitAbsolutePath(FileSourceShParser.AbsolutePathContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code relativePath}
-	 * labeled alternative in {@link FileSourceShParser#path}.
-	 * @param ctx the parse tree
-	 */
-	void enterRelativePath(FileSourceShParser.RelativePathContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code relativePath}
-	 * labeled alternative in {@link FileSourceShParser#path}.
-	 * @param ctx the parse tree
-	 */
-	void exitRelativePath(FileSourceShParser.RelativePathContext ctx);
+	void exitPath(FileSourceShParser.PathContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#argument_list}.
 	 * @param ctx the parse tree

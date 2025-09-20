@@ -94,8 +94,9 @@ path_segment: TILDE
 path_segment_list: path_segment +;
 
 path
-    : SLASH path_segment_list (SLASH path_segment_list)*   # absolutePath
-    | path_segment_list (SLASH path_segment_list)*        # relativePath
+    :  SLASH path_segment_list (SLASH path_segment_list)*   
+    | path_segment_list (SLASH path_segment_list)*
+    | SLASH        
     ;
 
 argument_list: (argument WS*)*
