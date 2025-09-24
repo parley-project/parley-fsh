@@ -48,6 +48,15 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 					ret[idx] = getProxy((FileSource) proxy,kids[idx]);
 				}
 		    	return ret;
+		    } else if( name.equals("getChild")) {
+		    	if( result != null ) {
+		    		if (result instanceof FileSource) {
+						FileSource target = (FileSource) result;
+						return getProxy((FileSource)proxy, target);	
+					}
+		    		
+		    		
+		    	}
 		    }
 		    
 		    
@@ -61,6 +70,10 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 			return (RootFile) file;
 		}
 		FileSource file2 = file.getParentFile();
+		if( file2 == null ) {
+			return null;
+		}
+		
 		return findRoot(file2); 
 		
 	}

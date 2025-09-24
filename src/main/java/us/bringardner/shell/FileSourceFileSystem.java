@@ -34,6 +34,7 @@ import java.net.URL;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.ProgressMonitor;
@@ -49,137 +50,180 @@ public class FileSourceFileSystem implements FileSource {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	String name;
-	private FileSource[] kids=new FileSource[0];
-	
-	public FileSourceFileSystem (String name) throws IOException {
-		this.name = name;
-	}
-	
-	public boolean mount(FileSource dir, String name ) throws IOException {
-		for (int idx = 0; idx < kids.length; idx++) {
-			if(kids[idx].getName().equals(name)) {
-				return false;
-			}
+
+	private FileSource primary; 
+	private long lastUpdate = 0;
+	private List<FileSource> kids;
+	private List<RootFile> mounts = new ArrayList<>();
+
+	public FileSourceFileSystem (FileSource primary) throws IOException {
+		if( !primary.isDirectory()) {
+			throw new IOException(primary+" is NOT a directory");
 		}
-		FileSource[] tmp = new FileSource[kids.length+1];
-		for (int idx = 0; idx < kids.length; idx++) {
-			tmp[idx] = kids[idx];				
-		}
-		tmp[tmp.length-1] = new RootFile(name, dir);
-		kids=tmp;
-		return  true;
+		this.primary = primary;
 	}
-	
-	public boolean unmount(String name) throws IOException {
+
+	public boolean mount2(FileSource dir, String mountPoint ) throws IOException {
 		boolean ret = false;
-		int pos = -1;
-		for (int idx = 0; idx < kids.length; idx++) {
-			if(kids[idx].getName().equals(name)) {
-				pos = idx;
-			}
+		if( mountPoint == null || mountPoint.isEmpty() || mountPoint.charAt(0) != '/') {
+			throw new IOException("Invalid mount point = "+mountPoint);
 		}
-		if( pos>=0) {
-			FileSource [] tmp = new FileSource[kids.length-1];			
-			for (int idx = 0,pos2 = 0; idx < kids.length; idx++) {
-				if( idx != pos) {
-					tmp[pos2++] = kids[idx];
+		String [] parts = mountPoint.split("[/]");
+		FileSource parent = primary;
+		for (int idx = 1; idx < parts.length-1; idx++) {
+			String part = parts[idx].trim();
+			System.out.println(""+idx+") "+part);
+			if( !part.isEmpty()) {
+				FileSource tmp = parent.getChild(part);
+				if( !tmp.isDirectory()) {
+					throw new IOException("Invalid mount point : "+part+" is not a directory.");
 				}
+				parent = tmp;
 			}
-			kids = tmp;
-			ret = true;
 		}
+		String name = parts[parts.length-1];
+		FileSource tmp = parent.getChild(name);
+
+		System.out.println("tmp="+tmp);
 		return ret;
 	}
 	
+	public boolean mount(FileSource dir, String name ) throws IOException {
+		FileSource tmp[] = primary.listFiles();		
+		for (int idx = 0; idx < tmp.length; idx++) {
+			if(tmp[idx].getName().equals(name)) {
+				return false;
+			}
+		}
+
+		for (int idx = 0; idx < mounts.size(); idx++) {
+			if( mounts.get(idx).name.equals(name)) {
+				return false;
+			}
+		}
+
+		mounts.add(new RootFile(name, dir,this));
+		kids = null;
+		return  true;
+	}
+
+	public boolean unmount(String name) throws IOException {
+		boolean ret = false;
+		int pos = -1;
+		for(int idx=0,sz=mounts.size(); idx < sz; idx++ ) {
+			RootFile rf = mounts.get(idx);
+			if( rf.name.equals(name)) {
+				pos = idx;
+				break;
+			}
+		}
+		
+		if( pos >=0 ) {
+			ret = mounts.remove(pos) !=null;
+		}
+		
+		return ret;
+	}
+
 	@Override
 	public String toString() {
 		return getAbsolutePath();
 	}
-	
+
+
 	@Override
-	public String getName() {
-		return name;
+	public long length() throws IOException {
+		return primary.length();
 	}
 
 	@Override
-	public long length() {
-		return 0;
+	public boolean isDirectory() throws IOException {
+		return primary.isDirectory();
 	}
 
 	@Override
-	public boolean isDirectory() {
-		return true;
-	}
-
-	@Override
-	public long lastModified() {
-		return 0;
+	public long lastModified() throws IOException {
+		return primary.lastModified();
 	}
 
 	@Override
 	public FileSource[] listFiles() throws IOException {
-		return kids;
+		if( kids == null || (System.currentTimeMillis()-lastUpdate)> 2000) {
+			synchronized (this) {
+				if( kids == null || (System.currentTimeMillis()-lastUpdate)> 2000) {
+					FileSource [] list = primary.listFiles();
+					List<FileSource>  all = new ArrayList<>();
+					for (int idx = 0; idx < list.length; idx++) {
+						all.add( list[idx]);
+					}
+
+					all.addAll(mounts);
+					Collections.sort(all);
+					kids = all;
+				}
+			}
+		}
+
+		return kids.toArray(new FileSource[kids.size()]);
 	}
 
 
-	
+
 	@Override
-	public String getAbsolutePath() {
-		
-		return "/"+name;
+	public String getAbsolutePath() {		
+		return primary.getAbsolutePath();
 	}
 
-	
+
 
 	@Override
 	public InputStream getInputStream() throws IOException {
-		throw new IllegalStateException("Can't get a stream from a root");	
+		throw new IOException("Can't get a stream from a root");	
 	}
 
 	@Override
 	public OutputStream getOutputStream() throws IOException {
-		throw new IllegalStateException("Can't get a stream from a root");
+		throw new IOException("Can't get a stream from a root");
 	}
 
 	@Override
-	public boolean exists() {
-		return true;
+	public boolean exists() throws IOException {
+		return primary.exists();
 	}
 
 	@Override
 	public boolean mkdirs() throws IOException {
-		return true;
+		return primary.mkdirs();
 	}
 
 	@Override
 	public FileSource getParentFile() throws IOException {
-		return null;
+		return primary.getParentFile();
 	}
 
 	@Override
 	public boolean delete() throws IOException {
-		return false;
+		return primary.delete();
 	}
 
 	@Override
 	public void refresh() throws IOException {
-		
+		kids = null;
 	}
 
-	
+
 	public String getTitle() {
 		return getName();
 	}
 
-	
-	public FileSource getLinkedTo() {
-		return null;
+
+	public FileSource getLinkedTo() throws IOException {
+		return primary.getLinkedTo();
 	}
 
 	@Override
 	public int compareTo(Object o) {
-		return toString().compareTo(o.toString());
+		return primary.compareTo(o);
 	}
 
 	@Override
@@ -189,40 +233,55 @@ public class FileSourceFileSystem implements FileSource {
 
 	@Override
 	public String getContentType() {
-		return null;
+		return primary.getContentType();
 	}
 
 	@Override
-	public boolean canRead()  {
-		return true;
+	public boolean canRead() throws IOException  {
+		return primary.canRead();
 	}
 
 	@Override
-	public boolean canWrite()  {
-		return false;
+	public boolean canWrite() throws IOException  {
+		return primary.canWrite();
 	}
 
 	@Override
 	public boolean createNewFile() throws IOException {
-		return false;
+		return primary.createNewFile();
 	}
 
 	@Override
 	public FileSource getChild(String name) throws IOException {
 		FileSource ret = null;
-		for(FileSource kid : kids) {
-			if( kid.getName().equals(name)) {
-				ret = kid;
-				break;
+		
+		for(RootFile rf : mounts) {
+			if(rf.name.equals(name)) {
+				return rf;
 			}
 		}
+	
+		String[] parts = name.split("["+primary.getFileSourceFactory().getSeperatorChar()+"]");
+		FileSource parent = primary;
+		
+		
+		for(String part : parts) {
+			for(RootFile rf : mounts) {
+				if(rf.name.equals(part)) {
+					parent = rf;
+					break;
+				}
+			}
+		}
+		
+		ret =  parent.getChild(parts[parts.length-1]);
 		
 		return ret;
 	}
 
 	@Override
 	public FileSourceFactory getFileSourceFactory() {
-		throw new RuntimeException("Not implemented");
+		return primary.getFileSourceFactory();
 	}
 
 	@Override
@@ -232,18 +291,28 @@ public class FileSourceFileSystem implements FileSource {
 
 	@Override
 	public String getParent() {
-		throw new RuntimeException("Not implemented");
+		return primary.getParent();
 	}
 
 	@Override
 	public boolean isChildOfMine(FileSource child) throws IOException {
+		boolean ret = false;
+		FileSource lastParent =null, tmp= child.getParentFile();
 		
-		throw new RuntimeException("Not implemented");
+		while(tmp !=null) {
+			lastParent = tmp;
+			tmp = tmp.getParentFile();
+		}
+		if( lastParent != null ) {
+			ret = lastParent.getAbsolutePath().equals(primary.getAbsolutePath());
+		}
+		
+		return ret;
 	}
 
 	@Override
 	public boolean isFile() throws IOException {
-		return false;
+		return primary.isFile();
 	}
 
 	@Override
@@ -274,257 +343,266 @@ public class FileSourceFileSystem implements FileSource {
 				list.add(f);
 			}
 		}
-		
+
 		return list.toArray(new FileSource[list.size()]);
 	}
 
 	@Override
 	public boolean mkdir() throws IOException {
-		return false;
+		return primary.mkdir();
 	}
 
 	@Override
 	public boolean renameTo(FileSource dest) throws IOException {
-		return false;
+		return primary.renameTo(dest);
 	}
 
-	
+
 	@Override
 	public boolean setReadOnly() throws IOException {
-		return true;
+		return primary.setReadOnly();
 	}
 
 	@Override
 	public void dereferenceChilderen() {
-		
+		kids = null;
 	}
 
 	@Override
 	public OutputStream getOutputStream(boolean append) throws IOException {
-		throw new IOException();
+		return primary.getOutputStream();
 	}
 
 	@Override
 	public URL toURL() throws MalformedURLException {
-		throw new RuntimeException("Not implemented");
+		return primary.toURL();
 	}
 
 	@Override
 	public boolean isVersionSupported() throws IOException {
-		return false;
+		return primary.isVersionSupported();
 	}
 
 	@Override
 	public long getVersion() throws IOException {
-		return 0;
+		return primary.getVersion();
 	}
 
 	@Override
 	public long getVersionDate() throws IOException {
-		return 0;
+		return primary.getVersionDate();
 	}
 
 	@Override
-	public long getMaxVersion() {
-		return 0;
+	public long getMaxVersion() throws IOException {
+		return primary.getMaxVersion();
 	}
 
 	@Override
 	public InputStream getInputStream(long bytesRec) throws IOException {
-		throw new IOException();
+		return primary.getInputStream();
 	}
 
-	
+
 	@Override
-	public FileSource[] listFiles(ProgressMonitor progress) {
+	public FileSource[] listFiles(ProgressMonitor progress) {		
 		throw new RuntimeException("Not implemented");
 	}
 
 	@Override
-	public boolean isHidden() {
-		return false;
+	public boolean isHidden() throws IOException {
+		return primary.isHidden();
 	}
 
 	@Override
 	public ISeekableInputStream getSeekableInputStream() throws IOException {
-		throw new IOException("ISeekableInputStream not imploemented");
+		return primary.getSeekableInputStream();
 	}
 
-	
+
 	@Override
 	public GroupPrincipal getGroup() throws IOException {		
-		throw new RuntimeException("Not implemented");
+		return primary.getGroup();
 	}
 
 	@Override
 	public UserPrincipal getOwner() throws IOException {
-		throw new RuntimeException("Not implemented");
+		return primary.getOwner();
 	}
 
-	
+
 	@Override
 	public long lastAccessTime() throws IOException {
-		throw new RuntimeException("Not implemented");
+		return primary.lastAccessTime();
 	}
 
 	@Override
 	public long creationTime() throws IOException {
-		throw new RuntimeException("Not implemented");
+		return primary.creationTime();
 	}
 
 	@Override
 	public boolean canOwnerRead() throws IOException {
-		throw new RuntimeException("Not implemented");
+		return primary.canOtherRead();
 	}
 
 	@Override
 	public boolean canOwnerWrite() throws IOException {
-		throw new RuntimeException("Not implemented");
+		return primary.canOwnerWrite();
 	}
 
 	@Override
 	public boolean canOwnerExecute() throws IOException {
-		throw new RuntimeException("Not implemented");
+		return primary.canOwnerExecute();
 	}
 
 	@Override
 	public boolean canGroupRead() throws IOException {
-		return true;
+		return primary.canGroupRead();
 	}
 
 	@Override
 	public boolean canGroupWrite() throws IOException {
-		return false;
+		return primary.canGroupWrite();
 	}
 
 	@Override
 	public boolean canGroupExecute() throws IOException {
-		return false;
+		return primary.canGroupExecute();
 	}
 
 	@Override
 	public boolean canOtherRead() throws IOException {
-		return true;
+		return primary.canOtherRead();
 	}
 
 	@Override
 	public boolean canOtherWrite() throws IOException {
-		return false;
+		return primary.canOtherWrite();
 	}
 
 	@Override
 	public boolean canOtherExecute() throws IOException {
-		return false;
+		return primary.canOtherExecute();
 	}
 
 	@Override
 	public boolean setLastModifiedTime(long time) throws IOException {
-		return false;
+		return primary.setLastModifiedTime(time);
 	}
 
 	@Override
 	public boolean setLastAccessTime(long time) throws IOException {
-		return false;
+		return primary.setLastAccessTime(time);
 	}
 
 	@Override
 	public boolean setCreateTime(long time) throws IOException {
-		return false;
+		return primary.setCreateTime(time);
 	}
 
 	@Override
 	public boolean setExecutable(boolean b) throws IOException {
-		return false;
+		return primary.setExecutable(b);
 	}
 
 	@Override
 	public boolean setReadable(boolean b) throws IOException {
-		return false;
+		return primary.setReadable(b);
 	}
 
 	@Override
 	public boolean setWritable(boolean b) throws IOException {
-		return false;
+		return primary.setWritable(b);
 	}
 
 	@Override
 	public boolean setExecutable(boolean b, boolean ownerOnly) throws IOException {
-		return false;
+		return primary.setExecutable(b,ownerOnly);
 	}
 
 	@Override
 	public boolean setReadable(boolean b, boolean ownerOnly) throws IOException {
-		return false;
+		return primary.setReadable(b, ownerOnly);
 	}
 
 	@Override
 	public boolean setWritable(boolean b, boolean ownerOnly) throws IOException {
-		return false;
+		return primary.setWritable(b, ownerOnly);
 	}
 
 	@Override
 	public boolean setOwnerExecutable(boolean b) throws IOException {
-		return false;
+		return primary.setOtherExecutable(b);
 	}
 
 	@Override
 	public boolean setOwnerReadable(boolean b) throws IOException {
-		return false;
+		return primary.setOtherReadable(b);
 	}
 
 	@Override
 	public boolean setOwnerWritable(boolean b) throws IOException {
-		return false;
+		return primary.setOtherWritable(b);
 	}
 
 	@Override
 	public boolean setGroupExecutable(boolean b) throws IOException {
-		return false;
+		return primary.setGroupExecutable(b); 
 	}
 
 	@Override
 	public boolean setGroupReadable(boolean b) throws IOException {
-		return false;
+		return primary.setGroupReadable(b);
 	}
 
 	@Override
 	public boolean setGroupWritable(boolean b) throws IOException {
-		return false;
+		return primary.setGroupWritable(b);
 	}
 
 	@Override
 	public boolean setOtherExecutable(boolean b) throws IOException {
-		return false;
+		return primary.setOtherExecutable(b);
 	}
 
 	@Override
 	public boolean setOtherReadable(boolean b) throws IOException {
-		return false;
+		return primary.setOtherReadable(b);
 	}
 
 	@Override
 	public boolean setOtherWritable(boolean b) throws IOException {
-		return false;
+		return primary.setOtherWritable(b);
 	}
 
 	@Override
 	public boolean setVersionDate(long time) throws IOException {
-		return false;
+		return primary.setVersionDate(time);
 	}
 
 	@Override
 	public boolean setVersion(long version, boolean saveChange) throws IOException {
-		return false;
+		return primary.setVersion(version, saveChange);
 	}
 
 	@Override
 	public boolean setGroup(GroupPrincipal group) throws IOException {
-		return false;
+		return primary.setGroup(group);
 	}
 
 	@Override
 	public boolean setOwner(UserPrincipal owner) throws IOException {
-		return false;
+		return primary.setOwner(owner);
 	}
-	
+
+	@Override
+	public String getName() {		
+		return primary.getName();
+	}
+
+	public List<RootFile> getMounts() {
+		return mounts;
+	}
+
 }

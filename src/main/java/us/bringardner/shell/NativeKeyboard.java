@@ -312,12 +312,12 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 	 */
 	private String readLineConsole(Console console) throws IOException {
 		if( prompt !=null) {
-			System.out.print(prompt);
+			console.getStdOut().print(prompt);
 		}
 
 		StringBuffer ret = new StringBuffer();
 		boolean done = false;
-		int i = System.in.read();
+		int i = console.getStdIn().read();
 		boolean escape=false;
 		boolean eof = false;
 		if( !eof) {
@@ -372,5 +372,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 	@Override
 	public PrintStream getStdOut() {
 		return System.out;
+	}
+	@Override
+	public InputStream getStdIn() {
+		return System.in;
 	}
 }

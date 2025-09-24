@@ -1,6 +1,7 @@
 package us.bringardner.shell;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 
 public interface KeyboardReader {
@@ -28,6 +29,17 @@ public interface KeyboardReader {
 		public PrintStream getStdOut() {
 			return localReader.getStdOut();
 		}
+
+		@Override
+		public InputStream getStdIn() {
+			return localReader.getStdIn();
+		}
+
+		@Override
+		public void setEditLineText(String text) {
+			localReader.setEditLineText(text);
+			
+		}
 	};
 	
 	public static KeyboardReader getKeyboadReader() {
@@ -37,10 +49,12 @@ public interface KeyboardReader {
 	
 	public  String readLine(Console console) throws IOException;	
 	public void setPrompt(String prompt);
-
+	public void setEditLineText(String text);
 	public PrintStream getStdErr();
 
 	public PrintStream getStdOut();
+
+	public InputStream getStdIn();
 	
 
 }

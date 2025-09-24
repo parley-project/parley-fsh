@@ -45,8 +45,8 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 			this.color = color;
 
 		}
-		
-		
+
+
 
 		@Override
 		public void write(int b) throws IOException {
@@ -73,7 +73,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 			try {
 				SwingUtilities.invokeAndWait(()->{
-						appendToPane(textArea, str, color);												
+					appendToPane(textArea, str, color);												
 				});
 			} catch (InvocationTargetException | InterruptedException e) {
 				// TODO Auto-generated catch block
@@ -110,15 +110,12 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	}
 
 
-	QueueInputStream consoleIn;
-	TextAreaOutputStream consoleOut;
 
 	private JTextPane textArea;
 	private Console console;
 	private JLabel statusLabel;
 	private int lineStart = 0;
 	private int currentPos=0;
-	@SuppressWarnings("unused")
 	private QueueInputStream in;
 	private TextAreaOutputStream out;
 	private String prompt = "% ";
@@ -126,6 +123,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	private AtomicBoolean inReadline = new AtomicBoolean(false);
 	private Integer lineIndex;
 	private TextAreaOutputStream err;
+	private String editLineText;
 
 
 	/**
@@ -312,6 +310,16 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 				lineStart = textArea.getCaretPosition();
 				currentPos=lineStart;
 				lineIndex = console.history.size();
+				if( editLineText !=null ) {
+					StyledDocument document = (StyledDocument) textArea.getDocument();
+					try {
+						document.insertString(currentPos, editLineText, null);
+					} catch (BadLocationException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					textArea.setCaretPosition(currentPos+editLineText.length());
+				}
 				System.out.println("pos="+pos+" lisn="+lineStart+" len="+textArea.getText().length()+" idx="+lineIndex); 
 
 
@@ -326,45 +334,49 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 			} catch (InterruptedException e) {
 			}
 		}
-
+		editLineText = null;
 
 		return line.get();
 	}
 
 	private void append(JTextPane textArea2, String string) {
-		StyledDocument document = (StyledDocument) textArea2.getDocument();
-		try {
-			int start = document.getLength();
-			int end = start+ string.length();
+		if( string != null) {
+			StyledDocument document = (StyledDocument) textArea2.getDocument();
+			try {
+				int start = document.getLength();
+				int end = start+ string.length();
 
-			document.insertString(start, string, null);
-			textArea2.setCaretPosition(end);
-			lineStart = currentPos = end;
-			System.out.println("set pos ="+end);
-		} catch (BadLocationException e) {
+				document.insertString(start, string, null);
+				textArea2.setCaretPosition(end);
+				lineStart = currentPos = end;
+				System.out.println("set pos ="+end);
+			} catch (BadLocationException e) {
+			}
 		}
 
 
 	}
 
-	 private void appendToPane(JTextPane tp, String msg, Color c){
-		 int len = tp.getDocument().getLength();
-		 
-		 if( c !=null) {
-	        StyleContext sc = StyleContext.getDefaultStyleContext();
-	        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
-	        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
-	        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
-	        tp.setCaretPosition(len);
-	        tp.setCharacterAttributes(aset, false);
-	        tp.replaceSelection(msg);
-	        
-		 } else {
-			 append(tp, msg);
-		 }
-		 lineStart = currentPos = len+msg.length();
-	    }
-	 
+	private void appendToPane(JTextPane tp, String msg, Color c){
+		if( msg !=null) {
+			int len = tp.getDocument().getLength();
+
+			if( c !=null) {
+				StyleContext sc = StyleContext.getDefaultStyleContext();
+				AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+				aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
+				aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
+				tp.setCaretPosition(len);
+				tp.setCharacterAttributes(aset, false);
+				tp.replaceSelection(msg);
+
+			} else {
+				append(tp, msg);
+			}
+			lineStart = currentPos = len+msg.length();
+		}
+	}
+
 	@Override
 	public void setPrompt(String prompt) {
 		this.prompt = prompt;
@@ -397,6 +409,17 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 
 
+	}
+
+	@Override
+	public InputStream getStdIn() {
+		return in;
+	}
+
+	@Override
+	public void setEditLineText(String text) {
+		this.editLineText= text;
+		
 	}
 
 }

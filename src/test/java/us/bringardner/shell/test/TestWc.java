@@ -145,7 +145,7 @@ public class TestWc {
 		String expect = ("156     537    3710");
 		String actual = executeCommand("wc < AbcFile.php").trim();
 		if( !expect.equals(actual)) {
-			throw new IOException("wc < AbcFile.php  does not match]n"+expect+"\n"+actual);
+			throw new IOException("wc < AbcFile.php  does not match expect='"+expect+"' actual='"+actual+"'");
 		}
 		
 	}

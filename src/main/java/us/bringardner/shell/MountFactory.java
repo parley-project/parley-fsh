@@ -3,8 +3,8 @@ package us.bringardner.shell;
 import java.awt.Component;
 import java.io.IOException;
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeMap;
 
@@ -14,64 +14,27 @@ import us.bringardner.io.filesource.FileSourceFactory;
 public class MountFactory extends FileSourceFactory {
 
 	private static final long serialVersionUID = 1L;
-	FileSourceFactory defaultFactory;
-	Map<String,FileSourceFactory> mounts = new TreeMap<>();
-	FileSource [] roots = new FileSource[0];
+	FileSource [] roots;
+	FileSourceFileSystem fileSystem;
 	private FileSource currentDirectory;
 
 	public MountFactory() throws IOException {
-		defaultFactory = FileSourceFactory.getDefaultFactory();
-		roots = defaultFactory.listRoots();	
+		FileSource localRoot = FileSourceFactory.getDefaultFactory().listRoots()[0];
+		fileSystem = new FileSourceFileSystem(localRoot);
+		FileSource[] tmp = {fileSystem};
+		roots = tmp;
 		currentDirectory = roots[0];
 	}
 
 	public boolean mount(FileSourceFactory factory, String name) throws IOException {
-		boolean ret = !mounts.containsKey(name);
-		if( ret ) {
-
-			FileSource [] kids = factory.listRoots();
-			FileSource[] tmp = new FileSource[roots.length+kids.length];
-			for (int idx = 0; idx < roots.length; idx++) {
-				tmp[idx] = roots[idx];				
-			}
-			for (int idx = roots.length; idx < tmp.length; idx++) {
-				tmp[idx] = new RootFile(name, kids[idx-roots.length]);
-			}
-			roots = tmp;
-			mounts.put(name, factory);
-		}
+		boolean ret = fileSystem.mount(factory.listRoots()[0], name);
 
 		return ret;
 	}
 
 	public boolean unmount(String name) throws IOException {
-		boolean ret = mounts.containsKey(name);
-		if( ret ) {
-			FileSourceFactory mnt = mounts.remove(name);
-			if( mnt != null ) {
-				int pos = -1;
-				for (int idx = 0; idx < roots.length; idx++) {
-					if( roots[idx].getName().equals(name)) {
-						pos = idx;
-						break;
-					}
-				}
-				if( pos < 0 ) {
-					ret = false;
-				} else {
-
-					FileSource[] tmp = new FileSource[roots.length-1];
-					for (int idx = 0,pos1=0; idx < roots.length; idx++) {
-						if( idx != pos) {
-							tmp[pos1++] = roots[idx];
-						}
-					}
-					mnt.disConnect();
-					roots = tmp;
-				}
-			}
-		}
-
+		boolean ret = fileSystem.unmount(name);
+		
 		return ret;
 	}
 
@@ -101,73 +64,51 @@ public class MountFactory extends FileSourceFactory {
 			throw new IOException("Invalide file name");
 		}
 
-		if( path.equals("/")) {
-			return roots[0];
+		if(path.indexOf('~') >=0) {
+			throw new IOException("Invalide file name path has ~");
 		}
 
+		if( path.equals("/")) {
+			return fileSystem;
+		}
+		
 		if( path.equals(".")) {
 			return getCurrentDirectory();
 		}
-		if( path.equals("..")) {
-			return getCurrentDirectory().getParentFile();
+		
+		
+		String parts[] = path.split("["+getSeperatorChar()+"]");
+		FileSource ret = fileSystem;
+		if( path.charAt(0) != '/') {
+			ret = getCurrentDirectory();
 		}
 		
-		FileSource parent = null;
-		if( path.startsWith("..")) {
-			parent = getCurrentDirectory().getParentFile();
-		}
-		
-		if( path.startsWith("~") ) {
-			path = getCurrentDirectory().getAbsolutePath()+path.substring(1);
-		}
-		
-		//  the local file system should have "" as name
-		String mountPoint = "";
-		String childPath = path;
-
-		char sep = getPathSeperatorChar();
-
-		if( path.charAt(0) != sep) {
-			parent =  getCurrentDirectory();
-		} else {
-			int idx1 = path.indexOf(sep, 1);
-			if( idx1 > 0 ) {
-				mountPoint = path.substring(0,idx1);
-				childPath = path.substring(idx1+1);
-			}
-			for (int idx = 0; idx < roots.length; idx++) {
-				FileSource rf = roots[idx];
-				String  rootName = rf.getAbsolutePath();
-				if( rootName.equals(mountPoint)) {
-					parent = rf;	
-					break;
-				} else if( rootName.equals(childPath)) {
-					return rf;						
-				}
+		for(String part : parts) {
+			if( part.equals(".")|| part.isEmpty()) {
+				continue;
 			}
 			
+			if( part.equals("..")) {
+				ret = ret.getParentFile();
+				if( ret == null) {
+					throw new IOException("Invalide file name .. too far");
+				}
+			} else {
+				ret = ret.getChild(part);
+			}
 		}
+		
+		
 
-		if( parent == null ) {
-			return defaultFactory.createFileSource(path);
-		} else {
-			return parent.getChild(childPath);
-		}
+		return ret;
 		
 	}
 
-	public FileSource createFileSource1(String fullPath) throws IOException {
-		int idx = fullPath.indexOf(getSeperatorChar(), 1);
-		if( idx <=0 ) {
-			return FileSourceFactory.getDefaultFactory().createFileSource(fullPath);
-		}
-		String name = fullPath.substring(1, idx);
-		FileSourceFactory factory = mounts.get(name);
-		if( factory == null ) {
-			return FileSourceFactory.getDefaultFactory().createFileSource(fullPath);
-		}
+	
 
-		return null;
+	private FileSource getHomeDirectory() throws IOException {
+		//String home = System.getProperty("user.home");
+		throw new IOException("This should be managed by the Console");
 	}
 
 	@Override
@@ -252,25 +193,15 @@ public class MountFactory extends FileSourceFactory {
 		return f1.createLink(newFileLink, existingFile);
 	}
 
-	public Map<String, FileSourceFactory> getMounts() {
-		return mounts;
-	}
-
-	public void setMounts(Map<String, FileSourceFactory> mounts) {
-		this.mounts = mounts;
-	}
-
-	public String getMountPoint(FileSourceFactory f) {
-		int id = f.getSessionId();
-		for(Entry<String, FileSourceFactory> m : mounts.entrySet()) {
-			if(m.getValue().getSessionId()==id) {
-				return m.getKey();
-			}
+	public Map<String, FileSource> getMounts() {
+		Map<String, FileSource> ret = new TreeMap<>();
+		List<RootFile> mounts = fileSystem.getMounts();
+		for(RootFile rf : mounts) {
+			ret.put(rf.name, rf);
 		}
-		if( id == defaultFactory.getSessionId()) {
-			return "/";
-		}
-		return null;
+		return ret;
 	}
 
+	
+	
 }

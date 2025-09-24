@@ -55,9 +55,11 @@ public class RootFile implements FileSource {
 	private static final long serialVersionUID = 1L;
 	String name = "mount";
 	FileSource target;
+	private FileSource parent;
 	
-	public RootFile (String name, FileSource dir) throws IOException {
+	public RootFile (String name, FileSource dir,FileSource parent) throws IOException {
 		target = dir;
+		this.parent = parent;
 		this.name = name;
 	}
 	
@@ -139,7 +141,7 @@ public class RootFile implements FileSource {
 
 	@Override
 	public FileSource getParentFile() throws IOException {
-		return null;
+		return parent;
 	}
 
 	@Override
@@ -158,8 +160,8 @@ public class RootFile implements FileSource {
 	}
 
 	
-	public FileSource getLinkedTo() {
-		return null;
+	public FileSource getLinkedTo() throws IOException {
+		return target.getLinkedTo();
 	}
 
 	@Override
@@ -209,23 +211,23 @@ public class RootFile implements FileSource {
 
 	@Override
 	public String getCanonicalPath() throws IOException {
-		return getAbsolutePath();
+		return target.getCanonicalPath();
 	}
 
 	@Override
-	public String getParent() {
-		return null;
+	public String getParent() {		
+		return parent == null?null:parent.getName();
 	}
 
 	@Override
 	public boolean isChildOfMine(FileSource child) throws IOException {
-		
-		throw new RuntimeException("Not implemented");
+		boolean ret = child.getAbsolutePath().startsWith(getAbsolutePath());
+		return ret;
 	}
 
 	@Override
 	public boolean isFile() throws IOException {
-		return false;
+		return target.isFile();
 	}
 
 	@Override

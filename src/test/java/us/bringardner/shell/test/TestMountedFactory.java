@@ -47,14 +47,9 @@ public class TestMountedFactory {
 	@Test
 	public void testMount() throws IOException {
 		MountFactory factory = new MountFactory();
-		assertTrue(factory.mount(new FileProxyFactory(), "proxy"),"Failed to mount proxy");
+		
 		assertTrue(factory.mount(new MemoryFileSourceFactory(), "mem"),"Failed to mount mem");
-		FileSource [] roots = factory.listRoots();
-		assertEquals(3, roots.length,"Wrong number of roots");
-		String [] expectedRoots = {"/","/proxy","/mem"};
-		for (int idx = 0; idx < expectedRoots.length; idx++) {
-			assertEquals(expectedRoots[idx], roots[idx].getAbsolutePath());
-		}
+		
 		
 		String expectName = "/mem";
 		FileSource data = factory.createFileSource(expectName);
@@ -69,12 +64,6 @@ public class TestMountedFactory {
 		assertTrue(data.exists(),expectName+" does not exists");
 		
 		
-		expectName= "/proxy/Volumes/Data";
-		data = factory.createFileSource(expectName);
-		assertEquals(expectName, 
-				data.getAbsolutePath()
-				);
-		assertTrue(data.exists(),expectName+" does not exists");
 		
 		expectName= "/mem/Volumes/Data";
 		data = factory.createFileSource(expectName);

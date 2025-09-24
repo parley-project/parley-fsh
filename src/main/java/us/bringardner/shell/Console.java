@@ -250,7 +250,7 @@ public class Console extends BaseThread {
 
 	boolean eof = false;
 	Map<String,Object> alias = new TreeMap<>();
-	public Map<String,FileSourceFactory> factories = new TreeMap<>();
+	
 	private MountFactory mountFactory;
 	public boolean forceHeadless=true;
 	public boolean isInteractive=true;
@@ -302,7 +302,6 @@ public class Console extends BaseThread {
 
 	public Console(ShellContext ctx) {
 		this();
-		factories = ctx.console.factories;
 		mountFactory = ctx.console.mountFactory;
 		positionalParameters.clear();
 		if( ctx.args !=null) {
@@ -427,8 +426,7 @@ public class Console extends BaseThread {
 			environmentVariables.put(VARIABLE_HISTFILE, "~/.fssh_history");
 
 
-			mountFactory = new MountFactory();
-			factories.put(mountFactory.getTypeId(), mountFactory);
+			mountFactory = new MountFactory();			
 			String home = System.getProperty("user.home");
 			//  the java environment HOME does not match the java property user.home
 			environmentVariables.put("HOME", home);
@@ -509,7 +507,7 @@ public class Console extends BaseThread {
 		KeyboardReader kb = getKeyboadReader();
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
-		stdIn = System.in;
+		stdIn =  kb.getStdIn();
 
 		readHistory();
 
