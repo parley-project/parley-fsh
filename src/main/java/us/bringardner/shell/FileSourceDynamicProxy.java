@@ -57,6 +57,11 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 		    		
 		    		
 		    	}
+		    } else if( name.equals("isChildOfMine") && args.length==1) {
+		    	String child = args[0].toString();
+		    	String parent = proxy.toString();
+		    	boolean ret = child.startsWith(parent);
+		    	result = ret;
 		    }
 		    
 		    

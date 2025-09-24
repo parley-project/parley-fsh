@@ -24,7 +24,6 @@ import us.bringardner.shell.FileSourceFileSystem;
 @TestMethodOrder(OrderAnnotation.class)
 public class TestFileSourceFileSystem extends AbstractConsoleTest{
 
-	public static String fileDate;
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
