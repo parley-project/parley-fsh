@@ -106,11 +106,6 @@ public class MountFactory extends FileSourceFactory {
 
 	
 
-	private FileSource getHomeDirectory() throws IOException {
-		//String home = System.getProperty("user.home");
-		throw new IOException("This should be managed by the Console");
-	}
-
 	@Override
 	public String getTypeId() {
 		return "mountedFileSystem";
@@ -200,6 +195,17 @@ public class MountFactory extends FileSourceFactory {
 			ret.put(rf.name, rf);
 		}
 		return ret;
+	}
+
+	public String getMountPoint(FileSourceFactory f) {
+		int id = f.getSessionId();
+		for(RootFile mount : fileSystem.getMounts()) {
+			if( mount.target.getFileSourceFactory().getSessionId() == id) {
+				return mount.name;
+			}
+		}
+		
+		return null;
 	}
 
 	

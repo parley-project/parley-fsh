@@ -537,7 +537,9 @@ public class Console extends BaseThread {
 			saveHistory();
 		}
 
-		System.exit(exitCode);
+		if(!isInteractive) {
+			System.exit(exitCode);
+		}
 	}
 
 
