@@ -76,8 +76,13 @@ public class Ls extends ShellCommand {
 				if( !arg.isEmpty()) {
 					List<FileSource> files = getFiles(ctx, arg);
 					sort(ctx,args,files);
-					for(FileSource file : files) { 
-						list(lsctx,args, file);
+					for(FileSource file : files) {
+						if( file.exists()) {
+							list(lsctx,args, file);
+						} else {
+							ctx.stderr.print("ls: "+file+" no such file or directory");
+							return 1;
+						}
 					}
 				}
 
