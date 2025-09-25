@@ -46,6 +46,7 @@ import us.bringardner.shell.commands.History;
 import us.bringardner.shell.commands.Jobs;
 import us.bringardner.shell.commands.Ln;
 import us.bringardner.shell.commands.Ls;
+import us.bringardner.shell.commands.Mkdir;
 import us.bringardner.shell.commands.Pwd;
 import us.bringardner.shell.commands.Read;
 import us.bringardner.shell.commands.Return;
@@ -125,6 +126,7 @@ public class Console extends BaseThread {
 		commands.put("dirs", new DirStack());
 		commands.put("popd", new DirStack());
 		commands.put("pushd", new DirStack());
+		registerCommand(new Mkdir());
 		registerCommand(new Clear());
 		registerCommand(new Cd());
 		registerCommand(new Eval());
