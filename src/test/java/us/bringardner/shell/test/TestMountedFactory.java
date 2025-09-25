@@ -20,9 +20,9 @@ import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
 import us.bringardner.shell.MountFactory;
 import us.bringardner.shell.RootFile;
 
-public class TestMountedFactory {
+public class TestMountedFactory extends AbstractConsoleTest {
 
-	public static String fileDate;
+	
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
@@ -30,10 +30,6 @@ public class TestMountedFactory {
 	}
 
 
-	@AfterAll
-	public static void afterAll() {
-		//System.out.println("After all");
-	}
 
 	private static void fillDir(FileSource dir,int i) throws IOException {
 		for(int idx=0; idx < 10; idx++ ) {
@@ -204,4 +200,207 @@ public class TestMountedFactory {
 	}
 
 
+	@Test
+	public void testMount3() throws Exception {
+		String code = "connect memory /mem\n";
+		ExecuteResult res = executeCommand(code, "");
+
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("memory connected as /mem\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = "cd /mem\n";
+
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = 
+				"for (( i=1; i<=10; i++ ))\n"
+						+ "do  \n"
+						+ " mkdir \"Level$i\"\n"
+						+ " cd \"Level$i\"\n"
+						//+ " pwd\n"
+						+ "done"
+						;
+
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = "ls /mem/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+
+	}
+
+
+
+	@Test
+	public void testMkdir1() throws Exception {
+		String code = "connect memory /mem2\n";
+		ExecuteResult res = executeCommand(code, "");
+
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("memory connected as /mem2\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = "cd /mem2\n";
+
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = 
+				"for (( i=1; i<=10; i++ ))\n"
+						+ "do  \n"
+						+ " mkdir -v \"Level$i\"\n"
+						+ " cd \"Level$i\"\n"
+						+ "done"
+						;
+
+		String expect = "mkdir: /mem2/Level1\n"
+				+ "mkdir: /mem2/Level1/Level2\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5/Level6\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n"
+				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
+				;
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals(expect,new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = "ls /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+
+	}
+
+
+
+	@Test
+	public void testMkdir2() throws Exception {
+		String code = "connect memory /mem3\n";
+		ExecuteResult res = executeCommand(code, "");
+
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("memory connected as /mem3\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = "cd /mem3\n";
+
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = 
+				"  mkdir -pv /mem3/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
+
+				;
+
+		String expect = "mkdir: /mem3/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
+				;
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals(expect,new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+		code = "ls /mem3/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+
+	}
+
+
+
+	@Test
+	public void testMkdir3() throws Exception {
+
+		String code = "connect memory /mem4\n";
+		ExecuteResult res = executeCommand(code, "");
+
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("memory connected as /mem4\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+
+
+		code = "mkdir -v /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
+				;
+
+		String expect = "mkdir: could not create directory for /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"				
+				;
+		
+		res = executeCommand(code, "");
+		assertEquals(expect,new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(1, res.exitCode);
+
+		code = "ls -l /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
+		res = executeCommand(code, "");
+		assertEquals("ls: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9 no such file or directory",new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(1, res.exitCode);
+
+
+	}
+
+
+
+	@Test
+	public void testMkdir5() throws Exception {
+		String code = "connect memory /mem5\n";
+		ExecuteResult res = executeCommand(code, "");
+	
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("memory connected as /mem5\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+	
+		code = "cd /mem5\n";
+	
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+	
+		code = 
+				"for (( i=1; i<=10; i++ ))\n"
+						+ "do  \n"
+						+ " mkdir \"Level$i\"\n"
+						+ " cd \"Level$i\"\n"
+						+ "done"
+						;
+	
+		String expect = ""
+				;
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals(expect,new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+	
+		code = "ls /mem5/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
+		res = executeCommand(code, "");
+		assertEquals("",new String(res.bae.toByteArray()));
+		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+	
+	
+	}
 }
