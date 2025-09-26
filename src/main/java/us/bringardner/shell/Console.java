@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
@@ -28,6 +29,7 @@ import us.bringardner.core.BaseThread;
 import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
@@ -118,8 +120,42 @@ public class Console extends BaseThread {
 	public static final String VERSION = "0.01";
 	private static String bashOps [] = {"-eq", "-ne", "-lt", "-le", "-gt", "-ge"};
 	private static String fsshOps [] = {"==" , "!=" , "<"  , "<=" , ">"  , ">="};
+	/*
+[n]<<[-]word
+        here-document
+delimiter
+	 */
+	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?<<\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
+	private static final Pattern expandBrace = Pattern.compile("(?<pre>[a-zA-Z_0-9\\-_]+)?(\\{)(?<start>[a-zA-Z0-9_]+)\\.\\.(?<end>[a-zA-Z0-9_]+)(\\.\\.(?<inc>[0-9]+))?\\}(?<post>[a-zA-Z0-9_]+)?", Pattern.CASE_INSENSITIVE);
+	public static boolean debugPositional = false;
+	//terminal used for debugging
+	public static PrintStream System_out = System.out;
+	public static PrintStream System_err = System.err;
+	public static InputStream System_in = System.in;
+	private InputStream stdIn = null;
+	private PrintStream stdOut = System.out;
+	private PrintStream stdErr = System.err;
+	public List<HistoryEntry> history = new ArrayList<>();
+	private int lastExitCode;
+	private String adminMessage;
+
 
 	public static Map<String,ShellCommand> commands;
+
+	public static List<CommandThread> jobs = new ArrayList<>();
+
+
+	boolean eof = false;
+	Map<String,Object> alias = new TreeMap<>();
+
+	private MountFactory mountFactory;
+	public boolean forceHeadless=true;
+	public boolean isInteractive=true;
+	Map<String,Object> variables = new TreeMap<>();
+	List<Object> positionalParameters = new ArrayList<>();
+	public List<Option> options = new ArrayList<>();
+	private Map<String,Object> environmentVariables = new TreeMap<>();
+	DebugContext debugContext = new DebugContext();
 
 	static {
 		commands = new TreeMap<>();
@@ -247,20 +283,6 @@ public class Console extends BaseThread {
 
 
 
-	public static List<CommandThread> jobs = new ArrayList<>();
-
-
-	boolean eof = false;
-	Map<String,Object> alias = new TreeMap<>();
-	
-	private MountFactory mountFactory;
-	public boolean forceHeadless=true;
-	public boolean isInteractive=true;
-	Map<String,Object> variables = new TreeMap<>();
-	List<Object> positionalParameters = new ArrayList<>();
-	public List<Option> options = new ArrayList<>();
-	private Map<String,Object> environmentVariables = new TreeMap<>();
-	DebugContext debugContext = new DebugContext();
 
 	public static void main(String args[]) throws IOException {
 
@@ -500,8 +522,6 @@ public class Console extends BaseThread {
 	}
 
 
-	public List<HistoryEntry> history = new ArrayList<>();
-	private int lastExitCode;
 
 	@Override
 	public void run() {
@@ -517,6 +537,10 @@ public class Console extends BaseThread {
 			started = running = true;
 			while(running && !stopping) {
 				try {
+					if(adminMessage!=null) {
+						stdOut.println(adminMessage);
+						adminMessage = null;
+					}
 					String prompt = getPrompt(1);					
 					kb.setPrompt(prompt);
 					String code = kb.readLine(this).trim();
@@ -526,7 +550,7 @@ public class Console extends BaseThread {
 						if( prompt !=null && !prompt.isEmpty()) {
 							stdOut.append(prompt);
 						}
-						
+
 						exitCode = executeUsingAntlr(code);
 					}
 
@@ -567,92 +591,92 @@ public class Console extends BaseThread {
 			if( c == '%') {
 				c = chars[++idx];
 				switch (c) {
-					// %a	Abbreviated weekday name	Sun
-					case 'a': ret.append("E"); 
-					break;
-					// %A	Full weekday name	Sunday
-					case 'A': ret.append("EEEE"); 
-					break;
-			
-					// %b	Abbreviated month name	Mar
-					case 'b': ret.append("MMM"); 
-					break;
-				
+				// %a	Abbreviated weekday name	Sun
+				case 'a': ret.append("E"); 
+				break;
+				// %A	Full weekday name	Sunday
+				case 'A': ret.append("EEEE"); 
+				break;
+
+				// %b	Abbreviated month name	Mar
+				case 'b': ret.append("MMM"); 
+				break;
+
 				// %B	Full month name	March
-					case 'B': ret.append("MMMM"); 
-					break;
-				
+				case 'B': ret.append("MMMM"); 
+				break;
+
 				// %c	Date and time representation	Sun Aug 19 02:56:02 2012
-					case 'c': ret.append("EE MMM dd HH:mm:ss yyyy"); 
-					break;				
+				case 'c': ret.append("EE MMM dd HH:mm:ss yyyy"); 
+				break;				
 				// %d	Day of the month (01-31)	19
-					case 'd': ret.append("dd"); 
-					break;
-				
+				case 'd': ret.append("dd"); 
+				break;
+
 				// %H	Hour in 24h format (00-23)	14
-					case 'H': ret.append("HH"); 
-					break;
-				
+				case 'H': ret.append("HH"); 
+				break;
+
 				// %I	Hour in 12h format (01-12)	05
-					case 'I': ret.append("hh"); 
-					break;
-				
+				case 'I': ret.append("hh"); 
+				break;
+
 				// %j	Day of the year (001-366)	231
-					case 'j': ret.append("DDD"); 
-					break;
-				
+				case 'j': ret.append("DDD"); 
+				break;
+
 				// %m	Month as a decimal number (01-12)	08
-					case 'm': ret.append("MM"); 
-					break;
-				
+				case 'm': ret.append("MM"); 
+				break;
+
 				// %M	Minute (00-59)	55
-					case 'M': ret.append("mm"); 
-					break;
-				
+				case 'M': ret.append("mm"); 
+				break;
+
 				// %p	AM or PM designation	PM
-					case 'p': ret.append("a"); 
-					break;
-				
+				case 'p': ret.append("a"); 
+				break;
+
 				// %S	Second (00-61)	02
-					case 'S': ret.append("ss"); 
-					break;
-				
+				case 'S': ret.append("ss"); 
+				break;
+
 				// %U	Week number with the first Sunday as the first day of week one (00-53)	33
-					case 'U': ret.append("www"); 
-					break;
-				
+				case 'U': ret.append("www"); 
+				break;
+
 				// %w	Weekday as a decimal number with Sunday as 0 (0-6)	4
-					case 'w': ret.append("uu"); 
-					break;
-				
+				case 'w': ret.append("uu"); 
+				break;
+
 				// %W	Week number with the first Monday as the first day of week one (00-53)	34
-					case 'W': ret.append("www"); 
-					break;
-				
+				case 'W': ret.append("www"); 
+				break;
+
 				// %x	Date representation	08/19/12
-					case 'x': ret.append("MM/dd/yy"); 
-					break;
-				
+				case 'x': ret.append("MM/dd/yy"); 
+				break;
+
 				// %X	Time representation	02:50:06
-					case 'X': ret.append("HH:mm:ss"); 
-					break;
-				
+				case 'X': ret.append("HH:mm:ss"); 
+				break;
+
 				// %y	Year, last two digits (00-99)	01
-					case 'y': ret.append("yy"); 
-					break;
-				
+				case 'y': ret.append("yy"); 
+				break;
+
 				// %Y	Year	2012
-					case 'Y': ret.append("yyyy"); 
-					break;
-				
+				case 'Y': ret.append("yyyy"); 
+				break;
+
 				// %Z	Timezone name or abbreviation	CDT
-					case 'Z': ret.append("z"); 
-					break;
-				
+				case 'Z': ret.append("z"); 
+				break;
+
 				// %%	A % sign	%
-					case '%': ret.append("%"); 
-					break;
-				
+				case '%': ret.append("%"); 
+				break;
+
 				default:
 					throw new IllegalArgumentException("Unexpected value: " + c);
 				}
@@ -666,7 +690,7 @@ public class Console extends BaseThread {
 
 	public String expandPrompt(String val,Date date) {
 		StringBuilder ret = new StringBuilder();
-		
+
 		char [] chars = val.toCharArray();
 
 		for (int idx = 0; idx < chars.length; idx++) {
@@ -676,7 +700,7 @@ public class Console extends BaseThread {
 					ret.append(c);
 					continue;
 				}
-				
+
 				char next = chars[++idx];
 
 				switch (next) {
@@ -685,7 +709,7 @@ public class Console extends BaseThread {
 				case 'a':
 					ret.append(((char)7));
 					break;
-				// \d 	The date, in "Weekday Month Date" format (e.g., "Tue May 26").
+					// \d 	The date, in "Weekday Month Date" format (e.g., "Tue May 26").
 				case 'd': 
 					ret.append(fmt.format(date));
 					break;
@@ -721,14 +745,27 @@ public class Console extends BaseThread {
 
 					break;
 					// \H 	The hostname.
-				case 'H': try {
-					ret.append(InetAddress.getLocalHost().getHostName());
-				} catch (UnknownHostException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} 
-				break;
-				// \j	The number of jobs currently managed by the shell.
+				case 'H': 
+					try {
+						String host = InetAddress.getLocalHost().getHostName();
+						FileSource cwd = getCurrentDirectory();
+						if (!(cwd instanceof FileProxy)) {
+							Properties prop = cwd.getFileSourceFactory().getConnectProperties();
+							String tmp = prop.getProperty("Host");
+							if( tmp == null ) {
+								tmp = prop.getProperty("host");
+							}
+							if( tmp != null) {
+								host = tmp;
+							}							
+						}
+						ret.append(host);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} 
+					break;
+					// \j	The number of jobs currently managed by the shell.
 				case 'j':
 					ret.append(""+jobs.size());
 					break;
@@ -747,11 +784,11 @@ public class Console extends BaseThread {
 					if(p !=null ) {
 						ret.append(""+p);
 					} else {
-						ret.append("fssh");
+						ret.append("");
 					}
-				break;
+					break;
 
-				// \t	The time, in 24-hour HH:MM:SS format.
+					// \t	The time, in 24-hour HH:MM:SS format.
 				case 't':
 					SimpleDateFormat tfmt1 = new SimpleDateFormat("HH:mm:ss");
 					ret.append(tfmt1.format(date));
@@ -784,12 +821,12 @@ public class Console extends BaseThread {
 					ret.append(Console.VERSION);
 					break;
 
-				// \w	The value of the PWD shell variable ($PWD), with $HOME abbreviated with a tilde (uses the $PROMPT_DIRTRIM variable).
-				// \W	The basename of $PWD, with $HOME abbreviated with a tilde.
+					// \w	The value of the PWD shell variable ($PWD), with $HOME abbreviated with a tilde (uses the $PROMPT_DIRTRIM variable).
+					// \W	The basename of $PWD, with $HOME abbreviated with a tilde.
 				case 'w':
 				case 'W':
 					String home = System.getProperty("user.dir");
-					
+
 					String pwd = ""+getVariable(VARIABLE_PWD);
 					if( pwd.startsWith(home)) {
 						pwd = pwd.substring(home.length());
@@ -799,14 +836,14 @@ public class Console extends BaseThread {
 
 					break;
 
-				// \!	The history number of this command.
+					// \!	The history number of this command.
 				case '!': 
-				// \#	The command number of this command.
+					// \#	The command number of this command.
 				case '#': 
 					//  not really supported
 					ret.append(""+history.size());
 					break;
-				// \$ If the effective uid is 0, #, otherwise $.
+					// \$ If the effective uid is 0, #, otherwise $.
 				case '$':
 					ret.append("$");
 					break;
@@ -818,7 +855,7 @@ public class Console extends BaseThread {
 
 					// \[Begin a sequence of non-printing characters. This could be used to embed a terminal control sequence into the prompt.
 					// \]End a sequence of non-printing characters.
-					
+
 				case '[':
 					char tc = chars[++idx];
 					while(tc != ']') {
@@ -826,7 +863,7 @@ public class Console extends BaseThread {
 						tc = chars[++idx];
 					}
 					break;
-				
+
 				default:
 					if(Character.isDigit(next) ) {
 						if(idx < chars.length-2) {
@@ -982,21 +1019,6 @@ public class Console extends BaseThread {
 	}
 
 
-	/*
-[n]<<[-]word
-        here-document
-delimiter
-	 */
-	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?<<\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
-	private static final Pattern expandBrace = Pattern.compile("(?<pre>[a-zA-Z_0-9\\-_]+)?(\\{)(?<start>[a-zA-Z0-9_]+)\\.\\.(?<end>[a-zA-Z0-9_]+)(\\.\\.(?<inc>[0-9]+))?\\}(?<post>[a-zA-Z0-9_]+)?", Pattern.CASE_INSENSITIVE);
-	public static boolean debugPositional = false;
-	//terminal used for debugging
-	public static PrintStream System_out = System.out;
-	public static PrintStream System_err = System.err;
-	public static InputStream System_in = System.in;
-	private InputStream stdIn = null;
-	private PrintStream stdOut = System.out;
-	private PrintStream stdErr = System.err;
 
 	/**
 	 * 
@@ -1280,7 +1302,8 @@ delimiter
 
 
 
-	public FileSource getCurrentDirectory() throws IOException {		
+	public FileSource getCurrentDirectory() throws IOException {
+
 		return mountFactory.getCurrentDirectory();
 	}
 
@@ -1306,7 +1329,9 @@ delimiter
 
 
 	public void setCurrentDirectory(FileSource dir) throws IOException {
-		mountFactory.setCurrentDirectory(dir);		
+		setVariable(VARIABLE_OLDPWD, getCurrentDirectory().getAbsolutePath());
+		mountFactory.setCurrentDirectory(dir);				
+		setVariable(VARIABLE_PWD, dir.getAbsolutePath());
 	}
 
 	public boolean isOptionEnabled(Option o) {
@@ -1343,6 +1368,14 @@ delimiter
 		return Collections.unmodifiableMap(environmentVariables);
 	}
 
+
+	public String getAdminMessage() {
+		return adminMessage;
+	}
+
+	public void setAdminMessage(String adminMessage) {
+		this.adminMessage = adminMessage;
+	}
 
 	public int executeUsingAntlr(String code)  {
 		//TODO: REmove after testing is complete
