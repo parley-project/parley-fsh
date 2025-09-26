@@ -88,7 +88,7 @@ public class FileSourceFileSystem implements FileSource {
 		return ret;
 	}
 	
-	public boolean mount(FileSource dir, String name ) throws IOException {
+	public synchronized boolean mount(FileSource dir, String name ) throws IOException {
 		FileSource tmp[] = primary.listFiles();		
 		for (int idx = 0; idx < tmp.length; idx++) {
 			if(tmp[idx].getName().equals(name)) {
@@ -107,7 +107,7 @@ public class FileSourceFileSystem implements FileSource {
 		return  true;
 	}
 
-	public boolean unmount(String name) throws IOException {
+	public  synchronized boolean unmount(String name) throws IOException {
 		boolean ret = false;
 		int pos = -1;
 		for(int idx=0,sz=mounts.size(); idx < sz; idx++ ) {
@@ -147,7 +147,7 @@ public class FileSourceFileSystem implements FileSource {
 	}
 
 	@Override
-	public FileSource[] listFiles() throws IOException {
+	public  synchronized FileSource[] listFiles() throws IOException {
 		if( kids == null || (System.currentTimeMillis()-lastUpdate)> 2000) {
 			synchronized (this) {
 				if( kids == null || (System.currentTimeMillis()-lastUpdate)> 2000) {
@@ -252,7 +252,7 @@ public class FileSourceFileSystem implements FileSource {
 	}
 
 	@Override
-	public FileSource getChild(String name) throws IOException {
+	public  synchronized FileSource getChild(String name) throws IOException {
 		FileSource ret = null;
 		
 		for(RootFile rf : mounts) {
@@ -603,6 +603,15 @@ public class FileSourceFileSystem implements FileSource {
 
 	public List<RootFile> getMounts() {
 		return mounts;
+	}
+
+	public String getMount(FileSourceFactory f) {
+		for(RootFile rf : mounts) {
+			if(rf.getFileSourceFactory().getSessionId()==f.getSessionId()) {
+				return rf.name;
+			}
+		}
+		return null;
 	}
 
 }
