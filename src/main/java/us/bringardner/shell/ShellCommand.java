@@ -287,7 +287,7 @@ public abstract class ShellCommand {
 		if( isRelative(path)) {
 			cwd = ctx.console.getCurrentDirectory();
 		} else {
-			cwd = ctx.console.getMountFactory().roots[0];
+			cwd = ctx.console.getMountFactory().listRoots()[0];
 			path = path.substring(1);
 		}
 
