@@ -15,12 +15,12 @@ public class MountFactory extends FileSourceFactory {
 
 	private static final long serialVersionUID = 1L;
 	private FileSource [] roots;
-	private FileSourceFileSystem fileSystem;
+	private VirtualFileSystem fileSystem;
 	private FileSource currentDirectory;
 
 	public MountFactory() throws IOException {
 		FileSource localRoot = FileSourceFactory.getDefaultFactory().listRoots()[0];
-		fileSystem = new FileSourceFileSystem(localRoot);
+		fileSystem = new VirtualFileSystem(localRoot);
 		FileSource[] tmp = {fileSystem};
 		roots = tmp;
 		currentDirectory = roots[0];
@@ -208,11 +208,11 @@ public class MountFactory extends FileSourceFactory {
 		return null;
 	}
 
-	public FileSourceFileSystem getFileSystem() {
+	public VirtualFileSystem getFileSystem() {
 		return fileSystem;
 	}
 
-	public void setFileSystem(FileSourceFileSystem fileSystem) {
+	public void setFileSystem(VirtualFileSystem fileSystem) {
 		this.fileSystem = fileSystem;
 	}
 

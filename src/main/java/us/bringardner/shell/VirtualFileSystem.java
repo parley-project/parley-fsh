@@ -44,7 +44,7 @@ import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.FileSourceFilter;
 import us.bringardner.io.filesource.ISeekableInputStream;
 
-public class FileSourceFileSystem implements FileSource {
+public class VirtualFileSystem implements FileSource {
 
 	/**
 	 * 
@@ -56,7 +56,7 @@ public class FileSourceFileSystem implements FileSource {
 	private List<FileSource> kids;
 	private List<RootFile> mounts = new ArrayList<>();
 
-	public FileSourceFileSystem (FileSource primary) throws IOException {
+	public VirtualFileSystem (FileSource primary) throws IOException {
 		if( !primary.isDirectory()) {
 			throw new IOException(primary+" is NOT a directory");
 		}

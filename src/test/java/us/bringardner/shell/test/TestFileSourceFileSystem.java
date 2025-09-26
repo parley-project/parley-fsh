@@ -19,7 +19,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
-import us.bringardner.shell.FileSourceFileSystem;
+import us.bringardner.shell.VirtualFileSystem;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestFileSourceFileSystem extends AbstractConsoleTest{
@@ -60,7 +60,7 @@ public class TestFileSourceFileSystem extends AbstractConsoleTest{
 		FileSource localRoot = FileSourceFactory.getDefaultFactory().createFileSource("/");
 		FileSource [] localkids = localRoot.listFiles();
 		
-		FileSourceFileSystem fs = new FileSourceFileSystem(localRoot);
+		VirtualFileSystem fs = new VirtualFileSystem(localRoot);
 		
 		assertEquals("/", fs.toString());
 		assertEquals("/", fs.getAbsolutePath());
