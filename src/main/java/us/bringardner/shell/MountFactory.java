@@ -14,8 +14,8 @@ import us.bringardner.io.filesource.FileSourceFactory;
 public class MountFactory extends FileSourceFactory {
 
 	private static final long serialVersionUID = 1L;
-	FileSource [] roots;
-	FileSourceFileSystem fileSystem;
+	private FileSource [] roots;
+	private FileSourceFileSystem fileSystem;
 	private FileSource currentDirectory;
 
 	public MountFactory() throws IOException {
@@ -206,6 +206,14 @@ public class MountFactory extends FileSourceFactory {
 		}
 		
 		return null;
+	}
+
+	public FileSourceFileSystem getFileSystem() {
+		return fileSystem;
+	}
+
+	public void setFileSystem(FileSourceFileSystem fileSystem) {
+		this.fileSystem = fileSystem;
 	}
 
 	
