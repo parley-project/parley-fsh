@@ -1,11 +1,14 @@
 package us.bringardner.shell;
 
 import java.awt.EventQueue;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 public class ConsoleFrame extends JFrame implements KeyboardReader {
@@ -56,7 +59,16 @@ public class ConsoleFrame extends JFrame implements KeyboardReader {
 
 	public ConsoleFrame(Console console) {
 		this();
-		consolePanel.setConsole(console);
+		consolePanel.setConsole(console);		
+		console.addChangeListner(Console.VARIABLE_PWD, new PropertyChangeListener() {
+			
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				SwingUtilities.invokeLater(()->{
+					setTitle(evt.getNewValue().toString());
+				});				
+			}
+		});
 	}
 
 	/**
