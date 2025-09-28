@@ -44,7 +44,14 @@ public abstract class AbstractConsoleTest {
 	public static class ExecuteResult {
 		int exitCode=0;		
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
+		ByteArrayOutputStream bae = new ByteArrayOutputStream();	
+		
+		public String toString() {
+			return "Exitcode="+exitCode+"\n"
+					+ "out="+(new String(bao.toByteArray()))+"\n"
+					+ "err="+(new String(bae.toByteArray()))+"\n"
+					;
+		}
 	}
 	
 	public static ExecuteResult executeCommand(String command,String stdIn,String ... args) {
