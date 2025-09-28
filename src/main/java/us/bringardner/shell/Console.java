@@ -1,6 +1,8 @@
 package us.bringardner.shell;
 
 import java.awt.GraphicsEnvironment;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,6 +43,7 @@ import us.bringardner.shell.commands.Cp;
 import us.bringardner.shell.commands.DirStack;
 import us.bringardner.shell.commands.Echo;
 import us.bringardner.shell.commands.Eval;
+import us.bringardner.shell.commands.Exec;
 import us.bringardner.shell.commands.Exit;
 import us.bringardner.shell.commands.Export;
 import us.bringardner.shell.commands.Help;
@@ -57,6 +60,7 @@ import us.bringardner.shell.commands.Set;
 import us.bringardner.shell.commands.Shift;
 import us.bringardner.shell.commands.Sleep;
 import us.bringardner.shell.commands.Touch;
+import us.bringardner.shell.commands.Trap;
 import us.bringardner.shell.commands.Unalias;
 import us.bringardner.shell.commands.Unmount;
 import us.bringardner.shell.commands.Wc;
@@ -138,7 +142,7 @@ delimiter
 	public List<HistoryEntry> history = new ArrayList<>();
 	private int lastExitCode;
 	private String adminMessage;
-
+	private Map<String,List<PropertyChangeListener>> listners = new TreeMap<>();
 
 	public static Map<String,ShellCommand> commands;
 
@@ -162,33 +166,48 @@ delimiter
 		commands.put("dirs", new DirStack());
 		commands.put("popd", new DirStack());
 		commands.put("pushd", new DirStack());
-		registerCommand(new Mkdir());
+		registerCommand(new Alias());
+		
 		registerCommand(new Clear());
 		registerCommand(new Cd());
+		registerCommand(new Cp());
+		registerCommand(new Connect());
+				
 		registerCommand(new Eval());
-		registerCommand(new History());
-		registerCommand(new Shift());
-		registerCommand(new Unalias());
-		registerCommand(new Alias());
-		registerCommand(new Read());
 		registerCommand(new Exit());
+		registerCommand(new Exec());
+		registerCommand(new Echo());
+		registerCommand(new Export());
+		
+		registerCommand(new Help());
+		registerCommand(new History());
+
 		registerCommand(new Jobs());
+		
+		registerCommand(new Ln());
+		registerCommand(new Ls());
+		
+		registerCommand(new Mkdir());
+		
+		registerCommand(new Pwd());
+		
+		
+		registerCommand(new Return());
+		registerCommand(new Rm());
+		registerCommand(new Read());
+		
+		registerCommand(new Shift());
 		registerCommand(new Sleep());
 		registerCommand(new Set());
-		registerCommand(new Return());
-		registerCommand(new Export());
-		registerCommand(new Ls());
-		registerCommand(new Wc());
-		registerCommand(new Pwd());
-		registerCommand(new Connect());
-		registerCommand(new Unmount());
-		registerCommand(new Help());
-		registerCommand(new Wc());
-		registerCommand(new Cp());
-		registerCommand(new Rm());
-		registerCommand(new Ln());
+		
+		
 		registerCommand(new Touch());
-		registerCommand(new Echo());
+		registerCommand(new Trap());
+		
+		registerCommand(new Unalias());
+		registerCommand(new Unmount());
+		
+		registerCommand(new Wc());
 	}
 
 	private static int nextPid = 0;
@@ -352,7 +371,23 @@ delimiter
 		}
 	}
 
+	public void addChangeListner(String name,PropertyChangeListener listner) {		
+		List<PropertyChangeListener> tmp = listners.get(name);
+		if( tmp == null) {
+			tmp = new ArrayList<>();
+			listners.put(name,tmp);
+		}
+		tmp.add(listner);		
+	}
 
+	public void removePropertyChangeListener(PropertyChangeListener l) {
+		for(String name: listners.keySet()) {
+			List<PropertyChangeListener> ll = listners.get(name);
+			if( ll != null) {
+				ll.remove(l);
+			}
+		}
+	}
 
 	public InputStream getStdIn() {
 		return stdIn;
@@ -565,6 +600,11 @@ delimiter
 
 		if(!isInteractive) {
 			System.exit(exitCode);
+		} else {
+			if (kb instanceof ConsoleFrame) {
+				ConsoleFrame cf = (ConsoleFrame) kb;
+				cf.dispose();
+			}
 		}
 	}
 
@@ -892,9 +932,12 @@ delimiter
 			synchronized (this) {
 				if( keyboardReader==null ) {
 					if( !GraphicsEnvironment.isHeadless()) {
-						ConsoleFrame ret = new ConsoleFrame();
+						ConsoleFrame ret = new ConsoleFrame(this);
 						try {
-							SwingUtilities.invokeAndWait(()->{
+							if( SwingUtilities.isEventDispatchThread()) {
+								ret.setLocationRelativeTo(null);			
+								ret.setVisible(true);											
+							} else SwingUtilities.invokeAndWait(()->{
 								ret.setLocationRelativeTo(null);			
 								ret.setVisible(true);			
 							});
@@ -1297,7 +1340,17 @@ delimiter
 
 
 	public void setVariable(String name, Object value) {
+		Object old = variables.get(name);
 		variables.put(name, value);		
+		List<PropertyChangeListener> tmp = listners.get(name);
+		if( tmp !=null) {
+			new Thread(()->{
+				PropertyChangeEvent event = new PropertyChangeEvent(Console.this, name, old, value);
+				for(PropertyChangeListener l : tmp) {
+					l.propertyChange(event);
+				}
+			}).start();
+		}
 	}
 
 
