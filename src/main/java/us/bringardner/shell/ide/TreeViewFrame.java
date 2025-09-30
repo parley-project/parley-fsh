@@ -78,6 +78,7 @@ public class TreeViewFrame extends JFrame {
 	private String originalCode = "";
 	private String code = "";
 	private JCheckBox myTreeCheckBox;
+	private JCheckBox showPositionCheckBox;
 	private JTextPane treeTextPane;
 	private FileSource file;
 	private JTextPane colTextPane;
@@ -347,7 +348,11 @@ public class TreeViewFrame extends JFrame {
 		parserClassComboBox.setSelectedIndex(0);
 		controlPanel.add(parserClassComboBox);
 		controlPanel.add(rulesComboBox);
-
+		
+		showPositionCheckBox = new JCheckBox("Show Position");
+		showPositionCheckBox.setSelected(true);
+		buttonGroup.add(showPositionCheckBox);
+		
 		showBothRadioButton = new JRadioButton("Both");
 		showBothRadioButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -592,6 +597,8 @@ public class TreeViewFrame extends JFrame {
 			treePanel.removeAll();
 			if( myTreeCheckBox.isSelected()) {
 				viewer = new TreeViewer(Arrays.asList(names),parser.getVocabulary(), tree);
+				viewer.setShowPosition(showPositionCheckBox.isSelected());
+				
 				if( showBothRadioButton.isSelected()) {
 					viewer.setShowType(ShowType.Both);
 				} else if( showTextRadioButton.isSelected()) {
