@@ -151,7 +151,7 @@ STAR:'*';
 POW:'**';
 DO:'do';
 EQ:'=';
-EQUALITY:'=='|'-eq';
+EQUALITY:'=='|'-eq'|'=~';
 NOT_EQ:'!='|'-ne';
 MINUS:'-';
 PIPE:'|';
