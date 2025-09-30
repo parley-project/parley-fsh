@@ -33,11 +33,14 @@ public class Connect extends ShellCommand{
 
 			//put in a list to make it easier to manage
 			List<String> args = new ArrayList<>();
-			for(String arg : ctx.args) {
+			for(int idx=0; idx<this.args.length; idx++) {
+				String arg = ""+this.args[idx].getValue(ctx);
+				if( arg.equals("-f")) {
+					arg = "-f="+this.args[++idx].getValue(ctx); 
+				}
 				args.add(arg);
 			}
 
-			args.removeFirst();
 			String fid = args.removeFirst();
 			FileSourceFactory tmp = FileSourceFactory.getFileSourceFactory(fid);
 			if( tmp == null ) {
