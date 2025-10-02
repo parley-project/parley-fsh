@@ -31,7 +31,7 @@ public class TestTrap extends AbstractConsoleTest {
 				+ "echo line 2\n"
 				;
 		ExecuteResult res = executeCommand(code, "");
-		System.out.println("res="+res);
+		System.out.println("testTrap00 needs work ");
 
 
 	}
@@ -42,7 +42,7 @@ public class TestTrap extends AbstractConsoleTest {
 				+ "trap 'exit 2' KILL HUP INT QUIT TERM"
 				;
 		ExecuteResult res = executeCommand(code, "");
-		System.out.println(res);
+		System.out.println("testTrap01 needs work res="+res);
 		try (Scanner in = new Scanner(System.in)) {
 			String line = in.next();
 			while(line !=null) {

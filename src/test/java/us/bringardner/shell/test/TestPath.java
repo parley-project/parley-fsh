@@ -32,7 +32,7 @@ EOF                  '<EOF>'
 		//path = "function f () { echo s}";
 		//path = "f () { echo s}";
 		path = "export a=x";
-		System.out.println("path="+path);
+		//System.out.println("path="+path);
 		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(path));
 		CommonTokenStream tokens = new CommonTokenStream(lexer);
 		tokens.fill();
