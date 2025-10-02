@@ -154,12 +154,8 @@ public abstract class ShellCommand {
 	}
 
 	public static String prepWildCards(String cleanPath,boolean greedy) {
-		String ret1 = cleanPath;
-		for (int idx1 = 0; idx1 < posixClass.length; idx1++) {
-			String tmp = replaceAll(ret1,posixClass[idx1], javaClass[idx1]);
-			ret1 = tmp;
-		}
-
+		String ret1 = posixToJava(cleanPath);
+		
 		StringBuilder ret = new StringBuilder();
 		char [] data = ret1.toCharArray();
 		for (char c : data) {
@@ -181,6 +177,16 @@ public abstract class ShellCommand {
 		}
 		return ret.toString();
 
+	}
+
+	public static String posixToJava(String cleanPath) {
+		String ret = cleanPath;
+		for (int idx1 = 0; idx1 < posixClass.length; idx1++) {
+			String tmp = replaceAll(ret,posixClass[idx1], javaClass[idx1]);
+			ret = tmp;
+		}
+
+		return ret;
 	}
 
 	/**
