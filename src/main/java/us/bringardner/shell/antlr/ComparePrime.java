@@ -159,10 +159,10 @@ rx_pattern
 			String left = ret.substring(0,idx+1);
 			String right = ret.substring(idx+2);
 			String tmp = left+right;
-			String tmp2 = ShellCommand.prepWildCards(tmp);
+			String tmp2 = ShellCommand.posixToJava(tmp);
 			ret = "[^"+tmp2+"]";
 		} else {
-			ret = ShellCommand.prepWildCards(ret);
+			ret = ShellCommand.posixToJava(ret);
 		}
 		return ret;
 	}
