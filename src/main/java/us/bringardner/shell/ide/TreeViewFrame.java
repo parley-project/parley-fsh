@@ -351,7 +351,9 @@ public class TreeViewFrame extends JFrame {
 		
 		showPositionCheckBox = new JCheckBox("Show Position");
 		showPositionCheckBox.setSelected(true);
-		buttonGroup.add(showPositionCheckBox);
+		showPositionCheckBox.addActionListener(e->actionCodeChanged());
+		
+		controlPanel.add(showPositionCheckBox);
 		
 		showBothRadioButton = new JRadioButton("Both");
 		showBothRadioButton.addActionListener(new ActionListener() {

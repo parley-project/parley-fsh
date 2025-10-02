@@ -20,8 +20,9 @@ public abstract class ShellCommand {
  https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
  https://sourceforge.net/projects/javacurses/
 	 */
-	private static final String[] posixClass = {"[!","[:lower:]","[:upper:]","[:alpha:]","[:digit:]","[:alnum:]","[:punct:]","[:graph:]","[:print:]","[:blank:]","[:cntrl:]","[:xdigit:]","[:space:]"};
-	private static final String[] javaClass  = {"[^","\\p{Lower}","\\p{Upper}","\\p{Alpha}","\\p{Digit}","\\p{Alnum}","\\p{Punct}","\\p{Graph}","\\p{Print}","\\p{Blank}","\\p{Cntrl}","\\p{XDigit}","\\p{Space}"};
+	//ASCII
+	private static final String[] posixClass = {"[!","[:word:]","[:ascii:]","[:lower:]","[:upper:]","[:alpha:]","[:digit:]","[:alnum:]","[:punct:]","[:graph:]","[:print:]","[:blank:]","[:cntrl:]","[:xdigit:]","[:space:]"};
+	private static final String[] javaClass  = {"[^","\\w","\\p{ASCII}","\\p{Lower}","\\p{Upper}","\\p{Alpha}","\\p{Digit}","\\p{Alnum}","\\p{Punct}","\\p{Graph}","\\p{Print}","\\p{Blank}","\\p{Cntrl}","\\p{XDigit}","\\p{Space}"};
 	@SuppressWarnings("unused")
 	private static final String[] description = {"Negate character","A lower-case alphabetic character: [a-z]","An upper-case alphabetic character:[A-Z]","An alphabetic character:[\\p{Lower}\\p{Upper}]"," A decimal digit: [0-9]"," An alphanumeric character:[\\p{Alpha}\\p{Digit}]","Punctuation: One of !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~","A visible character: [\\p{Alnum}\\p{Punct}]"," A printable character: [\\p{Graph}\\x20]"," A space or a tab: [ \\t]"," A control character: [\\x00-\\x1F\\x7F]","A hexadecimal digit: [0-9a-fA-F]"," A whitespace character: [ \\t\\n\\x0B\\f\\r]"};
 	String name;

@@ -318,6 +318,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitAssociative_index(FileSourceShParser.Associative_indexContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#regular_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterRegular_expression(FileSourceShParser.Regular_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#regular_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitRegular_expression(FileSourceShParser.Regular_expressionContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#expression}.
 	 * @param ctx the parse tree
 	 */
@@ -368,6 +378,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitPatternList(FileSourceShParser.PatternListContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#rx_pattern}.
+	 * @param ctx the parse tree
+	 */
+	void enterRx_pattern(FileSourceShParser.Rx_patternContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#rx_pattern}.
+	 * @param ctx the parse tree
+	 */
+	void exitRx_pattern(FileSourceShParser.Rx_patternContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#pattern}.
 	 * @param ctx the parse tree
 	 */
@@ -377,6 +397,76 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitPattern(FileSourceShParser.PatternContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class_list}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class_list(FileSourceShParser.Char_class_listContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class_list}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class_list(FileSourceShParser.Char_class_listContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class(FileSourceShParser.Char_classContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class(FileSourceShParser.Char_classContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class_a}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class_a(FileSourceShParser.Char_class_aContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class_a}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class_a(FileSourceShParser.Char_class_aContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class_b}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class_b(FileSourceShParser.Char_class_bContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class_b}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class_b(FileSourceShParser.Char_class_bContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class_body}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class_body(FileSourceShParser.Char_class_bodyContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class_body}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class_body(FileSourceShParser.Char_class_bodyContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class_range}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class_range(FileSourceShParser.Char_class_rangeContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class_range}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class_range(FileSourceShParser.Char_class_rangeContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#char_class_chars}.
+	 * @param ctx the parse tree
+	 */
+	void enterChar_class_chars(FileSourceShParser.Char_class_charsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#char_class_chars}.
+	 * @param ctx the parse tree
+	 */
+	void exitChar_class_chars(FileSourceShParser.Char_class_charsContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#regex}.
 	 * @param ctx the parse tree

@@ -41,7 +41,7 @@ public class MathStatement extends Statement{
 			expr = new Expression(ctx.mathExpression().expression());
 			expr.evaluate(sc);
 		} else {
-			throw new RuntimeException("Invlide math expression "+ctx.getText());
+			throw new RuntimeException("Invalide math expression "+ctx.getText());
 		}
 
 

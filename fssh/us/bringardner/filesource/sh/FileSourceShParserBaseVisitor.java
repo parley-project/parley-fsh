@@ -235,6 +235,13 @@ public class FileSourceShParserBaseVisitor<T> extends AbstractParseTreeVisitor<T
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+	@Override public T visitRegular_expression(FileSourceShParser.Regular_expressionContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
 	@Override public T visitExpression(FileSourceShParser.ExpressionContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
@@ -270,7 +277,63 @@ public class FileSourceShParserBaseVisitor<T> extends AbstractParseTreeVisitor<T
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+	@Override public T visitRx_pattern(FileSourceShParser.Rx_patternContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
 	@Override public T visitPattern(FileSourceShParser.PatternContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class_list(FileSourceShParser.Char_class_listContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class(FileSourceShParser.Char_classContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class_a(FileSourceShParser.Char_class_aContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class_b(FileSourceShParser.Char_class_bContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class_body(FileSourceShParser.Char_class_bodyContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class_range(FileSourceShParser.Char_class_rangeContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitChar_class_chars(FileSourceShParser.Char_class_charsContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

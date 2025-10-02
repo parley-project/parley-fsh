@@ -197,6 +197,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitAssociative_index(FileSourceShParser.Associative_indexContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#regular_expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRegular_expression(FileSourceShParser.Regular_expressionContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -227,11 +233,59 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPatternList(FileSourceShParser.PatternListContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#rx_pattern}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRx_pattern(FileSourceShParser.Rx_patternContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#pattern}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitPattern(FileSourceShParser.PatternContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class_list}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class_list(FileSourceShParser.Char_class_listContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class(FileSourceShParser.Char_classContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class_a}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class_a(FileSourceShParser.Char_class_aContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class_b}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class_b(FileSourceShParser.Char_class_bContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class_body}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class_body(FileSourceShParser.Char_class_bodyContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class_range}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class_range(FileSourceShParser.Char_class_rangeContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#char_class_chars}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitChar_class_chars(FileSourceShParser.Char_class_charsContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#regex}.
 	 * @param ctx the parse tree

@@ -55,21 +55,21 @@ loop_controll_statement
             | CONTINUE WS* NUMBER?
             ;
 
-assignStatement: assignment WS?
+assignStatement: assignment WS*
 		;
 		
 assignment		
-    : (LOCAL WS)? WS? id1=ID WS? EQ WS? arrayInitializer // Specific rule for array init
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? command_substitution
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? boolean
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? string    
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? variable
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? expression
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? mathExpression
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? parameter
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? list // Could be single element
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? id2=ID
-    | (LOCAL WS)? WS? id1=(ID|ARG_ID) (WS? (associative_index | array_index))? WS? EQ WS? path
+    : (LOCAL WS)? WS* id1=ID WS* EQ WS* arrayInitializer // Specific rule for array init
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* command_substitution
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* boolean
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* string    
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* variable
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* expression
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* mathExpression
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* parameter
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* list // Could be single element
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* id2=ID
+    | (LOCAL WS)? WS* id1=(ID|ARG_ID) (WS* (associative_index | array_index))? WS* EQ WS* path
     ;
 
 boolean: TRUE | FALSE;
@@ -157,7 +157,7 @@ pipeOp:
 	PIPE white* AMP?
 	;    
 
-compareStatement:  LSQUARE simpleCompare=compare RSQUARE statement?;
+compareStatement:  LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* statement?;
 
 mathStatement
     : mathExpression
@@ -172,12 +172,12 @@ mathExpression
 
 boolean_statement: boolean;
 
-compare : WS? compare_prime
-        | WS? LSQUARE WS? compare_prime WS? RSQUARE
-        | WS? LSQUARE WS? simpleCompare=compare WS? RSQUARE
-        | WS? NOT notCompare=compare
-        | left=compare WS? AND WS? right=compare
-        | left=compare WS? OR WS?  right=compare
+compare : WS* compare_prime
+        | WS* LSQUARE WS* compare_prime WS* RSQUARE
+        | WS* LSQUARE WS* simpleCompare=compare WS* RSQUARE
+        | WS* NOT notCompare=compare
+        | left=compare WS* AND WS* right=compare
+        | left=compare WS* OR WS*  right=compare
         ;
 
 compare_prime
@@ -185,12 +185,13 @@ compare_prime
     | NUMBER
     | string
     | file_test
-    | left=compare_prime WS? EQUALITY WS? right=compare_prime    
-    | left=compare_prime WS? NOT_EQ WS? right=compare_prime
-    | left=compare_prime WS? LT_EQ WS? right=compare_prime
-    | left=compare_prime WS? GT_EQ WS? right=compare_prime
-    | left=compare_prime WS? LT WS? right=compare_prime
-    | left=compare_prime WS? GT WS? right=compare_prime
+    | left=compare_prime WS* EQUALITY WS* right=compare_prime
+    | left=compare_prime WS* NOT_EQ WS* right=compare_prime
+    | left=compare_prime WS* LT_EQ WS* right=compare_prime
+    | left=compare_prime WS* GT_EQ WS* right=compare_prime
+    | left=compare_prime WS* LT WS* right=compare_prime
+    | left=compare_prime WS* GT WS* right=compare_prime
+    | left=compare_prime WS* RX_EQUALITY WS* regular_expression    
     | expression
     ;
 
@@ -200,6 +201,8 @@ associative_index:
 		(LSQUARE ID RSQUARE)
 		| (LSQUARE index=string RSQUARE)
 		;
+
+regular_expression:	rx_pattern+ ;
 
 expression
     :
@@ -239,17 +242,50 @@ patternList
     :   WS* pattern (white* PIPE white* pattern)*
     ;
 
-pattern
-    :   ID
-    | regex
-    | expression
+	
+rx_pattern
+    : ESC
+    | RX_CHAR
+    | HASH    
+    | variable
+    | string
+    | TEXT  
+    | ID
+    | DOLLAR
+    | NOT
+    | regex    
     | STAR 
-    
+    | QUESTION
+    | NUMBER
+    | POS
+    | char_class_list
+    | '(' rx_pattern+ ')'
     ;
 
-regex: ID? (STAR|QUESTION|DOT) ID? regex?;
+pattern
+    :   ID
+    | regex    
+    | STAR 
+    | QUESTION
+    | char_class_list
+    | expression
+    ;
 
-//regex: LETTER_OR_DIGIT? (STAR|QUESTION) LETTER_OR_DIGIT? 	;
+char_class_list: char_class+;
+
+char_class :char_class_a|char_class_b;
+ 
+char_class_a: '[' char_class_b ']';
+char_class_b: '[' not=('!'|'^')? char_class_body+ ']';
+
+char_class_body:  POSIX_CHAR_CLASS|char_class_chars|char_class_range;
+
+char_class_range: char_class_chars MINUS char_class_chars (MINUS char_class_chars)*; 
+
+char_class_chars: (ESC|NUMBER|ID|DOT|QUESTION|STAR|TEXT);
+
+regex: ID? (STAR|QUESTION|DOT|PLUS) ID? regex?;
+
 	
 factor
     : NUMBER

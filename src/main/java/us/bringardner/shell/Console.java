@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Stack;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,8 @@ import javax.swing.SwingUtilities;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 import us.bringardner.core.BaseThread;
 import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
@@ -67,7 +70,10 @@ import us.bringardner.shell.commands.Wc;
 
 public class Console extends BaseThread {
 
-	// windows ?C4;ahNc&W?Tfk9KUBIX9oUrp4tGCB9r
+	public class ConsoleSignsalHandler {
+		String action;
+
+	}
 
 	public enum Option {
 		Unsupported("")
@@ -103,6 +109,35 @@ public class Console extends BaseThread {
 		}
 	}
 
+	/**
+	 * Define only signals specified by https://www.gnu.org/software/bash/manual/bash.html#index-trap 
+	 */
+	public enum ConsoleSignal {
+		UnKnown(-1,"")
+		, Exit(0,"EXIT")
+		, Err(3,"ERR")
+		, Debug(1,"DEBUG")
+		, Return(2,"RETURN")
+
+		;
+
+		public final String label;
+		public final int value;
+
+		private ConsoleSignal(int value,String label) {
+			this.label = label;
+			this.value = value;
+		}
+
+		public static ConsoleSignal find(String name) {
+			for(ConsoleSignal o : values()) {
+				if( o.label.equals(name)) {
+					return o;
+				}
+			}
+			return UnKnown;
+		}
+	}
 
 	private static String defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin";
 	public static final String PATH = "PATH";
@@ -167,46 +202,46 @@ delimiter
 		commands.put("popd", new DirStack());
 		commands.put("pushd", new DirStack());
 		registerCommand(new Alias());
-		
+
 		registerCommand(new Clear());
 		registerCommand(new Cd());
 		registerCommand(new Cp());
 		registerCommand(new Connect());
-				
+
 		registerCommand(new Eval());
 		registerCommand(new Exit());
 		registerCommand(new Exec());
 		registerCommand(new Echo());
 		registerCommand(new Export());
-		
+
 		registerCommand(new Help());
 		registerCommand(new History());
 
 		registerCommand(new Jobs());
-		
+
 		registerCommand(new Ln());
 		registerCommand(new Ls());
-		
+
 		registerCommand(new Mkdir());
-		
+
 		registerCommand(new Pwd());
-		
-		
+
+
 		registerCommand(new Return());
 		registerCommand(new Rm());
 		registerCommand(new Read());
-		
+
 		registerCommand(new Shift());
 		registerCommand(new Sleep());
 		registerCommand(new Set());
-		
-		
+
+
 		registerCommand(new Touch());
 		registerCommand(new Trap());
-		
+
 		registerCommand(new Unalias());
 		registerCommand(new Unmount());
-		
+
 		registerCommand(new Wc());
 	}
 
@@ -1461,8 +1496,10 @@ delimiter
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
 			if( stmts.size()>0) {				
 				for(Statement stmt : stmts) {
+					handleSignal(ConsoleSignal.Debug);
 					ret = stmt.process(sc);
 					if( ret!=0) {
+						handleSignal(ConsoleSignal.Err);
 						if(isInteractive && options.contains(Option.ExitImediately)) {
 							System.exit(ret);
 						}
@@ -1472,6 +1509,7 @@ delimiter
 			}
 		} catch(ExitException e) {
 			ret = e.exitCode;
+			handleSignal(ConsoleSignal.Exit);
 			sc.stderr.println(e);
 			stop();
 		} catch(Exception e) {
@@ -1482,6 +1520,29 @@ delimiter
 		}
 
 		return ret;
+	}
+
+	private Stack<ConsoleSignal> inProcess = new Stack<>();
+	
+
+	private void handleSignal(ConsoleSignal signal) {
+		
+		if( !inProcess.contains(signal)) {
+			inProcess.push(signal);
+			List<String> actions = signalHandlers.get(signal);
+			if( actions !=null) {
+				for(int idx=0, sz=actions.size(); idx < sz; idx++ ) {			
+					String code = actions.get(idx);
+
+					try {
+						executeUsingAntlr(code);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			inProcess.pop();
+		}
 	}
 
 	public void setLastExitCode(int code) {
@@ -1520,6 +1581,44 @@ delimiter
 
 	public void setMountFactory(MountFactory mount) {
 		mountFactory = mount;		
+	}
+
+	private Map<ConsoleSignal,List<String>> signalHandlers = new TreeMap<>();
+	public void registerHandler(ConsoleSignal signal, String action) {
+		List<String> actions = signalHandlers.get(signal);
+		if( actions == null) {
+			actions = new ArrayList<>();
+			signalHandlers.put(signal, actions);
+		}
+		actions.add(action);		
+	}
+
+	private Map<Integer,List<String>> osSignalHandlers = new TreeMap<>();
+	public void registerHandler(final Signal signal, String action) {
+		SignalHandler handler = s -> {
+			try {
+				//int code = 
+				executeUsingAntlr(action);
+				//System.out.println(action+" exit code = "+code+" running"+isRunning());
+
+			} catch (Throwable e) {
+				getStdErr().println(e.getLocalizedMessage());
+			}
+		};
+
+		try {
+			Signal.handle(signal,handler);	
+		} catch (Exception e) {
+			getStdErr().println(e.getLocalizedMessage());
+			return;
+		}
+
+		List<String> actions = osSignalHandlers.get(signal.getNumber());
+		if( actions == null) {
+			actions = new ArrayList<>();
+			osSignalHandlers.put(signal.getNumber(), actions);
+		}
+		actions.add(action);
 	}
 
 

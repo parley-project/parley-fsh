@@ -98,6 +98,7 @@ public class TreeViewer2 extends JComponent {
 			FontMetrics fontMetrics = viewer.getFontMetrics(viewer.font);
 			String s = viewer.getText(tree);
 			int w = fontMetrics.stringWidth(s) + viewer.nodeWidthPadding*2;
+			System.out.println("s="+s+" w="+w);
 			return w;
 		}
 
@@ -378,19 +379,10 @@ public class TreeViewer2 extends JComponent {
 
 		Graphics2D g2 = (Graphics2D)g;
 		// anti-alias the lines
-		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-      						RenderingHints.VALUE_ANTIALIAS_ON);
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
 
 		// Anti-alias the text
-		g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-                         	RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-//		AffineTransform at = g2.getTransform();
-//        g2.scale(
-//            (double) this.getWidth() / 400,
-//            (double) this.getHeight() / 400);
-//
-//		g2.setTransform(at);
+		g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
 		paintEdges(g, getTreeLayout().getRoot());
 

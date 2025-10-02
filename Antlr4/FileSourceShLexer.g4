@@ -151,7 +151,9 @@ STAR:'*';
 POW:'**';
 DO:'do';
 EQ:'=';
-EQUALITY:'=='|'-eq'|'=~';
+EQUALITY:'=='|'-eq';
+RX_EQUALITY:'=~';
+
 NOT_EQ:'!='|'-ne';
 MINUS:'-';
 PIPE:'|';
@@ -197,8 +199,14 @@ NOT_CURLY: [ \t]|~[}];
 DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
+RX_CHAR:[!@#$%^&*()_+~];
+POSIX_CHAR_CLASS: 
+	':' '^'? ('alnum'|'alpha'|'ascii'|'blank'|'cntrl'|'digit'|'graph'|'lower'|'print'|'punct'|'space'|'upper'|'word'|'xdigit') ':'
+	;
 
+CHAR_CLASS: [.];
 
+	
 mode ParameterMode;
 
 

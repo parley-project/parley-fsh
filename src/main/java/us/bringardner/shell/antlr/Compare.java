@@ -47,7 +47,7 @@ compare : LSQUARE compare_prime RSQUARE
 		}
 		
 		
-		throw new RuntimeException("Invlide compare"+ctx.getText());
+		throw new RuntimeException("Invalide compare"+ctx.getText());
 	}
 	
 	

@@ -71,7 +71,7 @@ public class TestConnect extends AbstractConsoleTest {
 		String expect = ""
 				+ "memory connected as /mem02";
 		
-		String cmd = "connect memory -f=~/Memory02.properties /mem02";
+		String cmd = "connect memory -f~/Memory02.properties /mem02";
 		
 		ExecuteResult res = executeCommandFudge(cmd, "");
 		String out = new String(res.bao.toByteArray()).trim();

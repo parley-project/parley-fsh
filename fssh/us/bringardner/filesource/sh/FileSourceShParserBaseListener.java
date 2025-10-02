@@ -389,6 +389,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRegular_expression(FileSourceShParser.Regular_expressionContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRegular_expression(FileSourceShParser.Regular_expressionContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterExpression(FileSourceShParser.ExpressionContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -449,6 +461,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRx_pattern(FileSourceShParser.Rx_patternContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRx_pattern(FileSourceShParser.Rx_patternContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPattern(FileSourceShParser.PatternContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -456,6 +480,90 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitPattern(FileSourceShParser.PatternContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class_list(FileSourceShParser.Char_class_listContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class_list(FileSourceShParser.Char_class_listContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class(FileSourceShParser.Char_classContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class(FileSourceShParser.Char_classContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class_a(FileSourceShParser.Char_class_aContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class_a(FileSourceShParser.Char_class_aContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class_b(FileSourceShParser.Char_class_bContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class_b(FileSourceShParser.Char_class_bContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class_body(FileSourceShParser.Char_class_bodyContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class_body(FileSourceShParser.Char_class_bodyContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class_range(FileSourceShParser.Char_class_rangeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class_range(FileSourceShParser.Char_class_rangeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterChar_class_chars(FileSourceShParser.Char_class_charsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitChar_class_chars(FileSourceShParser.Char_class_charsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
