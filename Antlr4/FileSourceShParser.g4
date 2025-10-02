@@ -172,7 +172,7 @@ mathExpression
 
 boolean_statement: boolean;
 
-compare : WS* compare_prime
+compare : WS* compare_prime (';' WS*)?
         | WS* LSQUARE WS* compare_prime WS* RSQUARE
         | WS* LSQUARE WS* simpleCompare=compare WS* RSQUARE
         | WS* NOT notCompare=compare
@@ -329,7 +329,7 @@ statement_block
 
 
 whileStatement
-    :  white* WHILE white* compare white* doStatement
+    :  white* WHILE white* compare white* (';' white*)? doStatement
     ;
 
 until_statement
