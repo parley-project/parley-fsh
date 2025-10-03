@@ -1,5 +1,7 @@
 package us.bringardner.shell.test;
 
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
@@ -81,6 +83,12 @@ ssh -X -i dns2rebuild.pem $usr@$svr1
 
 	public static void main(String[] args) throws IOException, InterruptedException {
 	
+		Font [] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+		for(Font f : fonts ) {
+			System.out.println(f);
+		}
+		
+		System.exit(0);
 		String tmp = "1) SIGHUP   2) SIGINT   3) SIGQUIT  4) SIGILL   5) SIGTRAP\n"
 				+ " 6) SIGABRT  7) SIGBUS   8) SIGFPE   9) SIGKILL 10) SIGUSR1\n"
 				+ "11) SIGSEGV 12) SIGUSR2 13) SIGPIPE 14) SIGALRM 15) SIGTERM\n"

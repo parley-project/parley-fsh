@@ -426,4 +426,30 @@ public abstract class ShellCommand {
 		
 	}
 
+	public String toColumns(ShellContext ctx, List<String> out) {
+			StringBuilder ret = new StringBuilder();
+			int w = ctx.console.getTerminalWidth();
+			int max = 0;
+			for(String line : out) {
+				max = Math.max(max, line.length());
+			}
+			// count for line end
+			max+=2;
+			int cols = w / max;
+			StringBuilder tmp = new StringBuilder();
+			for(int idx=0,sz=out.size(); idx < sz; idx++ ) {
+				if(idx>0 && idx % cols == 0 ) {
+					ret.append('\n');
+				}
+				tmp.setLength(0);
+				tmp.append(out.get(idx));
+				while(tmp.length() < max) {
+					tmp.append(' ');
+				}
+				ret.append(tmp);
+			}
+			
+			return ret.toString();
+	}
+
 }

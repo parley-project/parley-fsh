@@ -142,11 +142,7 @@ public class TestLs {
 
 	
 		String expect = 
-				  "AbcFileA.js\n"
-				+ "AbcFileB.php\n"
-				+ "AbcFileC.txt\n"
-				+ "AbcFileD.properties\n"
-				+ "Folder01";
+				  "AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
 		
 		String cmd = "ls";
 
@@ -161,11 +157,7 @@ public class TestLs {
 
 
 		String expect = 
-				  "Folder01\n"
-				  + "AbcFileA.js\n"
-				  + "AbcFileB.php\n"
-				  + "AbcFileD.properties\n"
-				  + "AbcFileC.txt";
+				  "Folder01             AbcFileA.js          AbcFileB.php         AbcFileD.properties  AbcFileC.txt";
 		
 		String cmd = "ls -X";
 
@@ -180,13 +172,7 @@ public class TestLs {
 
 
 		String expect = 
-				  ".Hidden01.txt\n"
-				  + ".Hidden02.txt\n"
-				  + "AbcFileA.js\n"
-				  + "AbcFileB.php\n"
-				  + "AbcFileC.txt\n"
-				  + "AbcFileD.properties\n"
-				  + "Folder01";
+				  ".Hidden01.txt        .Hidden02.txt        AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
 		
 		String cmd = "ls -a";
 

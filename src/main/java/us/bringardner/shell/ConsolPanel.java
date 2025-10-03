@@ -3,6 +3,7 @@ package us.bringardner.shell;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
@@ -133,7 +134,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	 */
 	public ConsolPanel() {
 		setLayout(new BorderLayout(0, 0));
-
+		
 		JPanel debugPanel = new JPanel();
 		FlowLayout flowLayout_1 = (FlowLayout) debugPanel.getLayout();
 		flowLayout_1.setAlignment(FlowLayout.LEFT);
@@ -154,7 +155,8 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 		add(scrollPane, BorderLayout.CENTER);
 
 		textArea = new JTextPane();
-
+		textArea.setFont(new Font(Font.MONOSPACED, Font.ITALIC, 12));
+		
 		textArea.addFocusListener(new FocusAdapter() {
 			@Override
 			public void focusGained(FocusEvent e) {

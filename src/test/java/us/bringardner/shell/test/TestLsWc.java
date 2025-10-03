@@ -57,17 +57,7 @@ public class TestLsWc extends AbstractConsoleTest{
 	@Test
 	public void testLs() throws IOException {
 		String expect = 
-				"Folder01\n"
-				+ "Test0.txt\n"
-				+ "Test1.txt\n"
-				+ "Test2.txt\n"
-				+ "Test3.txt\n"
-				+ "Test4.txt\n"
-				+ "Test5.txt\n"
-				+ "Test6.txt\n"
-				+ "Test7.txt\n"
-				+ "Test8.txt\n"
-				+ "Test9.txt\n";
+				"Folder01   Test0.txt  Test1.txt  Test2.txt  Test3.txt  Test4.txt  Test5.txt  Test6.txt  Test7.txt  Test8.txt  Test9.txt\n";
 		
 		String cmd = "ls";
 		ExecuteResult res = executeCommand(cmd,"");

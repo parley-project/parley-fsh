@@ -63,12 +63,13 @@ public class Ls extends ShellCommand {
 			args.remove(Argument.c);
 		}
 
+		List<String> out = new ArrayList<>();
 		LsContext lsctx = new LsContext(ctx);
 		if(paths.size() == 0) {
 			List<FileSource> files = Arrays.asList(ctx.console.getCurrentDirectory().listFiles());
 			sort(ctx,args,files);
 			for(FileSource file : files) { 
-				print(lsctx,args, file);
+				print(out,lsctx,args, file);
 			}
 		} else {
 			for(String arg : paths) {
@@ -78,7 +79,7 @@ public class Ls extends ShellCommand {
 					sort(ctx,args,files);
 					for(FileSource file : files) {
 						if( file.exists()) {
-							list(lsctx,args, file);
+							list(out,lsctx,args, file);
 						} else {
 							ctx.stderr.print("ls: "+file+" no such file or directory");
 							return 1;
@@ -88,9 +89,20 @@ public class Ls extends ShellCommand {
 
 			}
 		}
+		if( !out.isEmpty()) {
+			// Column 
+			if(!args.contains(Argument.l) && !args.contains(Argument.g))  {
+				ctx.stdout.println(super.toColumns(ctx,out).trim());
+			} else {
+				for(String line : out) {
+					ctx.stdout.println(line);
+				}
+			}
+		}
 
 		return ret;
 	}
+
 
 	/**
 	 * Sort entries alphabetically if none of -ctuvSUX
@@ -193,7 +205,7 @@ public class Ls extends ShellCommand {
 
 	}
 
-	private void list(LsContext ctx, List<Argument> args, FileSource dir) throws IOException {
+	private void list(List<String> out,LsContext ctx, List<Argument> args, FileSource dir) throws IOException {
 		if( dir.isDirectory() && !args.contains(Argument.d)) {
 			FileSource[] kids = dir.listFiles();
 			if( kids != null ) {
@@ -201,15 +213,15 @@ public class Ls extends ShellCommand {
 				boolean showAll = args.contains(Argument.a);
 				for(FileSource f : kids) {
 					if(!isHidden(f) || showAll) {
-						print(ctx,args,f);
+						print(out,ctx,args,f);
 						if( recursive && f.isDirectory()) {
-							list(ctx, args, f);
+							list(out,ctx, args, f);
 						}
 					}
 				}
 			}
 		} else {
-			print(ctx,args,dir);
+			print(out,ctx,args,dir);
 		}
 	}
 
@@ -220,7 +232,7 @@ public class Ls extends ShellCommand {
 	//      
 	//prmStr linkStr   usrStr  crpStr    sizeStr  |dateStr     | nameStr
 	//-rw-rw-r--    1     ec2-user ec2-user    2186     Feb  2 08:41 build.txt
-	private  void print(LsContext ctx,List<Argument> args, FileSource file) throws IOException {
+	private  void print(List<String> out,LsContext ctx,List<Argument> args, FileSource file) throws IOException {
 		if( args.contains(Argument.L)) {
 			FileSource link = file.getLinkedTo();
 			if( link !=null ) {
@@ -231,7 +243,7 @@ public class Ls extends ShellCommand {
 			return;
 		}
 		if(!args.contains(Argument.l) && !args.contains(Argument.g)) {
-			ctx.ctx.stdout.println(file.getName());
+			out.add(file.getName());
 		} else {
 			String permStr = (file.isDirectory()?"d":"-")+formatPermission(file);
 			String linkStr = formatLink(args,file);
@@ -242,7 +254,7 @@ public class Ls extends ShellCommand {
 			String nameStr = formatName(args,file);
 
 
-			ctx.ctx.stdout.println(String.format("%s %s %s  %s %s  %s %s",permStr,linkStr,
+			out.add(String.format("%s %s %s  %s %s  %s %s",permStr,linkStr,
 					userStr,groupStr,sizeStr,timeStr,nameStr));
 
 		}		
@@ -315,7 +327,7 @@ public class Ls extends ShellCommand {
 	}
 
 	public static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MMM dd yyyy");
-	
+
 	private String formatTime(List<Argument> args, FileSource file) throws IOException {
 		long time = 0;
 		if(args.contains(Argument.u) ) {
