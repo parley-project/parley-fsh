@@ -29,6 +29,8 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
 import javax.swing.text.StyledDocument;
 
+import sun.misc.Signal;
+
 public class ConsolPanel extends JPanel implements KeyboardReader {
 
 
@@ -183,8 +185,8 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 				db.append("cp="+currentPos+" ls="+lineStart+" pos="+pos);
 
 				if( e.isControlDown()) {
+					e.consume();
 					if( key == KeyEvent.VK_R) {
-						e.consume();
 						HistorySearchDialog d = new HistorySearchDialog();
 						d.setLocationRelativeTo(textArea);
 						String cmd = d.showDialog(console);
@@ -197,11 +199,29 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 							textArea.setText(all);
 							currentPos = all.length();
 						}
+					} else if( key == KeyEvent.VK_C) {
+						Signal signal = new Signal("INT");
+						Signal.raise(signal);
+					} else if( key == KeyEvent.VK_BACK_SLASH) {
+						Signal signal = new Signal("TERM");
+						Signal.raise(signal);
+					} else if( key == KeyEvent.VK_Z) {
+						Signal signal = new Signal("TSTP");
+						Signal.raise(signal);
+					} else if( key == KeyEvent.VK_D) {
+						System.out.println("cntr="+key);
+						Signal signal = new Signal("QUIT");
+						Signal.raise(signal);
+					} else {
+						// some control code what to do???
+						System.out.println("cntr="+key);						
 					}
 				}
 
 
 				switch (key) {
+				case KeyEvent.VK_UNDEFINED:
+						break;
 				case KeyEvent.VK_ESCAPE:
 					e.consume();
 					break;

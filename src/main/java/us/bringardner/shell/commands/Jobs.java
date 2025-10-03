@@ -44,9 +44,9 @@ public class Jobs extends ShellCommand{
 			}
 		}
 		
-		for(int idx=0, sz= Console.jobs.size(); idx < sz; idx++) {
+		for(Integer pid : Console.jobs.keySet()) {
 			boolean show = false;
-			CommandThread job = Console.jobs.get(idx);
+			CommandThread job = Console.jobs.get(pid);
 			Console.JobState state = job.getState();
 			if( state == Console.JobState.Running) {
 				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
@@ -59,9 +59,9 @@ public class Jobs extends ShellCommand{
 			
 			if( show ) {
 				if(options.options.contains(Options.l)) {
-					ctx.stdout.println("["+(idx+1)+"] "+job.pid+" "+state+" "+job.toString());
+					ctx.stdout.println("["+(pid)+"] "+job.pid+" "+state+" "+job.toString());
 				} else {
-					ctx.stdout.println("["+(idx+1)+"] "+state+" "+job.toString());
+					ctx.stdout.println("["+(pid)+"] "+state+" "+job.toString());
 				}
 			}
 		}

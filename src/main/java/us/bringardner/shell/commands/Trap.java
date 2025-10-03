@@ -6,7 +6,7 @@ import java.util.TreeMap;
 
 import sun.misc.Signal;
 import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.ConsoleSignal;
+import us.bringardner.shell.Console.ConsoleMetaSignal;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import sun.misc.SignalHandler;
@@ -39,10 +39,10 @@ public class Trap extends ShellCommand implements SignalHandler {
 	
 	
 	private static final String [] COMMON_NAMES = {"HUP","INT","QUIT","ILL","TRAP","ABRT","FPE","KILL","BUS","SEGV","SYS","PIPE","ALRM","TERM","URG","STOP","TSTP","CONT","CHLD","TTIN","TTOU","IO","XCPU","XFSZ","VTALRM","PROF","WINCH","USR1","USR2"};
-	private transient Map<Integer,String> locals;
-	private Map<Integer, String> getLocalSignals() {
+	private static transient Map<Integer,String> locals;
+	public static Map<Integer, String> getLocalSignals() {
 		if( locals == null ) {
-			synchronized (this) {
+			synchronized (Trap.class) {
 				if( locals == null ) {
 					Map<Integer,String> tmp = new TreeMap<>();
 					for(String name : COMMON_NAMES) {
@@ -60,6 +60,7 @@ public class Trap extends ShellCommand implements SignalHandler {
 		return locals;
 	}
 
+	
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
@@ -82,11 +83,10 @@ public class Trap extends ShellCommand implements SignalHandler {
 					}
 					
 				}
-				Console.ConsoleSignal cs = Console.ConsoleSignal.find(val);
-				if( cs == ConsoleSignal.UnKnown ) {
+				Console.ConsoleMetaSignal cs = Console.ConsoleMetaSignal.find(val);
+				if( cs == ConsoleMetaSignal.UnKnown ) {
 					try {
 						Signal s = new Signal(val);
-						System.out.println(s);	
 						ctx.console.registerHandler(s,action);
 					} catch (Exception e) {
 						ret = 1;

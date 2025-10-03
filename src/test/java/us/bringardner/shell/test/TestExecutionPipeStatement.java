@@ -45,7 +45,7 @@ public class TestExecutionPipeStatement {
 		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 		
 		Console.jobs.clear();
-		Console.setNextPid(0);
+		Console.setNextPid(100000);
 		ret.exitCode=console.executeUsingAntlr(command);
 		
 		return ret;
@@ -178,10 +178,11 @@ public class TestExecutionPipeStatement {
 				;
 
 		String expect = 
-				"[1] 0\n"
-				+ "[2] 1"
+				"[1] 100000\n"
+				+ "[2] 100001"
 				;
 		
+		Console.setNextPid(100000);
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
@@ -201,12 +202,13 @@ public class TestExecutionPipeStatement {
 				;
 
 		String expect = 
-				"[1] 0\n"
-				+ "[2] 1\n"
-				+ "[1] Running sleep   100    &\n"
-				+ "[2] Running sleep   200    &"
+				"[1] 100000\n"
+				+ "[2] 100001\n"
+				+ "[100000] Running sleep   100    &\n"
+				+ "[100001] Running sleep   200    &"
 				;
 		
+		Console.setNextPid(100000);
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());

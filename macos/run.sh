@@ -1,13 +1,90 @@
+all=/Volumes/Data/eclipse-git/BjlShell/target/classes:\
+/Users/tony/.p2/pool/plugins/junit-jupiter-api_5.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-jupiter-engine_5.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-jupiter-migrationsupport_5.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-jupiter-params_5.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-commons_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-engine_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-launcher_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-runner_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-suite-api_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-suite-engine_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-platform-suite-commons_1.13.4.jar:\
+/Users/tony/.p2/pool/plugins/junit-vintage-engine_5.13.4.jar:\
+/Users/tony/.p2/pool/plugins/org.opentest4j_1.3.0.jar:\
+/Users/tony/.p2/pool/plugins/org.apiguardian.api_1.1.2.jar:\
+/Users/tony/.p2/pool/plugins/org.junit_4.13.2.v20240929-1000.jar:\
+/Users/tony/.p2/pool/plugins/org.hamcrest_3.0.0.jar:\
+/Volumes/Data/eclipse-git/BjlFileSystem/target/classes:\
+/Users/tony/.m2/repository/junit/junit/4.12/junit-4.12.jar:\
+/Users/tony/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:\
+/Volumes/Data/eclipse-git/BjlCore/target/classes:\
+/Volumes/Data/eclipse-git/BjlIo/target/classes:\
+/Volumes/Data/eclipse-git/BjlNetFramework/target/classes:\
+/Volumes/Data/eclipse-git/BjlNetworkCore/target/classes:\
+/Users/tony/.m2/repository/org/apache/logging/log4j/log4j-api/2.13.2/log4j-api-2.13.2.jar:\
+/Users/tony/.m2/repository/org/apache/logging/log4j/log4j-core/2.13.2/log4j-core-2.13.2.jar:\
+/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.9.1/junit-jupiter-engine-5.9.1.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-engine/1.9.1/junit-platform-engine-1.9.1.jar:\
+/Users/tony/.m2/repository/org/opentest4j/opentest4j/1.2.0/opentest4j-1.2.0.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-commons/1.9.1/junit-platform-commons-1.9.1.jar:\
+/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.9.1/junit-jupiter-api-5.9.1.jar:\
+/Users/tony/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-suite-engine/1.9.1/junit-platform-suite-engine-1.9.1.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-suite-api/1.9.1/junit-platform-suite-api-1.9.1.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-suite-commons/1.9.1/junit-platform-suite-commons-1.9.1.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-launcher/1.9.1/junit-platform-launcher-1.9.1.jar:\
+/Volumes/Data/eclipse-git/BjlFileSystemJdbc/target/classes:\
+/Users/tony/.m2/repository/org/hsqldb/hsqldb/2.7.3/hsqldb-2.7.3.jar:\
+/Users/tony/.m2/repository/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar:\
+/Users/tony/.m2/repository/org/checkerframework/checker-qual/3.42.0/checker-qual-3.42.0.jar:\
+/Users/tony/.m2/repository/mysql/mysql-connector-java/8.0.20/mysql-connector-java-8.0.20.jar:\
+/Users/tony/.m2/repository/com/google/protobuf/protobuf-java/3.6.1/protobuf-java-3.6.1.jar:\
+/Users/tony/.m2/repository/org/xerial/sqlite-jdbc/3.47.2.0/sqlite-jdbc-3.47.2.0.jar:\
+/Volumes/Data/eclipse-git/BjlFileSystemSftp/target/classes:\
+/Users/tony/.m2/repository/com/jcraft/jsch/0.1.55/jsch-0.1.55.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-synergy-server/3.1.2/maverick-synergy-server-3.1.2.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-base/3.1.2/maverick-base-3.1.2.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-logging/3.1.2/maverick-logging-3.1.2.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-utils/3.1.2/maverick-utils-3.1.2.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-synergy-common/3.1.2/maverick-synergy-common-3.1.2.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-virtual-session/3.1.2/maverick-virtual-session-3.1.2.jar:\
+/Users/tony/.m2/repository/org/jetbrains/pty4j/pty4j/0.12.11/pty4j-0.12.11.jar:\
+/Users/tony/.m2/repository/org/jetbrains/annotations/20.1.0/annotations-20.1.0.jar:\
+/Users/tony/.m2/repository/org/jetbrains/pty4j/purejavacomm/0.0.11.1/purejavacomm-0.0.11.1.jar:\
+/Users/tony/.m2/repository/net/java/dev/jna/jna-platform/5.12.1/jna-platform-5.12.1.jar:\
+/Users/tony/.m2/repository/net/java/dev/jna/jna/5.12.1/jna-5.12.1.jar:\
+/Users/tony/.m2/repository/org/jline/jline/3.21.0/jline-3.21.0.jar:\
+/Users/tony/.m2/repository/commons-cli/commons-cli/1.5.0/commons-cli-1.5.0.jar:\
+/Users/tony/.m2/repository/org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.jar:\
+/Users/tony/.m2/repository/com/sshtools/maverick-virtual-filesystem/3.1.2/maverick-virtual-filesystem-3.1.2.jar:\
+/Users/tony/.m2/repository/org/apache/commons/commons-vfs2/2.9.0/commons-vfs2-2.9.0.jar:\
+/Users/tony/.m2/repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar:\
+/Users/tony/.m2/repository/junit/junit/4.10/junit-4.10.jar:\
+/Users/tony/.m2/repository/org/hamcrest/hamcrest-core/1.1/hamcrest-core-1.1.jar:\
+/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.11.4/junit-jupiter-engine-5.11.4.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-engine/1.11.4/junit-platform-engine-1.11.4.jar:\
+/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.11.4/junit-jupiter-api-5.11.4.jar:\
+/Users/tony/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:\
+/Users/tony/.m2/repository/org/junit/platform/junit-platform-commons/1.11.4/junit-platform-commons-1.11.4.jar:\
+/Volumes/Data/eclipse-git/BjlShell/lib/antlr-4.13.2-complete.jar:\
+/Users/tony/.m2/repository/com/fifesoft/autocomplete/3.3.2/autocomplete-3.3.2.jar:\
+/Users/tony/.m2/repository/com/fifesoft/rsyntaxtextarea/3.5.4/rsyntaxtextarea-3.5.4.jar:\
+/Users/tony/.m2/repository/com/fifesoft/spellchecker/3.0.0/spellchecker-3.0.0.jar:\
+/Users/tony/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.0/jakarta.xml.bind-api-4.0.0.jar:\
+/Users/tony/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.0/jakarta.activation-api-2.1.0.jar:\
+/Users/tony/.m2/repository/com/sun/xml/bind/jaxb-impl/4.0.3/jaxb-impl-4.0.3.jar:\
+/Users/tony/.m2/repository/com/sun/xml/bind/jaxb-core/4.0.3/jaxb-core-4.0.3.jar:\
+/Users/tony/.m2/repository/org/eclipse/angus/angus-activation/2.0.1/angus-activation-2.0.1.jar:
 
-libDir=/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/macos
-target=/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/target
-mavan=/Users/tony/.p2/pool/plugins/junit-jupiter-api_5.11.3.jar:/Users/tony/.p2/pool/plugins/junit-jupiter-engine_5.11.3.jar:/Users/tony/.p2/pool/plugins/junit-jupiter-migrationsupport_5.11.3.jar:/Users/tony/.p2/pool/plugins/junit-jupiter-params_5.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-commons_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-engine_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-launcher_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-runner_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-suite-api_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-suite-engine_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-platform-suite-commons_1.11.3.jar:/Users/tony/.p2/pool/plugins/junit-vintage-engine_5.11.3.jar:/Users/tony/.p2/pool/plugins/org.opentest4j_1.3.0.jar:/Users/tony/.p2/pool/plugins/org.apiguardian.api_1.1.2.jar:/Users/tony/.p2/pool/plugins/org.junit_4.13.2.v20240929-1000.jar:/Users/tony/.p2/pool/plugins/org.hamcrest_3.0.0.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/lib/antlr-4.13.2-complete.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/lib/jnativehook-2.2.2-javadoc.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/lib/jnativehook-2.2.2-sources.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/lib/jnativehook-2.2.2.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSyetmViewer/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSyetmViewer/target/test-classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystem/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystem/target/test-classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlCore/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlCore/target/test-classes:/Users/tony/.m2/repository/org/apache/logging/log4j/log4j-api/2.13.2/log4j-api-2.13.2.jar:/Users/tony/.m2/repository/org/apache/logging/log4j/log4j-core/2.13.2/log4j-core-2.13.2.jar:/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.9.1/junit-jupiter-engine-5.9.1.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-engine/1.9.1/junit-platform-engine-1.9.1.jar:/Users/tony/.m2/repository/org/opentest4j/opentest4j/1.2.0/opentest4j-1.2.0.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-commons/1.9.1/junit-platform-commons-1.9.1.jar:/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.9.1/junit-jupiter-api-5.9.1.jar:/Users/tony/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-suite-engine/1.9.1/junit-platform-suite-engine-1.9.1.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-suite-api/1.9.1/junit-platform-suite-api-1.9.1.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-suite-commons/1.9.1/junit-platform-suite-commons-1.9.1.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-launcher/1.9.1/junit-platform-launcher-1.9.1.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlIo/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlIo/target/test-classes:/Users/tony/.m2/repository/junit/junit/4.12/junit-4.12.jar:/Users/tony/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemJdbc/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemJdbc/target/test-classes:/Users/tony/.m2/repository/org/hsqldb/hsqldb/2.7.3/hsqldb-2.7.3.jar:/Users/tony/.m2/repository/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar:/Users/tony/.m2/repository/org/checkerframework/checker-qual/3.42.0/checker-qual-3.42.0.jar:/Users/tony/.m2/repository/mysql/mysql-connector-java/8.0.20/mysql-connector-java-8.0.20.jar:/Users/tony/.m2/repository/com/google/protobuf/protobuf-java/3.6.1/protobuf-java-3.6.1.jar:/Users/tony/.m2/repository/org/xerial/sqlite-jdbc/3.47.2.0/sqlite-jdbc-3.47.2.0.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemSftp/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemSftp/target/test-classes:/Users/tony/.m2/repository/com/jcraft/jsch/0.1.55/jsch-0.1.55.jar:/Users/tony/.m2/repository/com/sshtools/maverick-synergy-server/3.1.2/maverick-synergy-server-3.1.2.jar:/Users/tony/.m2/repository/com/sshtools/maverick-base/3.1.2/maverick-base-3.1.2.jar:/Users/tony/.m2/repository/com/sshtools/maverick-logging/3.1.2/maverick-logging-3.1.2.jar:/Users/tony/.m2/repository/com/sshtools/maverick-utils/3.1.2/maverick-utils-3.1.2.jar:/Users/tony/.m2/repository/com/sshtools/maverick-synergy-common/3.1.2/maverick-synergy-common-3.1.2.jar:/Users/tony/.m2/repository/com/sshtools/maverick-virtual-session/3.1.2/maverick-virtual-session-3.1.2.jar:/Users/tony/.m2/repository/org/jetbrains/pty4j/pty4j/0.12.11/pty4j-0.12.11.jar:/Users/tony/.m2/repository/org/jetbrains/annotations/20.1.0/annotations-20.1.0.jar:/Users/tony/.m2/repository/org/jetbrains/pty4j/purejavacomm/0.0.11.1/purejavacomm-0.0.11.1.jar:/Users/tony/.m2/repository/net/java/dev/jna/jna-platform/5.12.1/jna-platform-5.12.1.jar:/Users/tony/.m2/repository/net/java/dev/jna/jna/5.12.1/jna-5.12.1.jar:/Users/tony/.m2/repository/org/jline/jline/3.21.0/jline-3.21.0.jar:/Users/tony/.m2/repository/commons-cli/commons-cli/1.5.0/commons-cli-1.5.0.jar:/Users/tony/.m2/repository/org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.jar:/Users/tony/.m2/repository/com/sshtools/maverick-virtual-filesystem/3.1.2/maverick-virtual-filesystem-3.1.2.jar:/Users/tony/.m2/repository/org/apache/commons/commons-vfs2/2.9.0/commons-vfs2-2.9.0.jar:/Users/tony/.m2/repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemFtp/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemFtp/target/test-classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlNetFtp/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlNetFtp/target/test-classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlNetFramework/target/classes:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlNetFramework/target/test-classes:/Users/tony/.m2/repository/us/bringardner/bjl_net/0.1.0/bjl_net-0.1.0.jar:/Users/tony/.m2/repository/junit/junit/4.10/junit-4.10.jar:/Users/tony/.m2/repository/org/hamcrest/hamcrest-core/1.1/hamcrest-core-1.1.jar:/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.11.4/junit-jupiter-engine-5.11.4.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-engine/1.11.4/junit-platform-engine-1.11.4.jar:/Users/tony/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.11.4/junit-jupiter-api-5.11.4.jar:/Users/tony/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/tony/.m2/repository/org/junit/platform/junit-platform-commons/1.11.4/junit-platform-commons-1.11.4.jar:/Users/tony/.m2/repository/com/jcraft/jsch/0.1.54/jsch-0.1.54.jar:/Users/tony/.m2/repository/com/formdev/flatlaf/3.5.4/flatlaf-3.5.4.jar:/Users/tony/.m2/repository/com/formdev/flatlaf-intellij-themes/3.5.4/flatlaf-intellij-themes-3.5.4.jar:/Users/tony/.m2/repository/com/miglayout/miglayout-swing/11.4.2/miglayout-swing-11.4.2.jar:/Users/tony/.m2/repository/com/miglayout/miglayout-core/11.4.2/miglayout-core-11.4.2.jar:/Users/tony/.m2/repository/com/formdev/flatlaf-fonts-inter/4.0/flatlaf-fonts-inter-4.0.jar:/Users/tony/.m2/repository/com/formdev/flatlaf-fonts-jetbrains-mono/2.304/flatlaf-fonts-jetbrains-mono-2.304.jar:/Users/tony/.m2/repository/com/formdev/flatlaf-fonts-roboto/2.137/flatlaf-fonts-roboto-2.137.jar:/Users/tony/.m2/repository/com/formdev/flatlaf-fonts-roboto-mono/3.000/flatlaf-fonts-roboto-mono-3.000.jar:/Users/tony/.m2/repository/com/formdev/flatlaf-extras/3.5.4/flatlaf-extras-3.5.4.jar:/Users/tony/.m2/repository/com/github/weisj/jsvg/1.4.0/jsvg-1.4.0.jar:/Users/tony/.m2/repository/org/apache/sshd/sshd-core/0.12.0/sshd-core-0.12.0.jar:/Users/tony/.m2/repository/org/apache/mina/mina-core/2.0.7/mina-core-2.0.7.jar:/Users/tony/.m2/repository/org/slf4j/slf4j-jdk14/1.6.4/slf4j-jdk14-1.6.4.jar:/Users/tony/.m2/repository/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4.jar:/Users/tony/.m2/repository/org/bouncycastle/bcpg-jdk15on/1.49/bcpg-jdk15on-1.49.jar:/Users/tony/.m2/repository/org/bouncycastle/bcprov-jdk15on/1.49/bcprov-jdk15on-1.49.jar:/Users/tony/.m2/repository/org/bouncycastle/bcpkix-jdk15on/1.49/bcpkix-jdk15on-1.49.jar:/Users/tony/.m2/repository/tomcat/tomcat-apr/5.5.23/tomcat-apr-5.5.23.jar:/Users/tony/.m2/repository/net/sf/jfcunit/jfcunit/2.08/jfcunit-2.08.jar:/Users/tony/.m2/repository/junit/junit/3.8.1/junit-3.8.1.jar:/Users/tony/.m2/repository/jakarta-regexp/jakarta-regexp/1.4/jakarta-regexp-1.4.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/com.miglayout.swing_11.4.2.jar:/Volumes/SanDisk1/eclipse-workspace-jmail/BjlFileSystemConsole/com.miglayout.core_11.4.2.jar:/Users/tony/.m2/repository/com/fifesoft/autocomplete/3.3.2/autocomplete-3.3.2.jar:/Users/tony/.m2/repository/com/fifesoft/rsyntaxtextarea/3.5.4/rsyntaxtextarea-3.5.4.jar:/Users/tony/.m2/repository/com/fifesoft/spellchecker/3.0.0/spellchecker-3.0.0.jar:/Users/tony/.m2/repository/org/jline/jline/3.30.0/jline-3.30.0.jar
-export CLASSPATH=$target/test-classes:$target/classes:$mavan
+libDir=/Volumes/SanDisk1/eclipse-workspace-jmail/BjlShell/macos
+target=/Volumes/SanDisk1/eclipse-workspace-jmail/BjlShell/target
+
+export CLASSPATH=$all
 
 debug="-agentlib:jdwp=transport=dt_socket,suspend=y,address=localhost:8001,server=y"
 if [ $# -gt 0 ] ; then
 	debug="-agentlib:jdwp=transport=dt_socket,suspend=n,address=localhost:8001,server=y"
 fi
 
-#java $debug -Djava.library.path=$libDir  us.bringardner.io.filesource.shell.NativeKeyboard
-java $debug -Djava.library.path=$libDir us.bringardner.io.filesource.console.test.PracticeProcess
+java $debug -Djava.library.path=$libDir us.bringardner.shell.Console

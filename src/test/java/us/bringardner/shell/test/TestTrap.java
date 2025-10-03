@@ -1,5 +1,7 @@
 package us.bringardner.shell.test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -25,10 +27,36 @@ public class TestTrap extends AbstractConsoleTest {
 
 
 	@Test
+	public void testTrap02() throws IOException {
+
+		String code = "function handle_ctrlc() {\n"
+				+ "    echo \"Caught SIGINT! Exiting...\"\n"
+				+ "    exit\n"
+				+ "}\n"
+				+ "\n"
+				+ "trap handle_ctrlc SIGINT\n"
+				+ "\n"
+				+ "while true; do\n"
+				+ "    echo \"Running... Press Ctrl+C to stop.\"\n"
+				+ "    sleep 5\n"
+				+ "done\n"
+				+ ""
+				;
+
+		Console console = new Console();
+		console.setStdIn(System.in);
+		//console.executeUsingAntlr(code);
+
+		System.out.println("testTrap00 needs work ");
+
+
+	}
+
+	@Test
 	public void testTrap00() throws IOException {
-		String code = "trap \"echo hello\" DEBUG\n"
-				+ "echo line 1\n"
-				+ "echo line 2\n"
+		String code = "trap \"echo hello from trap debug\" DEBUG\n"
+				+ "echo simple echo line 1\n"
+				+ "echo simple echo line 2\n"
 				;
 		ExecuteResult res = executeCommand(code, "");
 		System.out.println("testTrap00 needs work ");
@@ -65,4 +93,111 @@ public class TestTrap extends AbstractConsoleTest {
 		}
 
 	}
+
+
+	@Test
+	public void testKill01() throws IOException {
+
+		String expect = "1=HUP\n"
+				+ "2=INT\n"
+				+ "3=QUIT\n"
+				+ "4=ILL\n"
+				+ "5=TRAP\n"
+				+ "6=ABRT\n"
+				+ "8=FPE\n"
+				+ "9=KILL\n"
+				+ "10=BUS\n"
+				+ "11=SEGV\n"
+				+ "12=SYS\n"
+				+ "13=PIPE\n"
+				+ "14=ALRM\n"
+				+ "15=TERM\n"
+				+ "16=URG\n"
+				+ "17=STOP\n"
+				+ "18=TSTP\n"
+				+ "19=CONT\n"
+				+ "20=CHLD\n"
+				+ "21=TTIN\n"
+				+ "22=TTOU\n"
+				+ "23=IO\n"
+				+ "24=XCPU\n"
+				+ "25=XFSZ\n"
+				+ "26=VTALRM\n"
+				+ "27=PROF\n"
+				+ "28=WINCH\n"
+				+ "30=USR1\n"
+				+ "31=USR2\n"
+				+ ""
+				;
+		String code = "kill -l\n"
+				+ ""
+				;
+
+		ExecuteResult res = executeCommand(code, "");
+		assertEquals(0, res.exitCode);
+		assertEquals(expect, new String(res.bao.toByteArray()));
+		assertEquals("", new String(res.bae.toByteArray()));
+
+		code = "kill -L\n"
+				+ ""
+				;
+
+		res = executeCommand(code, "");
+		assertEquals(0, res.exitCode);
+		assertEquals(expect, new String(res.bao.toByteArray()));
+		assertEquals("", new String(res.bae.toByteArray()));
+
+		code = "kill -l 9\n"
+				+ ""
+				;
+
+		res = executeCommand(code, "");
+		assertEquals(0, res.exitCode);
+		assertEquals("KILL\n", new String(res.bao.toByteArray()));
+		assertEquals("", new String(res.bae.toByteArray()));
+
+		code = "kill -l HUP\n"
+				+ ""
+				;
+
+		res = executeCommand(code, "");
+		assertEquals(0, res.exitCode);
+		assertEquals("HUP\n", new String(res.bao.toByteArray()));
+		assertEquals("", new String(res.bae.toByteArray()));
+	}
+	
+	@Test
+	public void testKill02() throws IOException, InterruptedException {
+		String expect = "Running... Press Ctrl+C to stop.\n"
+				+ "[1] 100000\n"
+				+ "Caught SIGINT! Exiting...\n";
+		
+		String code = "function handle_ctrlc() {\n"
+				+ "    echo \"Caught SIGINT! Exiting...\"\n"
+				+ "    exit\n"
+				+ "}\n"
+				+ "\n"
+				+ "trap handle_ctrlc SIGINT\n"
+				+ "\n"
+				+ "function work() {"
+				+ "while true; do\n"
+				+ "    echo \"Running... Press Ctrl+C to stop.\"\n"
+				+ "    sleep 5\n"
+				+ "done\n"
+				+ "}\n"
+				+ "work &\n"				
+				+ "kill -s INT $!\n"
+				//+ "sleep 1\n"
+				;
+
+		Console.setNextPid(100000);
+		ExecuteResult res = executeCommand(code, "");
+		//  give time for signal handling
+		Thread.sleep(50);
+		assertEquals("Exit 0\n", new String(res.bae.toByteArray()));
+		assertEquals(expect, new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+		
+	}
+
 }

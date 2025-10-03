@@ -20,11 +20,11 @@ public class BackgroundStatement extends Statement{
 	}
 
 	@Override
-	protected int execute(ShellContext nc) throws IOException {
+	protected int execute(ShellContext sc) throws IOException {
 		int ret = 0;
 		try {
 
-			ShellContext ctx = nc.subShell();
+			ShellContext ctx = sc.subShell();
 			ctx.stdin = new ByteArrayInputStream("".getBytes());
 			CommandThread thread = new CommandThread(ctx,stmt);	
 			thread.start();
@@ -34,12 +34,12 @@ public class BackgroundStatement extends Statement{
 				} catch (InterruptedException e) {
 				}
 			}
-			Console.jobs.add(thread);
+			sc.console.addJob(thread.pid,thread);
 			String tmp = "["+Console.jobs.size()+"] "+thread.pid;
-			nc.stdout.println(tmp);
+			sc.stdout.println(tmp);
 		} catch (Exception e) {
 			ret = 1;
-			nc.stderr.println(e.toString());
+			sc.stderr.println(e.toString());
 		}
 
 		return ret;

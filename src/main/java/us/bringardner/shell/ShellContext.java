@@ -215,7 +215,7 @@ $
 ($!) Expands to the process ID of the job most recently placed into the background, whether executed as an asynchronous command or 
 		using the bg builtin (see Job Control Builtins).
 		 */
-		case '!':ret = 0;break;
+		case '!':ret = console.getLastPid();break;
 		/*
 0
 ($0) Expands to the name of the shell or shell script. This is set at shell initialization. 

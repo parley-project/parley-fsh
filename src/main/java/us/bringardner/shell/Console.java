@@ -183,8 +183,8 @@ delimiter
 
 	public static Map<String,ShellCommand> commands;
 
-	public static List<CommandThread> jobs = new ArrayList<>();
-
+	public static Map<Integer,CommandThread> jobs = new TreeMap<>();
+	
 
 	boolean eof = false;
 	Map<String,Object> alias = new TreeMap<>();
@@ -199,7 +199,8 @@ delimiter
 	public List<Option> options = new ArrayList<>();
 	private Map<String,Object> environmentVariables = new TreeMap<>();
 	DebugContext debugContext = new DebugContext();
-
+	private int lastPid = 0;
+	
 	static {
 		commands = new TreeMap<>();
 		commands.put("dirs", new DirStack());
@@ -250,7 +251,8 @@ delimiter
 		registerCommand(new Wc());
 	}
 
-	private static int nextPid = 0;
+	//The upper limit for a PID is 32768
+	private static int nextPid = 100000;
 
 	public static synchronized int nextPid() {
 		return nextPid++;
@@ -282,7 +284,7 @@ delimiter
 	}
 
 	public static class CommandThread extends BaseThread {
-		public int pid = nextPid();
+		public int pid ;
 		public int exitCode;
 		public long start;
 		public long end;
@@ -293,6 +295,7 @@ delimiter
 		public CommandThread(ShellContext ctx,Statement cmd) {
 			this.ctx = ctx;
 			this.cmd = cmd;
+			pid = nextPid();
 		}
 
 		public void pause(boolean b) {
@@ -438,6 +441,10 @@ delimiter
 			}
 
 		}
+	}
+	
+	public int getLastPid() {
+		return lastPid;
 	}
 
 	public void addChangeListner(String name,PropertyChangeListener listner) {		
@@ -1673,6 +1680,11 @@ delimiter
 
 	public boolean removeFunction(String name) {
 		return functions.remove(name) !=null;
+	}
+
+	public void addJob(int pid, CommandThread thread) {
+		jobs.put(pid,thread);
+		lastPid = pid;
 	}
 
 
