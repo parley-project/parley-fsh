@@ -38,6 +38,7 @@ import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
+import us.bringardner.shell.antlr.statement.FunctionDefStatement;
 import us.bringardner.shell.commands.Alias;
 import us.bringardner.shell.commands.Cd;
 import us.bringardner.shell.commands.Clear;
@@ -52,6 +53,7 @@ import us.bringardner.shell.commands.Export;
 import us.bringardner.shell.commands.Help;
 import us.bringardner.shell.commands.History;
 import us.bringardner.shell.commands.Jobs;
+import us.bringardner.shell.commands.Kill;
 import us.bringardner.shell.commands.Ln;
 import us.bringardner.shell.commands.Ls;
 import us.bringardner.shell.commands.Mkdir;
@@ -112,7 +114,7 @@ public class Console extends BaseThread {
 	/**
 	 * Define only signals specified by https://www.gnu.org/software/bash/manual/bash.html#index-trap 
 	 */
-	public enum ConsoleSignal {
+	public enum ConsoleMetaSignal {
 		UnKnown(-1,"")
 		, Exit(0,"EXIT")
 		, Err(3,"ERR")
@@ -124,13 +126,13 @@ public class Console extends BaseThread {
 		public final String label;
 		public final int value;
 
-		private ConsoleSignal(int value,String label) {
+		private ConsoleMetaSignal(int value,String label) {
 			this.label = label;
 			this.value = value;
 		}
 
-		public static ConsoleSignal find(String name) {
-			for(ConsoleSignal o : values()) {
+		public static ConsoleMetaSignal find(String name) {
+			for(ConsoleMetaSignal o : values()) {
 				if( o.label.equals(name)) {
 					return o;
 				}
@@ -189,7 +191,9 @@ delimiter
 
 	private MountFactory mountFactory;
 	public boolean forceHeadless=true;
-	public boolean isInteractive=true;
+	public boolean isInteractive=true;	
+	private Map<String,FunctionDefStatement> functions = new TreeMap<>();
+
 	Map<String,Object> variables = new TreeMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
 	public List<Option> options = new ArrayList<>();
@@ -218,7 +222,8 @@ delimiter
 		registerCommand(new History());
 
 		registerCommand(new Jobs());
-
+		registerCommand(new Kill());
+		
 		registerCommand(new Ln());
 		registerCommand(new Ls());
 
@@ -340,9 +345,38 @@ delimiter
 
 	public static void main(String args[]) throws IOException {
 
+		/*
+		Get class path for run.sh
+		ProcessHandle.Info info = ProcessHandle.current().info();
+		String command = info.command().orElse("");
+		if( !command.isEmpty()) {
+			String[] arguments = info.arguments().orElse(new String[]{});
+			for (int idx = 0; idx < 10; idx++) {
+				String arg = arguments[idx];
+				if( arg.equals("-classpath")) {
+					for(String path : arguments[idx+1].split("[:]")) {
+						System.out.println(path+":\\");
+					}
+				}
+ 			}
+		}
+		*/
 		try {
+			 Runtime.getRuntime().addShutdownHook(new Thread()
+		        {
+		            @Override
+		            public void run()
+		            {
+		                System.out.println("Shutdown hook ran!");
+		            }
+		        });
+			 
 
 			Console c = new Console();
+			c.registerHandler(new Signal("INT"), "echo -n '^C '");
+			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
+			c.registerHandler(new Signal("TERM"), "echo -n '^\\ '");
+			c.registerHandler(new Signal("TSTP"), "echo -n '^Z '");
 			int ret = c.execute(args);
 
 			if(ret==0 && c.isInteractive) {
@@ -1481,6 +1515,8 @@ delimiter
 			sc.stdin = new NativeKeyboard();
 		}
 
+		Statement lastStatement=null;
+		
 		try {
 
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
@@ -1496,10 +1532,11 @@ delimiter
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
 			if( stmts.size()>0) {				
 				for(Statement stmt : stmts) {
-					handleSignal(ConsoleSignal.Debug);
+					lastStatement=stmt;
+					handleMetaSignal(ConsoleMetaSignal.Debug,stmt);
 					ret = stmt.process(sc);
 					if( ret!=0) {
-						handleSignal(ConsoleSignal.Err);
+						handleMetaSignal(ConsoleMetaSignal.Err,stmt);
 						if(isInteractive && options.contains(Option.ExitImediately)) {
 							System.exit(ret);
 						}
@@ -1509,7 +1546,7 @@ delimiter
 			}
 		} catch(ExitException e) {
 			ret = e.exitCode;
-			handleSignal(ConsoleSignal.Exit);
+			handleMetaSignal(ConsoleMetaSignal.Exit,lastStatement);
 			sc.stderr.println(e);
 			stop();
 		} catch(Exception e) {
@@ -1517,20 +1554,21 @@ delimiter
 			ret = 1;
 			sc.stderr.println(e);
 			logError("", e);
+			handleMetaSignal(ConsoleMetaSignal.Err,lastStatement);
 		}
 
 		return ret;
 	}
 
-	private Stack<ConsoleSignal> inProcess = new Stack<>();
-	
+	private Stack<ConsoleMetaSignal> inProcess = new Stack<>();
 
-	private void handleSignal(ConsoleSignal signal) {
-		
-		if( !inProcess.contains(signal)) {
-			inProcess.push(signal);
+
+	private void handleMetaSignal(ConsoleMetaSignal signal, Statement stmt) {
+
+		if( !inProcess.contains(signal)) {			
 			List<String> actions = signalHandlers.get(signal);
 			if( actions !=null) {
+				inProcess.push(signal);
 				for(int idx=0, sz=actions.size(); idx < sz; idx++ ) {			
 					String code = actions.get(idx);
 
@@ -1540,8 +1578,8 @@ delimiter
 						e.printStackTrace();
 					}
 				}
+				inProcess.pop();
 			}
-			inProcess.pop();
 		}
 	}
 
@@ -1583,8 +1621,8 @@ delimiter
 		mountFactory = mount;		
 	}
 
-	private Map<ConsoleSignal,List<String>> signalHandlers = new TreeMap<>();
-	public void registerHandler(ConsoleSignal signal, String action) {
+	private Map<ConsoleMetaSignal,List<String>> signalHandlers = new TreeMap<>();
+	public void registerHandler(ConsoleMetaSignal signal, String action) {
 		List<String> actions = signalHandlers.get(signal);
 		if( actions == null) {
 			actions = new ArrayList<>();
@@ -1619,6 +1657,22 @@ delimiter
 			osSignalHandlers.put(signal.getNumber(), actions);
 		}
 		actions.add(action);
+	}
+
+	public void addFunction(FunctionDefStatement function) {
+		functions.put(function.getName(), function);		
+	}
+
+	public FunctionDefStatement getFunction(String name) {
+		return functions.get(name);
+	}
+
+	public Map<String, FunctionDefStatement> getFunctions() {
+		return Collections.unmodifiableMap(functions);
+	}
+
+	public boolean removeFunction(String name) {
+		return functions.remove(name) !=null;
 	}
 
 

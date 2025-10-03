@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +41,6 @@ public class ShellContext {
 	private Stack<Map<Object,Object>> commandStack = new Stack<>();
 	private List<String> activeAlias = new ArrayList<>();
 	private Stack<Statement> statementStack = new Stack<>();
-	private Map<String,FunctionDefStatement> functions = new TreeMap<>();
 	private AtomicBoolean pause = new AtomicBoolean();
 
 	public ShellContext() {
@@ -55,15 +53,15 @@ public class ShellContext {
 	}
 
 	public void addFunction(FunctionDefStatement function) {
-		functions.put(function.getName(), function);
+		console.addFunction(function);
 	}
 
 	public FunctionDefStatement getFunction(String name) {
-		return functions.get(name);
+		return console.getFunction(name);
 	}
 
 	public Map<String, FunctionDefStatement> getFunctions() {
-		return Collections.unmodifiableMap(functions);
+		return console.getFunctions();
 	}
 
 
@@ -480,7 +478,7 @@ $
 	}
 
 	public boolean removeFunction(String name) {
-		return functions.remove(name) !=null;		
+		return console.removeFunction(name);		
 	}
 
 	public void setPause(boolean b) {
