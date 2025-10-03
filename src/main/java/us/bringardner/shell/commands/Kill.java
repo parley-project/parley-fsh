@@ -75,9 +75,11 @@ public class Kill extends ShellCommand{
 				String name = signals.get(exitStatus);
 				ctx.stdout.println(""+name);
 			} else {
+				List<String> tmp = new ArrayList<>();
 				for(Entry<Integer, String> e : signals.entrySet()) {
-					ctx.stdout.println(e.toString());
+					tmp.add(e.getValue());					
 				}
+				ctx.stdout.println(toColumns(ctx, tmp).trim());
 			}
 		} else {
 			if( signum == null ) {
