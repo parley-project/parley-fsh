@@ -251,4 +251,20 @@ public class TestLs {
 		}
 		
 	}
+	
+	@Test
+	@Order(5)
+	public void testLsTilde() throws IOException {
+
+
+	
+		String expect = "AbcFile01.php         AbcFile01.properties  AbcFile01.txt         AbcFile.php           AbcFile.properties    AbcFile.txt           \n"
+				  + "Folder01ghi           Folder01jkl           AbcFile.php           AbcFile.properties    AbcFile01def2.txt";
+		
+		String cmd = "ls ~/Folder01";
+
+		String actual = executeCommand(cmd).trim();		
+		assertEquals(expect, actual);
+	}
+
 }

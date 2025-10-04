@@ -89,6 +89,13 @@ public abstract class ShellCommand {
 
 	private static void glob2a(ShellContext ctx,List<FileSource> ret,FileSource dir,String [] segments, int segmentIdx) throws IOException {
 		if( segmentIdx>= segments.length) {
+			FileSource[] list = dir.listFiles();
+			if( list !=null && list.length>0) {
+				for(FileSource f : list) {
+					ret.add(f);
+				}
+			}
+			
 			return;
 		}
 
@@ -329,7 +336,9 @@ public abstract class ShellCommand {
 	private static List<FileSource>  glob(ShellContext ctx,String path) throws IOException {
 		List<FileSource> ret = new ArrayList<>();
 		FileSource cwd = null;
-
+		if( path.startsWith("~")) {
+			path = expandTilde(ctx, path);
+		}
 		if( isRelative(path)) {
 			cwd = ctx.console.getCurrentDirectory();
 		} else {						
