@@ -445,12 +445,16 @@ public class CommandStatement extends Statement{
 								}
 								try(InputStream inp = exec.getInputStream()){
 									String code = new String(inp.readAllBytes());
-									List<Statement> stmts = FileSourceShVisitorImpl.parse(code);
-									for (Statement s : stmts) {
-										if((ret=s.process(ctx))!=0) {
-											break;
-										}
+									Console tc = new Console();
+									tc.setStdIn(ctx.stdin);
+									tc.setStdOut(ctx.stdout);
+									tc.setStdErr(ctx.stderr);
+									List<Object> list = new ArrayList<>();
+									for(String sa : sargs) {
+										list.add(sa);
 									}
+									tc.setPositionalParameters(true, list);
+									ret = tc.executeUsingAntlr(code);
 								} catch (Exception e) {
 									throw new IOException(e);
 								}
