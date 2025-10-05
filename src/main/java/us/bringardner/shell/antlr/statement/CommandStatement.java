@@ -366,6 +366,10 @@ public class CommandStatement extends Statement{
 
 
 	public void setName(String name) {
+		if( name.equals(".")) {
+			name ="source";
+		}
+		
 		this.name = name;
 	}
 

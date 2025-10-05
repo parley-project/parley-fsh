@@ -74,7 +74,11 @@ argument
 				e.printStackTrace();
 			}
 		} else if(context.assignStatement()!=null ) {
-			ret = context.getText();			
+			String tmp = context.getText();
+			if( tmp.indexOf('$')>=0) {
+				tmp = FileSourceShPreProcessorVisitorImpl.processString(tmp, ctx);
+			}
+			ret = tmp;
 		}  else {
 
 			throw new RuntimeException("Not a valid argument "+context.getText());

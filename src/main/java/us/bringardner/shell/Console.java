@@ -64,6 +64,7 @@ import us.bringardner.shell.commands.Rm;
 import us.bringardner.shell.commands.Set;
 import us.bringardner.shell.commands.Shift;
 import us.bringardner.shell.commands.Sleep;
+import us.bringardner.shell.commands.Source;
 import us.bringardner.shell.commands.Touch;
 import us.bringardner.shell.commands.Trap;
 import us.bringardner.shell.commands.Unalias;
@@ -237,9 +238,10 @@ delimiter
 		registerCommand(new Rm());
 		registerCommand(new Read());
 
+		registerCommand(new Set());
 		registerCommand(new Shift());
 		registerCommand(new Sleep());
-		registerCommand(new Set());
+		registerCommand(new Source());
 
 
 		registerCommand(new Touch());
