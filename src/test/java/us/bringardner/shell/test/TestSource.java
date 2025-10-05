@@ -26,6 +26,11 @@ public class TestSource extends AbstractConsoleTest {
 
 	@Test
 	public void testSource01() throws IOException {
+		testSource01("source");
+		testSource01(".");
+	}
+	
+	public void testSource01(String name) throws IOException {
 		String expect = "init pos=one two\n"
 				+ "enter test pos=\"one two\"\n"
 				+ "enter s1 pos=\"ones1\"\n"
@@ -36,22 +41,27 @@ public class TestSource extends AbstractConsoleTest {
 				;
 		
 		String code = "echo init pos=$*\n"
-				+ "source ~/test01.sh";
+				+ name+" ~/test01.sh";
 		ExecuteResult res = executeCommand(code, "","one","two");
-		validate("testSource01",res,0,expect,"");
+		validate("testSource01 "+name,res,0,expect,"");
 	}
 
 
 	@Test
 	public void testSource02() throws IOException {
+		testSource01("source");
+		testSource01(".");
+	}
+	
+	public void testSource02(String name) throws IOException {
 		String expect = ""
 				;
 		
 		String code = ""
-				+ "source ~/config.sh"
+				+ name+" ~/config.sh"
 				;
 		ExecuteResult res = executeCommand(code, "");
-		validate("testSource01",res,0,expect,"");
+		validate("testSource02 "+name,res,0,expect,"");
 		Object v = console.getVariable("var1");
 		assertEquals(1,v);
 		v = console.getVariable("var2");

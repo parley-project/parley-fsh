@@ -58,7 +58,14 @@ public class TestTrap extends AbstractConsoleTest {
 				+ "echo simple echo line 1\n"
 				+ "echo simple echo line 2\n"
 				;
+		String expect = "hello from trap debug\n"
+				+ "simple echo line 1\n"
+				+ "hello from trap debug\n"
+				+ "simple echo line 2"
+				;
+		
 		ExecuteResult res = executeCommand(code, "");
+	
 		System.out.println("testTrap00 needs work ");
 
 
