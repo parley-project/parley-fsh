@@ -73,9 +73,14 @@ import us.bringardner.shell.commands.Wc;
 
 public class Console extends BaseThread {
 
-	public class ConsoleSignsalHandler {
+	public static class ConsoleSignalHandler {
+		ShellContext ctx;
 		String action;
-
+		public ConsoleSignalHandler(ShellContext ctx,String action) {
+			this.ctx = ctx;
+			this.action = action;
+		}
+		
 	}
 
 	public enum Option {
@@ -192,7 +197,7 @@ delimiter
 
 	private MountFactory mountFactory;
 	public boolean forceHeadless=true;
-	public boolean isInteractive=true;	
+	public boolean isInteractive=false;	
 	private Map<String,FunctionDefStatement> functions = new TreeMap<>();
 
 	Map<String,Object> variables = new TreeMap<>();
@@ -251,6 +256,8 @@ delimiter
 		registerCommand(new Unmount());
 
 		registerCommand(new Wc());
+		
+		registerSignals();
 	}
 
 	//The upper limit for a PID is 32768
@@ -258,6 +265,55 @@ delimiter
 
 	public static synchronized int nextPid() {
 		return nextPid++;
+	}
+
+	public static void raiseSignal(Integer signum) {
+
+		new Thread(()->{
+			//System_out.println("Signal fired "+signum);
+			List<ConsoleSignalHandler> tmp = osSignalHandlers.get(signum);
+			
+			if( tmp == null) {
+				//System_out.println("No handler for "+signum);
+			} else {
+				//System_out.println("Enter handler for "+signum+" sz="+tmp.size());
+				List<ConsoleSignalHandler> tmp2 = new ArrayList<>();
+				for(int idx=0,sz=tmp.size(); idx < sz; idx++) {
+					tmp2.add(tmp.get(idx));
+				}
+				//System_out.println("tmp2 "+signum+" sz="+tmp2.size());
+				for(ConsoleSignalHandler h : tmp2) {
+					//System_out.println("execute "+h.action);
+					try {
+						int ec = h.ctx.console.executeUsingAntlr(h.action);
+						//System_out.println(h.action+" result="+ec);
+					} catch (Exception e) {
+						System_err.println("Signal "+signum+" "+e.getLocalizedMessage());
+					}
+				}
+				//System_out.println("Exit handler for "+signum+" sz="+tmp.size());
+			}
+			
+		}).start();
+		
+		
+	}
+
+	private static void registerSignals() {
+		Map<Integer, String> signals = Trap.getLocalSignals();
+		for(Integer  i : signals.keySet()) {
+			String name = signals.get(i);
+			Signal signal = new Signal(name);
+			try {
+				Signal.handle(signal,(s)->{
+					raiseSignal(s.getNumber());					
+				});	
+			} catch (Exception e) {
+				if( !e.getLocalizedMessage().startsWith("Signal already used ")) {
+					System_err.println(e.getLocalizedMessage());
+				}
+			}
+		}
 	}
 
 	public static synchronized void setNextPid(int pid) {
@@ -367,10 +423,11 @@ delimiter
 			 
 
 			Console c = new Console();
-			c.registerHandler(new Signal("INT"), "echo -n '^C '");
+			ShellContext ctx = new ShellContext(c);
+			c.registerHandler(ctx,new Signal("INT"), "echo -n '^C '");
 			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
-			c.registerHandler(new Signal("TERM"), "echo -n '^\\ '");
-			c.registerHandler(new Signal("TSTP"), "echo -n '^Z '");
+			c.registerHandler(ctx,new Signal("TERM"), "echo -n '^\\ '");
+			c.registerHandler(ctx,new Signal("TSTP"), "echo -n '^Z '");
 			c.setStdIn(System.in);
 			
 			int ret = c.execute(args);
@@ -1638,32 +1695,16 @@ delimiter
 		actions.add(action);		
 	}
 
-	private Map<Integer,List<String>> osSignalHandlers = new TreeMap<>();
-	public void registerHandler(final Signal signal, String action) {
-		SignalHandler handler = s -> {
-			try {
-				//int code = 
-				executeUsingAntlr(action);
-				//System.out.println(action+" exit code = "+code+" running"+isRunning());
-
-			} catch (Throwable e) {
-				getStdErr().println(e.getLocalizedMessage());
-			}
-		};
-
-		try {
-			Signal.handle(signal,handler);	
-		} catch (Exception e) {
-			getStdErr().println(e.getLocalizedMessage());
-			return;
-		}
-
-		List<String> actions = osSignalHandlers.get(signal.getNumber());
+	private static Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new TreeMap<>();
+	
+	public void registerHandler(ShellContext ctx,final Signal signal, String action) {
+		ConsoleSignalHandler handler = new ConsoleSignalHandler(ctx,action);
+		List<ConsoleSignalHandler> actions = osSignalHandlers.get(signal.getNumber());
 		if( actions == null) {
 			actions = new ArrayList<>();
 			osSignalHandlers.put(signal.getNumber(), actions);
 		}
-		actions.add(action);
+		actions.add(handler);
 	}
 
 	public void addFunction(FunctionDefStatement function) {
@@ -1687,5 +1728,6 @@ delimiter
 		lastPid = pid;
 	}
 
+	
 
 }

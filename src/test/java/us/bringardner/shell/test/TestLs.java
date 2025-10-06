@@ -138,46 +138,63 @@ public class TestLs {
 	@Test
 	@Order(1)
 	public void testLs() throws IOException {
-
-
-	
-		String expect = 
-				  "AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
+		String expect = "AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
 		
 		String cmd = "ls";
-
-		String actual = executeCommand(cmd).trim();		
+		String actual = executeLsCommand(true,cmd).trim();
 		assertEquals(expect, actual);
 	}
 
+
+	private String executeLsCommand(boolean b, String cmd) throws IOException {
+		boolean tmp = console.isInteractive;
+		console.isInteractive = b;
+		String actual = executeCommand(cmd).trim();
+		console.isInteractive = tmp;
+		return actual;
+	}
 
 	@Test
 	@Order(2)
 	public void testLs_X() throws IOException {
 
-
-		String expect = 
-				  "Folder01             AbcFileA.js          AbcFileB.php         AbcFileD.properties  AbcFileC.txt";
-		
+		String expect = "Folder01             AbcFileA.js          AbcFileB.php         AbcFileD.properties  AbcFileC.txt";
 		String cmd = "ls -X";
 
-		String actual = executeCommand(cmd).trim();		
+		String actual = executeLsCommand(true,cmd).trim();		
 		assertEquals(expect, actual);
+		
+		expect = "Folder01\n"
+				+ "AbcFileA.js\n"
+				+ "AbcFileB.php\n"
+				+ "AbcFileD.properties\n"
+				+ "AbcFileC.txt"
+				;
+		String actual2 = executeLsCommand(false,cmd).trim();		
+		assertEquals(expect, actual2);
 	}
 
 	
 	@Test
 	@Order(3)
 	public void testLs_a() throws IOException {
-
-
-		String expect = 
-				  ".Hidden01.txt        .Hidden02.txt        AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
-		
+		String expect = ".Hidden01.txt        .Hidden02.txt        AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
 		String cmd = "ls -a";
 
-		String actual = executeCommand(cmd).trim();		
+		String actual = executeLsCommand(true,cmd).trim();		
 		assertEquals(expect, actual);
+		
+		expect = ".Hidden01.txt\n"
+				+ ".Hidden02.txt\n"
+				+ "AbcFileA.js\n"
+				+ "AbcFileB.php\n"
+				+ "AbcFileC.txt\n"
+				+ "AbcFileD.properties\n"
+				+ "Folder01";
+		
+		String actual2 = executeLsCommand(false,cmd).trim();		
+		assertEquals(expect, actual2);
+
 	}
 	
 	@Test
@@ -190,13 +207,12 @@ public class TestLs {
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
-				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"
-				  
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"				  
 				  ;
 		
 		String cmd = "ls -l";
 
-		String actual = executeCommand(cmd).trim();
+		String actual = executeLsCommand(true,cmd).trim();
 		
 		assertEquals(expect, actual);
 	}
@@ -211,14 +227,14 @@ public class TestLs {
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"
-				  
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"				  
 				  ;
+		
 		String expect = expect1.replaceAll("\\s", "");
 		
 		String cmd = "ls -lt";
 
-		String actual1 = executeCommand(cmd).trim();
+		String actual1 = executeLsCommand(true,cmd).trim();
 		String actual = actual1.replaceAll("\\s", "");
 		if( !expect.equals(actual)) {
 			assertEquals(expect1, actual1);	
@@ -243,7 +259,7 @@ public class TestLs {
 		
 		String cmd = "ls -ltr";
 
-		String actual1 = executeCommand(cmd).trim();
+		String actual1 = executeLsCommand(true,cmd).trim();
 		//System.out.println(actual1);
 		String actual = actual1.replaceAll("\\s", "");
 		if( !expect.equals(actual)) {
@@ -263,8 +279,23 @@ public class TestLs {
 		
 		String cmd = "ls ~/Folder01";
 
-		String actual = executeCommand(cmd).trim();		
+		String actual = executeLsCommand(true,cmd).trim();		
 		assertEquals(expect, actual);
+		
+		expect = "AbcFile01.php\n"
+				+ "AbcFile01.properties\n"
+				+ "AbcFile01.txt\n"
+				+ "AbcFile.php\n"
+				+ "AbcFile.properties\n"
+				+ "AbcFile.txt\n"
+				+ "Folder01ghi\n"
+				+ "Folder01jkl\n"
+				+ "AbcFile.php\n"
+				+ "AbcFile.properties\n"
+				+ "AbcFile01def2.txt"
+				;
+		String actual2 = executeLsCommand(false,cmd).trim();		
+		assertEquals(expect, actual2);
 	}
 
 }

@@ -103,8 +103,7 @@ public class Kill extends ShellCommand{
 					}
 				} else {
 					// this is my process
-					Signal signal = new Signal(signals.get(signum));
-					Signal.raise(signal);	
+					Console.raiseSignal(signum);
 					Thread.yield();
 				}
 			}

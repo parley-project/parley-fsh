@@ -87,7 +87,7 @@ public class Trap extends ShellCommand implements SignalHandler {
 				if( cs == ConsoleMetaSignal.UnKnown ) {
 					try {
 						Signal s = new Signal(val);
-						ctx.console.registerHandler(s,action);
+						ctx.console.registerHandler(ctx, s,action);
 					} catch (Exception e) {
 						ret = 1;
 						ctx.stderr.println(e);

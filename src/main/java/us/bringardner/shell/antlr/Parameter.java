@@ -372,9 +372,14 @@ ${parameter:-word}
 				the value of parameter is substituted.
 			 */
 			if( ret == null) {
-				
-				if( sc.console.isInteractive) {
+				if( val == null) {
+					val = ("parameter "+name+" is null");
+				} 
+				if( !sc.console.isInteractive) {
+					// console will write val to stderr
 					throw new ExitException(sc, 1,val);
+				} else {
+					sc.stderr.println(val);
 				}
 			}
 			break;

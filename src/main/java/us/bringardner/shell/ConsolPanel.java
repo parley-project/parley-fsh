@@ -311,7 +311,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 	public void setConsole(Console c) {
 		this.console = c;
-		c.registerHandler(new Signal("INT"), "exit");
+		c.registerHandler(new ShellContext(c), new Signal("INT"), "exit");
 
 	}
 

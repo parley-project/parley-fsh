@@ -36,6 +36,7 @@ public class TestLsWc extends AbstractConsoleTest{
 	
 		FileSourceFactory.setDefaultFactory(factory);
 		console = new Console();
+		console.isInteractive=true;
 	}
 	
 	private static void fillDir(FileSource dir,int i) throws IOException {

@@ -57,8 +57,9 @@ public class TestExecutionExport extends AbstractConsoleTest {
 		String stdIn = "";
 		int exitCode = 0;
 		
-		
-		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
+		Console c1 = new Console();
+		c1.isInteractive = true;
+		ExecuteResult ret = executeCommand(c1,cmd,stdIn,exitCode);
 		
 		String out = new String(ret.bao.toByteArray());
 		String err = new String(ret.bae.toByteArray());
