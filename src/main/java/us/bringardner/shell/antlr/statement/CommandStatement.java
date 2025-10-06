@@ -435,7 +435,7 @@ public class CommandStatement extends Statement{
 						cmd.setArgs(args);
 						ret = cmd.process(ctx);
 					} else {
-						String tmp = ""+ctx.getVariable("$0");
+						String tmp = "xx"+ctx.getVariable("$0");
 						boolean ok = name.equals(tmp);
 						FileSource exec = findExecutable(name,ctx);
 						if( exec != null ) {
@@ -517,7 +517,7 @@ public class CommandStatement extends Statement{
 		return ret;
 	}
 
-	private int execute(FileSource exec, ShellContext ctx) throws IOException {
+	private int executeDelete(FileSource exec, ShellContext ctx) throws IOException {
 		List<String> cmd =  new ArrayList<>();
 		cmd.add(exec.getAbsolutePath());
 		byte [] data = exec.head(20);
@@ -527,14 +527,20 @@ public class CommandStatement extends Statement{
 			if( idx1 > 0 ) {
 				tmp = tmp.substring(0,idx1).trim();
 				if(tmp.equals("fssh")) {
+					StringBuilder buf = new StringBuilder();
 					ProcessHandle.Info info = ProcessHandle.current().info();
 					String command = info.command().orElse("");
 					if( !command.isEmpty()) {
+						buf.append(command);
 						String[] arguments = info.arguments().orElse(new String[]{});
 						List<String> list = new ArrayList<>();
 						list.add(command);
+						list.add("--enable-native-access=ALL-UNNAMED");
 						for (int idx = 0; idx < 10; idx++) {
 							String arg = arguments[idx];
+							if( arg.equals("org.eclipse.jdt.internal.junit.runner.RemoteTestRunner")) {
+								break;
+							}
 							// anything past here is an argument and we want to use our own
 							if( arg.startsWith("us.bringardner")) {
 								break;
@@ -543,16 +549,22 @@ public class CommandStatement extends Statement{
 									&& !arg.startsWith("-javaagent:")
 									) {
 								list.add(arg);
+								buf.append(" "+arg);
 							}
 
 						}
+						buf.append(" "+Console.class.getCanonicalName());
+						buf.append(" "+exec.getAbsolutePath());
 						list.add(Console.class.getCanonicalName());
+						list.add(exec.getAbsolutePath());
 						cmd = list;
+						System.out.println(buf);
 					}					
 				}
 			}
 		} 
 
+		
 		argsToString(cmd, ctx);
 		
 		return execute(cmd, ctx);
@@ -629,5 +641,27 @@ public class CommandStatement extends Statement{
 	public void setHereDocument(HereDocumentContext hereDocument) {
 		hereId = hereDocument.ID().getText();		
 	}
+
+	private int execute(FileSource exec, ShellContext ctx) throws IOException {
+		List<String> cmd =  new ArrayList<>();
+		cmd.add(exec.getAbsolutePath());
+		byte [] data = exec.head(20);
+		if(data.length>=2 && data[0] == '#' && data[1] == '!') {
+			String tmp = new String(data).substring(2);
+			int idx1=tmp.lastIndexOf('\n');
+			if( idx1 > 0 ) {
+				tmp = tmp.substring(0,idx1).trim();
+				if(tmp.equals("fssh")) {
+					return ctx.executeSubShell(exec,ctx.args);					
+				}
+			}
+		} 
+	
+		
+		argsToString(cmd, ctx);
+		
+		return execute(cmd, ctx);
+	}
+
 
 }

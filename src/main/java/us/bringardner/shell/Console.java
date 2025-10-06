@@ -350,6 +350,8 @@ delimiter
 
 	public static void main(String args[]) throws IOException {
 
+		System.out.println("Enter main len="+args.length);
+		
 		/*
 		Get class path for run.sh
 		ProcessHandle.Info info = ProcessHandle.current().info();
@@ -382,6 +384,8 @@ delimiter
 			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
 			c.registerHandler(new Signal("TERM"), "echo -n '^\\ '");
 			c.registerHandler(new Signal("TSTP"), "echo -n '^Z '");
+			c.setStdIn(System.in);
+			
 			int ret = c.execute(args);
 
 			if(ret==0 && c.isInteractive) {

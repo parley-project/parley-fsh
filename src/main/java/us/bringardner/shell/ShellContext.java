@@ -111,9 +111,9 @@ public class ShellContext {
 			return tmp.substring(1, tmp.length()-1);				
 		} else if( context.DQ_STRING() !=null) {
 
-		String tmp = context.DQ_STRING().getText();
-		String ret = FileSourceShPreProcessorVisitorImpl.processString(tmp.substring(1,tmp.length()-1), this);
-		return ret;
+			String tmp = context.DQ_STRING().getText();
+			String ret = FileSourceShPreProcessorVisitorImpl.processString(tmp.substring(1,tmp.length()-1), this);
+			return ret;
 		} else if( context.ESC()!=null) {
 			String tmp = context.ESC().getText().substring(1);
 			return tmp;
@@ -233,7 +233,7 @@ $
 
 	public Object getVariable(VariableContext ctx) {
 		String name = ctx.getText();
-		
+
 		if( ctx.idOnly !=null ) {
 			String tmp = ctx.idOnly.getText();
 			Object val = getValue(tmp);
@@ -241,20 +241,20 @@ $
 				return ctx.idOnly.getText();
 			} 
 		} else 
-			
+
 			if( ctx.VARIABLE() !=null) {
-			name = ctx.VARIABLE().getText();
-		} else if( ctx.ID()!=null) {
-			name = ctx.ID().getText();
-		} 
-		
+				name = ctx.VARIABLE().getText();
+			} else if( ctx.ID()!=null) {
+				name = ctx.ID().getText();
+			} 
+
 		Object ret = getVariable(name);
 
 		if( ctx.associative_index()!=null) {
 			// associative arrays should be in a parameter ${s[s]} so this should not happen.
 			throw new RuntimeException("Handle associative array");
 		}
-		
+
 		if( ctx.array_index()!=null) {
 			Expression expr = new Expression(ctx.array_index().expression());
 			Object idx = expr.evaluate(this);
@@ -560,7 +560,7 @@ $
 		ret.putAll(local);
 		Object zero = console.positionalParameters.get(0);
 		ret.put("$0", zero);
-		
+
 		if( functionStack.size()>0) {
 			FunctionInvocation inv = functionStack.peek();
 			for(int idx=1,sz=inv.args.size(); idx<sz; idx++ ) {
@@ -575,7 +575,7 @@ $
 			}
 		}
 
-		
+
 		return ret;
 	}
 
@@ -609,7 +609,7 @@ $
 		if( !activeAlias.contains(name)) {
 			ret = console.alias.get(name);
 		}
-		
+
 		return ret;
 	}
 
@@ -627,6 +627,30 @@ $
 	 */
 	public void removeActiveAlias(String name) {
 		activeAlias.remove(name);		
+	}
+
+	public int executeSubShell(FileSource file,String [] args) throws IOException {
+		try (InputStream in = file.getInputStream()) {
+			String code = new String(in.readAllBytes());
+			Console sub = new Console();
+			sub.setStdIn(stdin);
+			sub.setStdErr(stderr);
+			sub.setStdOut(stdout);
+
+			FsshList tmp = new FsshList();
+			if( args !=null) {
+				for (int idx = 0; idx < args.length; idx++) {
+					String val = args[idx];
+					tmp.add(val);
+				}
+			}
+			sub.setPositionalParameters(true, tmp);
+
+
+			int ret = sub.executeUsingAntlr(code);
+
+			return ret;				
+		}
 	}
 
 }
