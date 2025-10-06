@@ -183,6 +183,9 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 				}
 
 				int key = e.getKeyCode();
+				if( key == KeyEvent.VK_C) {
+					System.out.println("C");
+				}
 				int pos = textArea.getCaretPosition();
 				db.append("cp="+currentPos+" ls="+lineStart+" pos="+pos);
 
@@ -308,6 +311,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 	public void setConsole(Console c) {
 		this.console = c;
+		c.registerHandler(new Signal("INT"), "exit");
 
 	}
 

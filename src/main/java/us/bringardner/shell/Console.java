@@ -350,24 +350,6 @@ delimiter
 
 	public static void main(String args[]) throws IOException {
 
-		System.out.println("Enter main len="+args.length);
-		
-		/*
-		Get class path for run.sh
-		ProcessHandle.Info info = ProcessHandle.current().info();
-		String command = info.command().orElse("");
-		if( !command.isEmpty()) {
-			String[] arguments = info.arguments().orElse(new String[]{});
-			for (int idx = 0; idx < 10; idx++) {
-				String arg = arguments[idx];
-				if( arg.equals("-classpath")) {
-					for(String path : arguments[idx+1].split("[:]")) {
-						System.out.println(path+":\\");
-					}
-				}
- 			}
-		}
-		*/
 		try {
 			 Runtime.getRuntime().addShutdownHook(new Thread()
 		        {
@@ -389,17 +371,6 @@ delimiter
 			int ret = c.execute(args);
 
 			if(ret==0 && c.isInteractive) {
-				/*
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							Console.debugFrame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-				 */
 				c.setName("Console");
 				c.setDaemon(false);
 				c.start();
@@ -421,20 +392,7 @@ delimiter
 		}		
 	}
 
-	public Console(ShellContext ctx) {
-		this();
-		mountFactory = ctx.console.mountFactory;
-		positionalParameters.clear();
-		if( ctx.args !=null) {
-			for(String a : ctx.args) {
-				positionalParameters.add(a);
-			}
-		}
-		environmentVariables.clear();
-		environmentVariables.putAll(ctx.console.environmentVariables);	
-
-	}
-
+	
 	/**
 	 * Only used for testing...
 	 * @param args
@@ -587,8 +545,29 @@ delimiter
 			variables.put(VARIABLE_HISTCHARS, "!^#");
 			positionalParameters.add("fssh");
 			options.add(Option.DoBraceExpantion);
+			
+			loadProfile();
+			
+		
 		} catch (IOException e) {
 		}
+	}
+
+	public void loadProfile() {
+		try {
+			
+			FileSource file = homeDir.getChild(".fsshrc");
+			if( file.exists() && file.canGroupRead()) {
+				//TODO: remove one testing is complete
+				stdIn = System.in;
+				executeUsingAntlr("source "+file);
+			}
+			
+		} catch (Throwable e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	private static void registerCommand(ShellCommand cmd) {
@@ -1562,6 +1541,16 @@ delimiter
 			handleMetaSignal(ConsoleMetaSignal.Exit,lastStatement);
 			sc.stderr.println(e);
 			stop();
+
+			if(!isInteractive) {
+				System.exit(ret);
+			} else {
+				KeyboardReader kb = getKeyboadReader();
+				if (kb instanceof ConsoleFrame) {
+					ConsoleFrame cf = (ConsoleFrame) kb;
+					cf.dispose();
+				}
+			}
 		} catch(Exception e) {
 			//e.printStackTrace();
 			ret = 1;
