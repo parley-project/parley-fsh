@@ -298,6 +298,7 @@ delimiter
 			this.ctx = ctx;
 			this.cmd = cmd;
 			pid = nextPid();
+			setName("Command "+pid);
 		}
 
 		public void pause(boolean b) {
@@ -347,7 +348,11 @@ delimiter
 
 
 
-
+	public static void exit(Console console,int exitCode) {
+		System.out.println("exit??");
+		//System.exit(exitCode);
+	}
+	
 	public static void main(String args[]) throws IOException {
 
 		try {
@@ -375,10 +380,10 @@ delimiter
 				c.setDaemon(false);
 				c.start();
 			} else {
-				System.exit(ret);
+				Console.exit(c,ret);
 			}
 		} catch (ExitException e) {
-			System.exit(e.exitCode);
+			Console.exit(null,e.exitCode);
 		}
 
 	}
@@ -660,7 +665,7 @@ delimiter
 		}
 
 		if(!isInteractive) {
-			System.exit(exitCode);
+			Console.exit(this,exitCode);
 		} else {
 			if (kb instanceof ConsoleFrame) {
 				ConsoleFrame cf = (ConsoleFrame) kb;
@@ -1530,7 +1535,7 @@ delimiter
 					if( ret!=0) {
 						handleMetaSignal(ConsoleMetaSignal.Err,stmt);
 						if(isInteractive && options.contains(Option.ExitImediately)) {
-							System.exit(ret);
+							Console.exit(this,ret);
 						}
 						return ret;
 					}					
@@ -1543,7 +1548,7 @@ delimiter
 			stop();
 
 			if(!isInteractive) {
-				System.exit(ret);
+				Console.exit(this,ret);
 			} else {
 				KeyboardReader kb = getKeyboadReader();
 				if (kb instanceof ConsoleFrame) {

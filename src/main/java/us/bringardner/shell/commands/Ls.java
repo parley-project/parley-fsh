@@ -91,7 +91,7 @@ public class Ls extends ShellCommand {
 		}
 		if( !out.isEmpty()) {
 			// Column 
-			if(!args.contains(Argument.l) && !args.contains(Argument.g))  {
+			if(ctx.console.isInteractive && !args.contains(Argument.l) && !args.contains(Argument.g))  {
 				ctx.stdout.println(super.toColumns(ctx,out).trim());
 			} else {
 				for(String line : out) {
