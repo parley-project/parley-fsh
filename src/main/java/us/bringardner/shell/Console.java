@@ -272,25 +272,21 @@ delimiter
 			//System_out.println("Signal fired "+signum);
 			List<ConsoleSignalHandler> tmp = osSignalHandlers.get(signum);
 			
-			if( tmp == null) {
-				//System_out.println("No handler for "+signum);
-			} else {
-				//System_out.println("Enter handler for "+signum+" sz="+tmp.size());
+			if( tmp != null) {
 				List<ConsoleSignalHandler> tmp2 = new ArrayList<>();
 				for(int idx=0,sz=tmp.size(); idx < sz; idx++) {
 					tmp2.add(tmp.get(idx));
 				}
-				//System_out.println("tmp2 "+signum+" sz="+tmp2.size());
 				for(ConsoleSignalHandler h : tmp2) {
-					//System_out.println("execute "+h.action);
 					try {
 						int ec = h.ctx.console.executeUsingAntlr(h.action);
-						System_out.println(h.action+" result="+ec);
+						if( ec !=0) {
+							h.ctx.stderr.println("Signal handler "+h.action+" exit code="+ec);
+						}
 					} catch (Exception e) {
-						System_err.println("Signal "+signum+" "+e.getLocalizedMessage());
+						h.ctx.stderr.println("Signal "+signum+" "+e.getLocalizedMessage());
 					}
 				}
-				//System_out.println("Exit handler for "+signum+" sz="+tmp.size());
 			}
 			
 		}).start();
