@@ -416,7 +416,7 @@ delimiter
 			StackTraceElement[] trace = Thread.currentThread().getStackTrace();
 			for(StackTraceElement t  : trace) {
 				if( t.getClassName().startsWith("org.junit")) {
-					//  don't exit when testing
+					//  junit will stop testing prematurely if we call System.exit :-(
 					return;
 				}
 			}
