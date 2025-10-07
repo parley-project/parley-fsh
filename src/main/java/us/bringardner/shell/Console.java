@@ -29,7 +29,6 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import sun.misc.Signal;
-import sun.misc.SignalHandler;
 import us.bringardner.core.BaseThread;
 import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
@@ -286,7 +285,7 @@ delimiter
 					//System_out.println("execute "+h.action);
 					try {
 						int ec = h.ctx.console.executeUsingAntlr(h.action);
-						//System_out.println(h.action+" result="+ec);
+						System_out.println(h.action+" result="+ec);
 					} catch (Exception e) {
 						System_err.println("Signal "+signum+" "+e.getLocalizedMessage());
 					}
@@ -405,8 +404,25 @@ delimiter
 
 
 	public static void exit(Console console,int exitCode) {
-		System.out.println("exit??");
-		//System.exit(exitCode);
+		if( console.isRunning()) {
+			console.stop();
+		}
+		KeyboardReader kb = console.getKeyboadReader();
+		if (kb instanceof ConsoleFrame) {
+			ConsoleFrame cf = (ConsoleFrame) kb;
+			cf.dispose();
+		}
+		if( !console.isInteractive) {
+			StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+			for(StackTraceElement t  : trace) {
+				if( t.getClassName().startsWith("org.junit")) {
+					//  don't exit when testing
+					return;
+				}
+			}
+			
+			System.exit(exitCode);
+		}
 	}
 	
 	public static void main(String args[]) throws IOException {
@@ -560,6 +576,8 @@ delimiter
 				code.append(' ');
 			}
 			ret = executeUsingAntlr(code.toString().trim());
+		} else {
+			isInteractive = true;
 		}
 
 		return ret;

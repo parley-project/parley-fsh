@@ -1,5 +1,6 @@
 package us.bringardner.shell.test;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
@@ -26,31 +27,7 @@ public class TestTrap extends AbstractConsoleTest {
 	}
 
 
-	@Test
-	public void testTrap02() throws IOException {
 
-		String code = "function handle_ctrlc() {\n"
-				+ "    echo \"Caught SIGINT! Exiting...\"\n"
-				+ "    exit\n"
-				+ "}\n"
-				+ "\n"
-				+ "trap handle_ctrlc SIGINT\n"
-				+ "\n"
-				+ "while true; do\n"
-				+ "    echo \"Running... Press Ctrl+C to stop.\"\n"
-				+ "    sleep 5\n"
-				+ "done\n"
-				+ ""
-				;
-
-		Console console = new Console();
-		console.setStdIn(System.in);
-		//console.executeUsingAntlr(code);
-
-		System.out.println("testTrap00 needs work ");
-
-
-	}
 
 	@Test
 	public void testTrap00() throws IOException {
@@ -61,16 +38,26 @@ public class TestTrap extends AbstractConsoleTest {
 		String expect = "hello from trap debug\n"
 				+ "simple echo line 1\n"
 				+ "hello from trap debug\n"
-				+ "simple echo line 2"
+				+ "simple echo line 2\n"
 				;
 		
 		ExecuteResult res = executeCommand(code, "");
-	
-		System.out.println("testTrap00 needs work ");
+		assertEquals(0,res.exitCode);
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals(expect, out);
+		assertEquals("", err);
+		
 
 
 	}
 
+	/**
+	 * This is not a unit test.  Run it manually and enter signal names in the keyboard.
+	 *  
+	 * @throws IOException
+	 */
+	
 	public void testTrap01() throws IOException {
 		String code = "trap -lpP action SIGKILL KILL 9";
 		code = "trap 'rm -f \"$tmpfile\"' EXIT\n"
@@ -79,8 +66,10 @@ public class TestTrap extends AbstractConsoleTest {
 		ExecuteResult res = executeCommand(code, "");
 		System.out.println("testTrap01 needs work res="+res);
 		try (Scanner in = new Scanner(System.in)) {
+			System.out.print("Enter Signal: ");
 			String line = in.next();
 			while(line !=null) {
+				
 				line = line.toUpperCase();
 				if( line.startsWith("SIG")) {
 					line = line.substring(3);
@@ -91,7 +80,7 @@ public class TestTrap extends AbstractConsoleTest {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-
+				System.out.print("Enter Signal: ");
 				line = in.next();
 			}
 		} catch (IllegalArgumentException e) {
