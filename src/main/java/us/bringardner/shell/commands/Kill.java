@@ -87,7 +87,17 @@ public class Kill extends ShellCommand{
 				signum = signal.getNumber();
 			}
 			for(Integer id : ids) {
-				CommandThread ct = Console.jobs.get(id);
+				CommandThread ct = null;
+				if( id < Console.jobs.size()) {
+					Console.jobs.get(id);	
+				} else {
+					for(CommandThread c : Console.jobs) {
+						if( c.pid == id) {
+							ct = c;
+							break;
+						}
+					}
+				}
 				if( ct == null ) {
 					//  is this an external process???
 					Process p = new ProcessBuilder("kill","-"+signum,""+id).start();

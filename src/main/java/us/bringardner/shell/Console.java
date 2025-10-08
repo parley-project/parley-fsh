@@ -188,7 +188,7 @@ delimiter
 
 	public static Map<String,ShellCommand> commands;
 
-	public static Map<Integer,CommandThread> jobs = new TreeMap<>();
+	public static List<CommandThread> jobs = new ArrayList<>();
 	
 
 	boolean eof = false;
@@ -1741,7 +1741,7 @@ delimiter
 	}
 
 	public void addJob(int pid, CommandThread thread) {
-		jobs.put(pid,thread);
+		jobs.add(thread);
 		lastPid = pid;
 	}
 

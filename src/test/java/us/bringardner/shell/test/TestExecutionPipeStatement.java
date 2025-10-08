@@ -204,8 +204,8 @@ public class TestExecutionPipeStatement {
 		String expect = 
 				"[1] 100000\n"
 				+ "[2] 100001\n"
-				+ "[100000] Running sleep   100    &\n"
-				+ "[100001] Running sleep   200    &"
+				+ "[1] Running sleep   100    &\n"
+				+ "[2] Running sleep   200    &"
 				;
 		
 		Console.setNextPid(100000);
