@@ -45,9 +45,9 @@ statement1
     ;
 
 backgroundCommand:
-				statement_group AMP
-				| pipeStatement AMP
-				| commandStatement AMP
+				statement_group WS* AMP
+				| pipeStatement WS* AMP
+				| commandStatement WS* AMP
 				;
 
 loop_controll_statement
