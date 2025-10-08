@@ -146,6 +146,7 @@ PLUS_EQ:'+=';
 DOT:'.';
 DOT_DOT:'..';
 PERC:'%';
+//JOBSPEC: '%'[0-9]+;
 PLUS:'+';
 STAR:'*';
 POW:'**';

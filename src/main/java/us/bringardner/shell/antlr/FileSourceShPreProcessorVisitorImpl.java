@@ -15,6 +15,7 @@ import org.antlr.v4.runtime.Recognizer;
 
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
+import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorBaseVisitor;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorLexer;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser;
@@ -203,7 +204,8 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(expStr));
 				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
 				FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-				Expression exprCtx = visitor.visitMathExpression(parser.mathExpression());
+				MathExpressionContext me = parser.mathExpression();
+				Expression exprCtx = visitor.visitMathExpression(me);
 
 				Object val = exprCtx.evaluate(sc);
 				chunks.add(""+val);

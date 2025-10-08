@@ -101,6 +101,8 @@ path
 
 argument_list: (argument WS*)*
 	;
+
+
 	
 argument
     : ARG_ID 
@@ -115,10 +117,10 @@ argument
 	| path	
 	| ID
 	| variable
-	
+	| PERC
     ;
     
-signed_number: (MINUS|PLUS)? NUMBER;    
+signed_number: (MINUS|PLUS|PERC)? NUMBER;    
 
 
 commandStatement

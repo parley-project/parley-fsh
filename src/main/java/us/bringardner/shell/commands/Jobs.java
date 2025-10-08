@@ -11,6 +11,7 @@ public class Jobs extends ShellCommand{
 	enum Options {l,n,p,r,s};
 	
 	static String name = "jobs";
+	// 								jobspec = %#
 	static String help = "jobs [-rs] [jobspec]\n"
 			+ "jobs -x command [arguments]\n"
 			+ "The first form lists the active jobs. The options have the following meanings:\n"
