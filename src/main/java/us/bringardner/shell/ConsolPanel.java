@@ -49,6 +49,10 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 		}
 
+		@Override
+		public void close() throws IOException {
+			super.close();
+		}
 
 
 		@Override
@@ -134,7 +138,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	 */
 	public ConsolPanel() {
 		setLayout(new BorderLayout(0, 0));
-		
+
 		JPanel debugPanel = new JPanel();
 		FlowLayout flowLayout_1 = (FlowLayout) debugPanel.getLayout();
 		flowLayout_1.setAlignment(FlowLayout.LEFT);
@@ -156,7 +160,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 		textArea = new JTextPane();
 		textArea.setFont(new Font(Font.MONOSPACED, Font.ITALIC, 12));
-		
+
 		textArea.addFocusListener(new FocusAdapter() {
 			@Override
 			public void focusGained(FocusEvent e) {
@@ -226,7 +230,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 				switch (key) {
 				case KeyEvent.VK_UNDEFINED:
-						break;
+					break;
 				case KeyEvent.VK_ESCAPE:
 					e.consume();
 					break;
@@ -445,7 +449,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	@Override
 	public void setEditLineText(String text) {
 		this.editLineText= text;
-		
+
 	}
 
 }

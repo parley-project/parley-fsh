@@ -390,7 +390,7 @@ delimiter
 				error = e;
 			}
 			ctx.stdout.flush();
-			close(ctx.stdout);
+			close(ctx.console,ctx.stdout);
 			end = System.currentTimeMillis();
 			running = false;
 		}
@@ -457,7 +457,10 @@ delimiter
 
 	}
 
-	public static void close(OutputStream out) {
+	public static void close(Console console,OutputStream out) {
+		if( console.stdOut == out ) {
+			return;
+		}
 		if( out != System_out && out != System_err) {
 			try {
 				out.close();

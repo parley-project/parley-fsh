@@ -42,8 +42,10 @@ public class CommandStatement extends Statement{
 		StringBuilder debug = new StringBuilder();
 		boolean isStdin = false;
 		boolean isNative= false;
+		ShellContext ctx;
 
-		public StreamCopier(InputStream in, OutputStream out,String name) {
+		public StreamCopier(ShellContext ctx, InputStream in, OutputStream out,String name) {
+			this.ctx = ctx;
 			this.in = in;
 			this.out = out;
 			setName(name);
@@ -80,7 +82,7 @@ public class CommandStatement extends Statement{
 					}
 				} catch (Exception e2) {}
 				try {
-					Console.close(out);
+					Console.close(ctx.console,out);
 				} catch (Exception e2) {}
 
 			}
@@ -113,8 +115,10 @@ public class CommandStatement extends Statement{
 		byte [] buffer = new byte[1024*10];
 		StringBuilder debug = new StringBuilder();
 		private boolean echo;
+		ShellContext ctx;
 
-		public NativeStreamCopier(NativeKeyboard in, OutputStream out,String name, boolean echo) {
+		public NativeStreamCopier(ShellContext ctx, NativeKeyboard in, OutputStream out,String name, boolean echo) {
+			this.ctx = ctx;
 			this.in = in;
 			this.out = out;
 			this.echo = echo;
@@ -155,7 +159,7 @@ public class CommandStatement extends Statement{
 					}
 				} catch (Exception e2) {}
 				try {
-					Console.close(out);
+					Console.close(ctx.console,out);
 				} catch (Exception e2) {}
 
 			}
@@ -217,14 +221,14 @@ public class CommandStatement extends Statement{
 				Process p = builder.start();
 				if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
-					sc1 = new NativeStreamCopier((NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
+					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
 				} else {
-					sc1 = new StreamCopier(ctx.stdin,p.getOutputStream(),name+" stdin");
+					sc1 = new StreamCopier(ctx,ctx.stdin,p.getOutputStream(),name+" stdin");
 
 				}
 
-				sc2 = new StreamCopier(p.getInputStream(),ctx.stdout,name+" stdout");
-				sc3 = new StreamCopier(p.getErrorStream(),ctx.stderr,name+" stderr");
+				sc2 = new StreamCopier(ctx,p.getInputStream(),ctx.stdout,name+" stdout");
+				sc3 = new StreamCopier(ctx,p.getErrorStream(),ctx.stderr,name+" stderr");
 
 				sc1.start();
 				sc2.start();
