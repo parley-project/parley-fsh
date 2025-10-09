@@ -2,6 +2,7 @@ package us.bringardner.shell.commands;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -64,13 +65,18 @@ public class Kill extends ShellCommand{
 			} else if( val.startsWith("-")) {				
 				signum = parseSigNum(val.substring(1));				
 			} else {
+				if( val.startsWith("%")) {
+					val = val.substring(1);
+				} 
 				int id = Integer.parseInt(val);
 				ids.add(id);
+
+
 			}
 		}
 
 		if( list ) {
-			
+
 			if( exitStatus!=null) {
 				String name = signals.get(exitStatus);
 				ctx.stdout.println(""+name);
@@ -88,8 +94,9 @@ public class Kill extends ShellCommand{
 			}
 			for(Integer id : ids) {
 				CommandThread ct = null;
-				if( id < Console.jobs.size()) {
-					Console.jobs.get(id);	
+				int sz = Console.jobs.size();
+				if(id<= sz) {
+					ct = Console.jobs.get(id-1);
 				} else {
 					for(CommandThread c : Console.jobs) {
 						if( c.pid == id) {
@@ -98,6 +105,7 @@ public class Kill extends ShellCommand{
 						}
 					}
 				}
+				
 				if( ct == null ) {
 					//  is this an external process???
 					Process p = new ProcessBuilder("kill","-"+signum,""+id).start();
@@ -137,7 +145,7 @@ public class Kill extends ShellCommand{
 			Signal s = new Signal(val);
 			ret = s.getNumber();
 		}
-		
+
 		return ret;
 	}
 

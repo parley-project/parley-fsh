@@ -159,6 +159,43 @@ public class TestTrap extends AbstractConsoleTest {
 				;
 
 		Console.setNextPid(100000);
+		Console.jobs.clear();
+		console.isInteractive=true;
+		ExecuteResult res = executeCommand(code, "");
+		//  give time for signal handling
+		Thread.sleep(50);
+		assertEquals("Exit 0\n", new String(res.bae.toByteArray()));
+		assertEquals(expect, new String(res.bao.toByteArray()));
+		assertEquals(0, res.exitCode);
+		
+	}
+
+	@Test
+	public void testKill03() throws IOException, InterruptedException {
+		String expect = "Running... Press Ctrl+C to stop.\n"
+				+ "[1] 100000\n"
+				+ "Caught SIGINT! Exiting...\n";
+		
+		String code = "function handle_ctrlc() {\n"
+				+ "    echo \"Caught SIGINT! Exiting...\"\n"
+				+ "    exit\n"
+				+ "}\n"
+				+ "\n"
+				+ "trap handle_ctrlc SIGINT\n"
+				+ "\n"
+				+ "function work() {"
+				+ "while true; do\n"
+				+ "    echo \"Running... Press Ctrl+C to stop.\"\n"
+				+ "    sleep 5\n"
+				+ "done\n"
+				+ "}\n"
+				+ "work &\n"				
+				+ "kill -s INT %1\n"
+				//+ "sleep 1\n"
+				;
+
+		Console.setNextPid(100000);
+		Console.jobs.clear();
 		console.isInteractive=true;
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling
