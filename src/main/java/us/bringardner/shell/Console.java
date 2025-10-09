@@ -386,6 +386,7 @@ delimiter
 				ctx.enterCommand();
 				exitCode = cmd.process(ctx);
 				ctx.exitCommand();
+				
 			} catch (Throwable e) {
 				error = e;
 			}
