@@ -40,7 +40,7 @@ statement1
     | statement_group // Includes parenthesized groups
     | command_substitution
     | exprStatement
-    
+    | job_control_statement
     
     ;
 
@@ -471,3 +471,5 @@ associativeArrayValue
     | parameter
     ;
 
+job_control_statement: cmd=ID WS* (argument WS*)* (jobspec WS*)*;
+jobspec:(signed_number|PERC_PERC|PERC_PLUS|PERC_MINUS|PERC_QUESTION ID?);

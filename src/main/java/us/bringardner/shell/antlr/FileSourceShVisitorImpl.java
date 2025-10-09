@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.Recognizer;
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Argument_listContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BackgroundCommandContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CaseClauseContext;
@@ -31,6 +32,8 @@ import us.bringardner.filesource.sh.FileSourceShParser.FactorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ForStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.FunctionDefinitionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.IfStatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Job_control_statementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.JobspecContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ListContext;
 import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.MathStatementContext;
@@ -66,6 +69,7 @@ import us.bringardner.shell.antlr.statement.DeclareAssociateArrayStatement;
 import us.bringardner.shell.antlr.statement.ForStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
 import us.bringardner.shell.antlr.statement.IfStatement;
+import us.bringardner.shell.antlr.statement.JobControlStatement;
 import us.bringardner.shell.antlr.statement.LogicStatement;
 import us.bringardner.shell.antlr.statement.MathStatement;
 import us.bringardner.shell.antlr.statement.PipeStatement;
@@ -106,11 +110,11 @@ public class FileSourceShVisitorImpl extends FileSourceShParserBaseVisitor<Objec
 	}
 
 	/*
-		
+
 statement
 	: white* statement1 WS* (NL|SEMI|EOF)
 	| conditionalStatement (NL|SEMI|EOF) 
-    
+
 		;
 	 */
 
@@ -122,10 +126,10 @@ statement
 		} else if( ctx.conditionalStatement()!=null) {
 			ret = visitConditionalStatement(ctx.conditionalStatement());
 		}
-			
+
 		return ret;
 	}
-	
+
 	@Override
 	public Statement visitConditionalStatement(ConditionalStatementContext ctx) {
 		Statement ret = null;
@@ -135,14 +139,14 @@ statement
 		} else {
 			left = visitConditionalStatement(ctx.conditionalStatement());			
 		}
-		
+
 		Statement right = visitStatement1(ctx.right);
-		
+
 		ret = new LogicStatement(ctx,left,ctx.op,right);
 
 		return ret;
 	}
-	
+
 	@Override
 	public Statement visitStatement1(Statement1Context ctx) {
 		Statement ret = null;
@@ -189,6 +193,8 @@ statement
 			ret = visitBackgroundCommand(ctx.backgroundCommand());
 		}else if(ctx.selectStatement()!=null ) {
 			ret = visitSelectStatement(ctx.selectStatement());
+		} else if(ctx.job_control_statement() !=null) {
+			ret = visitJob_control_statement(ctx.job_control_statement());
 		}  else  {
 			throw new RuntimeException("No known statement '"+ctx.getText()+"'");
 		} 
@@ -255,6 +261,34 @@ backgroundCommand:
 	}
 
 	@Override
+	public JobControlStatement visitJob_control_statement(Job_control_statementContext ctx) {
+		JobControlStatement ret = new JobControlStatement(ctx);
+		ret.setArgs(visitArgument_list(ctx.argument()));
+		ret.setJobSpecs(visitJobspec(ctx.jobspec()));
+		return ret;
+	}
+
+	private List<String> visitJobspec(List<JobspecContext> ctx) {
+		List<String> ret = new ArrayList<>();
+		if( ctx != null ) {
+			for(JobspecContext js : ctx) {
+				ret.add(visitJobspec(js));
+			}
+		}
+		return ret;
+	}
+
+	@Override
+	public String visitJobspec(JobspecContext ctx) {
+		if( ctx == null ) {
+			return "null";
+		}
+
+		return ""+ctx.getText();
+	}
+
+
+	@Override
 	public CommandStatement visitCommandStatement(CommandStatementContext ctx) {
 		/*
 
@@ -270,13 +304,7 @@ commandStatement
 		if( ctx.argument()!=null) {
 			List<ArgumentContext> argsCtx = ctx.argument();
 			if( argsCtx.size()>0) {
-				List<Argument> allArgs = new ArrayList<>();
-				if( argsCtx != null  ) {
-					for (ArgumentContext a : argsCtx) {
-						allArgs.add(visitArgument(a));
-					}			
-				} 
-				Argument [] args = allArgs.toArray(new Argument[allArgs.size()]);
+				Argument[] args = visitArgument_list(argsCtx);
 				ret.setArgs(args);
 			}
 		}
@@ -449,10 +477,10 @@ ifStatement
 		if( ctx.statement1()!=null) {
 			return visitStatement1(ctx.statement1());
 		}
-		
+
 		return null;
 	}
-	
+
 	@Override
 	public StatementGroup1 visitStatement_group1(Statement_group1Context ctx) {
 
@@ -525,16 +553,16 @@ caseClause
 				ret.add(stmt);	
 			}			
 		}
-		
+
 		return ret;
 	}
-	
+
 	@Override
 	public Statement visitWhileStatement(WhileStatementContext ctx) {
 		//|'while' compare DO statement+ DONE
 		Compare compare = visitCompare(ctx.compare());
 		List<Statement> stmts = visitDoStatement(ctx.doStatement());
-		
+
 		return new WhileStatement(ctx,compare,stmts);
 	}
 
@@ -586,7 +614,7 @@ forStatement
 		}
 		List<Argument> args = new ArrayList<>();
 		ListContext list = ctx.list();
-		
+
 		if( list !=null) {
 			for(ArgumentContext actx : list.argument()) {
 				Argument a = visitArgument(actx);
@@ -629,10 +657,30 @@ argument
 	 */
 	@Override
 	public Argument visitArgument(ArgumentContext ctx) {
+		
 		Argument ret = new Argument(ctx);
 
 		return ret;
 
+	}
+
+
+	@Override
+	public Argument[] visitArgument_list(Argument_listContext ctx) {
+		Argument[] ret = visitArgument_list(ctx.argument());
+
+		return ret;
+	}
+
+	private Argument[] visitArgument_list(List<ArgumentContext> ctx) {
+		List<Argument> ret = new ArrayList<>();
+		if( ctx != null) {
+			for(ArgumentContext a : ctx) {
+				ret.add(visitArgument(a));
+			}
+		}
+		Argument [] args = ret.toArray(new Argument[ret.size()]);
+		return args;
 	}
 
 	@Override
@@ -663,7 +711,7 @@ argument
 		//  : 'until' compare NL? DO statement+ DONE	    		  
 		Compare compare = visitCompare(ctx.compare());
 		List<Statement> stmts = visitDoStatement(ctx.doStatement());
-		
+
 		return new UntilStatement(ctx,compare,stmts);
 
 	}
@@ -673,7 +721,7 @@ argument
 		throw new RuntimeException("Not implemented");
 	}
 
-	
+
 
 
 	@Override

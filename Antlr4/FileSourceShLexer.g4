@@ -183,6 +183,20 @@ DIGIT: [0-9];
 SPECIAL_UNIX: [-_+=~];
 SPECIAL_WINDOWS: [-_+=~];
 POS:'^';
+
+//KILL:'kill';
+//FG:'fg';
+//BG:'bg';
+//WAIT:'wait';
+//DISOWN:'disown';
+//SUSPEND:'suspend';
+//JOBS:'jobs';
+
+PERC_PERC:'%%';
+PERC_MINUS:'%-';
+PERC_PLUS:'%+';
+PERC_QUESTION:'%?';
+
 ARG_ID  :~[a-zA-Z0-9]('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 //ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;

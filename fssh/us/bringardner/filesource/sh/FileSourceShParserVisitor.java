@@ -520,4 +520,16 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitAssociativeArrayValue(FileSourceShParser.AssociativeArrayValueContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#job_control_statement}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitJob_control_statement(FileSourceShParser.Job_control_statementContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#jobspec}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitJobspec(FileSourceShParser.JobspecContext ctx);
 }

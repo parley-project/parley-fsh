@@ -225,7 +225,7 @@ ${parameter:-word}
 					int type = tn.getSymbol().getType();
 					if( type == FileSourceShParser.PIPE || type == FileSourceShParser.OR) {
 						return patternHashReplaceHead(ret,bodyText,bc);
-					} else if( type == FileSourceShParser.PERC) {
+					} else if( type == FileSourceShParser.PERC | type == FileSourceShParser.PERC_PERC) {
 						return patternHashReplaceTail(ret,bodyText,bc);
 					} 
 				}

@@ -1,6 +1,8 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import us.bringardner.shell.Console;
 import us.bringardner.shell.Console.CommandThread;
@@ -24,9 +26,15 @@ public class Jobs extends ShellCommand{
 			+ "If the -x option is supplied, jobs replaces any jobspec found in command or arguments with the "
 			+ "	corresponding process group ID, and executes command, passing it arguments, returning its exit status."
 			;
+	private List<String> jobSpecs=new ArrayList<>();
 	
 	public Jobs() {
 		super(name, help);
+	}
+
+	public Jobs(List<String> jobSpecs) {
+		this();
+		this.jobSpecs = jobSpecs;
 	}
 
 	@Override

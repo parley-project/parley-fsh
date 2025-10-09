@@ -43,6 +43,12 @@ public class Wait extends ShellCommand{
 		super(name, help);
 	}
 
+	List<String> jobSpecs = new ArrayList<>();
+	public Wait( List<String> jobSpecs) {
+		this();
+		this.jobSpecs = jobSpecs;
+	}
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
