@@ -8,8 +8,10 @@ import java.io.PrintStream;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import sun.misc.Signal;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
 import us.bringardner.shell.Console.CommandThread;
+import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
 
@@ -93,7 +95,7 @@ public class PipeStatement extends Statement{
 				threads[cmds.length-1].ctx.stderr.println("real "+time);
 			}
 		}
-
+		Console.raiseSignal(new Signal("CHLD").getNumber());
 		
 		return ret;
 	}
