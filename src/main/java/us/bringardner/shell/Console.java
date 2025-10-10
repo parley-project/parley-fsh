@@ -188,7 +188,7 @@ delimiter
 
 	public static Map<String,ShellCommand> commands;
 
-	public static List<Job> jobs = new ArrayList<>();
+	public List<Job> jobs = new ArrayList<>();
 	
 
 	boolean eof = false;

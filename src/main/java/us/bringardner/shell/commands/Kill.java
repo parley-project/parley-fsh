@@ -95,11 +95,11 @@ public class Kill extends ShellCommand{
 			}
 			for(Integer id : ids) {
 				Job ct = null;
-				int sz = Console.jobs.size();
+				int sz = ctx.console.jobs.size();
 				if(id<= sz) {
-					ct = Console.jobs.get(id-1);
+					ct = ctx.console.jobs.get(id-1);
 				} else {
-					for(Job c : Console.jobs) {
+					for(Job c : ctx.console.jobs) {
 						if( c.pid == id) {
 							ct = c;
 							break;

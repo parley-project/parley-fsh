@@ -37,7 +37,7 @@ public class BackgroundStatement extends Statement{
 				}
 			}
 			sc.console.addJob(job);
-			String tmp = "["+Console.jobs.size()+"] "+job.pid;
+			String tmp = "["+ctx.console.jobs.size()+"] "+job.pid;
 			sc.stdout.println(tmp);
 		} catch (Exception e) {
 			ret = 1;

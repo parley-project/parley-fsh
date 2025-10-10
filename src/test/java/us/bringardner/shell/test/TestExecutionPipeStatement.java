@@ -44,7 +44,7 @@ public class TestExecutionPipeStatement {
 		console.setStdErr(new PrintStream(ret.bae));
 		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 		
-		Console.jobs.clear();
+		//Console.jobs.clear();
 		Console.setNextPid(100000);
 		ret.exitCode=console.executeUsingAntlr(command);
 		

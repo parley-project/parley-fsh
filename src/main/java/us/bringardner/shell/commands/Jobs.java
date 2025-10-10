@@ -63,9 +63,9 @@ public class Jobs extends ShellCommand{
 			}
 		}
 		
-		for(Integer idx=0,sz=Console.jobs.size(); idx < sz; idx++) {
+		for(Integer idx=0,sz=ctx.console.jobs.size(); idx < sz; idx++) {
 			boolean show = false;
-			Job job = Console.jobs.get(idx);
+			Job job = ctx.console.jobs.get(idx);
 			Console.JobState state = job.state;
 			if( state == Console.JobState.Running) {
 				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
