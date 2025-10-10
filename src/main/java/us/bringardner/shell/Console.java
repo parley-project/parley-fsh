@@ -188,7 +188,7 @@ delimiter
 
 	public static Map<String,ShellCommand> commands;
 
-	public static List<CommandThread> jobs = new ArrayList<>();
+	public static List<Job> jobs = new ArrayList<>();
 	
 
 	boolean eof = false;
@@ -314,8 +314,55 @@ delimiter
 	public static synchronized void setNextPid(int pid) {
 		nextPid = pid;
 	}
-	public enum JobState {Running,Stopped,Termnated};
+	public enum JobState {Running,Stopped,Termnated, Idel};
+	public static class Job extends BaseThread{
+		public CommandThread child;
+		public long startTime; 
+		public long stopTime;
+		public int pid;
+		public int exitCode;
+		public Throwable error;
+		public JobState state;
+		
+		public Job(CommandThread thread) {
+			child = thread;			
+			pid = nextPid();
+			state = JobState.Idel;
+		}
 
+		@Override
+		public void run() {
+			startTime = System.currentTimeMillis();
+			if( !child.hasStarted()) {
+				child.start();
+			}
+			started =running= true;
+			state = JobState.Running;
+			while( !child.hasStarted()) {
+				try {
+					Thread.sleep(10);
+				} catch (Exception e) {
+				}				
+			}
+
+			while( child.isRunning() ) {
+				try {
+					Thread.sleep(10);
+				} catch (Exception e) {
+				}				
+			}
+			exitCode = child.exitCode;
+			stopTime = System.currentTimeMillis();
+			running = false;
+			state = JobState.Termnated;
+		}
+		
+		public String toString() {
+				return child.toString();
+		} 
+	}
+	
+	
 	public static class HistoryEntry {
 		public long time;
 		public boolean  saved;
@@ -337,7 +384,6 @@ delimiter
 	}
 
 	public static class CommandThread extends BaseThread {
-		public int pid ;
 		public int exitCode;
 		public long start;
 		public long end;
@@ -348,8 +394,7 @@ delimiter
 		public CommandThread(ShellContext ctx,Statement cmd) {
 			this.ctx = ctx;
 			this.cmd = cmd;
-			pid = nextPid();
-			setName("Command "+pid);
+			setName("Command "+cmd);
 		}
 
 		public void pause(boolean b) {
@@ -378,8 +423,6 @@ delimiter
 
 		@Override
 		public void run() {
-			@SuppressWarnings("unused")
-			int db = pid;
 			started = running = true;
 			start = System.currentTimeMillis();
 			try {
@@ -1741,9 +1784,9 @@ delimiter
 		return functions.remove(name) !=null;
 	}
 
-	public void addJob(int pid, CommandThread thread) {
-		jobs.add(thread);
-		lastPid = pid;
+	public void addJob(Job job) {
+		jobs.add(job);
+		lastPid = job.pid;
 	}
 
 	

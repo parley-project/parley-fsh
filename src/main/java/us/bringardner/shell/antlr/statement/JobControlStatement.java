@@ -26,24 +26,37 @@ public class JobControlStatement extends Statement{
 
 enum JobControlCmd {KILL,WAIT,SUSPEND,DISOWN,JOBS,FG,BG}
 
+	
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
+		if( jobSpecs !=null && jobSpecs.size()>0) {
+			String [] tmp = new String[sc.args.length+jobSpecs.size()];
+			for (int idx = 0; idx < tmp.length; idx++) {
+				if( idx < sc.args.length) {
+					tmp[idx] = sc.args[idx];
+				} else {
+					tmp[idx] = jobSpecs.get(idx-sc.args.length);
+				}
+			}
+			sc.args = tmp;
+		}
 		
 		Job_control_statementContext ctx = (Job_control_statementContext) getContext();
 		JobControlCmd cmd = JobControlCmd.valueOf(ctx.cmd.getText().toUpperCase());
 		ShellCommand shell = null;
 		switch (cmd) {
-		case KILL: shell = new Kill(jobSpecs); 
+		case KILL: shell = new Kill(); 
 		break;
-		case WAIT: shell = new Wait(jobSpecs); break;
+		case WAIT: shell = new Wait(); break;
 		//case SUSPEND: shell = new Jobs(); break;
 		//case DISOWN: shell = new Jobs(); break;
-		case JOBS: shell = new Jobs(jobSpecs); break;
+		case JOBS: shell = new Jobs(); break;
 		//case FG: shell = new Jobs(); break;
 		//case BG: shell = new Jobs(); break;
 		default:
 			throw new IllegalArgumentException("Unexpected value for job control cmd: " + cmd);
 		}
+		
 		shell.setArgs(args);	
 		
 		return shell.process(sc);

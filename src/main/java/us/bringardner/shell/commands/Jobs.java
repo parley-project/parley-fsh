@@ -1,11 +1,9 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.CommandThread;
+import us.bringardner.shell.Console.Job;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 
@@ -26,17 +24,12 @@ public class Jobs extends ShellCommand{
 			+ "If the -x option is supplied, jobs replaces any jobspec found in command or arguments with the "
 			+ "	corresponding process group ID, and executes command, passing it arguments, returning its exit status."
 			;
-	private List<String> jobSpecs=new ArrayList<>();
 	
 	public Jobs() {
 		super(name, help);
 	}
 
-	public Jobs(List<String> jobSpecs) {
-		this();
-		this.jobSpecs = jobSpecs;
-	}
-
+	
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
@@ -49,14 +42,31 @@ public class Jobs extends ShellCommand{
 		if( options.paths !=null) {
 			jobs = new int[options.paths.size()];
 			for (int idx = 0; idx < jobs.length; idx++) {
-				jobs[idx] = Integer.parseInt(options.paths.get(idx));
+				String tmp = options.paths.get(idx);
+				if( tmp.charAt(0) == '%') {
+					tmp = tmp.substring(1);
+					if(Character.isDigit(tmp.charAt(0)) ) {
+						jobs[idx] = Integer.parseInt(tmp);
+					} else {
+						switch (tmp.charAt(0)){
+						case '%':throw new IOException("% Not implemented");
+						case '-':throw new IOException("- Not implemented");
+						case '+':throw new IOException("+ Not implemented");
+						case '?':throw new IOException("? Not implemented");
+						default:
+							throw new IllegalArgumentException("Unexpected value: " + tmp.charAt(0));
+						}
+					}
+				} else {
+					jobs[idx] = Integer.parseInt(tmp);
+				}
 			}
 		}
 		
 		for(Integer idx=0,sz=Console.jobs.size(); idx < sz; idx++) {
 			boolean show = false;
-			CommandThread job = Console.jobs.get(idx);
-			Console.JobState state = job.getState();
+			Job job = Console.jobs.get(idx);
+			Console.JobState state = job.state;
 			if( state == Console.JobState.Running) {
 				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
 			} else if( state == Console.JobState.Stopped) {

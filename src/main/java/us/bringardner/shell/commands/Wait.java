@@ -3,13 +3,7 @@ package us.bringardner.shell.commands;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
-import sun.misc.Signal;
-import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.CommandThread;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
@@ -43,11 +37,6 @@ public class Wait extends ShellCommand{
 		super(name, help);
 	}
 
-	List<String> jobSpecs = new ArrayList<>();
-	public Wait( List<String> jobSpecs) {
-		this();
-		this.jobSpecs = jobSpecs;
-	}
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {

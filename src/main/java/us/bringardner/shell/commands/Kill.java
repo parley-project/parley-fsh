@@ -7,11 +7,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import org.antlr.v4.runtime.ParserRuleContext;
-
 import sun.misc.Signal;
 import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.CommandThread;
+import us.bringardner.shell.Console.Job;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
@@ -41,11 +39,7 @@ public class Kill extends ShellCommand{
 		super(name, help);
 	}
 
-	List<String> jobSpecs = new ArrayList<>();
-	public Kill( List<String> jobSpecs) {
-		this();
-		this.jobSpecs = jobSpecs;
-	}
+	
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
@@ -100,12 +94,12 @@ public class Kill extends ShellCommand{
 				signum = signal.getNumber();
 			}
 			for(Integer id : ids) {
-				CommandThread ct = null;
+				Job ct = null;
 				int sz = Console.jobs.size();
 				if(id<= sz) {
 					ct = Console.jobs.get(id-1);
 				} else {
-					for(CommandThread c : Console.jobs) {
+					for(Job c : Console.jobs) {
 						if( c.pid == id) {
 							ct = c;
 							break;
