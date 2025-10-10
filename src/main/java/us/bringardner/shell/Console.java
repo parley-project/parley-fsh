@@ -418,7 +418,7 @@ delimiter
 				ret.append(pp.getText()+" ");
 			}
 
-			return ret.toString()+" &";
+			return ret.toString();
 		} 
 
 		@Override

@@ -3,11 +3,7 @@ package us.bringardner.shell.test;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -20,36 +16,14 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionPipeStatement {
+public class TestExecutionPipeStatement extends AbstractConsoleTest{
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		File file = new File("WcTestFiles").getCanonicalFile();
-		
-		System.setProperty("user.home", file.getAbsolutePath());
+		AbstractConsoleTest.setup("WcTestFiles");		
 	}
 	
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
-	
-	public static ExecuteResult executeCommand(String command,String stdIn) {
-		Console console = new Console();
-		ExecuteResult ret = new ExecuteResult();
-		console.setStdOut(new PrintStream(ret.bao));
-		console.setStdErr(new PrintStream(ret.bae));
-		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		//Console.jobs.clear();
-		Console.setNextPid(100000);
-		ret.exitCode=console.executeUsingAntlr(command);
-		
-		return ret;
-	}
 
 	@Test
 	public void testLogicStatent01() throws Exception{
@@ -198,24 +172,74 @@ public class TestExecutionPipeStatement {
 	public void testBackground03() throws Exception{
 		String cmd = "sleep 100 &\n"
 				+ "sleep 200 &\n"
-				+ "jobs"
+				+ "sleep 300 &\n"				
+				+ "jobs\n"
 				;
 
 		String expect = 
 				"[1] 100000\n"
 				+ "[2] 100001\n"
-				+ "[1] Running sleep   100    &\n"
-				+ "[2] Running sleep   200    &"
+				+ "[3] 100002\n"
+				+ "[1]   Running sleep   100   \n"
+				+ "[2] - Running sleep   200   \n"
+				+ "[3] + Running sleep   300   \n"
 				;
-		
+		//System.out.println(cmd);
 		Console.setNextPid(100000);
+		console.jobs.clear();
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		
 		assertEquals("", err);
-		assertEquals(expect, out.trim());
+		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
+
+		cmd = "jobs %3\n";
+		expect = "[3] + Running sleep   300   \n";
+		res = executeCommand(cmd,"");
+		out = new String(res.bao.toByteArray());
+		err = new String(res.bae.toByteArray());		
+		assertEquals("", err);
+		assertEquals(expect.trim(), out.trim());
+		assertEquals(0, res.exitCode);
+
+		cmd = "jobs %1\n";
+		expect = "[1]   Running sleep   100   \n";
+		res = executeCommand(cmd,"");
+		out = new String(res.bao.toByteArray());
+		err = new String(res.bae.toByteArray());		
+		assertEquals("", err);
+		assertEquals(expect.trim(), out.trim());
+		assertEquals(0, res.exitCode);
+
+		cmd = "jobs %-\n";
+		expect = "[2] - Running sleep   200   \n";
+		res = executeCommand(cmd,"");
+		out = new String(res.bao.toByteArray());
+		err = new String(res.bae.toByteArray());		
+		assertEquals("", err);
+		assertEquals(expect.trim(), out.trim());
+		assertEquals(0, res.exitCode);
+
+		cmd = "jobs %+\n";
+		expect = "[3] + Running sleep   300   \n";
+		res = executeCommand(cmd,"");
+		out = new String(res.bao.toByteArray());
+		err = new String(res.bae.toByteArray());		
+		assertEquals("", err);
+		assertEquals(expect.trim(), out.trim());
+		assertEquals(0, res.exitCode);
+
+		cmd = "jobs %%\n";
+		expect = "[3] + Running sleep   300   \n";
+		res = executeCommand(cmd,"");
+		out = new String(res.bao.toByteArray());
+		err = new String(res.bae.toByteArray());		
+		assertEquals("", err);
+		assertEquals(expect.trim(), out.trim());
+		assertEquals(0, res.exitCode);
+		
 		
 		
 	}

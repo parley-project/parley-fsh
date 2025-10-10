@@ -1,11 +1,14 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import us.bringardner.shell.Console;
 import us.bringardner.shell.Console.Job;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.statement.JobControlStatement;
 
 public class Jobs extends ShellCommand{
 	enum Options {l,n,p,r,s};
@@ -29,45 +32,49 @@ public class Jobs extends ShellCommand{
 		super(name, help);
 	}
 
-	
+	List<Integer> specs;
+	public Jobs(List<Integer> specs) {
+		this();
+		this.specs = specs;
+	}
+
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		ShellArgument options = parserArgs(ctx, Options.class);
-		int jobs[] = new int[0];
+		
 /*
 [1]+  Running                 sleep 10 &
 [1]+  Done                    sleep 10
 */
-		if( options.paths !=null) {
-			jobs = new int[options.paths.size()];
-			for (int idx = 0; idx < jobs.length; idx++) {
-				String tmp = options.paths.get(idx);
-				if( tmp.charAt(0) == '%') {
-					tmp = tmp.substring(1);
-					if(Character.isDigit(tmp.charAt(0)) ) {
-						jobs[idx] = Integer.parseInt(tmp);
-					} else {
-						switch (tmp.charAt(0)){
-						case '%':throw new IOException("% Not implemented");
-						case '-':throw new IOException("- Not implemented");
-						case '+':throw new IOException("+ Not implemented");
-						case '?':throw new IOException("? Not implemented");
-						default:
-							throw new IllegalArgumentException("Unexpected value: " + tmp.charAt(0));
-						}
-					}
-				} else {
-					jobs[idx] = Integer.parseInt(tmp);
+		//  this defines the current job
+		int jobSize = ctx.console.jobs.size();
+		
+		List<Integer> jobs = new ArrayList<>();
+		//  %[0-9] is parse as signed number rather that jobSpec 
+		if(options.paths.size()>0) {
+			for(String tmp : options.paths) {
+				int i = JobControlStatement.parseJobSpec(jobSize, tmp);
+				if( i >=0) {
+					jobs.add(i);
 				}
 			}
 		}
+		if( specs !=null && specs.size()>0) {			
+			jobs.addAll(specs);			
+		} 
+		if( jobs.size()==0) {
+			for(Integer idx=0,sz=ctx.console.jobs.size(); idx < sz; idx++) {
+				jobs.add(idx);
+			}
+		}
 		
-		for(Integer idx=0,sz=ctx.console.jobs.size(); idx < sz; idx++) {
+		for(Integer idx : jobs) {
 			boolean show = false;
 			Job job = ctx.console.jobs.get(idx);
 			Console.JobState state = job.state;
-			if( state == Console.JobState.Running) {
+			if( state == Console.JobState.Running) {				
 				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
 			} else if( state == Console.JobState.Stopped) {
 				show = options.options.contains(Options.s) || !options.options.contains(Options.r);
@@ -77,10 +84,12 @@ public class Jobs extends ShellCommand{
 			
 			
 			if( show ) {
+				String xx = "~"+job.toString()+"~";
+				String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
 				if(options.options.contains(Options.l)) {
-					ctx.stdout.println("["+((idx+1))+"] "+job.pid+" "+state+" "+job.toString());
+					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.pid+" "+state+" "+job.toString());
 				} else {
-					ctx.stdout.println("["+((idx+1))+"] "+state+" "+job.toString());
+					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+state+" "+job.toString());
 				}
 			}
 		}
