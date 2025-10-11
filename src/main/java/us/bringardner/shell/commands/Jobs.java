@@ -84,7 +84,6 @@ public class Jobs extends ShellCommand{
 			
 			
 			if( show ) {
-				String xx = "~"+job.toString()+"~";
 				String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
 				if(options.options.contains(Options.l)) {
 					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.pid+" "+state+" "+job.toString());
