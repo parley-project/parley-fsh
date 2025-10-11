@@ -27,7 +27,7 @@ public class BackgroundStatement extends Statement{
 			ShellContext ctx = sc.subShell();
 			ctx.stdin = new ByteArrayInputStream("".getBytes());
 			CommandThread thread = new CommandThread(ctx,stmt);	
-			Console.Job job = new Console.Job(thread);
+			Console.Job job = new Console.Job(ctx.console.jobs.size(),thread);
 			job.start();
 			
 			while(!job.hasStarted()) {
@@ -37,7 +37,7 @@ public class BackgroundStatement extends Statement{
 				}
 			}
 			sc.console.addJob(job);
-			String tmp = "["+ctx.console.jobs.size()+"] "+job.pid;
+			String tmp = "["+(job.jobNumber+1)+"] "+job.pid;
 			sc.stdout.println(tmp);
 		} catch (Exception e) {
 			ret = 1;
