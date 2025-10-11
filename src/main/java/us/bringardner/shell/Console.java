@@ -314,7 +314,7 @@ delimiter
 	public static synchronized void setNextPid(int pid) {
 		nextPid = pid;
 	}
-	public enum JobState {Running,Stopped,Termnated, Idel};
+	public enum JobState {Running,Stopped,Termnated, Idel,Notified};
 	public static class Job extends BaseThread{
 		public CommandThread child;
 		public long startTime; 
@@ -323,8 +323,10 @@ delimiter
 		public int exitCode;
 		public Throwable error;
 		public JobState state;
+		public int jobNumber;
 		
-		public Job(CommandThread thread) {
+		public Job(int jobNumber,CommandThread thread) {
+			this.jobNumber = jobNumber;
 			child = thread;			
 			pid = nextPid();
 			state = JobState.Idel;
@@ -355,10 +357,20 @@ delimiter
 			stopTime = System.currentTimeMillis();
 			running = false;
 			state = JobState.Termnated;
+			if( child.ctx.console.isInteractive) {
+				String tmp = "["+(jobNumber+1)+"] done "+toString();
+				child.ctx.console.stdOut.println(tmp);
+				state = JobState.Notified;
+			}
 		}
 		
 		public String toString() {
 				return child.toString();
+		}
+
+		public void raiseSignal(Integer signum) {
+			
+			
 		} 
 	}
 	
