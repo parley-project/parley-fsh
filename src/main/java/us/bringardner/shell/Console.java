@@ -20,6 +20,7 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Stack;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -72,6 +73,10 @@ import us.bringardner.shell.commands.Wc;
 
 public class Console extends BaseThread {
 
+	private class SuspendException extends RuntimeException{
+		
+	}
+	
 	public static class ConsoleSignalHandler {
 		ShellContext ctx;
 		String action;
@@ -781,8 +786,12 @@ delimiter
 						if( prompt !=null && !prompt.isEmpty()) {
 							stdOut.append(prompt);
 						}
-
-						exitCode = executeUsingAntlr(code);
+						try {
+							exitCode = executeUsingAntlr(code);	
+						} catch (SuspendException e) {
+							
+						}
+						
 					}
 
 				} catch (Throwable e) {
@@ -1626,6 +1635,8 @@ delimiter
 		this.adminMessage = adminMessage;
 	}
 
+	AtomicReference<Job> currentJob = new AtomicReference<>();
+	
 	public int executeUsingAntlr(String code)  {
 		//TODO: REmove after testing is complete
 		if( stdIn == null) {
@@ -1642,8 +1653,6 @@ delimiter
 			sc.stdin = new NativeKeyboard();
 		}
 
-		Statement lastStatement=null;
-		
 		try {
 
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
@@ -1658,22 +1667,48 @@ delimiter
 
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
 			if( stmts.size()>0) {				
-				for(Statement stmt : stmts) {
-					lastStatement=stmt;
-					handleMetaSignal(ConsoleMetaSignal.Debug,stmt);
-					ret = stmt.process(sc);
-					if( ret!=0) {
-						handleMetaSignal(ConsoleMetaSignal.Err,stmt);
-						if(isInteractive && options.contains(Option.ExitImediately)) {
-							Console.exit(this,ret);
-						}
+				Job j = new Job(-1, new CommandThread(sc, new Statement(null) {
+
+					@Override
+					protected int execute(ShellContext ctx) throws IOException {
+						int ret = 0;
+						for(Statement stmt : stmts) {
+							handleMetaSignal(ConsoleMetaSignal.Debug);
+							ret = stmt.process(sc);							
+						}		
 						return ret;
+					}
+
+				}));
+				j.start();
+				while(!j.hasStarted()) {
+					try {
+						Thread.sleep(10);	
+					} catch (Exception e) {
 					}					
+				}
+				
+				currentJob.set(j);
+				while(currentJob.get().isRunning()) {
+					try {
+						Thread.sleep(10);	
+					} catch (Exception e) {
+					}
+				}
+				
+				
+				ret = currentJob.get().exitCode;
+				if( ret!=0) {
+					handleMetaSignal(ConsoleMetaSignal.Err);
+					if(isInteractive && options.contains(Option.ExitImediately)) {
+						Console.exit(sc.console,ret);
+					}
+					return ret;
 				}
 			}
 		} catch(ExitException e) {
 			ret = e.exitCode;
-			handleMetaSignal(ConsoleMetaSignal.Exit,lastStatement);
+			handleMetaSignal(ConsoleMetaSignal.Exit);
 			sc.stderr.println(e);
 			stop();
 
@@ -1691,7 +1726,7 @@ delimiter
 			ret = 1;
 			sc.stderr.println(e);
 			logError("", e);
-			handleMetaSignal(ConsoleMetaSignal.Err,lastStatement);
+			handleMetaSignal(ConsoleMetaSignal.Err);
 		}
 
 		return ret;
@@ -1700,7 +1735,7 @@ delimiter
 	private Stack<ConsoleMetaSignal> inProcess = new Stack<>();
 
 
-	private void handleMetaSignal(ConsoleMetaSignal signal, Statement stmt) {
+	private void handleMetaSignal(ConsoleMetaSignal signal) {
 
 		if( !inProcess.contains(signal)) {			
 			List<String> actions = signalHandlers.get(signal);
