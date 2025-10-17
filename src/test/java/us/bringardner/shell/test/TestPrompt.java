@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.shell.Console;
+import us.bringardner.shell.Console.Prompt;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestPrompt extends AbstractConsoleTest {
@@ -38,8 +39,8 @@ public class TestPrompt extends AbstractConsoleTest {
 		String expect = "\\s-\\v\\$ ";
 		assertEquals(expect, val);
 		//-bash-4.2$
-		expect = "-"+Console.VERSION+"$ ";
-		val = console.getPrompt(1);
+		expect = "-"+Console.VERSION+"$ ";		
+		val = console.getPrompt(Prompt.Primary);
 		assertEquals(expect, val);
 	}
 	

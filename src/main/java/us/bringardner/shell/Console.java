@@ -24,13 +24,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import sun.misc.Signal;
-import us.bringardner.core.BaseThread;
 import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
@@ -38,7 +38,9 @@ import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
+import us.bringardner.shell.antlr.statement.BackgroundStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
+import us.bringardner.shell.antlr.statement.PipeStatement;
 import us.bringardner.shell.commands.Alias;
 import us.bringardner.shell.commands.Cd;
 import us.bringardner.shell.commands.Clear;
@@ -71,9 +73,11 @@ import us.bringardner.shell.commands.Unalias;
 import us.bringardner.shell.commands.Unmount;
 import us.bringardner.shell.commands.Wc;
 
-public class Console extends BaseThread {
+public class Console extends SignalEnabledThread {
 
 	private class SuspendException extends RuntimeException{
+
+		private static final long serialVersionUID = 1L;
 		
 	}
 	
@@ -121,6 +125,8 @@ public class Console extends BaseThread {
 		}
 	}
 
+	public enum ConsoleState {ReadLine,Executing}
+
 	/**
 	 * Define only signals specified by https://www.gnu.org/software/bash/manual/bash.html#index-trap 
 	 */
@@ -151,12 +157,23 @@ public class Console extends BaseThread {
 		}
 	}
 
+	public enum Prompt{
+		Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
+		
+		public final String name;
+		private Prompt(String name) {
+			this.name= name;			
+		}
+		
+	}
+	
 	private static String defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin";
 	public static final String PATH = "PATH";
 	public static final String VARIABLE_OLDPWD = "OLDPWD";
 	public static final String VARIABLE_PWD = "PWD";
 	public static final String VARIABLE_TERMINAL_WIDTH = "TERMINAL_WIDTH";
 	public static final String IFS = "IFS";
+	
 	public static final String VARIABLE_PS0 = "PS0";
 	public static final String VARIABLE_PS1 = "PS1";
 	public static final String VARIABLE_PS2 = "PS2";
@@ -271,7 +288,7 @@ delimiter
 		return nextPid++;
 	}
 
-	public static void raiseSignal(Integer signum) {
+	private void raiseSignal(Integer signum) {
 
 		new Thread(()->{
 			//System_out.println("Signal fired "+signum);
@@ -299,6 +316,9 @@ delimiter
 		
 	}
 
+	/**
+	 * Handle all OS signals to prevent default behavior
+	 */
 	private static void registerSignals() {
 		Map<Integer, String> signals = Trap.getLocalSignals();
 		for(Integer  i : signals.keySet()) {
@@ -306,7 +326,7 @@ delimiter
 			Signal signal = new Signal(name);
 			try {
 				Signal.handle(signal,(s)->{
-					raiseSignal(s.getNumber());					
+					//raiseSignal(s.getNumber());					
 				});	
 			} catch (Exception e) {
 				if( !e.getLocalizedMessage().startsWith("Signal already used ")) {
@@ -319,8 +339,9 @@ delimiter
 	public static synchronized void setNextPid(int pid) {
 		nextPid = pid;
 	}
-	public enum JobState {Running,Stopped,Termnated, Idel,Notified};
-	public static class Job extends BaseThread{
+	
+	public enum JobState {Running,Suspended,Termnated, Idel,Notified};
+	public static class Job extends SignalEnabledThread{
 		public CommandThread child;
 		public long startTime; 
 		public long stopTime;
@@ -352,7 +373,7 @@ delimiter
 				}				
 			}
 
-			while( child.isRunning() ) {
+			while(isRunning() && child.isRunning() ) {
 				try {
 					Thread.sleep(10);
 				} catch (Exception e) {
@@ -362,7 +383,7 @@ delimiter
 			stopTime = System.currentTimeMillis();
 			running = false;
 			state = JobState.Termnated;
-			if( child.ctx.console.isInteractive) {
+			if(jobNumber>0 && child.ctx.console.isInteractive) {
 				String tmp = "["+(jobNumber+1)+"] done "+toString();
 				child.ctx.console.stdOut.println(tmp);
 				state = JobState.Notified;
@@ -373,8 +394,9 @@ delimiter
 				return child.toString();
 		}
 
-		public void raiseSignal(Integer signum) {
-			
+		@Override
+		public void handleSignal(ConsoleSignal signal)  {
+			child.handleSignal(signal);
 			
 		} 
 	}
@@ -400,7 +422,7 @@ delimiter
 
 	}
 
-	public static class CommandThread extends BaseThread {
+	public static class CommandThread extends SignalEnabledThread {
 		public int exitCode;
 		public long start;
 		public long end;
@@ -423,7 +445,7 @@ delimiter
 		}
 
 		public JobState getState() {
-			JobState ret = isPaused()?JobState.Stopped:isRunning()?JobState.Running:JobState.Termnated;
+			JobState ret = isPaused()?JobState.Suspended:isRunning()?JobState.Running:JobState.Termnated;
 
 			return ret;
 		}
@@ -454,6 +476,28 @@ delimiter
 			close(ctx.console,ctx.stdout);
 			end = System.currentTimeMillis();
 			running = false;
+		}
+
+		@Override
+		public void handleSignal(ConsoleSignal signal)  {
+			//throw new RuntimeException("CommandThread Not implemented");
+			if (cmd instanceof PipeStatement) {
+				PipeStatement stmt = (PipeStatement) cmd;
+				CommandThread[] kids = stmt.getCommandThreads();
+				if( kids !=null) {
+					for(CommandThread kid : kids) {
+						kid.handleSignal(signal);
+					}
+				}
+			} else if (cmd instanceof BackgroundStatement) {
+				BackgroundStatement stmt = (BackgroundStatement) cmd;
+				CommandThread thread = stmt.getCommandThread();
+				if( thread !=null) {
+					thread.handleSignal(signal);
+				}
+			} else {
+				System_err.println("Unexpected staement class="+cmd.getClass());
+			}
 		}
 
 	}
@@ -509,6 +553,20 @@ delimiter
 				c.setName("Console");
 				c.setDaemon(false);
 				c.start();
+				while(!c.hasStarted()) {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+					}
+				}
+
+				while(c.isRunning()) {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+					}
+				}
+				System.exit(c.lastExitCode);
 			} else {
 				Console.exit(c,ret);
 			}
@@ -656,6 +714,7 @@ delimiter
 	}
 
 	FileSource homeDir ;
+	public ConsoleState state;
 
 	public Console() {
 		try {
@@ -676,12 +735,13 @@ delimiter
 			variables.put(VARIABLE_PWD, mountFactory.getCurrentDirectory().getAbsolutePath());
 			variables.put(VARIABLE_OLDPWD, mountFactory.getCurrentDirectory().getAbsolutePath());
 			variables.put(IFS, " \t\n");
+			////Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
 
-			variables.put(VARIABLE_PS0, "");
-			variables.put(VARIABLE_PS1, "\\s-\\v\\$ ");
-			variables.put(VARIABLE_PS2, "> ");
-			variables.put(VARIABLE_PS3, "#? ");
-			variables.put(VARIABLE_PS4, "+ ");
+			variables.put(Prompt.BeforeExecute.name, "");
+			variables.put(Prompt.Primary.name, "\\s-\\v\\$ ");
+			variables.put(Prompt.Secondary.name, "> ");
+			variables.put(Prompt.Select.name, "#? ");
+			variables.put(Prompt.EchoCommand.name, "+ ");
 			variables.put(VARIABLE_HISTCHARS, "!^#");
 			positionalParameters.add("fssh");
 			options.add(Option.DoBraceExpantion);
@@ -772,26 +832,35 @@ delimiter
 		try {
 			started = running = true;
 			while(running && !stopping) {
+				state = ConsoleState.ReadLine;
+				currentJob.set(null);
 				try {
 					if(adminMessage!=null) {
 						stdOut.println(adminMessage);
 						adminMessage = null;
 					}
-					String prompt = getPrompt(1);					
+					String prompt = getPrompt(Prompt.Primary);					
 					kb.setPrompt(prompt);
 					String code = kb.readLine(this).trim();
 					if( !code.isEmpty()) {
+						state = ConsoleState.Executing;
 						addHistory(code) ;
-						prompt = getPrompt(0);
+						
+						prompt = getPrompt(Prompt.BeforeExecute);
 						if( prompt !=null && !prompt.isEmpty()) {
 							stdOut.append(prompt);
 						}
 						try {
 							exitCode = executeUsingAntlr(code);	
 						} catch (SuspendException e) {
-							
-						}
-						
+							Job job = currentJob.get();
+							if( job !=null) {
+								String tmp = "["+job.pid+"]";
+								stdOut.println(tmp);
+								job.child.ctx.setPause(true);
+								addJob(job);
+							} 
+						}						
 					}
 
 				} catch (Throwable e) {
@@ -814,10 +883,9 @@ delimiter
 	}
 
 
-	public String getPrompt(int i) {
+	public String getPrompt(Prompt prompt) {
 		String ret = "";
-		String name = "PS"+i;
-		Object val = getVariable(name);
+		Object val = getVariable(prompt.name);
 		if( val !=null ) {
 			ret = expandPrompt(""+val,new Date());
 
@@ -1130,6 +1198,22 @@ delimiter
 		return ret.toString();
 	}
 
+	public Job findJob(int id) {
+		Job ret = null;
+		int sz = jobs.size();
+		if(id<= sz) {
+			ret = jobs.get(id-1);
+		} else {
+			for(Job c : jobs) {
+				if( c.pid == id) {
+					ret = c;
+					break;
+				}
+			}
+		}
+		return ret;
+	}
+
 	KeyboardReader keyboardReader;
 
 	public KeyboardReader getKeyboadReader() {
@@ -1138,6 +1222,7 @@ delimiter
 				if( keyboardReader==null ) {
 					if( !GraphicsEnvironment.isHeadless()) {
 						ConsoleFrame ret = new ConsoleFrame(this);
+						ret.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 						try {
 							if( SwingUtilities.isEventDispatchThread()) {
 								ret.setLocationRelativeTo(null);			
@@ -1656,7 +1741,7 @@ delimiter
 		try {
 
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
-				sc.stdout.println(getPrompt(4)+code);
+				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
 			}
 
 			code = code.trim();
@@ -1667,12 +1752,15 @@ delimiter
 
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
 			if( stmts.size()>0) {				
-				Job j = new Job(-1, new CommandThread(sc, new Statement(null) {
-
+				Job j = new Job(-1, new CommandThread(sc, new Statement(stmts.get(0).getContext()) {
+					int idx = 0;
+					Statement stmt;
+					
 					@Override
 					protected int execute(ShellContext ctx) throws IOException {
 						int ret = 0;
-						for(Statement stmt : stmts) {
+						for(int sz=stmts.size(); idx < sz; idx++ ) {
+							stmt = stmts.get(idx);
 							handleMetaSignal(ConsoleMetaSignal.Debug);
 							ret = stmt.process(sc);							
 						}		
@@ -1694,6 +1782,9 @@ delimiter
 						Thread.sleep(10);	
 					} catch (Exception e) {
 					}
+					if(currentJob.get().state == JobState.Suspended) {						
+						throw new SuspendException();
+					}
 				}
 				
 				
@@ -1706,6 +1797,8 @@ delimiter
 					return ret;
 				}
 			}
+		} catch (SuspendException e) {
+			throw e;		
 		} catch(ExitException e) {
 			ret = e.exitCode;
 			handleMetaSignal(ConsoleMetaSignal.Exit);
@@ -1803,7 +1896,7 @@ delimiter
 		actions.add(action);		
 	}
 
-	private static Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new TreeMap<>();
+	private  Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new TreeMap<>();
 	
 	public void registerHandler(ShellContext ctx,final Signal signal, String action) {
 		ConsoleSignalHandler handler = new ConsoleSignalHandler(ctx,action);
@@ -1832,10 +1925,58 @@ delimiter
 	}
 
 	public void addJob(Job job) {
+		if( job.jobNumber<0) {
+			job.jobNumber = job.child.ctx.console.jobs.size();
+		}
 		jobs.add(job);
 		lastPid = job.pid;
 	}
 
-	
+	@Override
+	public void handleSignal(ConsoleSignal signal)  {
+		if( state == null) {
+			// non interactive console
+		} else if( state == ConsoleState.ReadLine) {
+			if(signal==ConsoleSignal.Hup) {
+				/*
+				 * The shell exits by default upon receipt of a SIGHUP. Before exiting, an interactive shell resends the SIGHUP to all jobs, running or stopped.
+				 * 	 The shell sends SIGCONT to stopped jobs to ensure that they receive the SIGHUP (See Job Control, for more information about running and stopped jobs). 
+				 */
+				for(Job job : jobs) {
+					if( job.state != JobState.Termnated) {
+						if( job.state == JobState.Suspended) {
+							job.handleSignal(ConsoleSignal.Continue);
+						}
+						job.handleSignal(ConsoleSignal.Hup);
+					}
+				}
+				throw new ExitException(null, lastExitCode);
+			}			
+		} else {
+			Job job = currentJob.get();
+			if( job !=null) {
+				if( signal==ConsoleSignal.Suspend) {
+					job.state = JobState.Suspended;
+					Thread.yield();
+				} else if( signal == ConsoleSignal.Interupt) {
+					job.state = JobState.Termnated;
+					Thread.yield();
+				}
+			}
 
+		}
+
+
+	
+	}	
+
+
+	public void handleSignal(int pid,ConsoleSignal signal)  {
+		raiseSignal(signal.value);
+		Job job = findJob(pid);
+		if( job !=null) {
+			job.handleSignal(signal);
+		}
+
+	}
 }

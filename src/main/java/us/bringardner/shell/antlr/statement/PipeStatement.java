@@ -8,10 +8,9 @@ import java.io.PrintStream;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
-import sun.misc.Signal;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
 import us.bringardner.shell.Console.CommandThread;
-import us.bringardner.shell.Console;
+import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
 
@@ -19,6 +18,7 @@ public class PipeStatement extends Statement{
 	
 
 	Statement [] cmds;
+	CommandThread [] threads;
 	private String[] ops;
 	private boolean doTime;
 
@@ -30,6 +30,9 @@ public class PipeStatement extends Statement{
 		this.doTime = doTime;
 	}
 
+	public CommandThread [] getCommandThreads() {
+		return threads;
+	}
 	
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
@@ -95,8 +98,10 @@ public class PipeStatement extends Statement{
 				threads[cmds.length-1].ctx.stderr.println("real "+time);
 			}
 		}
-		Console.raiseSignal(new Signal("CHLD").getNumber());
 		
+		for(CommandThread t : threads) {
+			t.handleSignal(ConsoleSignal.ChildStopped);
+		}
 		return ret;
 	}
 

@@ -8,8 +8,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import sun.misc.Signal;
-import us.bringardner.shell.Console;
 import us.bringardner.shell.Console.Job;
+import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
@@ -89,9 +89,9 @@ public class Kill extends ShellCommand{
 				ctx.stdout.println(toColumns(ctx, tmp).trim());
 			}
 		} else {
-			if( signum == null ) {
-				Signal signal = new Signal("TERM");
-				signum = signal.getNumber();
+			ConsoleSignal signal = ConsoleSignal.Terminate;
+			if( signum != null ) {
+				signal = ConsoleSignal.find(signum);
 			}
 			for(Integer id : ids) {
 				Job ct = null;
@@ -121,8 +121,7 @@ public class Kill extends ShellCommand{
 						}
 					}
 				} else {
-					// this is my process
-					Console.raiseSignal(signum);
+					ctx.console.handleSignal(ct.pid,signal);
 					Thread.yield();
 				}
 			}

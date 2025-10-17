@@ -21,7 +21,7 @@ public class Sleep extends ShellCommand{
 			+ "		When the SIGINFO signal is received, the estimate of the amount of seconds left to sleep is printed on "
 			+ "		the standard output.\n"
 			+ ".";
-	
+
 	public Sleep() {
 		super(name, help);
 	}
@@ -30,7 +30,7 @@ public class Sleep extends ShellCommand{
 	static final long M = S*60;
 	static final long H = M*60;
 	static final long D = H*24;
-	
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
@@ -40,7 +40,7 @@ public class Sleep extends ShellCommand{
 		} else {
 			int amt = 0;
 			long multiplyer = S;
-			
+
 			for(Argument a :args) {
 				String val = ""+a.getValue(ctx);
 				if( val.endsWith("s")) {
@@ -59,16 +59,27 @@ public class Sleep extends ShellCommand{
 				long tmp = Integer.parseInt(val)*multiplyer;
 				amt += tmp;
 			}
-			
-			if( amt > 0 ) {
-				try {
-					Thread.sleep(amt);
-				} catch (InterruptedException e) {
+			System.out.println("start amt="+amt);
+			while( amt > 0 ) {
+				if(ctx.isPaused()) {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+					}
+				} else {
+					try {
+						int tmp = amt>10?10:amt;
+						Thread.sleep(tmp);
+						amt -= tmp;
+						System.out.println("sleep amt="+amt);
+					} catch (InterruptedException e) {
+					}
 				}
 			}
+			System.out.println("end amt="+amt);
 		}
-		
-		
+
+
 		return ret;
 	}
 

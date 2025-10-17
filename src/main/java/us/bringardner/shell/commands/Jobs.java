@@ -76,7 +76,7 @@ public class Jobs extends ShellCommand{
 			Console.JobState state = job.state;
 			if( state == Console.JobState.Running) {				
 				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
-			} else if( state == Console.JobState.Stopped) {
+			} else if( state == Console.JobState.Suspended) {
 				show = options.options.contains(Options.s) || !options.options.contains(Options.r);
 			} else if( state == Console.JobState.Termnated) {
 				show = !options.options.contains(Options.s) && !options.options.contains(Options.r);

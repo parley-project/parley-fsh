@@ -13,12 +13,17 @@ import us.bringardner.shell.antlr.Statement;
 public class BackgroundStatement extends Statement{
 
 	Statement stmt;
+	CommandThread thread ;
 
 	public BackgroundStatement(ParserRuleContext context, Statement stmt) {
 		super(context);
 		this.stmt = stmt;
 	}
 
+	public CommandThread getCommandThread() {
+		return thread;
+	}
+	
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		int ret = 0;

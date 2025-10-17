@@ -181,15 +181,8 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 
 				StringBuilder db = new StringBuilder("inReadline="+inReadline+"\n");
 
-				if( !inReadline.get()) {
-					e.consume();
-					return;
-				}
 
 				int key = e.getKeyCode();
-				if( key == KeyEvent.VK_C) {
-					System.out.println("C");
-				}
 				int pos = textArea.getCaretPosition();
 				db.append("cp="+currentPos+" ls="+lineStart+" pos="+pos);
 
@@ -209,24 +202,23 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 							currentPos = all.length();
 						}
 					} else if( key == KeyEvent.VK_C) {
-						Signal signal = new Signal("INT");
-						Signal.raise(signal);
+						console.handleSignal(ConsoleSignal.Interupt);
 					} else if( key == KeyEvent.VK_BACK_SLASH) {
-						Signal signal = new Signal("TERM");
-						Signal.raise(signal);
+						console.handleSignal(ConsoleSignal.Terminate);
 					} else if( key == KeyEvent.VK_Z) {
-						Signal signal = new Signal("TSTP");
-						Signal.raise(signal);
+						console.handleSignal(ConsoleSignal.Suspend);
 					} else if( key == KeyEvent.VK_D) {
-						System.out.println("cntr="+key);
-						Signal signal = new Signal("QUIT");
-						Signal.raise(signal);
+						console.handleSignal(ConsoleSignal.Quit);
 					} else {
 						// some control code what to do???
 						System.out.println("cntr="+key);						
 					}
 				}
 
+				if( !inReadline.get()) {
+					e.consume();
+					return;
+				}
 
 				switch (key) {
 				case KeyEvent.VK_UNDEFINED:
