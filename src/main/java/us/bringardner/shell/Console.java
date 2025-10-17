@@ -42,6 +42,7 @@ import us.bringardner.shell.antlr.statement.BackgroundStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
 import us.bringardner.shell.antlr.statement.PipeStatement;
 import us.bringardner.shell.commands.Alias;
+import us.bringardner.shell.commands.Bg;
 import us.bringardner.shell.commands.Cd;
 import us.bringardner.shell.commands.Clear;
 import us.bringardner.shell.commands.Connect;
@@ -52,6 +53,7 @@ import us.bringardner.shell.commands.Eval;
 import us.bringardner.shell.commands.Exec;
 import us.bringardner.shell.commands.Exit;
 import us.bringardner.shell.commands.Export;
+import us.bringardner.shell.commands.Fg;
 import us.bringardner.shell.commands.Help;
 import us.bringardner.shell.commands.History;
 import us.bringardner.shell.commands.Jobs;
@@ -75,7 +77,7 @@ import us.bringardner.shell.commands.Wc;
 
 public class Console extends SignalEnabledThread {
 
-	private class SuspendException extends RuntimeException{
+	public static class SuspendException extends RuntimeException{
 
 		private static final long serialVersionUID = 1L;
 		
@@ -235,6 +237,8 @@ delimiter
 		commands.put("pushd", new DirStack());
 		registerCommand(new Alias());
 
+		registerCommand(new Bg());
+		
 		registerCommand(new Clear());
 		registerCommand(new Cd());
 		registerCommand(new Cp());
@@ -246,6 +250,8 @@ delimiter
 		registerCommand(new Echo());
 		registerCommand(new Export());
 
+		registerCommand(new Fg());
+		
 		registerCommand(new Help());
 		registerCommand(new History());
 
@@ -855,7 +861,7 @@ delimiter
 						} catch (SuspendException e) {
 							Job job = currentJob.get();
 							if( job !=null) {
-								String tmp = "["+job.pid+"]";
+								String tmp = "suspended  "+job.toString();
 								stdOut.println(tmp);
 								job.child.ctx.setPause(true);
 								addJob(job);
