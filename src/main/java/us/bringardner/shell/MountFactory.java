@@ -65,7 +65,8 @@ public class MountFactory extends FileSourceFactory {
 		}
 
 		if(path.indexOf('~') >=0) {
-			throw new IOException("Invalide file name path has ~");
+			String home = System.getProperty("user.home");			
+			path = home + path.substring(1);
 		}
 
 		if( path.equals("/")) {
