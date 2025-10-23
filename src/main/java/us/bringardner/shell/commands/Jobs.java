@@ -4,11 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.Job;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.statement.JobControlStatement;
+import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.job.JobManager;
+import us.bringardner.shell.job.JobState;
 
 public class Jobs extends ShellCommand{
 	enum Options {l,n,p,r,s};
@@ -49,7 +50,9 @@ public class Jobs extends ShellCommand{
 [1]+  Done                    sleep 10
 */
 		//  this defines the current job
-		int jobSize = ctx.console.jobs.size();
+		JobManager jm = ctx.console.jobManager;
+		List<IJob> ijobs = jm.getJobs();
+		int jobSize = ijobs.size();
 		
 		List<Integer> jobs = new ArrayList<>();
 		//  %[0-9] is parse as signed number rather that jobSpec 
@@ -64,21 +67,23 @@ public class Jobs extends ShellCommand{
 		if( specs !=null && specs.size()>0) {			
 			jobs.addAll(specs);			
 		} 
+		
 		if( jobs.size()==0) {
-			for(Integer idx=0,sz=ctx.console.jobs.size(); idx < sz; idx++) {
-				jobs.add(idx);
+			for(IJob job : ijobs) {
+				jobs.add(job.getJobNumber());
 			}
 		}
 		
 		for(Integer idx : jobs) {
 			boolean show = false;
-			Job job = ctx.console.jobs.get(idx);
-			Console.JobState state = job.state;
-			if( state == Console.JobState.Running) {				
+			
+			IJob job = jm.getJob(idx);
+			JobState state = job.getState();
+			if( state == JobState.Running) {				
 				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
-			} else if( state == Console.JobState.Suspended) {
+			} else if( state == JobState.Suspended) {
 				show = options.options.contains(Options.s) || !options.options.contains(Options.r);
-			} else if( state == Console.JobState.Termnated) {
+			} else if( state == JobState.Termnated) {
 				show = !options.options.contains(Options.s) && !options.options.contains(Options.r);
 			}
 			
@@ -86,7 +91,7 @@ public class Jobs extends ShellCommand{
 			if( show ) {
 				String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
 				if(options.options.contains(Options.l)) {
-					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.pid+" "+state+" "+job.toString());
+					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.getPid()+" "+state+" "+job.toString());
 				} else {
 					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+state+" "+job.toString());
 				}

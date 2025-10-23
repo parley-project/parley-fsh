@@ -8,11 +8,12 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import sun.misc.Signal;
-import us.bringardner.shell.Console.Job;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
+import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.job.JobManager;
 
 public class Kill extends ShellCommand{
 	static String name = "kill";
@@ -93,14 +94,16 @@ public class Kill extends ShellCommand{
 			if( signum != null ) {
 				signal = ConsoleSignal.find(signum);
 			}
+			JobManager jm = ctx.console.jobManager;
+			List<IJob> jobs = jm.getJobs();
 			for(Integer id : ids) {
-				Job ct = null;
-				int sz = ctx.console.jobs.size();
+				IJob ct = null;
+				int sz = jobs.size();
 				if(id<= sz) {
-					ct = ctx.console.jobs.get(id-1);
+					ct = jm.getJob(id-1);
 				} else {
-					for(Job c : ctx.console.jobs) {
-						if( c.pid == id) {
+					for(IJob c : jobs) {
+						if( c.getPid() == id) {
 							ct = c;
 							break;
 						}
@@ -121,7 +124,7 @@ public class Kill extends ShellCommand{
 						}
 					}
 				} else {
-					ctx.console.handleSignal(ct.pid,signal);
+					ctx.console.handleSignal(ct.getPid(),signal);
 					Thread.yield();
 				}
 			}

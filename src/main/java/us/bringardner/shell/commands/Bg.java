@@ -5,10 +5,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.Job;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.statement.JobControlStatement;
+import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.job.JobManager;
+import us.bringardner.shell.job.JobState;
 
 public class Bg extends ShellCommand{
 
@@ -41,7 +43,10 @@ public class Bg extends ShellCommand{
 [1]+  Done                    sleep 10
 		 */
 		//  this defines the current job
-		int jobSize = ctx.console.jobs.size();
+		JobManager jm = ctx.console.jobManager;
+		List<IJob> ijobs = jm.getJobs();
+		int jobSize = ijobs.size();
+
 
 		List<Integer> jobs = new ArrayList<>();
 		//  %[0-9] is parse as signed number rather that jobSpec
@@ -65,12 +70,19 @@ public class Bg extends ShellCommand{
 			return 2;
 		}
 
-		Job job = ctx.console.jobs.get(0);
-		Console.JobState state = job.state;
-		if( state == Console.JobState.Suspended) {
-			job.child.ctx.setPause(false);
-			ctx.stdout.println("["+job.jobNumber+"] continued "+job.toString());
-		}			
+		IJob job = jm.getJob(jobs.get(0));
+		if( job == null ) {
+			ctx.stderr.println("No such job "+jobs.get(0));
+			return 3;
+		}
+		
+		JobState state = job.getState();
+		if( state == JobState.Suspended) {
+			job.setState(JobState.Running);
+			ctx.stdout.println("["+job.getJobNumber()+"] continued "+job.toString());
+		}	else {
+			job.setState(JobState.Running);
+		}
 
 		return ret;
 	}

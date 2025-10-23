@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import us.bringardner.filesource.sh.FileSourceShParser.StringContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
@@ -42,7 +43,8 @@ public class ShellContext {
 	private List<String> activeAlias = new ArrayList<>();
 	private Stack<Statement> statementStack = new Stack<>();
 	private AtomicBoolean pause = new AtomicBoolean();
-
+	private AtomicReference<Exception> exeption = new AtomicReference<>();
+	
 	public ShellContext() {
 		enterCommand();
 	}
@@ -50,6 +52,13 @@ public class ShellContext {
 	public ShellContext(Console console) {
 		this();
 		this.console = console;
+		stderr = console.getStdErr();
+		stdout = console.getStdOut();
+		stdin = console.getStdIn();
+		if( stdin == Console.System_in) {
+			stdin = new NativeKeyboard();
+		}
+	
 	}
 
 	public void addFunction(FunctionDefStatement function) {
@@ -489,6 +498,10 @@ $
 		return pause.get();
 	}
 
+	public void setExecption(Exception e) {
+		exeption.set(e);
+	}
+	
 	public void enterStatement(Statement stmt) throws IOException {
 		statementStack.push(stmt);
 		if( console!=null ) {
@@ -527,11 +540,17 @@ $
 			} catch (InterruptedException e) {
 			}
 		}
+		if(exeption.get() != null) {
+			throw new IOException(exeption.get());
+		}
 	}
 
-	public void exitStatement(int ret,Statement stmt) {
+	public void exitStatement(int ret,Statement stmt) throws IOException {
 		statementStack.pop();		
 		console.debugContext.after(stmt.getContext(), this);
+		if(exeption.get() != null) {
+			throw new IOException(exeption.get());
+		}
 	}
 
 	public Statement getLastStatement() {

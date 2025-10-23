@@ -157,6 +157,7 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 				;
 		
 		Console.setNextPid(100000);
+		console.jobManager.clear();
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
@@ -170,9 +171,9 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 	
 	@Test
 	public void testBackground03() throws Exception{
-		String cmd = "sleep 100 &\n"
-				+ "sleep 200 &\n"
-				+ "sleep 300 &\n"				
+		String cmd = "sleep 1000 &\n"
+				+ "sleep 2000 &\n"
+				+ "sleep 3000 &\n"				
 				+ "jobs\n"
 				;
 
@@ -180,13 +181,13 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 				"[1] 100000\n"
 				+ "[2] 100001\n"
 				+ "[3] 100002\n"
-				+ "[1]   Running sleep   100   \n"
-				+ "[2] - Running sleep   200   \n"
-				+ "[3] + Running sleep   300   \n"
+				+ "[1]   Running sleep   1000   \n"
+				+ "[2] - Running sleep   2000   \n"
+				+ "[3] + Running sleep   3000   \n"
 				;
 		//System.out.println(cmd);
 		Console.setNextPid(100000);
-		console.jobs.clear();
+		console.jobManager.clear();
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
@@ -196,7 +197,7 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %3\n";
-		expect = "[3] + Running sleep   300   \n";
+		expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
 		out = new String(res.bao.toByteArray());
 		err = new String(res.bae.toByteArray());		
@@ -205,7 +206,7 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %1\n";
-		expect = "[1]   Running sleep   100   \n";
+		expect = "[1]   Running sleep   1000   \n";
 		res = executeCommand(cmd,"");
 		out = new String(res.bao.toByteArray());
 		err = new String(res.bae.toByteArray());		
@@ -214,7 +215,7 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %-\n";
-		expect = "[2] - Running sleep   200   \n";
+		expect = "[2] - Running sleep   2000   \n";
 		res = executeCommand(cmd,"");
 		out = new String(res.bao.toByteArray());
 		err = new String(res.bae.toByteArray());		
@@ -223,7 +224,7 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %+\n";
-		expect = "[3] + Running sleep   300   \n";
+		expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
 		out = new String(res.bao.toByteArray());
 		err = new String(res.bae.toByteArray());		
@@ -232,7 +233,7 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %%\n";
-		expect = "[3] + Running sleep   300   \n";
+		expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
 		out = new String(res.bao.toByteArray());
 		err = new String(res.bae.toByteArray());		

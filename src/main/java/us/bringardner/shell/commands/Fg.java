@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.shell.Console;
-import us.bringardner.shell.Console.Job;
-import us.bringardner.shell.Console.JobState;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.statement.JobControlStatement;
+import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.job.JobManager;
 
 public class Fg extends ShellCommand{
 
@@ -35,9 +35,10 @@ public class Fg extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
 		//  this defines the current job
-		int jobSize = ctx.console.jobs.size();
+		JobManager jm = ctx.console.jobManager;
+		List<IJob> ijobs = jm.getJobs();
+		int jobSize = ijobs.size();
 
 		List<Integer> jobs = new ArrayList<>();
 		//  %[0-9] is parse as signed number rather that jobSpec
@@ -61,25 +62,15 @@ public class Fg extends ShellCommand{
 			return 2;
 		}
 
-		Job job = ctx.console.jobs.get(0);
-		Console.JobState state = job.state;
-		if( state == Console.JobState.Suspended) {
-			//[1]  + continued  sleep 30
-			job.child.ctx.setPause(false);
-			ctx.stdout.print("["+job.jobNumber+"] continued "+job.toString());
-			while(job.isRunning()) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-				if( job.state == JobState.Suspended) {
-					throw new Console.SuspendException();
-				}
-			}
+		IJob job = jm.getJob(jobs.get(0));
+		if( job == null ) {
+			ctx.stderr.println("No such job "+jobs.get(0));
+			return 3;
 		}
 
+		throw new Console.ResumeException(job);
 
-		return ret;
+		
 	}
 
 }

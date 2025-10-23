@@ -195,7 +195,7 @@ public class TestTrap extends AbstractConsoleTest {
 				;
 
 		Console.setNextPid(100000);
-		console.jobs.clear();
+		console.jobManager.clear();
 		console.isInteractive=true;
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling

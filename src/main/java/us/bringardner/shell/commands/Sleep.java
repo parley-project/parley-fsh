@@ -25,6 +25,8 @@ public class Sleep extends ShellCommand{
 	public Sleep() {
 		super(name, help);
 	}
+	public static boolean debug = false;
+	
 
 	static final long S = 1000;
 	static final long M = S*60;
@@ -59,7 +61,7 @@ public class Sleep extends ShellCommand{
 				long tmp = Integer.parseInt(val)*multiplyer;
 				amt += tmp;
 			}
-			System.out.println("start amt="+amt);
+			if( debug ) System.out.println("start amt="+amt);
 			while( amt > 0 ) {
 				if(ctx.isPaused()) {
 					try {
@@ -71,12 +73,12 @@ public class Sleep extends ShellCommand{
 						int tmp = amt>10?10:amt;
 						Thread.sleep(tmp);
 						amt -= tmp;
-						System.out.println("sleep amt="+amt);
+						if( debug ) System.out.println("sleep amt="+amt);
 					} catch (InterruptedException e) {
 					}
 				}
 			}
-			System.out.println("end amt="+amt);
+			if( debug ) System.out.println("end amt="+amt);
 		}
 
 

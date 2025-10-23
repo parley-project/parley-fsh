@@ -5,10 +5,10 @@ import java.io.IOException;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
-import us.bringardner.shell.Console;
-import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.Console.CommandThread;
+import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.job.BackgroundJob;
 
 public class BackgroundStatement extends Statement{
 
@@ -32,7 +32,8 @@ public class BackgroundStatement extends Statement{
 			ShellContext ctx = sc.subShell();
 			ctx.stdin = new ByteArrayInputStream("".getBytes());
 			CommandThread thread = new CommandThread(ctx,stmt);	
-			Console.Job job = new Console.Job(ctx.console.jobs.size(),thread);
+			BackgroundJob job = new BackgroundJob(thread);
+			sc.console.addJob(job);
 			job.start();
 			
 			while(!job.hasStarted()) {
@@ -41,7 +42,7 @@ public class BackgroundStatement extends Statement{
 				} catch (InterruptedException e) {
 				}
 			}
-			sc.console.addJob(job);
+			
 			String tmp = "["+(job.jobNumber+1)+"] "+job.pid;
 			sc.stdout.println(tmp);
 		} catch (Exception e) {

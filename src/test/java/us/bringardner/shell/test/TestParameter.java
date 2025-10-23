@@ -509,7 +509,7 @@ public class TestParameter {
 				+ "echo \"${a%%:*}\"\n"
 
 				+ "";
-		System.out.println(code);
+		//System.out.println(code);
 		TestExecutionForStatement.ExecuteResult res = TestExecutionForStatement.executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);

@@ -13,6 +13,8 @@ import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.commands.Jobs;
 import us.bringardner.shell.commands.Kill;
 import us.bringardner.shell.commands.Wait;
+import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.job.JobManager;
 
 public class JobControlStatement extends Statement{
 
@@ -32,7 +34,10 @@ public class JobControlStatement extends Statement{
 	protected int execute(ShellContext sc) throws IOException {
 		List<Integer> specs = new ArrayList<>();
 		//  this defines the current job
-		int jobSize = sc.console.jobs.size();
+		JobManager jm = sc.console.jobManager;
+		List<IJob> ijobs = jm.getJobs();
+		int jobSize = ijobs.size();
+
 		if( jobSpecs !=null && jobSpecs.size()>0) {
 			for (String tmp : jobSpecs) {
 				int i = parseJobSpec(jobSize,tmp);
