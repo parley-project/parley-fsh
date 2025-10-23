@@ -879,6 +879,13 @@ delimiter
 				stdOut.println(adminMessage);
 				adminMessage = null;
 			}
+			for(IJob job : jobManager.getJobs()) {
+				if( job.getState()==JobState.Termnated) {
+					//[1]  + done       sleep 50
+					stdOut.println("["+job.getJobNumber()+"] done "+job.toString());	
+					job.setState(JobState.Notified);
+				}
+			}
 			String prompt = getPrompt(Prompt.Primary);					
 			kb.setPrompt(prompt);
 			String code;
