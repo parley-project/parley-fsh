@@ -373,7 +373,7 @@ public class CommandStatement extends Statement{
 		if( name.equals(".")) {
 			name ="source";
 		}
-		
+
 		this.name = name;
 	}
 
@@ -477,9 +477,14 @@ public class CommandStatement extends Statement{
 		} catch (ReturnException e) {
 			returnStatus = e.exitCode;
 		} finally {
-			ctx.stdin = in;
-			ctx.stdout = out;
-			ctx.stderr = err;
+			if( name.equals("exec")) {
+				// special case: any redirect stays and is pushed to the console object
+
+			} else {
+				ctx.stdin = in;
+				ctx.stdout = out;
+				ctx.stderr = err;
+			}
 			//ctx.exitCommand();
 			if( returnStatus ==null ) {
 				ctx.console.setLastExitCode(ret);
@@ -607,10 +612,10 @@ public class CommandStatement extends Statement{
 				}
 			}
 		} 
-	
-		
+
+
 		argsToString(cmd, ctx);
-		
+
 		return execute(cmd, ctx);
 	}
 

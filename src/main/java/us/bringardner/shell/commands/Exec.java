@@ -48,6 +48,7 @@ public class Exec extends ShellCommand{
 				c = val.contains("c");
 				l = val.contains("l");
 			} else {
+				idx--;
 				break;
 			}
 		}
@@ -55,7 +56,7 @@ public class Exec extends ShellCommand{
 		if( idx < args.length) {
 			String command = ""+args[++idx].getValue(ctx);
 			StringBuilder buf = new StringBuilder(command);
-			for(; idx < args.length; idx++ ) {
+			for(idx++; idx < args.length; idx++ ) {
 				buf.append(' ');
 				if( l ) {
 					buf.append("-");

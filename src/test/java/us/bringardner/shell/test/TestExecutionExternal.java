@@ -15,6 +15,7 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
@@ -504,6 +505,30 @@ public class TestExecutionExternal {
 		
 	}
 
+	@Test
+	public void testExternalRedirect04() throws Exception{
+		File dir = new File("target/logdir").getCanonicalFile();
+		if( !dir.exists()) {
+			assertTrue(dir.mkdirs());
+		}
+		
+		File logFile = new File(dir,"log.txt");
+		if( logFile.exists()) {
+			assertTrue(logFile.delete());
+		}
+		
+		String cmd = "echo \"something to log\" > "+logFile.getCanonicalPath()+"\n";
+				;
+
+		String expectOut = "";
+		String stdIn = "";
+		String expectErr = "";
+		int exitCode = 0;
+		
+		
+		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+		
+	}
 
 	public static ExecuteResult executeCommand(String cmd,String stdIn,int exitCode) throws IOException {
 		Console console = new Console();
