@@ -40,7 +40,7 @@ public abstract class Statement {
 
 			if( redirect.redirectionOperator() !=null) {
 				String op = redirect.redirectionOperator().getText();
-				int id = 0;
+				int id = 1;
 				if( op.charAt(0) == '1') {
 					id = 1;
 					op = op.substring(1);
@@ -68,7 +68,7 @@ public abstract class Statement {
 					if( !file.exists() ) {
 						throw new RuntimeException("CommandStatement configureRedirect input file does not exists ="+file);
 					}
-					if( id != 0 ) {
+					if( id != 1 ) {
 						throw new RuntimeException("CommandStatement configureRedirect input file id=0... what to do ="+file);
 					}
 
