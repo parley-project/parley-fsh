@@ -12,29 +12,6 @@ lexer grammar FileSourceShLexer;
     return true;
   }
 
-	StringBuilder pathBuffer;
-	boolean inQuote = false;
-	  
-	boolean pathEndAhead() {
-		int i =  _input.LA(1);
-		char nx =  (char)i;
-		if(nx == '"') {
-			inQuote = !inQuote;
-		} else {
-			if(i<0 ||  Character.isWhitespace(nx) && !inQuote) {
-				return true;
-			}
-			switch (nx) {
-				case '<':
-				case '>':
-				case '[':
-				case ']':
-				case ';':
-					return true;
-				}
-		}
-	    return false;
-	  }
 	
 	boolean parameterEndAhead() {
 		 char nx =  (char)_input.LA(1);
@@ -169,12 +146,15 @@ PLUS_EQ:'+=';
 DOT:'.';
 DOT_DOT:'..';
 PERC:'%';
+//JOBSPEC: '%'[0-9]+;
 PLUS:'+';
 STAR:'*';
 POW:'**';
 DO:'do';
 EQ:'=';
 EQUALITY:'=='|'-eq';
+RX_EQUALITY:'=~';
+
 NOT_EQ:'!='|'-ne';
 MINUS:'-';
 PIPE:'|';
@@ -187,51 +167,71 @@ RPAREN:')';
 LSQUARE:'[';
 RSQUARE:']';
 
+REDIRECT_BOTH_5: [0-9]* '>&' '-';
+
+REDIRECT_INPUT: [0-9]+ '<'; //[n]<word
+REDIRECT_OUTPUT: [0-9]+ '>' '|'? ; //[n]>[|]word
+REDIRECT_APPEND: [0-9]+ '>>' ; //[n]>>word
+
 REDIRECT_APPEND_OUT_2 : '&>>';
 REDIRECT_APPEND_OUT : '>>';
+REDIRECT_READ_WRITE: [0-9]* '<>';
+REDIRECT_BOTH:'>&' ;
+REDIRECT_BOTH_2: '&>';
+REDIRECT_BOTH_3: '&>' [0-9]+ ;
+REDIRECT_BOTH_4: '>&' [0-9]+;
+
 
 COMMA:',';
 MINUS_ASSIGN:'-=';
 STAR_ASSIGN:'*=';
 DIV_ASSIGN:':^:=';
 MOD_ASSIGN:'%=';
-REDIRECT_BOTH:'>&';
-REDIRECT_BOTH_2:'&>';
-REDIRECT_FROM_ID:[0-2];
-REDIRECT_TO_ID:REDIRECT_FROM_ID|MINUS;
+
+
 DIGIT: [0-9];
 SPECIAL_UNIX: [-_+=~];
 SPECIAL_WINDOWS: [-_+=~];
 POS:'^';
 
-ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
+//KILL:'kill';
+//FG:'fg';
+//BG:'bg';
+//WAIT:'wait';
+//DISOWN:'disown';
+//SUSPEND:'suspend';
+//JOBS:'jobs';
+
+PERC_PERC:'%%';
+PERC_MINUS:'%-';
+PERC_PLUS:'%+';
+PERC_QUESTION:'%?';
+
+ARG_ID  :~[a-zA-Z0-9]('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
+//ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
 LETTER_OR_DIGIT:[a-zA-Z_0-9.];
 fragment COLON: ':';
 P1:COLON MINUS;
+AT:'@';
 TEXT:~[ \t\r\n];
 
-WORD:LETTER_OR_DIGIT+;
 DOLLAR_LPAREN_LPAREN: '$((';
 RPAREN_RPAREN:  '))';
 LPAREN_LPAREN: '((';
-AT:'@';
+
 NOT_CURLY: [ \t]|~[}];
 DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
+RX_CHAR:[!@#$%^&*()_+~];
+POSIX_CHAR_CLASS: 
+	':' '^'? ('alnum'|'alpha'|'ascii'|'blank'|'cntrl'|'digit'|'graph'|'lower'|'print'|'punct'|'space'|'upper'|'word'|'xdigit') ':'
+	;
 
+CHAR_CLASS: [.];
 
-fragment PATH_CHAR
-    : [a-zA-Z0-9._-]
-    ;
-
-PATH_SEGMENT
-    : PATH_CHAR+
-    ;
-
-
-
+	
 mode ParameterMode;
 
 

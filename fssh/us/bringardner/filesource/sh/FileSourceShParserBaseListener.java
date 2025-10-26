@@ -233,6 +233,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRedirect_one(FileSourceShParser.Redirect_oneContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRedirect_one(FileSourceShParser.Redirect_oneContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterFile_address(FileSourceShParser.File_addressContext ctx) { }
 	/**
 	 * {@inheritDoc}

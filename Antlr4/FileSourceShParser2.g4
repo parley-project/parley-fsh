@@ -40,14 +40,14 @@ statement1
     | statement_group // Includes parenthesized groups
     | command_substitution
     | exprStatement
-    
+    | job_control_statement
     
     ;
 
 backgroundCommand:
-				statement_group AMP
-				| pipeStatement AMP
-				| commandStatement AMP
+				statement_group WS* AMP
+				| pipeStatement WS* AMP
+				| commandStatement WS* AMP
 				;
 
 loop_controll_statement
@@ -55,27 +55,31 @@ loop_controll_statement
             | CONTINUE WS* NUMBER?
             ;
 
-assignStatement: assignment WS?
+assignStatement: assignment WS*
 		;
 		
 assignment		
-    : (LOCAL WS)? WS? id1=ID WS? EQ WS? arrayInitializer // Specific rule for array init
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? command_substitution
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? boolean
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? string    
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? variable
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? expression
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? mathExpression
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? parameter
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? list // Could be single element
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? id2=ID
-    | (LOCAL WS)? WS? id1=ID (WS? (associative_index | array_index))? WS? EQ WS? path
+    : (LOCAL WS)? WS* id1=ID WS* EQ WS* arrayInitializer // Specific rule for array init
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* command_substitution
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* boolean
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* string    
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* variable
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* expression
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* mathExpression
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* parameter
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* list // Could be single element
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* id2=ID
+    | (LOCAL WS)? WS* id1=(ID|ARG_ID) (WS* (associative_index | array_index))? WS* EQ WS* path
     ;
 
 boolean: TRUE | FALSE;
-path_segment
-  		 : TILDE 
-		| variable
+
+id_star:ID STAR | STAR ID;
+
+path_segment: TILDE 
+		| AT
+		| id_star
+		| ID
         | DOT_DOT
         | DOT
         | STAR
@@ -84,63 +88,51 @@ path_segment
         | MINUS
         | MINUS_MINUS
         | NUMBER
-        | ID
+                
 		;
 
-
+path_segment_list: path_segment +;
 
 path
-    : SLASH path_segment (SLASH path_segment)*   # absolutePath
-    | path_segment (SLASH path_segment)+        # relativePath
+    :  SLASH path_segment_list (SLASH path_segment_list)*   
+    | path_segment_list (SLASH path_segment_list)*
+    | SLASH        
     ;
 
 argument_list: (argument WS*)*
 	;
-	
-argument
-    : arg_command_substitution
-    | signed_number
-    | NUMBER    
-    | TEXT
-    | string
-    | ARG_ID     
-    | assignStatement
-    | variable        
-    | mathExpression
-    | parameter
-    | operator
-    | path
-    | ID
-    ;
-
-signed_number: (MINUS|PLUS)? NUMBER;    
-
-operator: MINUS|PLUS|DIVIDE|PERC|STAR
-		|MINUS_MINUS|PLUS_PLUS|EQUALITY|NOT_EQ
-		| MINUS_ASSIGN
-		| STAR_ASSIGN
-		| DIV_ASSIGN
-		| MOD_ASSIGN
-		| ESC LT
-		|LT_EQ
-		|ESC GT
-		|GT_EQ
-		|NOT
-		|ESC_AND
-		|ESC_OR
-		;
-
-commandStatement
-    : WS*	redirect1=redirect? WS* command WS* (argument WS*)* hereDocument WS* redirect2=redirect? 
-    | WS*	redirect1=redirect? WS* command WS* (argument WS*)* redirect2=redirect?     
-    ;
 
 
 redirect 
-		: redirectionOperator white* (path | ID)
-		| file_address
-		| (redirectionOperator white* (path | ID)) white* file_address
+		: (WS* file_distriptor1=NUMBER WS*)? redirectionOperator white* (path | ID | file_distriptor2=NUMBER)?
+		| (WS* file_distriptor1=NUMBER WS*)? file_address
+		| (WS* file_distriptor1=NUMBER WS*)? (redirectionOperator white* (path | ID | file_distriptor2=NUMBER)) white* file_address
 		;    
+	
+argument
+    : ARG_ID 
+    | arg_command_substitution
+    | signed_number
+    | NUMBER    
+   	| TEXT
+    | string         
+    | assignStatement            
+    | mathExpression
+    | parameter
+	| path	
+	| ID
+	| variable
+	| PERC
+    ;
+    
+signed_number: (MINUS|PLUS|PERC)? NUMBER;    
+
+
+commandStatement
+    :  WS*	redirect1=redirect? WS* command WS* (argument WS*)* hereDocument WS* redirect2=redirect? 
+    |  WS*	redirect1=redirect? WS* command WS* (argument WS*)* redirect2=redirect?     
+    ;
+    
 
 file_address:
         	fromId=NUMBER? REDIRECT_BOTH toId=NUMBER
@@ -149,10 +141,9 @@ file_address:
 
 
 
-command
-    : path
-    | ID
-    ;
+command: path
+		| ID
+		;
 
 
 pipeStatement
@@ -168,7 +159,7 @@ pipeOp:
 	PIPE white* AMP?
 	;    
 
-compareStatement:  LSQUARE simpleCompare=compare RSQUARE statement?;
+compareStatement:  LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* statement?;
 
 mathStatement
     : mathExpression
@@ -183,12 +174,12 @@ mathExpression
 
 boolean_statement: boolean;
 
-compare : WS? compare_prime
-        | WS? LSQUARE WS? compare_prime WS? RSQUARE
-        | WS? LSQUARE WS? simpleCompare=compare WS? RSQUARE
-        | WS? NOT notCompare=compare
-        | left=compare WS? AND WS? right=compare
-        | left=compare WS? OR WS?  right=compare
+compare : WS* compare_prime (';' WS*)?
+        | WS* LSQUARE WS* compare_prime WS* RSQUARE
+        | WS* LSQUARE WS* simpleCompare=compare WS* RSQUARE
+        | WS* NOT notCompare=compare
+        | left=compare WS* AND WS* right=compare
+        | left=compare WS* OR WS*  right=compare
         ;
 
 compare_prime
@@ -196,12 +187,13 @@ compare_prime
     | NUMBER
     | string
     | file_test
-    | left=compare_prime WS? EQUALITY WS? right=compare_prime    
-    | left=compare_prime WS? NOT_EQ WS? right=compare_prime
-    | left=compare_prime WS? LT_EQ WS? right=compare_prime
-    | left=compare_prime WS? GT_EQ WS? right=compare_prime
-    | left=compare_prime WS? LT WS? right=compare_prime
-    | left=compare_prime WS? GT WS? right=compare_prime
+    | left=compare_prime WS* EQUALITY WS* right=compare_prime
+    | left=compare_prime WS* NOT_EQ WS* right=compare_prime
+    | left=compare_prime WS* LT_EQ WS* right=compare_prime
+    | left=compare_prime WS* GT_EQ WS* right=compare_prime
+    | left=compare_prime WS* LT WS* right=compare_prime
+    | left=compare_prime WS* GT WS* right=compare_prime
+    | left=compare_prime WS* RX_EQUALITY WS* regular_expression    
     | expression
     ;
 
@@ -211,6 +203,8 @@ associative_index:
 		(LSQUARE ID RSQUARE)
 		| (LSQUARE index=string RSQUARE)
 		;
+
+regular_expression:	rx_pattern+ ;
 
 expression
     :
@@ -250,17 +244,50 @@ patternList
     :   WS* pattern (white* PIPE white* pattern)*
     ;
 
-pattern
-    :   ID
-    | regex
-    | expression
+	
+rx_pattern
+    : ESC
+    | RX_CHAR
+    | HASH    
+    | variable
+    | string
+    | TEXT  
+    | ID
+    | DOLLAR
+    | NOT
+    | regex    
     | STAR 
-    
+    | QUESTION
+    | NUMBER
+    | POS
+    | char_class_list
+    | '(' rx_pattern+ ')'
     ;
 
-regex: ID? (STAR|QUESTION|DOT) ID? regex?;
+pattern
+    :   ID
+    | regex    
+    | STAR 
+    | QUESTION
+    | char_class_list
+    | expression
+    ;
 
-//regex: LETTER_OR_DIGIT? (STAR|QUESTION) LETTER_OR_DIGIT? 	;
+char_class_list: char_class+;
+
+char_class :char_class_a|char_class_b;
+ 
+char_class_a: '[' char_class_b ']';
+char_class_b: '[' not=('!'|'^')? char_class_body+ ']';
+
+char_class_body:  POSIX_CHAR_CLASS|char_class_chars|char_class_range;
+
+char_class_range: char_class_chars MINUS char_class_chars (MINUS char_class_chars)*; 
+
+char_class_chars: (ESC|NUMBER|ID|DOT|QUESTION|STAR|TEXT);
+
+regex: ID? (STAR|QUESTION|DOT|PLUS) ID? regex?;
+
 	
 factor
     : NUMBER
@@ -276,20 +303,28 @@ factor
 //2>&1
 redirectionOperator
 //                  >       1>&2
-    : GT PIPE?
-    |  REDIRECT_APPEND_OUT_2
-    |  REDIRECT_APPEND_OUT
+    : REDIRECT_BOTH_5
+    | GT PIPE?
+    | REDIRECT_APPEND_OUT_2
+    | REDIRECT_APPEND_OUT
 
     | LT
     | REDIRECT_BOTH //>&word
     | REDIRECT_BOTH_2 //&>word
+    | REDIRECT_BOTH_3 //&>word n
+    | REDIRECT_BOTH_4 //&>word n
+    | REDIRECT_BOTH_5
+    | REDIRECT_READ_WRITE
+    | REDIRECT_INPUT
+    | REDIRECT_OUTPUT
+    | REDIRECT_APPEND
     ;
 
 
 
 	
 
-white: NL | WS;			
+white: NL | WS | LINE_COMMENT;			
 
 ifStatement
     : IF white* compare white* (SEMI|NL) white* THEN white* statement_block white* 
@@ -304,7 +339,7 @@ statement_block
 
 
 whileStatement
-    :  white* WHILE white* compare white* doStatement
+    :  white* WHILE white* compare white* (';' white*)? doStatement
     ;
 
 until_statement
@@ -397,7 +432,7 @@ parameter: PARAMETER_START PARAMETER_BODY PARAMETER_END;
 		
 parameter1:
      (NOT|PIPE)? ID parameter_index?  parameter_body 
-    |  NOT? (TEXT|AMP|STAR) parameter_body 
+    |  NOT? (TEXT|AT|AMP|STAR) parameter_body 
     |  NOT? expression parameter_index?  parameter_body 
     
     ;
@@ -405,7 +440,7 @@ parameter1:
 
 parameter_index :
 
-		 LSQUARE TEXT RSQUARE
+		 LSQUARE (TEXT|AT) RSQUARE
 		
 		| associative_index
 		| array_index
@@ -444,3 +479,5 @@ associativeArrayValue
     | parameter
     ;
 
+job_control_statement: cmd=ID WS* (argument WS*)* (jobspec WS*)*;
+jobspec:(signed_number|PERC_PERC|PERC_PLUS|PERC_MINUS|PERC_QUESTION ID?);

@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.core.BaseThread;
-import us.bringardner.filesource.sh.FileSourceShParser.File_addressContext;
 import us.bringardner.filesource.sh.FileSourceShParser.HereDocumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.io.filesource.FileSource;
@@ -277,7 +276,6 @@ public class CommandStatement extends Statement{
 
 	String name ;
 	RedirectContext redirect;
-	private File_addressContext fileAddress;
 	String hereId;
 
 
@@ -336,18 +334,12 @@ public class CommandStatement extends Statement{
 				return false;
 			}
 
-			if( !testEq(fileAddress,cs.fileAddress)) {
-				return false;
-			}
 			ret = true;
 		}
 
 		return ret;
 	}
 
-	public File_addressContext getFileAddress() {
-		return fileAddress;
-	}
 
 	public CommandStatement(ParserRuleContext context) {
 		super(context);
@@ -404,7 +396,7 @@ public class CommandStatement extends Statement{
 				sargs[idx+1] = ""+args[idx].getValue(ctx);
 			}
 			ctx.args = sargs;
-			configureRedirect(ctx,redirect,fileAddress);				
+			configureRedirect(ctx,redirect);				
 
 			if( hereId !=null ) {
 				Object obj = ctx.getValue(hereId);
@@ -589,11 +581,7 @@ public class CommandStatement extends Statement{
 		return file;
 	}
 
-	public void setFileAddress(File_addressContext file_address) {
-		fileAddress = file_address;
-
-	}
-
+	
 	public void setHereDocument(HereDocumentContext hereDocument) {
 		hereId = hereDocument.ID().getText();		
 	}

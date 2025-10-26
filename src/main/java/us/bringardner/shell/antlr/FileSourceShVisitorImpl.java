@@ -313,14 +313,8 @@ commandStatement
 		}
 		if( ctx.redirect2!=null) {
 			ret.setRedirect(ctx.redirect2);
-			if( ctx.redirect2.file_address()!=null ) {
-				ret.setFileAddress(ctx.redirect2.file_address());
-			}
 		} else if( ctx.redirect1!=null) {
 			ret.setRedirect(ctx.redirect1);
-			if( ctx.redirect1.file_address()!=null ) {
-				ret.setFileAddress(ctx.redirect1.file_address());
-			}
 		}
 
 

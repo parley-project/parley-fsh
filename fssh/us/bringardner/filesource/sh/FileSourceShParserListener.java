@@ -188,6 +188,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitRedirect(FileSourceShParser.RedirectContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#redirect_one}.
+	 * @param ctx the parse tree
+	 */
+	void enterRedirect_one(FileSourceShParser.Redirect_oneContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#redirect_one}.
+	 * @param ctx the parse tree
+	 */
+	void exitRedirect_one(FileSourceShParser.Redirect_oneContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#file_address}.
 	 * @param ctx the parse tree
 	 */

@@ -26,6 +26,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Signed_numberContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
 import us.bringardner.shell.Console;
@@ -128,7 +129,7 @@ public class TestVisitor {
 		assertEquals(string, ctx.getText());
 
 		a = parseAurgument("name");
-		
+
 		PathContext xxx = a.getContext().path();
 		assertNotNull(xxx, "ID");
 		assertEquals("name", xxx.getText());
@@ -338,56 +339,37 @@ $((12+32))
 					assertEquals(expect.args[idx1],args[idx1].toString(),"idx="+idx1);
 				}
 
-				/*
-
-
-commandStatement
-    :	redirect1=redirect? command (argument)* hereDocument redirect2=redirect? CMD_TERMINATOR? 
-    | 	redirect1=redirect? command (argument)* redirect2=redirect? CMD_TERMINATOR?    
-    ;
-
-redirect 
-		: (redirectionOperator (path | ID))
-		| file_address
-		| (redirectionOperator (path | ID)) file_address
-		;    
-				 */
-				RedirectContext redirect = cs.getRedirect();
-				assertNotNull(redirect,"All  cmds in this test have redirection");
+				RedirectContext redirectStart = cs.getRedirect();
+				assertNotNull(redirectStart,"All  cmds in this test have redirection");
 				//                                                       op   file  fromId  toId
 				//new RedirectExpect("cmd", new String[]{"arg1","arg2"},">","file",   "2",  "-"),
-				String op =  redirect.redirectionOperator().getText();
-				assertEquals(expect.rdop, op);
-				String path = null;
-				if( redirect.path() !=null) {
-					path = redirect.path().getText();
-				} else if( redirect.ID() !=null) {
-					path = redirect.ID().getText();
-				} else {
-					throw new RuntimeException("Error no path");
+				for(Redirect_oneContext redirect : redirectStart.redirect_one()) {
+					if( redirect.redirectionOperator()!=null) {
+					String op =  redirect.redirectionOperator().getText();
+					assertEquals(expect.rdop, op);
+					String path = null;
+					if( redirect.path() !=null) {
+						path = redirect.path().getText();
+					} else if( redirect.ID() !=null) {
+						path = redirect.ID().getText();
+					} else {
+						throw new RuntimeException("Error no path");
+					}
+					assertEquals(expect.file, path);
+
+					FileSourceShParser.File_addressContext address = redirect.file_address();
+					if( address != null ) {
+
+						Token fromId = address.fromId;
+						Token toId = address.toId;
+
+						boolean ok = isEq(fromId==null?"null":fromId.getText(),expect.fromId);
+						assertTrue(ok,"From id "+fromId+" "+expect.fromId);
+						ok = isEq(toId==null?"null":toId.getText(),expect.toId);
+						assertTrue(ok,"To id "+toId+" "+expect.toId);					
+					}
+					}
 				}
-				assertEquals(expect.file, path);
-				
-				/*
-file_address:
-        	fromId=NUMBER? REDIRECT_BOTH toId=NUMBER
-         | fromId=NUMBER? REDIRECT_BOTH toId=MINUS
-        ;
-
-				 */
-
-				FileSourceShParser.File_addressContext address = cs.getFileAddress();
-				if( address != null ) {
-
-					Token fromId = address.fromId;
-					Token toId = address.toId;
-
-					boolean ok = isEq(fromId==null?"null":fromId.getText(),expect.fromId);
-					assertTrue(ok,"From id "+fromId+" "+expect.fromId);
-					ok = isEq(toId==null?"null":toId.getText(),expect.toId);
-					assertTrue(ok,"To id "+toId+" "+expect.toId);					
-				}
-
 
 
 				//assertEquals(expect.rdop,tmp,"rdop");
@@ -595,14 +577,14 @@ file_address:
 
 		if (stmt instanceof ForStatement	) {
 			ForStatement ifs = (ForStatement) stmt;
-			
+
 			assertEquals(1, ifs.getStmts().size());
 			assertNotNull(ifs.getAssign());
 			assertNotNull(ifs.getCompare());
 			assertNotNull(ifs.getExpr());
 		}	
-		
-		
+
+
 	}
 	@Test
 	public void testSpecialVartiables()throws Exception{

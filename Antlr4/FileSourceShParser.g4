@@ -125,13 +125,16 @@ signed_number: (MINUS|PLUS|PERC)? NUMBER;
 
 commandStatement
     : WS*	redirect1=redirect? WS* command WS* (argument WS*)* hereDocument WS* redirect2=redirect? 
-    | WS*	redirect1=redirect? WS* command WS* (argument WS*)* redirect2=redirect?     
+    | WS*	redirect1=redirect? WS* command WS* (argument WS*)* redirect2=redirect?
     ;
     
-redirect 
-		: redirectionOperator white* (path | ID)
+    
+redirect: (redirect_one WS*)+;
+ 
+ redirect_one
+		: redirectionOperator white* (path | ID)?
 		| file_address
-		| (redirectionOperator white* (path | ID)) white* file_address
+		| (redirectionOperator white* (path | ID))? white* file_address
 		;    
 
 file_address:

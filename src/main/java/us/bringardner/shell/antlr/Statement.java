@@ -9,113 +9,119 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.File_addressContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.io.filesource.FileSource;
-import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.Console.Option;
+import us.bringardner.shell.ShellContext;
 
 public abstract class Statement {
 
-	public void configureRedirect(ShellContext ctx, RedirectContext redirect, File_addressContext fileAddress) throws IOException {
+	public void configureRedirect(ShellContext ctx, RedirectContext redirectStart) throws IOException {
 
-		if(redirect!=null) {
-			Integer fromId = null;
-			Integer toId = null;
-			if( fileAddress !=null) {
-				if( fileAddress.fromId!=null) {
-					try {
-						fromId = Integer.parseInt(fileAddress.fromId.getText());
-					} catch (Exception e) {				
+		if(redirectStart!=null && redirectStart.redirect_one()!=null) {
+
+
+			for(Redirect_oneContext redirect : redirectStart.redirect_one()) {
+				Integer fromId = null;
+				Integer toId = null;
+				File_addressContext fileAddress = redirect.file_address();
+				if( fileAddress !=null) {
+					if( fileAddress.fromId!=null) {
+						try {
+							fromId = Integer.parseInt(fileAddress.fromId.getText());
+						} catch (Exception e) {				
+						}
+					}
+					if( fileAddress.toId!=null) {
+						try {
+							toId = Integer.parseInt(fileAddress.toId.getText());
+						} catch (Exception e) {				
+						}
+					}
+					if( fromId !=null || toId!=null) {
+						throw new RuntimeException("CommandStatement configureRedirect from or to id what to do? from= "+fromId+" t="+toId);
 					}
 				}
-				if( fileAddress.toId!=null) {
-					try {
-						toId = Integer.parseInt(fileAddress.toId.getText());
-					} catch (Exception e) {				
-					}
-				}
-				if( fromId !=null || toId!=null) {
-					throw new RuntimeException("CommandStatement configureRedirect from or to id what to do? from= "+fromId+" t="+toId);
-				}
-			}
 
-			if( redirect.redirectionOperator() !=null) {
-				String op = redirect.redirectionOperator().getText();
-				int id = 1;
-				if( op.charAt(0) == '1') {
-					id = 1;
-					op = op.substring(1);
-				} else if( op.charAt(0) == '2') {
-					id = 2;
-					op = op.substring(1);
-				}
-
-				String pathText = null;
-				if( redirect.path() !=null) {
-					pathText = redirect.path().getText(); 
-				} else if( redirect.ID() !=null) {
-					pathText = redirect.ID().getText(); 
-				} else {
-					throw new IOException("configureRedirect no path or ID");
-				}
-
-				FileSource file = ctx.getFileSource(pathText);
-				if( file.isDirectory()) {
-					throw new RuntimeException("Cannot redirect to or from a directory ="+file);
-				}
-
-				if( op.equals("<")) {
-					// only one input type
-					if( !file.exists() ) {
-						throw new RuntimeException("CommandStatement configureRedirect input file does not exists ="+file);
-					}
-					if( id != 1 ) {
-						throw new RuntimeException("CommandStatement configureRedirect input file id=0... what to do ="+file);
+				if( redirect.redirectionOperator() !=null) {
+					String op = redirect.redirectionOperator().getText();
+					int id = 1;
+					if( op.charAt(0) == '1') {
+						id = 1;
+						op = op.substring(1);
+					} else if( op.charAt(0) == '2') {
+						id = 2;
+						op = op.substring(1);
 					}
 
-					ctx.stdin = file.getInputStream();
-				} else {
-					OutputStream out = null;
-					OutputStream err = null;
-
-					if( op.equals(">")) {
-						if(file.exists() && !ctx.console.options.contains(Option.NoClobberRedirect)) {
-							throw new RuntimeException(file.getAbsolutePath()+" exists and no clobber is set");
-						}
-						if( id == 1) {
-							out = file.getOutputStream();
-						} else {
-							err = file.getOutputStream();
-						}
-
-					} else if( op.equals(">|")) {			
-						if( id == 1) {
-							out = file.getOutputStream();
-						} else {
-							err = file.getOutputStream();
-						}
-
-					} else if( op.equals(">&") || op.equals("&>")) {
-						//This is semantically equivalent to >word 2>&1
-						out = file.getOutputStream();
-						err = out;
-					} else if( op.equals(">>")) {
-						if( id == 1) {
-							out = file.getOutputStream(true);
-						} else {
-							err = file.getOutputStream(true);
-						}
-
-					} else if( op.equals("&>>")) {
-						out = file.getOutputStream(true);
-						err = out;
+					String pathText = null;
+					if( redirect.path() !=null) {
+						pathText = redirect.path().getText(); 
+					} else if( redirect.ID() !=null) {
+						pathText = redirect.ID().getText(); 
 					} else {
-						throw new RuntimeException("Unknown redirect op = "+op);
+						throw new IOException("configureRedirect no path or ID");
 					}
-					if( out !=null) {
-						ctx.stdout = new PrintStream(out);
+
+					FileSource file = ctx.getFileSource(pathText);
+					if( file.isDirectory()) {
+						throw new RuntimeException("Cannot redirect to or from a directory ="+file);
 					}
-					if( err !=null) {
-						ctx.stderr = new PrintStream(err);
+
+					if( op.equals("<")) {
+						// only one input type
+						if( !file.exists() ) {
+							throw new RuntimeException("CommandStatement configureRedirect input file does not exists ="+file);
+						}
+						if( id != 1 ) {
+							throw new RuntimeException("CommandStatement configureRedirect input file id=0... what to do ="+file);
+						}
+
+						ctx.stdin = file.getInputStream();
+					} else {
+						OutputStream out = null;
+						OutputStream err = null;
+
+						if( op.equals(">")) {
+							if(file.exists() && !ctx.console.options.contains(Option.NoClobberRedirect)) {
+								throw new RuntimeException(file.getAbsolutePath()+" exists and no clobber is set");
+							}
+							if( id == 1) {
+								out = file.getOutputStream();
+							} else {
+								err = file.getOutputStream();
+							}
+
+						} else if( op.equals(">|")) {			
+							if( id == 1) {
+								out = file.getOutputStream();
+							} else {
+								err = file.getOutputStream();
+							}
+
+						} else if( op.equals(">&") || op.equals("&>")) {
+							//This is semantically equivalent to >word 2>&1
+							out = file.getOutputStream();
+							err = out;
+						} else if( op.equals(">>")) {
+							if( id == 1) {
+								out = file.getOutputStream(true);
+							} else {
+								err = file.getOutputStream(true);
+							}
+
+						} else if( op.equals("&>>")) {
+							out = file.getOutputStream(true);
+							err = out;
+						} else {
+							throw new RuntimeException("Unknown redirect op = "+op);
+						}
+						if( out !=null) {
+							ctx.stdout = new PrintStream(out);
+						}
+						if( err !=null) {
+							ctx.stderr = new PrintStream(err);
+						}
 					}
 				}
 			}
@@ -173,11 +179,11 @@ public abstract class Statement {
 			}
 		}
 		ctx.enterStatement(this);
-		
+
 		try {
 			ret = execute(ctx);
 		} finally {
-			
+
 			ctx.exitStatement(ret,this);
 		}
 		return ret;

@@ -83,6 +83,32 @@ import us.bringardner.shell.job.JobState;
 
 public class Console extends SignalEnabledThread {
 
+	public static class FileDiscriptor {
+		int id;
+		InputStream in;
+		PrintStream out;
+		Object source;
+
+		public FileDiscriptor(int id, InputStream in) {
+			this.id = id;
+			this.in = in;
+		}
+		public FileDiscriptor(int id, InputStream in,Object source) {
+			this(id, in);
+			this.source = source;
+		}
+		public FileDiscriptor(int id, PrintStream out) {
+			this.id = id;
+			this.out = out;			
+		}
+		public FileDiscriptor(int id, PrintStream out,Object source) {
+			this(id, out);
+			this.source = source;
+		}
+	}
+	
+	private volatile List<FileDiscriptor> files;
+	
 	public static class SuspendException extends RuntimeException{
 
 		public IJob job;
@@ -726,6 +752,7 @@ delimiter
 			positionalParameters.add("fssh");
 			options.add(Option.DoBraceExpantion);
 
+			
 			loadProfile();
 
 
@@ -1999,6 +2026,20 @@ delimiter
 		functions.put(function.getName(), function);		
 	}
 
+	public List<FileDiscriptor> getFiles() {
+		if( files == null) {
+			synchronized (this) {
+				if( files == null) {
+					files = new ArrayList<Console.FileDiscriptor>();
+					files.add(new FileDiscriptor(0,getStdIn()));
+					files.add(new FileDiscriptor(1,getStdOut()));
+					files.add(new FileDiscriptor(2,getStdErr()));
+				}
+			}
+		}
+		return files;
+	}
+	
 	public FunctionDefStatement getFunction(String name) {
 		return functions.get(name);
 	}

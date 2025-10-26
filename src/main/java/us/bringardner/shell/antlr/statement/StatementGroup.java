@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
-import us.bringardner.filesource.sh.FileSourceShParser.File_addressContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_groupContext;
 import us.bringardner.shell.ShellContext;
@@ -38,21 +37,15 @@ public class StatementGroup extends Statement{
 		PrintStream err = sc.stderr;
 		// these could be in front or behind but the result is the same
 		RedirectContext redirect = null;
-		File_addressContext fa = null;
 		
 		if( ctx.redirect2!=null) {
 			redirect = ctx.redirect2;
-			if( ctx.redirect2.file_address()!=null) {
-				fa=ctx.redirect2.file_address();
-			}
 		} else if( ctx.redirect1!=null) {
 			redirect = ctx.redirect1;
-			if( ctx.redirect1.file_address()!=null) {
-				fa=ctx.redirect1.file_address();
-			}
 		}
+
 		
-		configureRedirect(sc, redirect==null?null:redirect, fa);
+		configureRedirect(sc, redirect);
 		ret = g1.execute(sc);
 		
 		sc.stdin = in;
