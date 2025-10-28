@@ -20,8 +20,7 @@ public class BackgroundJob extends AbstractJob{
 	
 	@Override
 	public void handleSignal(ConsoleSignal signal)  {
-		child.handleSignal(signal);
-		super.handleSignal(signal);
+		child.handleSignal(signal);		
 	} 
 	
 	@Override

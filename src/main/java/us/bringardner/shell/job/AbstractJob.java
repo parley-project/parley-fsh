@@ -50,15 +50,13 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		if( !stopping) {
 			stop();
 		}
+		setState(JobState.Termnated);
 		running = false;
-		setState(JobState.Termnated);		
+				
 	}
 	
 	@Override
-	public void handleSignal(ConsoleSignal signal) {
-		
-		
-	}
+	public abstract void handleSignal(ConsoleSignal signal) ;
 
 	public long getStartTime() {
 		return startTime;

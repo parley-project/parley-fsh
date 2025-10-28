@@ -63,6 +63,9 @@ public class Sleep extends ShellCommand{
 			}
 			if( debug ) System.out.println("start amt="+amt);
 			while( amt > 0 ) {
+				if( ctx.getException()!=null) {
+					return ret;
+				}
 				if(ctx.isPaused()) {
 					try {
 						Thread.sleep(10);

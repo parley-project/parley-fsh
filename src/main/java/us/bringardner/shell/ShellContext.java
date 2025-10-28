@@ -498,6 +498,10 @@ $
 		return pause.get();
 	}
 
+	public Exception getException() {
+		return exeption.get();
+	}
+	
 	public void setExecption(Exception e) {
 		exeption.set(e);
 	}

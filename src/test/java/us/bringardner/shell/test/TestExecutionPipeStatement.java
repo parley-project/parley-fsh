@@ -148,7 +148,9 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 	@Test
 	public void testBackground01() throws Exception{
 		String cmd = "sleep 10 &\n"
-				+ "sleep 20 &"
+				+ "sleep 20 &\n"
+				+ "kill 100001\n"
+				+ "kill 100000\n"
 				;
 
 		String expect = 
@@ -241,6 +243,14 @@ public class TestExecutionPipeStatement extends AbstractConsoleTest{
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
 		
+		cmd = "kill 100000\nkill 100001\nkill 100002\n";
+		expect = "";
+		res = executeCommand(cmd,"");
+		out = new String(res.bao.toByteArray());
+		err = new String(res.bae.toByteArray());		
+		assertEquals("", err);
+		assertEquals(expect.trim(), out.trim());
+		assertEquals(0, res.exitCode);
 		
 		
 	}

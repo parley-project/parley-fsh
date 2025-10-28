@@ -20,6 +20,7 @@ public class AntlrBuildSh {
 				};
 		org.antlr.v4.Tool.main(arg2);
 		
+		System.out.println("Done");
 	}
 
 }

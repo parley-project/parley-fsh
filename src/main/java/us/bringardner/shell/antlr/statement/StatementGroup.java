@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
-import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_groupContext;
 import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.RerdirectImpl;
 import us.bringardner.shell.antlr.Statement;
 
 /*
@@ -22,28 +22,21 @@ Placing a list of commands between curly braces causes the list to be executed i
  */
 public class StatementGroup extends Statement{
 	StatementGroup1 g1;
-
-	public StatementGroup(Statement_groupContext context, StatementGroup1 g1) {
+	RerdirectImpl redirect = null;
+	
+	public StatementGroup(Statement_groupContext context, StatementGroup1 g1,RerdirectImpl redirect) {
 		super(context);
-		this.g1 = g1;		
+		this.g1 = g1;
+		this.redirect=redirect;
 	}
 
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		int ret = 0;
-		Statement_groupContext ctx = (Statement_groupContext)getContext();
 		InputStream in = sc.stdin;
 		PrintStream out = sc.stdout;
 		PrintStream err = sc.stderr;
-		// these could be in front or behind but the result is the same
-		RedirectContext redirect = null;
 		
-		if( ctx.redirect2!=null) {
-			redirect = ctx.redirect2;
-		} else if( ctx.redirect1!=null) {
-			redirect = ctx.redirect1;
-		}
-
 		
 		configureRedirect(sc, redirect);
 		ret = g1.execute(sc);

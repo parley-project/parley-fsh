@@ -7,8 +7,8 @@ import java.io.PrintStream;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.File_addressContext;
-import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.Console.Option;
@@ -16,12 +16,12 @@ import us.bringardner.shell.ShellContext;
 
 public abstract class Statement {
 
-	public void configureRedirect(ShellContext ctx, RedirectContext redirectStart) throws IOException {
+	public void configureRedirect(ShellContext ctx, RerdirectImpl redirectStart) throws IOException {
 
-		if(redirectStart!=null && redirectStart.redirect_one()!=null) {
+		if(redirectStart!=null) {
 
 
-			for(Redirect_oneContext redirect : redirectStart.redirect_one()) {
+			for(Redirect_oneContext redirect : redirectStart.context.redirect_one()) {
 				Integer fromId = null;
 				Integer toId = null;
 				File_addressContext fileAddress = redirect.file_address();
@@ -55,12 +55,12 @@ public abstract class Statement {
 					}
 
 					String pathText = null;
-					if( redirect.path() !=null) {
-						pathText = redirect.path().getText(); 
-					} else if( redirect.ID() !=null) {
-						pathText = redirect.ID().getText(); 
+					if( redirect.args !=null) {
+						 ArgumentContext tmp = redirect.args;
+						 Argument a = new Argument(tmp);
+						 pathText=""+a.getValue(ctx);
 					} else {
-						throw new IOException("configureRedirect no path or ID");
+						throw new IOException("configureRedirect no argument for path");
 					}
 
 					FileSource file = ctx.getFileSource(pathText);

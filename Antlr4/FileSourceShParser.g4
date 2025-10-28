@@ -132,9 +132,9 @@ commandStatement
 redirect: (redirect_one WS*)+;
  
  redirect_one
-		: redirectionOperator white* (path | ID)?
+		: fid=argument? redirectionOperator white* (args=argument WS*)?
 		| file_address
-		| (redirectionOperator white* (path | ID))? white* file_address
+		| redirectionOperator white* (args=argument WS*)? white* file_address
 		;    
 
 file_address:
@@ -313,6 +313,7 @@ redirectionOperator
     | LT
     | REDIRECT_BOTH //>&word
     | REDIRECT_BOTH_2 //&>word
+    | REDIRECT_READ_WRITE // <>
     ;
 
 

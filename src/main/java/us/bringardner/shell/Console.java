@@ -36,12 +36,14 @@ import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
+import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
 import us.bringardner.shell.antlr.statement.BackgroundStatement;
 import us.bringardner.shell.antlr.statement.CommandStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
+import us.bringardner.shell.antlr.statement.LoopStatement.LoopControlException;
 import us.bringardner.shell.antlr.statement.PipeStatement;
 import us.bringardner.shell.commands.Alias;
 import us.bringardner.shell.commands.Bg;
@@ -106,9 +108,9 @@ public class Console extends SignalEnabledThread {
 			this.source = source;
 		}
 	}
-	
+
 	private volatile List<FileDiscriptor> files;
-	
+
 	public static class SuspendException extends RuntimeException{
 
 		public IJob job;
@@ -282,7 +284,7 @@ delimiter
 	DebugContext debugContext = new DebugContext();
 	private int lastPid = 0;
 	public JobManager jobManager = new JobManager();
-	
+
 
 	static {
 		commands = new TreeMap<>();
@@ -341,8 +343,8 @@ delimiter
 		registerSignals();
 	}
 
-	
-	
+
+
 	private void raiseSignal(Integer signum) {
 
 		new Thread(()->{
@@ -394,9 +396,9 @@ delimiter
 	public static synchronized void setNextPid(int pid) {
 		JobManager.setNextPid(pid);
 	}
-	
 
-	
+
+
 	public static class HistoryEntry {
 		public long time;
 		public boolean  saved;
@@ -499,9 +501,20 @@ delimiter
 					thread.handleSignal(signal);
 				}
 			} else if (cmd instanceof CommandStatement) {
-				CommandStatement stmt = (CommandStatement) cmd;
-				// TODO: What should we do?
-			
+				//CommandStatement stmt = (CommandStatement) cmd;
+				switch (signal) {
+				case ChildStopped: break;
+				case Continue: break;
+				case Hup: 
+				case Interupt:
+				case Terminate:
+				case Kill: 
+					ctx.setExecption(new LoopControlException(LoopControl.Break,-1));
+					break;
+				default:
+					throw new IllegalArgumentException("Unexpected value: " + signal);
+				}
+
 			} else {
 				System_err.println("Unexpected staement class="+cmd.getClass());
 			}
@@ -515,7 +528,7 @@ delimiter
 		if( console.isRunning()) {
 			console.stop();
 		}
-		KeyboardReader kb = console.getKeyboadReader();
+		KeyboardReader kb = console.getKeyboadReader(false);
 		if (kb instanceof ConsoleFrame) {
 			ConsoleFrame cf = (ConsoleFrame) kb;
 			cf.dispose();
@@ -752,7 +765,7 @@ delimiter
 			positionalParameters.add("fssh");
 			options.add(Option.DoBraceExpantion);
 
-			
+
 			loadProfile();
 
 
@@ -827,7 +840,7 @@ delimiter
 
 
 	public void run() {
-		KeyboardReader kb = getKeyboadReader();
+		KeyboardReader kb = getKeyboadReader(true);
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
 		stdIn =  kb.getStdIn();
@@ -846,7 +859,7 @@ delimiter
 				}
 				currentJob.set(job);
 
-				
+
 				while( job.getState() == lastState && lastState!=JobState.Termnated) {
 					try {
 						Thread.sleep(10);
@@ -872,8 +885,8 @@ delimiter
 						// this is a background job
 						System.out.println("notify");
 					}
-					
-					
+
+
 					int exitCode = job.getExitCode();
 					if( exitCode!=0 ) {
 						handleMetaSignal(ConsoleMetaSignal.Err);
@@ -927,7 +940,7 @@ delimiter
 						stdOut.append(prompt);
 					}
 
-					
+
 
 					if( isOptionEnabled(Option.PrintLinesAsRead)) {
 						stdOut.println(getPrompt(Prompt.EchoCommand)+code);
@@ -942,7 +955,7 @@ delimiter
 					ret = new ForgroundJob(sc,code);					
 					ret.start();
 				}
-				
+
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -950,10 +963,10 @@ delimiter
 		return ret;
 	}
 
-	
+
 	public void run1() {
 		int exitCode = 0;
-		KeyboardReader kb = getKeyboadReader();
+		KeyboardReader kb = getKeyboadReader(true);
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
 		stdIn =  kb.getStdIn();
@@ -1064,14 +1077,14 @@ delimiter
 		}
 		running = false;
 	}
-/*
- * 1/16
- * 308l stainless
- * er70s-6 
- * alum er4043 er5356
- *  
- * 
- */
+	/*
+	 * 1/16
+	 * 308l stainless
+	 * er70s-6 
+	 * alum er4043 er5356
+	 *  
+	 * 
+	 */
 
 	private synchronized int executeAsJob(IJob job) throws Exception {
 		if( currentJob.get() !=null) {
@@ -1435,23 +1448,25 @@ delimiter
 
 	KeyboardReader keyboardReader;
 
-	public KeyboardReader getKeyboadReader() {
+	public KeyboardReader getKeyboadReader(boolean setVisible) {
 		if( keyboardReader==null ) {
 			synchronized (this) {
 				if( keyboardReader==null ) {
 					if( !GraphicsEnvironment.isHeadless()) {
 						ConsoleFrame ret = new ConsoleFrame(this);
 						ret.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-						try {
-							if( SwingUtilities.isEventDispatchThread()) {
-								ret.setLocationRelativeTo(null);			
-								ret.setVisible(true);											
-							} else SwingUtilities.invokeAndWait(()->{
-								ret.setLocationRelativeTo(null);			
-								ret.setVisible(true);			
-							});
-						} catch (InvocationTargetException | InterruptedException e) {
-						}	
+						if( setVisible) {
+							try {
+								if( SwingUtilities.isEventDispatchThread()) {
+									ret.setLocationRelativeTo(null);			
+									ret.setVisible(true);											
+								} else SwingUtilities.invokeAndWait(()->{
+									ret.setLocationRelativeTo(null);			
+									ret.setVisible(true);			
+								});
+							} catch (InvocationTargetException | InterruptedException e) {
+							}	
+						}
 						keyboardReader = ret;
 					} else {
 						keyboardReader = new NativeKeyboard();
@@ -2039,7 +2054,7 @@ delimiter
 		}
 		return files;
 	}
-	
+
 	public FunctionDefStatement getFunction(String name) {
 		return functions.get(name);
 	}
@@ -2055,7 +2070,7 @@ delimiter
 	public void addJob(IJob job) {
 		lastPid = jobManager.addJob(job);
 	}
-	
+
 	@Override
 	public void handleSignal(ConsoleSignal signal)  {
 		if( state == null) {
@@ -2146,7 +2161,7 @@ delimiter
 			if(!isInteractive) {
 				Console.exit(this,ret);
 			} else {
-				KeyboardReader kb = getKeyboadReader();
+				KeyboardReader kb = getKeyboadReader(false);
 				if (kb instanceof ConsoleFrame) {
 					ConsoleFrame cf = (ConsoleFrame) kb;
 					cf.dispose();
@@ -2211,13 +2226,15 @@ delimiter
 		} catch(ExitException e) {
 			ret = e.exitCode;
 			handleMetaSignal(ConsoleMetaSignal.Exit);
-			sc.stderr.println(e);
+			if( e.exitCode!=0) {
+				sc.stderr.println(e);
+			}
 			stop();
 
 			if(!isInteractive) {
 				Console.exit(this,ret);
 			} else {
-				KeyboardReader kb = getKeyboadReader();
+				KeyboardReader kb = getKeyboadReader(false);
 				if (kb instanceof ConsoleFrame) {
 					ConsoleFrame cf = (ConsoleFrame) kb;
 					cf.dispose();

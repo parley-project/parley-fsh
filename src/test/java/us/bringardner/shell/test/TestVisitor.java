@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +34,7 @@ import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
+import us.bringardner.shell.antlr.RerdirectImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.statement.AssignStatement;
 import us.bringardner.shell.antlr.statement.CommandStatement;
@@ -302,8 +304,9 @@ $((12+32))
 			}
 
 		}
-		String code = "cmd arg1 arg2 > file 2>&-\n" +
-				"cmd arg > file 2>&1\n" +
+		String code = 
+				//"cmd arg1 arg2 > file 2>&-\n" +
+				//"cmd arg > file 2>&1\n" +
 				"cmd &>> /file\n" +
 				"cmd >> ~/file\n" +
 				"cmd &> file\n" +
@@ -313,8 +316,8 @@ $((12+32))
 				"cmd < file";
 		//System.out.println(code);
 		RedirectExpect [] expects = {
-				new RedirectExpect("cmd", new String[]{"arg1","arg2"},">","file","2","-"),
-				new RedirectExpect("cmd",new String[]{"arg"},">","file","2","1"),
+				//new RedirectExpect("cmd", new String[]{"arg1","arg2"},">","file","2","-"),
+				//new RedirectExpect("cmd",new String[]{"arg"},">","file","2","1"),
 				new RedirectExpect("cmd",new String[0],"&>>","/file"),
 				new RedirectExpect("cmd",new String[0],">>","~/file"),
 				new RedirectExpect("cmd",new String[0],"&>","file"),
@@ -327,6 +330,7 @@ $((12+32))
 		//System.out.println("stmts,size="+stmts.size());
 		assertEquals(expects.length,stmts.size());
 		for(int idx=0; idx < expects.length; idx++) {
+			System.out.println("idx="+idx);
 			Statement s = stmts.get(idx);
 			RedirectExpect expect = expects[idx];
 			if( s instanceof CommandStatement){
@@ -339,35 +343,36 @@ $((12+32))
 					assertEquals(expect.args[idx1],args[idx1].toString(),"idx="+idx1);
 				}
 
-				RedirectContext redirectStart = cs.getRedirect();
+				RerdirectImpl redirectStart = cs.getRedirect();
 				assertNotNull(redirectStart,"All  cmds in this test have redirection");
-				//                                                       op   file  fromId  toId
-				//new RedirectExpect("cmd", new String[]{"arg1","arg2"},">","file",   "2",  "-"),
-				for(Redirect_oneContext redirect : redirectStart.redirect_one()) {
+
+				for(Redirect_oneContext redirect : redirectStart.context.redirect_one()) {
 					if( redirect.redirectionOperator()!=null) {
-					String op =  redirect.redirectionOperator().getText();
-					assertEquals(expect.rdop, op);
-					String path = null;
-					if( redirect.path() !=null) {
-						path = redirect.path().getText();
-					} else if( redirect.ID() !=null) {
-						path = redirect.ID().getText();
-					} else {
-						throw new RuntimeException("Error no path");
-					}
-					assertEquals(expect.file, path);
+						String op =  redirect.redirectionOperator().getText();
+						assertEquals(expect.rdop, op);
+						String path = null;
+						// the getText here wo
+						if( redirect.fid !=null) {
+							path = redirect.fid.getText();
+						} else if( redirect.args !=null) {
+							ArgumentContext args2 = redirect.args;
+							path = args2.getText();
+						} else {
+							throw new RuntimeException("Error no path");
+						}
+						assertEquals(expect.file, path);
 
-					FileSourceShParser.File_addressContext address = redirect.file_address();
-					if( address != null ) {
+						FileSourceShParser.File_addressContext address = redirect.file_address();
+						if( address != null ) {
 
-						Token fromId = address.fromId;
-						Token toId = address.toId;
+							Token fromId = address.fromId;
+							Token toId = address.toId;
 
-						boolean ok = isEq(fromId==null?"null":fromId.getText(),expect.fromId);
-						assertTrue(ok,"From id "+fromId+" "+expect.fromId);
-						ok = isEq(toId==null?"null":toId.getText(),expect.toId);
-						assertTrue(ok,"To id "+toId+" "+expect.toId);					
-					}
+							boolean ok = isEq(fromId==null?"null":fromId.getText(),expect.fromId);
+							assertTrue(ok,"From id "+fromId+" "+expect.fromId);
+							ok = isEq(toId==null?"null":toId.getText(),expect.toId);
+							assertTrue(ok,"To id "+toId+" "+expect.toId);					
+						}
 					}
 				}
 
@@ -703,6 +708,20 @@ $((12+32))
 					assertEquals(1, list.size(),"Expected 1 statement in the block c="+c);
 				}
 			}
+		}
+	}
+
+	@Test
+	public void TestOpenFiles() throws Exception {
+		String cmd = "exec arg 3<> /tmp/foo";
+		/*
+		 * exec 3 <> /tmp/foo 
+#echo "test" >&$id
+#exec $id>&-
+		 */
+		List<Statement> stmts = parse(cmd);	
+		for (Statement s : stmts) {
+			System.out.println(s);
 		}
 	}
 

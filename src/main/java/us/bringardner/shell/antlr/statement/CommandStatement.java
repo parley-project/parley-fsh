@@ -15,7 +15,6 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.core.BaseThread;
 import us.bringardner.filesource.sh.FileSourceShParser.HereDocumentContext;
-import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
@@ -27,6 +26,7 @@ import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
+import us.bringardner.shell.antlr.RerdirectImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ReturnException;
 
@@ -275,7 +275,7 @@ public class CommandStatement extends Statement{
 	}
 
 	String name ;
-	RedirectContext redirect;
+	RerdirectImpl redirect;
 	String hereId;
 
 
@@ -371,11 +371,11 @@ public class CommandStatement extends Statement{
 
 
 
-	public RedirectContext getRedirect() {
+	public RerdirectImpl getRedirect() {
 		return redirect;
 	}
 
-	public void setRedirect(RedirectContext redirectionOperatorContext) {
+	public void setRedirect(RerdirectImpl redirectionOperatorContext) {
 		this.redirect = redirectionOperatorContext;
 	}
 

@@ -1,5 +1,7 @@
 package us.bringardner.shell.job;
 
+import us.bringardner.shell.Console;
+import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellContext;
 
 public class ForgroundJob extends AbstractJob {
@@ -15,14 +17,23 @@ public class ForgroundJob extends AbstractJob {
 		return code;
 	}
 
+	Console console;
+	
 	@Override
 	public int process() throws Exception {
 		
 		ShellContext ctx = getShellContext();
 		setState(JobState.Running);		
-		int ret=ctx.console.	executeUsingAntlr(ctx,code);
+		console = ctx.console;
+		int ret=console.executeUsingAntlr(ctx,code);
 		setState(JobState.Termnated);
 		return ret;
+	}
+
+	@Override
+	public void handleSignal(ConsoleSignal signal) {
+		System.out.println("What to do???");
+		
 	}
 
 }

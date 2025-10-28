@@ -2,6 +2,7 @@ package us.bringardner.shell.antlr;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -10,6 +11,8 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
@@ -42,6 +45,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeOpContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PipeableStatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.filesource.sh.FileSourceShParser.RedirectionOperatorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ScriptContext;
 import us.bringardner.filesource.sh.FileSourceShParser.SelectStatementContext;
@@ -301,25 +305,51 @@ commandStatement
 
 		String name = visitCommand(ctx.command());
 		ret.setName(name);
+		Argument[] args = null;
 		if( ctx.argument()!=null) {
 			List<ArgumentContext> argsCtx = ctx.argument();
 			if( argsCtx.size()>0) {
-				Argument[] args = visitArgument_list(argsCtx);
+				args = visitArgument_list(argsCtx);
 				ret.setArgs(args);
 			}
 		}
 		if( ctx.hereDocument()!=null) {
 			ret.setHereDocument(ctx.hereDocument());
 		}
+		RerdirectImpl redirect = null;
+		
 		if( ctx.redirect2!=null) {
-			ret.setRedirect(ctx.redirect2);
+			redirect = parseRedirect(ret,ctx.children,args,ctx.redirect2);
 		} else if( ctx.redirect1!=null) {
-			ret.setRedirect(ctx.redirect1);
+			redirect = parseRedirect(ret,ctx.children,null,ctx.redirect1);
 		}
-
+		ret.setRedirect(redirect);
 
 		return ret;
 	}
+
+	private RerdirectImpl parseRedirect(Statement stmt,List<ParseTree> kids, Argument[] args, RedirectContext redirect) {
+		RerdirectImpl ret = new RerdirectImpl();
+		ret.context=redirect;
+		
+		if( args !=null ) {
+			// the last kid is the redirect
+			// if the next to the last child is NOT WS then the last argument belongs the the redirect
+			Object tmp2 = kids.get(kids.size()-2);
+			if (tmp2 instanceof TerminalNode) {
+				//System.out.println("Last arg is NOT part of redirect");
+			} else {
+				ret.fid = args[args.length-1];
+				Argument[] args2 = new Argument[args.length-1];
+				for (int idx = 0; idx < args2.length; idx++) {
+					args2[idx] = args[idx];
+				}
+				stmt.setArgs(args2);
+			}
+		}
+		return ret;
+	}
+
 
 	/*
 
@@ -459,8 +489,13 @@ ifStatement
 	@Override
 	public StatementGroup visitStatement_group(Statement_groupContext ctx) {
 		StatementGroup1 g1 = visitStatement_group1(ctx.statement_group1());
-
-		return new StatementGroup(ctx, g1);
+		RerdirectImpl redirect = null;
+		if( ctx.redirect1!=null) {
+			
+		} else if( ctx.redirect2!=null) {
+			
+		}
+		return new StatementGroup(ctx, g1,redirect);
 	}
 
 	@Override
@@ -651,7 +686,7 @@ argument
 	 */
 	@Override
 	public Argument visitArgument(ArgumentContext ctx) {
-		
+
 		Argument ret = new Argument(ctx);
 
 		return ret;

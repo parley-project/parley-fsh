@@ -17,6 +17,7 @@ public class TestTrap extends AbstractConsoleTest {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
+		waitForJobs = true;
 		console = new Console();
 	}
 
@@ -140,12 +141,12 @@ public class TestTrap extends AbstractConsoleTest {
 				+ "[1] 100000\n"
 				+ "Caught SIGINT! Exiting...\n";
 		
-		String code = "function handle_ctrlc() {\n"
+		String code = "function handle_ctrlc02() {\n"
 				+ "    echo \"Caught SIGINT! Exiting...\"\n"
 				+ "    exit\n"
 				+ "}\n"
 				+ "\n"
-				+ "trap handle_ctrlc SIGINT\n"
+				+ "trap handle_ctrlc02 SIGINT\n"
 				+ "\n"
 				+ "function work() {"
 				+ "while true; do\n"
@@ -164,7 +165,8 @@ public class TestTrap extends AbstractConsoleTest {
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling
 		Thread.sleep(50);
-		assertEquals("Exit 0\n", new String(res.bae.toByteArray()));
+		String val = new String(res.bae.toByteArray());
+		assertEquals("", val);
 		assertEquals(expect, new String(res.bao.toByteArray()));
 		assertEquals(0, res.exitCode);
 		
@@ -176,12 +178,12 @@ public class TestTrap extends AbstractConsoleTest {
 				+ "[1] 100000\n"
 				+ "Caught SIGINT! Exiting...\n";
 		
-		String code = "function handle_ctrlc() {\n"
+		String code = "function handle_ctrlc03() {\n"
 				+ "    echo \"Caught SIGINT! Exiting...\"\n"
 				+ "    exit\n"
 				+ "}\n"
 				+ "\n"
-				+ "trap handle_ctrlc SIGINT\n"
+				+ "trap handle_ctrlc03 SIGINT\n"
 				+ "\n"
 				+ "function work() {"
 				+ "while true; do\n"
@@ -194,13 +196,15 @@ public class TestTrap extends AbstractConsoleTest {
 				//+ "sleep 1\n"
 				;
 
+		console = new Console();
 		Console.setNextPid(100000);
 		console.jobManager.clear();
 		console.isInteractive=true;
+		
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling
 		Thread.sleep(50);
-		assertEquals("Exit 0\n", new String(res.bae.toByteArray()));
+		assertEquals("", new String(res.bae.toByteArray()));
 		assertEquals(expect, new String(res.bao.toByteArray()));
 		assertEquals(0, res.exitCode);
 		

@@ -22,7 +22,7 @@ public class Clear extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		KeyboardReader kb = ctx.console.getKeyboadReader();	
+		KeyboardReader kb = ctx.console.getKeyboadReader(false);	
 		if (kb instanceof ConsoleFrame) {
 			ConsoleFrame frame = (ConsoleFrame) kb;
 			frame.clear();			
