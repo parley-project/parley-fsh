@@ -2,126 +2,208 @@ package us.bringardner.shell.antlr;
 
 import java.awt.Point;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
-import us.bringardner.filesource.sh.FileSourceShParser.File_addressContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.IRandomAccessStream;
+import us.bringardner.shell.Console.FileDiscriptor;
 import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.ShellContext;
 
 public abstract class Statement {
 
+	private enum RedirectOperator {
+
+		Input("<"),
+		Output(">"),
+		OutoutNoCLobber(">|"),
+		Append(">>"),
+		StdinToStdOutOrMove(">&"),
+		StdinToStdOut2("&&"),
+		AppendStdinAndStdout("&>>"),
+		Duplicate(">&"),
+		Move("<&"),
+		OpenReadWrite("<>"),
+
+		UnKnown("UnKnown");
+
+		public final String label;
+		private RedirectOperator(String label) {
+			this.label = label;			
+		}
+
+		public static RedirectOperator find(String name) {
+			for(RedirectOperator o : values()) {
+				if( o.label.equals(name)) {
+					return o;
+				}
+			}
+			return UnKnown;
+		}
+
+	};
+
 	public void configureRedirect(ShellContext ctx, RerdirectImpl redirectStart) throws IOException {
 
 		if(redirectStart!=null) {
+			Integer fid1 = null;
+			Integer fid2 = null;
+
+			if( redirectStart.fid!=null) {
+				fid1 = Integer.parseInt(""+redirectStart.fid.getValue(ctx));
+			}
 
 
 			for(Redirect_oneContext redirect : redirectStart.context.redirect_one()) {
-				Integer fromId = null;
-				Integer toId = null;
-				File_addressContext fileAddress = redirect.file_address();
-				if( fileAddress !=null) {
-					if( fileAddress.fromId!=null) {
-						try {
-							fromId = Integer.parseInt(fileAddress.fromId.getText());
-						} catch (Exception e) {				
-						}
-					}
-					if( fileAddress.toId!=null) {
-						try {
-							toId = Integer.parseInt(fileAddress.toId.getText());
-						} catch (Exception e) {				
-						}
-					}
-					if( fromId !=null || toId!=null) {
-						throw new RuntimeException("CommandStatement configureRedirect from or to id what to do? from= "+fromId+" t="+toId);
-					}
-				}
-
-				if( redirect.redirectionOperator() !=null) {
-					String op = redirect.redirectionOperator().getText();
-					int id = 1;
-					if( op.charAt(0) == '1') {
-						id = 1;
-						op = op.substring(1);
-					} else if( op.charAt(0) == '2') {
-						id = 2;
-						op = op.substring(1);
-					}
-
+				@SuppressWarnings("unused")
+				String text = redirect.getText();
+				boolean closeAfterDup = false;
+				if( redirect.redirectionOperator() ==null) {
+					throw new IOException("No redirect operator");
+				} else {
 					String pathText = null;
 					if( redirect.args !=null) {
-						 ArgumentContext tmp = redirect.args;
-						 Argument a = new Argument(tmp);
-						 pathText=""+a.getValue(ctx);
+						ArgumentContext tmp = redirect.args;
+						Argument a = new Argument(tmp);
+						pathText=""+a.getValue(ctx);
+						if( pathText.endsWith("-")) {
+							closeAfterDup = true;
+							pathText = pathText.substring(0,pathText.length()-1);
+						}
+						try {
+							fid2 = Integer.parseInt(pathText);
+						} catch (Exception e) {
+						}
 					} else {
-						throw new IOException("configureRedirect no argument for path");
+						throw new IOException("configureRedirect no argument for path or toid");
 					}
 
-					FileSource file = ctx.getFileSource(pathText);
-					if( file.isDirectory()) {
-						throw new RuntimeException("Cannot redirect to or from a directory ="+file);
-					}
 
-					if( op.equals("<")) {
-						// only one input type
-						if( !file.exists() ) {
-							throw new RuntimeException("CommandStatement configureRedirect input file does not exists ="+file);
-						}
-						if( id != 1 ) {
-							throw new RuntimeException("CommandStatement configureRedirect input file id=0... what to do ="+file);
-						}
-
+					String op = redirect.redirectionOperator().getText();
+					RedirectOperator rdop = RedirectOperator.find(op);
+					switch (rdop) {
+					case Input: 
+						FileSource file = ctx.getFileSource(pathText);
 						ctx.stdin = file.getInputStream();
-					} else {
-						OutputStream out = null;
-						OutputStream err = null;
-
-						if( op.equals(">")) {
-							if(file.exists() && !ctx.console.options.contains(Option.NoClobberRedirect)) {
-								throw new RuntimeException(file.getAbsolutePath()+" exists and no clobber is set");
-							}
-							if( id == 1) {
-								out = file.getOutputStream();
-							} else {
-								err = file.getOutputStream();
-							}
-
-						} else if( op.equals(">|")) {			
-							if( id == 1) {
-								out = file.getOutputStream();
-							} else {
-								err = file.getOutputStream();
-							}
-
-						} else if( op.equals(">&") || op.equals("&>")) {
-							//This is semantically equivalent to >word 2>&1
-							out = file.getOutputStream();
-							err = out;
-						} else if( op.equals(">>")) {
-							if( id == 1) {
-								out = file.getOutputStream(true);
-							} else {
-								err = file.getOutputStream(true);
-							}
-
-						} else if( op.equals("&>>")) {
-							out = file.getOutputStream(true);
-							err = out;
-						} else {
-							throw new RuntimeException("Unknown redirect op = "+op);
+						if( fid1 != null) {
+							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdin,file);
+							ctx.console.setFileDistcriptor(fd);								
 						}
-						if( out !=null) {
-							ctx.stdout = new PrintStream(out);
+						break;
+					case Output:
+						file = ctx.getFileSource(pathText);
+						if(file.exists() && !ctx.console.options.contains(Option.NoClobberRedirect)) {
+							throw new IOException(file.getAbsolutePath()+" exists and no clobber is set");
 						}
-						if( err !=null) {
-							ctx.stderr = new PrintStream(err);
+						ctx.stdout = new PrintStream( file.getOutputStream());
+						if( fid1 != null) {
+							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
+							ctx.console.setFileDistcriptor(fd);								
 						}
+						break;
+					case Append:
+						file = ctx.getFileSource(pathText);
+						ctx.stdout = new PrintStream( file.getOutputStream(true));
+						if( fid1 != null) {
+							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
+							ctx.console.setFileDistcriptor(fd);								
+						}
+						
+						break;
+
+					case StdinToStdOutOrMove:
+						Integer fid = fid1!=null?fid1:fid2;
+						if( fid == null) {
+							throw new IOException("No file descriptor " );
+						}
+
+						FileDiscriptor tmp = ctx.console.getFileDistcriptor(fid);
+						if( tmp == null) {
+							throw new IOException("bad fid="+fid);
+						}
+						
+						ctx.stdout = tmp.getOut();	
+						if(closeAfterDup) {
+							ctx.console.closeFileDistcriptor(fid);
+						}
+
+
+						break;
+					case AppendStdinAndStdout: 
+						throw new IOException("RedirectOperator Unexpected value: " + rdop);
+						//break;
+					case Duplicate:
+						throw new IOException("RedirectOperator Unexpected value: " + rdop);
+						//break;
+					case Move: 
+						if( fid2 == null) {
+							throw new IOException("RedirectOperator Unexpected value: fid2= null " + text);	
+						}
+						FileDiscriptor fd = ctx.console.getFileDistcriptor(fid2);
+						if( fd == null) {
+							throw new IOException("bad file descriptor = "+fid2);
+						}
+						if( fd.getIn() == null) {
+							throw new IOException("bad file descriptor (not input) = "+fid2);
+						}
+						ctx.stdin = fd.getIn();
+						break;
+					case OpenReadWrite:
+						file = ctx.getFileSource(pathText);
+
+						if(!file.exists()) {
+							if(!file.createNewFile()) {
+								throw new IOException("Could not create file "+file);
+							}
+						}
+						IRandomAccessStream rad = file.getRandomAccessStream("rw");
+						InputStream in = new InputStream() {
+
+							@Override
+							public int read() throws IOException {
+								return rad.read();
+							}
+							@Override
+							public int read(byte[] b) throws IOException {
+								return rad.read(b);
+							}
+							@Override
+							public int read(byte[] b, int off, int len) throws IOException {
+								return rad.read(b, off, len);
+							}
+
+						};
+
+						OutputStream out = new OutputStream() {
+
+							@Override
+							public void write(int b) throws IOException {
+								rad.write(b);
+							}
+							@Override
+							public void write(byte[] b) throws IOException {
+								rad.write(b);
+							}
+							@Override
+							public void write(byte[] b, int off, int len) throws IOException {
+								rad.write(b, off, len);
+							}
+
+						};
+						fd = new FileDiscriptor(fid1, in,rad);
+						fd.setOut(new PrintStream(out));
+						ctx.console.setFileDistcriptor(fd);
+
+						break;
+
+					default:
+						throw new IOException("RedirectOperator Unexpected value: " + rdop);
 					}
 				}
 			}

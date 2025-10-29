@@ -198,6 +198,7 @@ compare_prime
     | left=compare_prime WS* GT WS* right=compare_prime
     | left=compare_prime WS* RX_EQUALITY WS* regular_expression    
     | expression
+    | commandStatement
     ;
 
 file_test: WS* op=argument WS* target=argument WS*;
@@ -314,6 +315,7 @@ redirectionOperator
     | REDIRECT_BOTH //>&word
     | REDIRECT_BOTH_2 //&>word
     | REDIRECT_READ_WRITE // <>
+    | REDIRECT_INPUT_FROM_FID // <&
     ;
 
 

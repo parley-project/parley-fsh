@@ -170,26 +170,20 @@ RSQUARE:']';
 REDIRECT_APPEND_OUT_2 : '&>>';
 REDIRECT_APPEND_OUT : '>>';
 REDIRECT_READ_WRITE : '<>';
+REDIRECT_BOTH:'>&';
+REDIRECT_BOTH_2:'&>';
+REDIRECT_INPUT_FROM_FID:'<&';
 
 COMMA:',';
 MINUS_ASSIGN:'-=';
 STAR_ASSIGN:'*=';
 DIV_ASSIGN:':^:=';
 MOD_ASSIGN:'%=';
-REDIRECT_BOTH:'>&';
-REDIRECT_BOTH_2:'&>';
 DIGIT: [0-9];
 SPECIAL_UNIX: [-_+=~];
 SPECIAL_WINDOWS: [-_+=~];
 POS:'^';
 
-//KILL:'kill';
-//FG:'fg';
-//BG:'bg';
-//WAIT:'wait';
-//DISOWN:'disown';
-//SUSPEND:'suspend';
-//JOBS:'jobs';
 
 PERC_PERC:'%%';
 PERC_MINUS:'%-';

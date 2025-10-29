@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -26,7 +25,6 @@ import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
-import us.bringardner.filesource.sh.FileSourceShParser.RedirectContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Signed_numberContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
@@ -288,14 +286,7 @@ $((12+32))
 			String file;			
 			String fromId;
 			String toId;
-			public RedirectExpect(String name, String[] args, String rdop, String file,String fromId,String toId) {
-				this.name = name;
-				this.args = args;
-				this.rdop = rdop;
-				this.file = file;
-				this.fromId = fromId;
-				this.toId = toId;
-			}
+			
 			public RedirectExpect(String name, String[] args, String rdop, String file) {
 				this.name = name;
 				this.args = args;
@@ -330,7 +321,7 @@ $((12+32))
 		//System.out.println("stmts,size="+stmts.size());
 		assertEquals(expects.length,stmts.size());
 		for(int idx=0; idx < expects.length; idx++) {
-			System.out.println("idx="+idx);
+			//System.out.println("idx="+idx);
 			Statement s = stmts.get(idx);
 			RedirectExpect expect = expects[idx];
 			if( s instanceof CommandStatement){
@@ -711,18 +702,6 @@ $((12+32))
 		}
 	}
 
-	@Test
-	public void TestOpenFiles() throws Exception {
-		String cmd = "exec arg 3<> /tmp/foo";
-		/*
-		 * exec 3 <> /tmp/foo 
-#echo "test" >&$id
-#exec $id>&-
-		 */
-		List<Statement> stmts = parse(cmd);	
-		for (Statement s : stmts) {
-			System.out.println(s);
-		}
-	}
+	
 
 }

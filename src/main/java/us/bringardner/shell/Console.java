@@ -35,6 +35,7 @@ import sun.misc.Signal;
 import us.bringardner.core.util.ThreadSafeDateFormat;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.IRandomAccessStream;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
@@ -86,6 +87,7 @@ import us.bringardner.shell.job.JobState;
 public class Console extends SignalEnabledThread {
 
 	public static class FileDiscriptor {
+
 		int id;
 		InputStream in;
 		PrintStream out;
@@ -107,9 +109,32 @@ public class Console extends SignalEnabledThread {
 			this(id, out);
 			this.source = source;
 		}
+		public InputStream getIn() {
+			return in;
+		}
+		public void setIn(InputStream in) {
+			this.in = in;
+		}
+		public PrintStream getOut() {
+			return out;
+		}
+		public void setOut(PrintStream out) {
+			this.out = out;
+		}
+		public Object getSource() {
+			return source;
+		}
+		public void setSource(Object source) {
+			this.source = source;
+		}
+		public int getId() {
+			return id;
+		}
+
+
 	}
 
-	private volatile List<FileDiscriptor> files;
+	private volatile Map<Integer,FileDiscriptor> files;
 
 	public static class SuspendException extends RuntimeException{
 
@@ -602,6 +627,18 @@ delimiter
 		if( out != System_out && out != System_err) {
 			try {
 				out.close();
+			} catch (IOException e) {
+			}
+		}		
+	}
+
+	public static void close(Console console,InputStream in) {
+		if( console.stdIn == in ) {
+			return;
+		}
+		if( in != System_in) {
+			try {
+				in.close();
 			} catch (IOException e) {
 			}
 		}		
@@ -2041,14 +2078,47 @@ delimiter
 		functions.put(function.getName(), function);		
 	}
 
-	public List<FileDiscriptor> getFiles() {
+	public FileDiscriptor getFileDistcriptor(int id) {
+		return getFiles().get(id);
+	}
+
+	public void setFileDistcriptor(FileDiscriptor fd) {
+		closeFileDistcriptor(fd.id);
+		files.put(fd.id,fd);
+	}
+
+	public FileDiscriptor closeFileDistcriptor(int id) {
+		@SuppressWarnings("unused")
+		Map<Integer, FileDiscriptor> tmp = getFiles();
+		FileDiscriptor ret = files.remove(id);
+		if( ret != null) {
+			if (ret.source instanceof IRandomAccessStream) {
+				IRandomAccessStream rad = (IRandomAccessStream) ret.source ;
+				try {
+					rad.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				if( ret.out != null) {
+					close(this, ret.out);
+				}
+				if( ret.in !=null) {
+					close(this,ret.in);
+				}
+			}
+		}
+		return ret;
+	}
+
+	public Map<Integer,FileDiscriptor> getFiles() {
 		if( files == null) {
 			synchronized (this) {
 				if( files == null) {
-					files = new ArrayList<Console.FileDiscriptor>();
-					files.add(new FileDiscriptor(0,getStdIn()));
-					files.add(new FileDiscriptor(1,getStdOut()));
-					files.add(new FileDiscriptor(2,getStdErr()));
+					files = new TreeMap<Integer, Console.FileDiscriptor>();
+					files.put(0,new FileDiscriptor(0,getStdIn()));
+					files.put(1,new FileDiscriptor(1,getStdOut()));
+					files.put(2,new FileDiscriptor(2,getStdErr()));
 				}
 			}
 		}

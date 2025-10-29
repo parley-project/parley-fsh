@@ -1,5 +1,6 @@
 package us.bringardner.shell.commands;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -194,7 +195,10 @@ public class Read extends ShellCommand{
 				break;
 			}
 		}
-
+		if( i<0 && buf.length()==0) {
+			throw new EOFException();
+		}
+		
 		String line = buf.toString();
 		return line;
 	}

@@ -12,6 +12,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.Rx_patternContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.statement.CommandStatement;
 
 public class ComparePrime {
 
@@ -31,6 +32,7 @@ compare
     | left=compare LT right=compare
     | left=compare GT right=compare
     | expression
+    | commandStatement
     ;
 
 	 */
@@ -90,8 +92,17 @@ compare
 			Matcher m = p.matcher(val.toString());
 			ret = m.find();
 			//System.out.println("ret="+ret+" val='"+val+"' rx2='"+rx2+"'");
+		} else if(ctx.commandStatement()!=null) {
+			FileSourceShVisitorImpl v = new FileSourceShVisitorImpl();
+			CommandStatement stmt = v.visitCommandStatement(ctx.commandStatement());
+			try {
+				int res = stmt.process(sc);
+				ret = res == 0;
+			} catch (Exception e) {
+				ret = false;
+			}
 		}  else {
-			throw new RuntimeException("Invlid compare, missing left or right ="+ctx);
+			throw new RuntimeException("Invalid compare, missing left or right ="+ctx);
 		}
 		return ret;
 	}
