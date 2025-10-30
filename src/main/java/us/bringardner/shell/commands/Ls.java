@@ -81,7 +81,7 @@ public class Ls extends ShellCommand {
 						if( file.exists()) {
 							list(out,lsctx,args, file);
 						} else {
-							ctx.stderr.print("ls: "+file+" no such file or directory");
+							ctx.stderr.println("ls: "+file+" no such file or directory");
 							return 1;
 						}
 					}
