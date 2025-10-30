@@ -386,4 +386,84 @@ exec 3>&- #close fd 3.
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 	}
 
+	@Test
+	public void testRedirect04_03() throws Exception{
+		setup("TestFiles");
+		File dir = new File("target/logdir").getCanonicalFile();
+		if( !dir.exists()) {
+			assertTrue(dir.mkdirs());
+		}
+		File file = new File(dir,"output.txt");
+		if( file.exists()) {
+			assertTrue(file.delete());
+		}
+		
+		String cmd = 
+				  "echo -n >|"+file+"\n"
+				+ "echo step1 &>>"+file+" \n"
+				+ "ls nofile &>>"+file+"\n"
+				+ "echo step2 &>>"+file+" \n"
+				+ "ls "+file+" &>>"+file+" \n"
+				+ "echo step3 &>>"+file+" \n"
+				;
+
+		String expectOut = "";
+		String stdIn = "";
+		String expectErr = "";
+		int exitCode = 0;
+		
+		
+		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+		String expectData = "step1\n"
+				+ "ls: /Volumes/Data/eclipse-git/BjlShell/TestFiles/nofile no such file or directory\n"
+				+ "step2\n"
+				+ "output.txt\n"
+				+ "step3\n";
+		
+		try (InputStream in = new FileInputStream(file)) {
+			String tmp = new String(in.readAllBytes());
+			assertEquals(expectData, tmp);
+		}
+		
+		assertTrue(file.delete());
+	}
+
+	@Test
+	public void testRedirect04_04() throws Exception{
+		File dir = new File("target/logdir").getCanonicalFile();
+		if( !dir.exists()) {
+			assertTrue(dir.mkdirs());
+		}
+		
+		File logFile = new File(dir,"varlog.txt");
+		if( logFile.exists()) {
+			assertTrue(logFile.delete());
+		}
+		
+		String expectData = "something to log";
+
+		String cmd = "fid=3\n"
+				+ "exec $fid<> "+logFile+"\n"
+				+ "echo \""+expectData+"\" >&$fid\n"
+				+ "exec $fid>&-\n";
+				;
+		String expectOut = "";
+		String stdIn = "";
+		String expectErr = "";
+		int exitCode = 0;
+		
+		
+		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+
+		assertTrue(logFile.exists());
+		
+		try (InputStream in = new FileInputStream(logFile)) {
+			String tmp = new String(in.readAllBytes());
+			assertEquals(expectData+"\n", tmp);
+		}
+		
+		assertTrue(logFile.delete());
+		
+	}
+
 }
