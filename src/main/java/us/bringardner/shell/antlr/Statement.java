@@ -24,10 +24,9 @@ public abstract class Statement {
 		Output(">"),
 		OutoutNoCLobber(">|"),
 		Append(">>"),
-		StdinToStdOutOrMove(">&"),
+		Duplicate(">&"),
 		StdinToStdOut2("&&"),
 		AppendStdinAndStdout("&>>"),
-		Duplicate(">&"),
 		Move("<&"),
 		OpenReadWrite("<>"),
 
@@ -61,7 +60,6 @@ public abstract class Statement {
 
 
 			for(Redirect_oneContext redirect : redirectStart.context.redirect_one()) {
-				@SuppressWarnings("unused")
 				String text = redirect.getText();
 				boolean closeAfterDup = false;
 				if( redirect.redirectionOperator() ==null) {
@@ -117,7 +115,7 @@ public abstract class Statement {
 						
 						break;
 
-					case StdinToStdOutOrMove:
+					case Duplicate:
 						Integer fid = fid1!=null?fid1:fid2;
 						if( fid == null) {
 							throw new IOException("No file descriptor " );
@@ -135,12 +133,21 @@ public abstract class Statement {
 
 
 						break;
-					case AppendStdinAndStdout: 
-						throw new IOException("RedirectOperator Unexpected value: " + rdop);
-						//break;
-					case Duplicate:
-						throw new IOException("RedirectOperator Unexpected value: " + rdop);
-						//break;
+					case AppendStdinAndStdout:
+						/*
+						 * 	&>>word
+						 *	This is semantically equivalent to
+						 *	>>word 2>&1
+						 */
+						//throw new IOException("RedirectOperator Unexpected value: " + rdop);
+						file = ctx.getFileSource(pathText);
+						ctx.stderr = ctx.stdout = new PrintStream( file.getOutputStream(true));
+						if( fid1 != null) {
+							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
+							ctx.console.setFileDistcriptor(fd);								
+						}
+						
+						break;
 					case Move: 
 						if( fid2 == null) {
 							throw new IOException("RedirectOperator Unexpected value: fid2= null " + text);	
