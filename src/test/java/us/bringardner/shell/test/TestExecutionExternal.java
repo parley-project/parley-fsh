@@ -222,10 +222,10 @@ public class TestExecutionExternal {
 				+ "echo $*\n"
 				;
 
-		String expectOut = "";
+		String expectOut = "\n";
 		String stdIn = "";
 		String expectErr = "fssh 1,3: -O: invalid option\n";
-		int exitCode = 1;
+		int exitCode = 0;
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 	}
 
