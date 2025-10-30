@@ -2282,7 +2282,10 @@ delimiter
 				handleMetaSignal(ConsoleMetaSignal.Debug);
 				ret = stmt.process(sc);			
 				if( ret !=0) {
-					return ret;
+					handleMetaSignal(ConsoleMetaSignal.Err);
+					if(isInteractive && options.contains(Option.ExitImediately)) {
+						break;
+					}					
 				}
 			}		
 			if( ret!=0) {
