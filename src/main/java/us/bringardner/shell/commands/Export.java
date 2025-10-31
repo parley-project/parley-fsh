@@ -76,11 +76,11 @@ public class Export extends ShellCommand{
 				}
 			} else {
 				// with no args all we can do is set a value for export
-				for (int idx = 1; idx < ctx.args.length; idx++) {
-					String val = ctx.args[idx];
+				for (int idx = 0; idx < args.length; idx++) {
+					String val = args[idx].getValue(ctx).toString();
 					if( val.indexOf('=')>0) {
 						// assign statement should be in antlr args
-						Argument arg =  this.args[idx-1];
+						Argument arg =  this.args[idx];
 						ArgumentContext actx = arg.getContext();
 						if(actx.assignStatement()!=null) {
 							AssignStatement as = new AssignStatement(actx.assignStatement());

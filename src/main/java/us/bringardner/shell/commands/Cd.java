@@ -23,23 +23,23 @@ public class Cd extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		boolean follow = false;
-		List<String> args = new ArrayList<>();
-		for(int idx=0; idx < ctx.args.length; idx++ ) {
-			String arg = ctx.args[idx].trim();
+		List<String> sargs = new ArrayList<>();
+		for(int idx=0; idx < args.length; idx++ ) {
+			String arg = (""+args[idx].getValue(ctx)).trim();
 			if( arg.startsWith("-")) {
 				follow = arg.equals("-P");
 			} else {
-				args.add(arg);
+				sargs.add(arg);
 			}
 		}
 		String path = "~";
 		
-		if( args.size()>0) {
-			if( args.size()>2) {
+		if( sargs.size()>0) {
+			if( sargs.size()>2) {
 				ctx.stderr.println("cd: too many args: "+path);
 				return -1;
 			}			
-			path = args.get(1);
+			path = sargs.get(0);
 		}
 		
 		List<FileSource> dirs = getFiles(ctx, path);

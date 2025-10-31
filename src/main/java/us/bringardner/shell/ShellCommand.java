@@ -52,7 +52,7 @@ public abstract class ShellCommand {
 
 	protected ShellArgument parserArgs(ShellContext ctx,Class<?> cls) throws IOException {
 		ShellArgument ret = new ShellArgument();
-		if( ctx.args.length>0) {
+		if( args.length>0) {
 			try {
 				Method m = cls.getDeclaredMethod("valueOf", String.class);
 				try {
@@ -61,8 +61,8 @@ public abstract class ShellCommand {
 				} catch (Throwable e) {
 				}
 				m.setAccessible(true);
-				for(int idx=1; idx < ctx.args.length; idx++ ) {
-					String arg = ctx.args[idx].trim();
+				for(int idx=0; idx < args.length; idx++ ) {
+					String arg = (""+args[idx].getValue(ctx)).trim();
 					if( arg.startsWith("-")) {
 						arg = arg.substring(1);
 						for(char c : arg.toCharArray()) {

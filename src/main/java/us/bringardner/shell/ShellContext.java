@@ -36,8 +36,7 @@ public class ShellContext {
 	public PrintStream stderr = System.err;
 	public InputStream stdin = System.in;
 
-	public Console console;
-	public String [] args;
+	public Console console;	
 	public Integer exitCode; 
 	private Stack<Map<Object,Object>> commandStack = new Stack<>();
 	private List<String> activeAlias = new ArrayList<>();
@@ -458,15 +457,15 @@ $
 		FunctionDefStatement function;
 		Map<String,Object> local = new TreeMap<>();
 
-		public FunctionInvocation(String[] args, FunctionDefStatement function) {
-			this.args.addAll(Arrays.asList(args));
+		public FunctionInvocation(Argument[] args2, FunctionDefStatement function) {
+			this.args.addAll(Arrays.asList(args2));
 			this.function = function;
 		}
 
 	}
 	Stack<FunctionInvocation> functionStack = new Stack<>();
 
-	public void enterFunction(String[] args, FunctionDefStatement function) {
+	public void enterFunction(Argument[] args, FunctionDefStatement function) {
 		Object tmp = getEvironmentVariable("FUNCNEST");
 		if( tmp != null ) {
 			try {
@@ -652,7 +651,7 @@ $
 		activeAlias.remove(name);		
 	}
 
-	public int executeSubShell(FileSource file,String [] args) throws IOException {
+	public int executeSubShell(FileSource file,Argument[] args) throws IOException {
 		try (InputStream in = file.getInputStream()) {
 			String code = new String(in.readAllBytes());
 			Console sub = new Console();
@@ -663,7 +662,7 @@ $
 			FsshList tmp = new FsshList();
 			if( args !=null) {
 				for (int idx = 0; idx < args.length; idx++) {
-					String val = args[idx];
+					String val = ""+ args[idx].getValue(this);
 					tmp.add(val);
 				}
 			}

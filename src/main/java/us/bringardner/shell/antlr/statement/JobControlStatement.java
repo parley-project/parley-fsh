@@ -50,14 +50,12 @@ public class JobControlStatement extends Statement{
 		Job_control_statementContext ctx = (Job_control_statementContext) getContext();
 		JobControlCmd cmd = JobControlCmd.valueOf(ctx.cmd.getText().toUpperCase());
 		ShellCommand shell = null;
-		String name = "";
 		switch (cmd) {
-		case KILL: shell = new Kill();name = "kill"; 
-		break;
-		case WAIT: shell = new Wait(); name = "wait"; break;
+		case KILL: shell = new Kill(); break;
+		case WAIT: shell = new Wait(); break;
 		//case SUSPEND: shell = new Jobs(); break;
 		//case DISOWN: shell = new Jobs(); break;
-		case JOBS: shell = new Jobs(specs);name = "jobs"; break;
+		case JOBS: shell = new Jobs(specs); break;
 		//case FG: shell = new Jobs(); break;
 		//case BG: shell = new Jobs(); break;
 		default:
@@ -65,13 +63,7 @@ public class JobControlStatement extends Statement{
 		}
 
 		shell.setArgs(args);	
-		String [] sargs = new String[args.length+1];
-		sargs[0] = name;
-		for (int idx = 0; idx < args.length; idx++) {
-			sargs[idx+1] = ""+args[idx].getValue(sc);
-		}
-		sc.args = sargs;
-
+		
 		return shell.process(sc);
 	}
 

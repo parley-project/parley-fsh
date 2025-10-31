@@ -37,17 +37,17 @@ public class Ls extends ShellCommand {
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		List<Argument> args = new ArrayList<>();
+		List<Argument> largs = new ArrayList<>();
 		List<String> paths = new ArrayList<>();
 
-		for(int idx=1; idx < ctx.args.length; idx++ ) {
-			String arg = ctx.args[idx];
+		for(int idx=0; idx < args.length; idx++ ) {
+			String arg = args[idx].getValue(ctx).toString();
 			if( arg.startsWith("-")) {
 				arg = arg.substring(1);
 				for(char c : arg.toCharArray()) {
 					try {
 						Argument a =Argument.valueOf(""+c);
-						args.add(a);
+						largs.add(a);
 					} catch (Exception e) {
 						throw new IOException("Unknown argument "+c);
 					}
@@ -57,29 +57,29 @@ public class Ls extends ShellCommand {
 			}
 		}
 
-		if( !args.contains(Argument.t)) {
+		if( !largs.contains(Argument.t)) {
 			// these only effect sort by time so remove them to avoid confusion
-			args.remove(Argument.c);
-			args.remove(Argument.c);
+			largs.remove(Argument.c);
+			largs.remove(Argument.c);
 		}
 
 		List<String> out = new ArrayList<>();
 		LsContext lsctx = new LsContext(ctx);
 		if(paths.size() == 0) {
 			List<FileSource> files = Arrays.asList(ctx.console.getCurrentDirectory().listFiles());
-			sort(ctx,args,files);
+			sort(ctx,largs,files);
 			for(FileSource file : files) { 
-				print(out,lsctx,args, file);
+				print(out,lsctx,largs, file);
 			}
 		} else {
 			for(String arg : paths) {
 				arg = arg.trim();
 				if( !arg.isEmpty()) {
 					List<FileSource> files = getFiles(ctx, arg);
-					sort(ctx,args,files);
+					sort(ctx,largs,files);
 					for(FileSource file : files) {
 						if( file.exists()) {
-							list(out,lsctx,args, file);
+							list(out,lsctx,largs, file);
 						} else {
 							ctx.stderr.println("ls: "+file+" no such file or directory");
 							return 1;
@@ -91,7 +91,7 @@ public class Ls extends ShellCommand {
 		}
 		if( !out.isEmpty()) {
 			// Column 
-			if(ctx.console.isInteractive && !args.contains(Argument.l) && !args.contains(Argument.g))  {
+			if(ctx.console.isInteractive && !largs.contains(Argument.l) && !largs.contains(Argument.g))  {
 				ctx.stdout.println(super.toColumns(ctx,out).trim());
 			} else {
 				for(String line : out) {

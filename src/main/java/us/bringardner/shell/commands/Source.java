@@ -48,10 +48,10 @@ public class Source extends ShellCommand{
 				String code = new String(in.readAllBytes());
 				FsshList tmp = ctx.console.getPositionalParameters();
 				FsshList tmp2 = null;
-				if( ctx.args.length>2) {
+				if( args.length>1) {
 					tmp2 = new FsshList();
-					for (int idx = 2; idx < ctx.args.length; idx++) {
-						String val = ctx.args[idx];
+					for (int idx = 1; idx < args.length; idx++) {
+						String val = args[idx].getValue(ctx).toString();
 						tmp2.add(val);
 					}
 					ctx.console.setPositionalParameters(false, tmp2);

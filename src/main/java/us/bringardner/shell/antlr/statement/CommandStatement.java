@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -390,12 +392,6 @@ public class CommandStatement extends Statement{
 		PrintStream err = ctx.stderr;
 
 		try {
-			String [] sargs = new String[args.length+1];
-			sargs[0] = name;
-			for (int idx = 0; idx < args.length; idx++) {
-				sargs[idx+1] = ""+args[idx].getValue(ctx);
-			}
-			ctx.args = sargs;
 			configureRedirect(ctx,redirect);				
 
 			if( hereId !=null ) {
@@ -420,16 +416,25 @@ public class CommandStatement extends Statement{
 			} else {
 				FunctionDefStatement function = ctx.getFunction(name);
 				if( function != null ) {
-					ret = function.invoke(sargs,ctx);
+					ret = function.invoke(args,ctx);
 				} else {
 					/*
 					 * 2) If the name does not match a function, the shell searches for it in the list of shell built-ins. 
 					 * If a match is found, that built-in is invoked.
 					 */
-					ShellCommand cmd = Console.commands.get(name);
-					if( cmd != null ) {
-						cmd.setArgs(args);
-						ret = cmd.process(ctx);
+					Constructor<? extends ShellCommand> con = Console.commands.get(name);
+					if( con != null ) {
+
+						ShellCommand cmd;
+						try {
+							cmd = con.newInstance();
+							cmd.setArgs(args);
+							ret = cmd.process(ctx);
+						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+							throw new IOException(e);
+						}
+						
+						
 					} else {
 						String tmp = "xx"+ctx.getVariable("$0");
 						boolean ok = name.equals(tmp);
@@ -446,7 +451,7 @@ public class CommandStatement extends Statement{
 									tc.setStdOut(ctx.stdout);
 									tc.setStdErr(ctx.stderr);
 									List<Object> list = new ArrayList<>();
-									for(String sa : sargs) {
+									for(Argument sa : args) {
 										list.add(sa);
 									}
 									tc.setPositionalParameters(true, list);
@@ -494,9 +499,9 @@ public class CommandStatement extends Statement{
 	public int invokeAlias(ShellContext ctx, Object code) throws IOException {
 		int ret = 0;
 		StringBuilder tmp = new StringBuilder(code.toString());
-		for (int idx = 1; idx < ctx.args.length; idx++) {
+		for (int idx = 0; idx < args.length; idx++) {
 			tmp.append(' ');
-			tmp.append(ctx.args[idx]);
+			tmp.append(args[idx]);
 		}
 
 
@@ -596,7 +601,7 @@ public class CommandStatement extends Statement{
 			if( idx1 > 0 ) {
 				tmp = tmp.substring(0,idx1).trim();
 				if(tmp.equals("fssh")) {
-					return ctx.executeSubShell(exec,ctx.args);					
+					return ctx.executeSubShell(exec,args);					
 				}
 			}
 		} 

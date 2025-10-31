@@ -6,6 +6,7 @@ import java.util.List;
 import us.bringardner.filesource.sh.FileSourceShParser.FunctionDefinitionContext;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.DebugContext.RunState;
+import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Statement;
 
 public class FunctionDefStatement extends Statement{
@@ -53,7 +54,7 @@ public class FunctionDefStatement extends Statement{
 		return ret;
 	}
 
-	public int invoke(String[] args, ShellContext ctx) throws IOException {
+	public int invoke(Argument[] args, ShellContext ctx) throws IOException {
 		int ret = 0;
 		RunState debug = ctx.console.getDebugContext().getCurrentState();
 		if( debug == RunState.StepOver) {

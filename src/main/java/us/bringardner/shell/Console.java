@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -52,7 +53,7 @@ import us.bringardner.shell.commands.Cd;
 import us.bringardner.shell.commands.Clear;
 import us.bringardner.shell.commands.Connect;
 import us.bringardner.shell.commands.Cp;
-import us.bringardner.shell.commands.DirStack;
+import us.bringardner.shell.commands.Dirs;
 import us.bringardner.shell.commands.Echo;
 import us.bringardner.shell.commands.Eval;
 import us.bringardner.shell.commands.Exec;
@@ -66,6 +67,8 @@ import us.bringardner.shell.commands.Kill;
 import us.bringardner.shell.commands.Ln;
 import us.bringardner.shell.commands.Ls;
 import us.bringardner.shell.commands.Mkdir;
+import us.bringardner.shell.commands.Popd;
+import us.bringardner.shell.commands.Pushd;
 import us.bringardner.shell.commands.Pwd;
 import us.bringardner.shell.commands.Read;
 import us.bringardner.shell.commands.Return;
@@ -291,7 +294,7 @@ delimiter
 	private String adminMessage;
 	private Map<String,List<PropertyChangeListener>> listners = new TreeMap<>();
 
-	public static Map<String,ShellCommand> commands;
+	public static Map<String,Constructor<? extends ShellCommand>> commands;
 
 
 	boolean eof = false;
@@ -313,9 +316,7 @@ delimiter
 
 	static {
 		commands = new TreeMap<>();
-		commands.put("dirs", new DirStack());
-		commands.put("popd", new DirStack());
-		commands.put("pushd", new DirStack());
+		
 		registerCommand(new Alias());
 
 		registerCommand(new Bg());
@@ -324,7 +325,9 @@ delimiter
 		registerCommand(new Cd());
 		registerCommand(new Cp());
 		registerCommand(new Connect());
-
+		
+		registerCommand(new Dirs());
+		
 		registerCommand(new Eval());
 		registerCommand(new Exit());
 		registerCommand(new Exec());
@@ -344,6 +347,8 @@ delimiter
 
 		registerCommand(new Mkdir());
 
+		registerCommand(new Popd());
+		registerCommand(new Pushd());
 		registerCommand(new Pwd());
 
 
@@ -828,7 +833,13 @@ delimiter
 	}
 
 	private static void registerCommand(ShellCommand cmd) {
-		commands.put(cmd.getName(), cmd);		
+		try {
+			Class<? extends ShellCommand> cls = cmd.getClass();
+			Constructor<? extends ShellCommand> con = cls.getConstructor();
+			commands.put(cmd.getName(), con);
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+		}		
 	}
 
 
@@ -1315,7 +1326,7 @@ delimiter
 						String name = InetAddress.getLocalHost().getHostName();
 						int ii = name.indexOf('.');
 						if( ii > 0 ) {
-							name = name.substring(0,ii);
+							//TODO: Why name = name.substring(0,ii);
 						}
 						ret.append(name);
 					} catch (UnknownHostException e) {

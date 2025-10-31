@@ -17,10 +17,10 @@ public class Unmount extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		if( ctx.args.length < 2 ) {
+		if( args.length < 2 ) {
 			ctx.stdout.println(help);
 		} else {
-			String mountPoint = ctx.args[1].trim();
+			String mountPoint = (""+args[1].getValue(ctx)).trim();
 			if( mountPoint.isEmpty()) {
 				return -1;
 			}

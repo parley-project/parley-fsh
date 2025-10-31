@@ -26,7 +26,7 @@ public class Connect extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		if( ctx.args.length < 3) {
+		if( args.length < 2) {
 			ctx.stdout.println( help);
 			ret = -1;
 		} else {

@@ -35,21 +35,21 @@ public class Touch extends ShellCommand{
 		 * 
 		 * @param argument 
 		 * @param ctx
-		 * @param idx the current index into ctx.args
-		 * @return the index into ctx.args reflecting any changes made by the processor
+		 * @param idx the current index into args
+		 * @return the index into args reflecting any changes made by the processor
 		 * @throws IOException 
 		 */
 		int process(TouchArguments argument,ShellContext ctx,int idx) throws IOException ;
 	}
 
-	private static class Action_A implements ArgumentProcessor {
+	private  class Action_A implements ArgumentProcessor {
 
 		@Override
 		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
 			//[-A [-][[hh]mm]SS]
 
 			boolean negate = false;
-			String val = ctx.args[++idx];
+			String val = ""+args[++idx].getValue(ctx);
 			if( val.length()==7) {
 				String tmp = val.substring(0,1);
 				val = val.substring(1);
@@ -78,14 +78,14 @@ public class Touch extends ShellCommand{
 	}
 
 
-	private static class Action_r implements ArgumentProcessor {
+	private  class Action_r implements ArgumentProcessor {
 
 		@Override
 		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
 			//[-r file]
 			//Use the access and modifications times from the specified file instead of the current time of day.
 
-			String path = ctx.args[++idx];
+			String path = args[++idx].getValue(ctx).toString();
 			List<FileSource> file = getFiles(ctx, path);
 			ret.parameters.put(Arguments.r, Arrays.asList(file));
 			return idx;
@@ -93,7 +93,7 @@ public class Touch extends ShellCommand{
 
 	}
 
-	public static class Action_t implements ArgumentProcessor {
+	public  class Action_t implements ArgumentProcessor {
 		//[-t [[CC]YY]MMDDhhmm[.SS]]
 		String dateFormats [] = {
 				"yyyyMMddhhmm.ss" 
@@ -107,7 +107,7 @@ public class Touch extends ShellCommand{
 
 		@Override
 		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			String val = ctx.args[++idx];
+			String val = args[++idx].getValue(ctx).toString();
 			SimpleDateFormat sdf = null;
 			for(String fmt : dateFormats) {
 				if( val.length()==fmt.length()) {
@@ -133,7 +133,7 @@ public class Touch extends ShellCommand{
 
 	}
 
-	public static class Action_d implements ArgumentProcessor {
+	public  class Action_d implements ArgumentProcessor {
 		//     idx +1  +2  +3 +4+5 +6 +7
 		//[-d YYYY-MM-DDThh : mm : SS[tz]]
 		
@@ -141,15 +141,16 @@ public class Touch extends ShellCommand{
 		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
 			//  the date parses as a series of signed numbers
 			//   Z ( time zone)?? parses as path
-			// idx should be 2
+			// idx should be 1
 			StringBuilder tmp = new StringBuilder();
 			int idx2 = idx+1;
-			for(;idx2<=4; idx2++) {
-				tmp.append(ctx.args[idx2]);
+			for(;idx2<=3; idx2++) {
+				tmp.append(args[idx2].getValue(ctx).toString());
 			}
 			tmp.append(' ');
-			for(;idx2<ctx.args.length-1; idx2++) {
-				tmp.append(ctx.args[idx2]);
+			for(;idx2<args.length-1; idx2++) {
+				String val = args[idx2].getValue(ctx).toString();				
+				tmp.append(val);
 			}
 			
 			String tm2 = tmp.toString();
@@ -187,16 +188,14 @@ public class Touch extends ShellCommand{
 		Map<Object,List<Object>> parameters = new HashMap<>();
 	}
 
-	static Map<Object,ArgumentProcessor> actions = new HashMap<>();
-	static {
+	 Map<Object,ArgumentProcessor> actions = new HashMap<>();
+	
+	public Touch() {
+		super(name, help);
 		actions.put(Arguments.A, new Action_A());
 		actions.put(Arguments.r, new Action_r());
 		actions.put(Arguments.t, new Action_t());
 		actions.put(Arguments.d, new Action_d());
-	}
-
-	public Touch() {
-		super(name, help);
 	}
 
 	@Override
@@ -347,12 +346,12 @@ public class Touch extends ShellCommand{
 
 	protected TouchArguments parserArguments(ShellContext ctx,Class<?> cls,Map<Object,ArgumentProcessor> actions) throws IOException {
 		TouchArguments ret = new TouchArguments();
-		if( ctx.args.length>1) {
+		if( args.length>0) {
 			try {
 				Method m = cls.getDeclaredMethod("valueOf", String.class);
 				m.setAccessible(true);
-				for(int idx=1; idx < ctx.args.length; idx++ ) {
-					String arg = ctx.args[idx].trim();
+				for(int idx=0; idx < args.length; idx++ ) {
+					String arg = args[idx].getValue(ctx).toString().trim();
 					if( arg.startsWith("-")) {
 						arg = arg.substring(1);
 						for(char c : arg.toCharArray()) {
@@ -380,12 +379,12 @@ public class Touch extends ShellCommand{
 
 	protected TouchArguments parserArguments1(ShellContext ctx,Class<?> cls) throws IOException {
 		TouchArguments ret = new TouchArguments();
-		if( ctx.args.length>0) {
+		if( args.length>0) {
 			try {
 				Method m = cls.getDeclaredMethod("valueOf", String.class);
 				m.setAccessible(true);
-				for(int idx=1; idx < ctx.args.length; idx++ ) {
-					String arg = ctx.args[idx].trim();
+				for(int idx=0; idx < args.length; idx++ ) {
+					String arg = args[idx].getValue(ctx).toString().trim();
 					if( arg.startsWith("-")) {
 						arg = arg.substring(1);
 						for(char c : arg.toCharArray()) {
@@ -395,25 +394,25 @@ public class Touch extends ShellCommand{
 								if( a.equals(Arguments.A)) {
 									//[-A [-][[hh]mm]SS]
 									List<Object> p = new ArrayList<>();
-									String val = ctx.args[idx++];
+									String val = args[idx++].getValue(ctx).toString();
 									p.add(val);
 									if( val.equals("-")) {
-										p.add(ctx.args[idx++]);
+										p.add(args[idx++].getValue(ctx).toString());
 									}
 									ret.parameters.put(arg, p);
 								} else if( a.equals(Arguments.r)) {
 									//[-r file]
-									ret.parameters.put(arg, Arrays.asList(ctx.args[idx++]));
+									ret.parameters.put(arg, Arrays.asList(args[idx++].getValue(ctx).toString()));
 								} else if( a.equals(Arguments.t)) {
 									//[-t [[CC]YY]MMDDhhmm[.SS]]
-									ret.parameters.put(arg, Arrays.asList(ctx.args[idx++]));
+									ret.parameters.put(arg, Arrays.asList(args[idx++].getValue(ctx).toString()));
 								} else if( a.equals(Arguments.d)) {
 									//[-d YYYY-MM-DDThh:mm:SS[.frac][tz]]
 									List<Object> p = new ArrayList<>();
-									String val = ctx.args[idx++];
+									String val = args[idx++].getValue(ctx).toString();
 									p.add(val);
 									if( val.equals("Z")) {
-										p.add(ctx.args[idx++]);
+										p.add(args[idx++].getValue(ctx).toString());
 									}
 									ret.parameters.put(arg, p);
 								} 

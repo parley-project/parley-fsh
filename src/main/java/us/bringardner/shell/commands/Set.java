@@ -4,10 +4,10 @@ package us.bringardner.shell.commands;
 import java.io.IOException;
 
 import us.bringardner.shell.Console;
+import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.antlr.Argument;
 
 public class Set extends ShellCommand{
@@ -48,7 +48,7 @@ public class Set extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		
 		int ret = 0;
-		if( args == null || args.length != ctx.args.length-1) {
+		if( args == null || args.length != args.length-1) {
 			throw new IOException("Args are not availible");
 		}
 		boolean isMain = false;

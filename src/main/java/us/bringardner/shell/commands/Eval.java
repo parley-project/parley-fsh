@@ -23,11 +23,11 @@ public class Eval extends ShellCommand{
 		
 		StringBuilder buf = new StringBuilder();
 		
-		for (int idx = 1; idx < ctx.args.length; idx++) {
+		for (int idx = 0; idx < args.length; idx++) {
 			if( idx> 0) {
 				buf.append(' ');
 			}
-			buf.append(ctx.args[idx]);
+			buf.append(args[idx].getValue(ctx).toString());
 		}
 		String code = buf.toString().trim();
 		if( !code.isEmpty()) {

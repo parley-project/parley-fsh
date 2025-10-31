@@ -20,9 +20,9 @@ public class Exit extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		
 		int ret = 0;
-		if( ctx.args.length>1) {
+		if( args.length>0) {
 			try {
-				ret = Integer.parseInt(ctx.args[1]);
+				ret = Integer.parseInt(args[0].getValue(ctx).toString());
 			} catch (Exception e) {
 			}
 		}

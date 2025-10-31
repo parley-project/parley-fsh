@@ -8,22 +8,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import us.bringardner.io.filesource.FileSource;
-import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 
 public class Cp extends ShellCommand{
 	private enum Arguments {R,H,L,P,f,i,n,a,c,l,p,S,s,v,x};
-
-	public static void main(String args[]) throws IOException {
-		Cp cp = new Cp();
-		ShellContext ctx = new ShellContext(new Console());
-		ctx.args = "cp -RHL file".split("\\s");
-		us.bringardner.shell.ShellCommand.ShellArgument res = cp.parserArgs(ctx, Arguments.class);
-		System.out.println("res.options="+res.options);
-		System.out.println("res.paths="+res.paths);
-	}
-
 
 	static String name = "cp";
 	static String help = ""

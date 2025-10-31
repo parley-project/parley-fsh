@@ -64,8 +64,8 @@ public class Wc extends ShellCommand{
      newline, word, character,  byte,  maximum
 		 */
 		boolean debug = false;
-		for(int idx=1; idx < ctx.args.length; idx++ ) {
-			String arg = ctx.args[idx];
+		for(int idx=0; idx < args.length; idx++ ) {
+			String arg = ""+args[idx].getValue(ctx);
 			if( arg.startsWith("-")) {
 				if( arg.equals("-debug")) {
 					debug = true;
