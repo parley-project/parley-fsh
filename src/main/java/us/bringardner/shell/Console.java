@@ -920,6 +920,7 @@ delimiter
 				JobState jobState = job.getState();
 
 				switch (jobState	) {
+				case Running: break;
 				case Idel: break;
 				case Suspended:
 					if( job.getJobNumber()<0) {
@@ -946,6 +947,7 @@ delimiter
 					}
 					job = null;					
 					break;
+				case Notified:break;
 				default:
 					throw new IllegalArgumentException("Unexpected value: " + job.getState());
 				}

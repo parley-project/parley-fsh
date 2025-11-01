@@ -72,6 +72,10 @@ public class Wait extends ShellCommand{
 					case 'f':f=true;break;
 					case 'n':n=true;break;
 					case 'p':
+						if( idx >= args.length) {
+							ctx.stderr.println("-p: option requires an argument");
+							return 1;
+						}
 						varName = (""+args[++idx].getValue(ctx));
 						ctx.unSetVariable(varName);
 						break;

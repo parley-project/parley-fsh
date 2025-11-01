@@ -23,7 +23,7 @@ public class BackgroundStatement extends Statement{
 	public CommandThread getCommandThread() {
 		return thread;
 	}
-	
+
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		int ret = 0;
@@ -35,16 +35,17 @@ public class BackgroundStatement extends Statement{
 			BackgroundJob job = new BackgroundJob(thread);
 			sc.console.addJob(job);
 			job.start();
-			
+
 			while(!job.hasStarted()) {
 				try {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
 				}
 			}
-			
-			String tmp = "["+(job.jobNumber+1)+"] "+job.pid;
-			sc.stdout.println(tmp);
+			if( ctx.console.isInteractive) {
+				String tmp = "["+(job.jobNumber+1)+"] "+job.pid;			
+				sc.stdout.println(tmp);
+			}
 		} catch (Exception e) {
 			ret = 1;
 			sc.stderr.println(e.toString());

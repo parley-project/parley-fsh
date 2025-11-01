@@ -160,6 +160,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		
 		Console.setNextPid(100000);
 		console.jobManager.clear();
+		console.isInteractive=true;
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
@@ -172,13 +173,24 @@ public class TestPipeStatement extends AbstractConsoleTest{
 	}
 	
 	@Test
-	public void testBackground03() throws Exception{
+	public void testBackground03_true() throws Exception{
+		executeBackground03(true);
+	}
+
+	@Test
+	public void testBackground03_false() throws Exception{
+		executeBackground03(false);
+	}
+
+
+	public void executeBackground03(boolean interactive) throws Exception{
 		String cmd = "sleep 1000 &\n"
 				+ "sleep 2000 &\n"
 				+ "sleep 3000 &\n"				
 				+ "jobs\n"
 				;
-
+		
+		
 		String expect = 
 				"[1] 100000\n"
 				+ "[2] 100001\n"
@@ -187,8 +199,18 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				+ "[2] - Running sleep   2000   \n"
 				+ "[3] + Running sleep   3000   \n"
 				;
+		if( !interactive) {
+			 expect = 
+						""
+						+ "[1]   Running sleep   1000   \n"
+						+ "[2] - Running sleep   2000   \n"
+						+ "[3] + Running sleep   3000   \n"
+						;
+		}
 		//System.out.println(cmd);
 		Console.setNextPid(100000);
+		boolean lastInteractive = console.isInteractive;
+		console.isInteractive=interactive;
 		console.jobManager.clear();
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());
@@ -252,10 +274,9 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
 		
-		
+		console.isInteractive=lastInteractive;
 	}
 
-	
 
 		
 }
