@@ -459,6 +459,7 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		public FunctionInvocation(Argument[] args2, FunctionDefStatement function) {
+			this.args.add(function.getName());
 			this.args.addAll(Arrays.asList(args2));
 			this.function = function;
 		}
@@ -586,13 +587,13 @@ $
 
 		if( functionStack.size()>0) {
 			FunctionInvocation inv = functionStack.peek();
-			for(int idx=1,sz=inv.args.size(); idx<sz; idx++ ) {
+			for(int idx=0,sz=inv.args.size(); idx<sz; idx++ ) {
 				Object val = inv.args.get(idx) ;
 				ret.put("$"+idx, val);
 			}
 		} else {
 			List<Object> list = console.positionalParameters;
-			for(int idx=1,sz=list.size(); idx<sz; idx++ ) {
+			for(int idx=0,sz=list.size(); idx<sz; idx++ ) {
 				Object val = list.get(idx) ;
 				ret.put("$"+idx, val);
 			}
