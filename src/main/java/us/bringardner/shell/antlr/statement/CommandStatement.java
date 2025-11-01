@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.core.BaseThread;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.HereDocumentContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
@@ -591,6 +592,19 @@ public class CommandStatement extends Statement{
 		hereId = hereDocument.ID().getText();		
 	}
 
+	protected static class StringArgument extends Argument {
+		String value;
+		public StringArgument(String value) {
+			super(null);
+			this.value = value;
+		}
+		
+		@Override
+		public Object getValue(ShellContext ctx) throws IOException {
+			return value;
+		}
+		
+	}
 	private int execute(FileSource exec, ShellContext ctx) throws IOException {
 		List<String> cmd =  new ArrayList<>();
 		cmd.add(exec.getAbsolutePath());
@@ -601,7 +615,12 @@ public class CommandStatement extends Statement{
 			if( idx1 > 0 ) {
 				tmp = tmp.substring(0,idx1).trim();
 				if(tmp.equals("fssh")) {
-					return ctx.executeSubShell(exec,args);					
+					Argument[] args2 = new Argument[args.length+1];
+					args2[0] = new StringArgument(exec.getName());
+					for(int idx = 0; idx < args.length; idx++ ) {
+						args2[idx+1] = args[idx];
+					}
+					return ctx.executeSubShell(exec,args2);
 				}
 			}
 		} 
