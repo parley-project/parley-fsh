@@ -32,15 +32,18 @@ public class Echo extends ShellCommand{
 		}
 
 		String val2=null;
+		StringBuilder buf = new StringBuilder();
 		for (int idx = start; idx < args.length; idx++) {
 			if( idx> start) {
-				ctx.stdout.print(" ");
+				buf.append(' ');
 			}
-			val2 = args[idx].getValue(ctx).toString();
-			ctx.stdout.print(val2);
+			val2 = ""+args[idx].getValue(ctx);
+			buf.append(val2);
 		}
 		if( nl ) {
-			ctx.stdout.println();
+			ctx.stdout.println(buf);
+		} else {
+			ctx.stdout.print(buf);
 		}
 
 		return ret;

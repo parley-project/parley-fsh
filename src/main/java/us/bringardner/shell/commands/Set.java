@@ -48,7 +48,7 @@ public class Set extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		
 		int ret = 0;
-		if( args == null || args.length != args.length-1) {
+		if( args == null || args.length == 0) {
 			throw new IOException("Args are not availible");
 		}
 		boolean isMain = false;
@@ -111,7 +111,8 @@ public class Set extends ShellCommand{
 			FsshList pp = new FsshList();
 			
 			for (; idx < args.length; idx++) {
-				pp.add(args[idx].getValue(ctx));
+				Object val2 = args[idx].getValue(ctx);
+				pp.add(val2);
 			}			
 			ctx.console.setPositionalParameters(isMain,pp);
 		} else if( val.equals("--")) {

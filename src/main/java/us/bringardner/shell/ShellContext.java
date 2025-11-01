@@ -393,7 +393,8 @@ $
 				return null;
 			}
 		} else {
-			if( pos < console.positionalParameters.size()) {
+			int sz = console.positionalParameters.size();
+			if( pos < sz) {
 				return console.positionalParameters.get(pos);
 			}
 		}

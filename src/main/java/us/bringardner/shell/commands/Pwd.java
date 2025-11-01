@@ -20,7 +20,7 @@ public class Pwd extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		FileSource dir = ctx.console.getCurrentDirectory();
-		if( args.length>1 && args[1].getValue(ctx).toString().equals("-P")) {
+		if( args.length>0 && args[0].getValue(ctx).toString().equals("-P")) {
 			FileSource link = dir.getLinkedTo();
 			while(link !=null ) {
 				dir = link;
