@@ -12,7 +12,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionAlias extends AbstractConsoleTest{
+public class TestAlias extends AbstractConsoleTest{
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {

@@ -16,7 +16,7 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionExport extends AbstractConsoleTest {
+public class TestExport extends AbstractConsoleTest {
 
 	
 		public static ExecuteResult executeCommand(Console console1,String command,String stdIn,int exitCode) throws IOException {

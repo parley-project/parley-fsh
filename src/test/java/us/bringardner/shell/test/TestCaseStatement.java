@@ -11,7 +11,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionCaseStatement extends AbstractConsoleTest {
+public class TestCaseStatement extends AbstractConsoleTest {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {

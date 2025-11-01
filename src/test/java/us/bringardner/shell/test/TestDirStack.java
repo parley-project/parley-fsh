@@ -17,7 +17,7 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionDirStack extends AbstractConsoleTest{
+public class TestDirStack extends AbstractConsoleTest{
 
 	private static FileSource dirStack;
 	
