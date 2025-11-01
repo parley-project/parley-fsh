@@ -18,9 +18,9 @@ public class Return extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		if( args.length>1) {
+		if( args.length>0) {
 			try {
-				ret = Integer.parseInt(args[1].getValue(ctx).toString());
+				ret = Integer.parseInt(args[0].getValue(ctx).toString());
 			} catch (Exception e) {
 			}
 		}
