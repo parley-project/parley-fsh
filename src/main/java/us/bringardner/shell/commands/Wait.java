@@ -7,6 +7,10 @@ import java.util.List;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
+import us.bringardner.shell.antlr.statement.JobControlStatement;
+import us.bringardner.shell.commands.Jobs.Options;
+import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.job.JobManager;
 
 public class Wait extends ShellCommand{
 	static String name = "wait";
@@ -37,14 +41,22 @@ public class Wait extends ShellCommand{
 		super(name, help);
 	}
 
-
+	enum Optiona{f,n};
+	
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		
+		ShellArgument ops = parserArgs(ctx, Options.class);
+		
 		String varName=null;
 		boolean waitForCompetion = false;
 		boolean waitForAll = false;
+
+		JobManager jm = ctx.console.jobManager;
+		List<IJob> ijobs = jm.getJobs();
+		int jobSize = ijobs.size();
+
 		List<Integer> ids = new ArrayList<>();
 		
 		// parse all the args
@@ -59,6 +71,7 @@ public class Wait extends ShellCommand{
 				varName = (""+args[++idx].getValue(ctx));
 				ctx.unSetVariable(varName);
 			}  else {
+				//int i = JobControlStatement.parseJobSpec(jobSize, tmp);
 				int id = Integer.parseInt(val);
 				ids.add(id);
 			}

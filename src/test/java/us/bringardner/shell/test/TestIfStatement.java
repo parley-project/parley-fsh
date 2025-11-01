@@ -16,7 +16,7 @@ import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionIfStatement extends AbstractConsoleTest{
+public class TestIfStatement extends AbstractConsoleTest{
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {

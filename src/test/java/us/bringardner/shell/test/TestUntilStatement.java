@@ -11,7 +11,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionWhileStatement extends AbstractConsoleTest{
+public class TestUntilStatement extends AbstractConsoleTest {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
@@ -20,9 +20,9 @@ public class TestExecutionWhileStatement extends AbstractConsoleTest{
 	}
 	
 	@Test
-	public void testWhileStatent01_1() throws Exception{
+	public void testUntilStatent01_1() throws Exception{
 		String cmd = "i=0\n"
-				+ "while [ $i -le 2 ]\n"
+				+ "until [ $i -gt 2 ]\n"
 				+ "do\n"
 				+ "  echo Number: $i\n"
 				+ "  ((i++))\n"
@@ -46,10 +46,10 @@ public class TestExecutionWhileStatement extends AbstractConsoleTest{
 	}
 
 	@Test
-	public void testWhileStatent01_2() throws Exception{
+	public void testUntilStatent01_2() throws Exception{
 		String cmd = 
 				  "i=0\n"
-				+ "while [ true ]\n"
+				+ "until [ false ]\n"
 				+ "do\n"
 				+ "  echo Number: $i\n"
 				+ "  ((i++))\n"
@@ -73,10 +73,10 @@ public class TestExecutionWhileStatement extends AbstractConsoleTest{
 	}
 	
 	@Test
-	public void testWhileStatent01_3() throws Exception{
+	public void testUntilStatent01_3() throws Exception{
 		String cmd = 
 				  "i=0\n"
-				+ "while [ true ]\n"
+				+ "until [ false ]\n"
 				+ "do\n"
 				+ "  ((i++))\n"
 				+ "	 if [ $i == 2 ] ; then\n"

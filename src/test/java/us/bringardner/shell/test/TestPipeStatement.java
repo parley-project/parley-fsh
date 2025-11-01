@@ -16,7 +16,7 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionPipeStatement extends AbstractConsoleTest{
+public class TestPipeStatement extends AbstractConsoleTest{
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {

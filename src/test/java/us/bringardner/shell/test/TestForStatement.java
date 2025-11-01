@@ -12,7 +12,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionForStatement extends AbstractConsoleTest {
+public class TestForStatement extends AbstractConsoleTest {
 
 	
 	

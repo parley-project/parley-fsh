@@ -21,7 +21,7 @@ import us.bringardner.shell.Console;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionExternal {
+public class TestExternal {
 
 	private static File testFilesDir;
 	public static boolean debug = false;

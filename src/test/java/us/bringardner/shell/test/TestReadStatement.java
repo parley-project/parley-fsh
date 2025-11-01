@@ -11,7 +11,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionReadStatement extends AbstractConsoleTest {
+public class TestReadStatement extends AbstractConsoleTest {
 
 	
 	@BeforeAll

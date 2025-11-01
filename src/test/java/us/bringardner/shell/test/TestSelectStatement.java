@@ -11,7 +11,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestExecutionSelectStatement extends AbstractConsoleTest {
+public class TestSelectStatement extends AbstractConsoleTest {
 
 	
 	
