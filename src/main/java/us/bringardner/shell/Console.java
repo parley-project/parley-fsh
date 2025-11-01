@@ -81,6 +81,7 @@ import us.bringardner.shell.commands.Touch;
 import us.bringardner.shell.commands.Trap;
 import us.bringardner.shell.commands.Unalias;
 import us.bringardner.shell.commands.Unmount;
+import us.bringardner.shell.commands.Wait;
 import us.bringardner.shell.commands.Wc;
 import us.bringardner.shell.job.ForgroundJob;
 import us.bringardner.shell.job.IJob;
@@ -368,6 +369,7 @@ delimiter
 		registerCommand(new Unalias());
 		registerCommand(new Unmount());
 
+		registerCommand(new Wait());
 		registerCommand(new Wc());
 
 		registerSignals();

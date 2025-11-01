@@ -44,9 +44,9 @@ public abstract class AbstractConsoleTest {
 	}
 
 	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();	
+		public int exitCode=0;		
+		public ByteArrayOutputStream bao = new ByteArrayOutputStream();
+		public ByteArrayOutputStream bae = new ByteArrayOutputStream();	
 
 		public String toString() {
 			return "Exitcode="+exitCode+"\n"
