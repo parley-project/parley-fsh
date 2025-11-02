@@ -6,8 +6,6 @@ import java.util.List;
 
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Argument;
-import us.bringardner.shell.antlr.statement.JobControlStatement;
 import us.bringardner.shell.job.IJob;
 import us.bringardner.shell.job.JobManager;
 
@@ -34,97 +32,22 @@ public class Disown extends ShellCommand{
 		super(name, help);
 	}
 
-
+	enum DisownOptions {a,r,h};
+	
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 
-		String varName=null;
-		boolean f = false;
-		boolean n = false;
-
+		ShellArgument ops = parserArgs(ctx, DisownOptions.class);
+		
 		JobManager jm = ctx.console.jobManager;
 
 		int jobSize = jm.getJobs().size();
 
 		List<IJob> jobs = new ArrayList<>();
 
-		// parse all the args
-		for (int idx = 0; idx < args.length; idx++) {
-			Argument a = args[idx];
-			String val = ""+a.getValue(ctx);
-			if( val.startsWith("-")) {
-				String tmp = val.substring(1);
-				for(char c : tmp.toCharArray()) {
-					switch (c) {
-					case 'f':f=true;break;
-					case 'n':n=true;break;
-					case 'p':
-						if( idx >= args.length) {
-							ctx.stderr.println("-p: option requires an argument");
-							return 1;
-						}
-						varName = (""+args[++idx].getValue(ctx));
-						ctx.unSetVariable(varName);
-						break;
-
-					default:
-						throw new IllegalArgumentException("Unknown option in wait. value: " + c);
-					}
-				}
-			} else {
-				int id = JobControlStatement.parseJobSpec(jobSize, val);
-				IJob job = jm.getJob(id);
-				if( job!=null) {
-					jobs.add(job);
-				}
-			}
-		}
-
-		if( jobs.isEmpty()) {
-			/*
- + "If no options or ids are supplied, wait waits for all running background jobs and the last-executed process substitution,"
-			+ " if its process id is the same as $!, and the return status is zero.\n"
-
-			 */
-			jobs.addAll(jm.getJobs());
-		}
-
-		int jobId = -1;
-
-		if( n && jobs.isEmpty()) {
-			ret = 127;
-		} else {
-			boolean done = false;			
-			List<Integer> complete = new ArrayList<Integer>();
-
-			while( !done ) {
-				for(IJob job : jobs) {
-					if( !complete.contains(job.getPid())) {
-						if( !job.isRunning()) {
-							ret = job.getExitCode();
-							jobId = job.getPid();
-							complete.add(jobId);
-							//System.out.println("jobId="+jobId+" ret = "+ret);
-							if(f || complete.size()==jobs.size()) {
-								done = true;
-								break;
-							}
-						}
-					}
-				}
-
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-			}
-		}
-
-		if( varName !=null) {
-			ctx.setVariable(varName, jobId);
-		}
-
+		
+		
 		return ret;
 	}
 
