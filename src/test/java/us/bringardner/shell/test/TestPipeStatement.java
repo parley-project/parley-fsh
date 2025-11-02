@@ -173,12 +173,12 @@ public class TestPipeStatement extends AbstractConsoleTest{
 	}
 	
 	@Test
-	public void testBackground03_true() throws Exception{
+	public void testBackground03_interactive() throws Exception{
 		executeBackground03(true);
 	}
 
 	@Test
-	public void testBackground03_false() throws Exception{
+	public void testBackground03_not_interactive() throws Exception{
 		executeBackground03(false);
 	}
 
@@ -208,11 +208,19 @@ public class TestPipeStatement extends AbstractConsoleTest{
 						;
 		}
 		//System.out.println(cmd);
-		Console.setNextPid(100000);
+		waitForJobs=false;
+		
 		boolean lastInteractive = console.isInteractive;
 		console.isInteractive=interactive;
 		console.jobManager.clear();
+		if( interactive) {
+			Console.setNextPid(100000);
+		} else {
+			Console.setNextPid(400000);
+		}
 		ExecuteResult res = executeCommand(cmd,"");
+		int sz = console.jobManager.getJobs().size();
+		System.out.println("job sz="+sz);
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		
@@ -264,9 +272,13 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
-		
-		cmd = "kill 100000\nkill 100001\nkill 100002\n";
+		if(interactive) {
+			cmd = "kill 100000 100001 100002\n";
+		} else {
+			cmd = "kill 400000 400001 400002\n";
+		}
 		expect = "";
+		waitForJobs=true;
 		res = executeCommand(cmd,"");
 		out = new String(res.bao.toByteArray());
 		err = new String(res.bae.toByteArray());		

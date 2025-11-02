@@ -40,6 +40,7 @@ public class Sleep extends ShellCommand{
 			ctx.stdout.println("Unit can be 's' (seconds, the default), m (minutes), h (hours), or d (days).");
 			ret = 1;
 		} else {
+			if( debug ) System.out.println("args len="+args.length);
 			int amt = 0;
 			long multiplyer = S;
 

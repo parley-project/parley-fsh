@@ -3,7 +3,6 @@ package us.bringardner.shell.commands;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -103,33 +102,36 @@ public class Wait extends ShellCommand{
 		}
 
 		int jobId = -1;
-		
+
 		if( n && jobs.isEmpty()) {
 			ret = 127;
 		} else {
-			boolean done = false;
-			Stack<Integer> exitCodes = new Stack<>();
-			
+			boolean done = false;			
+			List<Integer> complete = new ArrayList<Integer>();
+
 			while( !done ) {
 				for(IJob job : jobs) {
-					if( !job.isRunning()) {
-						exitCodes.push(job.getExitCode());
-						jobId = job.getPid();
-						if(f || exitCodes.size()==jobs.size()) {
+					if( !complete.contains(job.getPid())) {
+						if( !job.isRunning()) {
 							ret = job.getExitCode();
-							done = true;
-							break;
+							jobId = job.getPid();
+							complete.add(jobId);
+							//System.out.println("jobId="+jobId+" ret = "+ret);
+							if(f || complete.size()==jobs.size()) {
+								done = true;
+								break;
+							}
 						}
 					}
 				}
-				
+
 				try {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
 				}
 			}
 		}
-		
+
 		if( varName !=null) {
 			ctx.setVariable(varName, jobId);
 		}
