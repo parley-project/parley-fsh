@@ -39,7 +39,7 @@ public class TestPrompt extends AbstractConsoleTest {
 		String expect = "\\s-\\v\\$ ";
 		assertEquals(expect, val);
 		//-bash-4.2$
-		expect = "-"+Console.VERSION+"$ ";		
+		expect = "fssh-"+Console.VERSION+"$ ";		
 		val = console.getPrompt(Prompt.Primary);
 		assertEquals(expect, val);
 	}
@@ -62,7 +62,7 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("\\e", ""+((char)27));
 		expect.put("\\n", "\n");
 		expect.put("\\r", "\r");
-		expect.put("\\s", "");
+		expect.put("\\s", "fssh");
 		expect.put("\\h", InetAddress.getLocalHost().getHostName());
 		expect.put("\\H", InetAddress.getLocalHost().getHostName());
 		expect.put("\\\\", "\\");

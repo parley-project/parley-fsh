@@ -1329,7 +1329,7 @@ delimiter
 					// \e 	An escape character.
 				case 'e': ret.append((char)27); break;
 
-				// \h 	The hostname, up to the first ‘.’.
+				// \h 	The host name, up to the first ‘.’.
 				case 'h':
 					try {
 						String name = InetAddress.getLocalHost().getHostName();
@@ -1344,7 +1344,7 @@ delimiter
 					}
 
 					break;
-					// \H 	The hostname.
+					// \H 	The host name.
 				case 'H': 
 					try {
 						String host = InetAddress.getLocalHost().getHostName();
@@ -1369,7 +1369,7 @@ delimiter
 				case 'j':
 					ret.append(""+jobManager.getJobs().size());
 					break;
-					// \l	The basename of the shell’s terminal device name (e.g., "ttys0").
+					// \l	The base name of the shell’s terminal device name (e.g., "ttys0").
 				case 'l':ret.append("fssh"); 
 				break;
 				// \n	A newline.
@@ -1378,9 +1378,9 @@ delimiter
 				// \r 	A carriage return.
 				case 'r': ret.append("\r");
 				break;
-				// \s	The name of the shell: the basename of $0 (the portion following the final slash).
+				// \s	The name of the shell: the base name of $0 (the portion following the final slash).
 				case 's':
-					Object p = getPositionalParameters().get(0);
+					Object p = positionalParameters.get(0);
 					if(p !=null ) {
 						ret.append(""+p);
 					} else {
