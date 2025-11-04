@@ -3,14 +3,12 @@ package us.bringardner.shell.test.jobs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.shell.Console;
-import us.bringardner.shell.job.IJob;
 import us.bringardner.shell.test.AbstractConsoleTest;
 
 public class TestDisown extends AbstractConsoleTest {
@@ -51,7 +49,7 @@ public class TestDisown extends AbstractConsoleTest {
 		console.jobManager.clear();
 		
 		ExecuteResult res = executeCommand(code, "");
-		Thread.sleep(10);
+		Thread.sleep(20);
 		String val = new String(res.bae.toByteArray());
 		assertEquals(expectErr, val);
 		assertEquals(expectOut, new String(res.bao.toByteArray()));

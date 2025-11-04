@@ -43,7 +43,7 @@ public class ShellContext {
 	private Stack<Statement> statementStack = new Stack<>();
 	private AtomicBoolean pause = new AtomicBoolean();
 	private AtomicReference<Exception> exeption = new AtomicReference<>();
-	
+
 	public ShellContext() {
 		enterCommand();
 	}
@@ -57,7 +57,7 @@ public class ShellContext {
 		if( stdin == Console.System_in) {
 			stdin = new NativeKeyboard();
 		}
-	
+
 	}
 
 	public void addFunction(FunctionDefStatement function) {
@@ -502,11 +502,11 @@ $
 	public Exception getException() {
 		return exeption.get();
 	}
-	
+
 	public void setExecption(Exception e) {
 		exeption.set(e);
 	}
-	
+
 	public void enterStatement(Statement stmt) throws IOException {
 		statementStack.push(stmt);
 		if( console!=null ) {
@@ -523,21 +523,21 @@ $
 					}					
 				} while(console.debugContext.getCurrentState() == DebugContext.RunState.AtBreakpoint);					
 			}	
-		}
 
-		if( console.isOptionEnabled(Option.PrintCommandTrace)) {
-			if (stmt instanceof CommandStatement) {
-				CommandStatement cmd = (CommandStatement) stmt;
-				String ps4 = ""+console.getVariable(Console.VARIABLE_PS4);
-				stdout.print(ps4);
-				stdout.print(cmd.getName());
-				for(Argument a : cmd.getArgs()) {
-					stdout.print(" "+a.getValue(this));
-				}
-				stdout.println();
-			}				
-		}
 
+			if( console.isOptionEnabled(Option.PrintCommandTrace)) {
+				if (stmt instanceof CommandStatement) {
+					CommandStatement cmd = (CommandStatement) stmt;
+					String ps4 = ""+console.getVariable(Console.VARIABLE_PS4);
+					stdout.print(ps4);
+					stdout.print(cmd.getName());
+					for(Argument a : cmd.getArgs()) {
+						stdout.print(" "+a.getValue(this));
+					}
+					stdout.println();
+				}				
+			}
+		}
 
 		while(pause.get()) {
 			try {

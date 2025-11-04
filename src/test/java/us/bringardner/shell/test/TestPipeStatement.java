@@ -221,8 +221,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		ExecuteResult res = executeCommand(cmd,"");
 		// give time for stdout to get written
 		Thread.sleep(10);
-		int sz = console.jobManager.getJobs().size();
-		System.out.println("job sz="+sz);
+		
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		
