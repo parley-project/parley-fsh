@@ -46,11 +46,14 @@ public class JobManager {
 				return;
 			}
 			if( to == JobState.Termnated) {
-
+				if (job instanceof BackgroundJob){
+					BackgroundJob bj = (BackgroundJob) job;
+					bj.child.stop();
+				}
 			}
 
 
-			//System.out.println("State change pid="+job.getPid()+" from= "+from+" to="+to);
+
 		});
 		return ret;
 	}
@@ -93,6 +96,17 @@ public class JobManager {
 		}
 		jobs.clear();
 
+	}
+
+	public IJob getGetCurrentJob() {
+		if( jobs.size()>0) {
+			return jobs.getLast();
+		}
+		return null;
+	}
+
+	public void remove(IJob job) {
+		jobs.remove(job);		
 	}
 
 

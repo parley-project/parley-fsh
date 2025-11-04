@@ -28,36 +28,40 @@ public class Sleep extends ShellCommand{
 	public static boolean debug = false;
 	
 
-	static final long S = 1000;
-	static final long M = S*60;
-	static final long H = M*60;
-	static final long D = H*24;
+	static final long MilliSecond = 1;
+	static final long Second = 1000*MilliSecond;
+	static final long Minute = Second*60;
+	static final long Hour = Minute*60;
+	static final long Day = Hour*24;
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		if(args.length==0) {
-			ctx.stdout.println("Unit can be 's' (seconds, the default), m (minutes), h (hours), or d (days).");
+			ctx.stdout.println("Unit can be 's' (seconds, the default), m (minutes), h (hours), d (days) or M (millisecond).");
 			ret = 1;
 		} else {
 			if( debug ) System.out.println("args len="+args.length);
 			int amt = 0;
-			long multiplyer = S;
+			long multiplyer = Second;
 
 			for(Argument a :args) {
 				String val = ""+a.getValue(ctx);
 				if( val.endsWith("s")) {
 					val = val.substring(0,val.length()-1);
-					multiplyer = S;
+					multiplyer = Second;
 				} else if( val.endsWith("m")) {
 					val = val.substring(0,val.length()-1);
-					multiplyer = M;
+					multiplyer = Minute;
 				} else if( val.endsWith("h")) {
 					val = val.substring(0,val.length()-1);
-					multiplyer = H;
+					multiplyer = Hour;
 				} else if( val.endsWith("d")) {
 					val = val.substring(0,val.length()-1);
-					multiplyer = D;
+					multiplyer = Day;
+				} else if( val.endsWith("M")) {
+					val = val.substring(0,val.length()-1);
+					multiplyer = MilliSecond;
 				}
 				long tmp = Integer.parseInt(val)*multiplyer;
 				amt += tmp;

@@ -32,7 +32,7 @@ public class ForgroundJob extends AbstractJob {
 
 	@Override
 	public void handleSignal(ConsoleSignal signal) {
-		System.out.println("What to do???");
+		throw new RuntimeException("I don't know what to do???");
 		
 	}
 

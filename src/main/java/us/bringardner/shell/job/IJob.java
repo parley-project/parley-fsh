@@ -19,6 +19,9 @@ public interface IJob {
 
 	JobState getState();
 
+	void addIgnoreSignal(ConsoleSignal signal);
+	boolean isIgnoreSignal(ConsoleSignal signal);
+	
 	void handleSignal(ConsoleSignal continue1);
 
 	void setState(JobState suspended);
@@ -35,5 +38,7 @@ public interface IJob {
 	
 	void removeJobStateChangeListner(int id);
 
+	boolean isDisowned();
+	void setDisowned(boolean val);
 
 }

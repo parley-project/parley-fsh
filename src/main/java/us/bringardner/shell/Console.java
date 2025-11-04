@@ -54,6 +54,7 @@ import us.bringardner.shell.commands.Clear;
 import us.bringardner.shell.commands.Connect;
 import us.bringardner.shell.commands.Cp;
 import us.bringardner.shell.commands.Dirs;
+import us.bringardner.shell.commands.Disown;
 import us.bringardner.shell.commands.Echo;
 import us.bringardner.shell.commands.Eval;
 import us.bringardner.shell.commands.Exec;
@@ -328,6 +329,7 @@ delimiter
 		registerCommand(new Connect());
 		
 		registerCommand(new Dirs());
+		registerCommand(new Disown());
 		
 		registerCommand(new Eval());
 		registerCommand(new Exit());
@@ -542,6 +544,9 @@ delimiter
 				case Terminate:
 				case Kill: 
 					ctx.setExecption(new LoopControlException(LoopControl.Break,-1));
+					break;
+				case Suspend:
+					ctx.setExecption(new SuspendException(null));
 					break;
 				default:
 					throw new IllegalArgumentException("Unexpected value: " + signal);

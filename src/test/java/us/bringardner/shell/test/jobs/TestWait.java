@@ -54,11 +54,7 @@ public class TestWait extends AbstractConsoleTest {
 
 		Console.setNextPid(100000);
 		console.jobManager.clear();
-		long start = System.currentTimeMillis();
 		ExecuteResult res = executeCommand(code, "");
-		long stop = System.currentTimeMillis();
-		long time = stop - start;
-		System.out.println("time="+time);
 		String val = new String(res.bae.toByteArray());
 		assertEquals(expectErr, val);
 		assertEquals(expectOut, new String(res.bao.toByteArray()));

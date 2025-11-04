@@ -19,6 +19,8 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	private List<Integer> removedListners = new ArrayList<Integer>();
 	private List<JobStateChangeListner> listners = new ArrayList<JobStateChangeListner>();
 	private ShellContext ctx;
+	private List<ConsoleSignal> ignoreSignals = new ArrayList<ConsoleSignal>();
+	private boolean disowned = false;
 	
 	public AbstractJob(ShellContext ctx) {
 		this.ctx = ctx;
@@ -28,6 +30,29 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	public abstract int process() throws Exception;
 	
 	
+	@Override
+	public boolean isDisowned() {
+		return disowned;
+	}
+	
+	@Override
+	public void setDisowned(boolean val) {
+		disowned = val;
+		
+	}
+	
+	
+	@Override
+	public boolean isIgnoreSignal(ConsoleSignal signal) {
+		return ignoreSignals.contains(signal);
+	}
+	
+	@Override
+	public void addIgnoreSignal(ConsoleSignal signal) {
+		if( !ignoreSignals.contains(signal)) {
+			ignoreSignals.add(signal);
+		}		
+	}
 	
 	@Override
 	public ShellContext getShellContext() {

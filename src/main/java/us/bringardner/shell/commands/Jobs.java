@@ -13,7 +13,7 @@ import us.bringardner.shell.job.JobState;
 
 public class Jobs extends ShellCommand{
 	enum Options {l,n,p,r,s};
-	
+
 	static String name = "jobs";
 	// 								jobspec = %#
 	static String help = "jobs [-rs] [jobspec]\n"
@@ -28,7 +28,7 @@ public class Jobs extends ShellCommand{
 			+ "If the -x option is supplied, jobs replaces any jobspec found in command or arguments with the "
 			+ "	corresponding process group ID, and executes command, passing it arguments, returning its exit status."
 			;
-	
+
 	public Jobs() {
 		super(name, help);
 	}
@@ -44,16 +44,16 @@ public class Jobs extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		ShellArgument options = parserArgs(ctx, Options.class);
-		
-/*
+
+		/*
 [1]+  Running                 sleep 10 &
 [1]+  Done                    sleep 10
-*/
+		 */
 		//  this defines the current job
 		JobManager jm = ctx.console.jobManager;
 		List<IJob> ijobs = jm.getJobs();
 		int jobSize = ijobs.size();
-		
+
 		List<Integer> jobs = new ArrayList<>();
 		//  %[0-9] is parse as signed number rather that jobSpec 
 		if(options.paths.size()>0) {
@@ -67,37 +67,41 @@ public class Jobs extends ShellCommand{
 		if( specs !=null && specs.size()>0) {			
 			jobs.addAll(specs);			
 		} 
-		
+
 		if( jobs.size()==0) {
 			for(IJob job : ijobs) {
 				jobs.add(job.getJobNumber());
 			}
 		}
-		
+
 		for(Integer idx : jobs) {
-			boolean show = false;
-			
+
+
+
 			IJob job = jm.getJob(idx);
-			JobState state = job.getState();
-			if( state == JobState.Running) {				
-				show = !options.options.contains(Options.s) || options.options.contains(Options.r);
-			} else if( state == JobState.Suspended) {
-				show = options.options.contains(Options.s) || !options.options.contains(Options.r);
-			} else if( state == JobState.Termnated) {
-				show = !options.options.contains(Options.s) && !options.options.contains(Options.r);
-			}
-			
-			
-			if( show ) {
-				String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
-				if(options.options.contains(Options.l)) {
-					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.getPid()+" "+state+" "+job.toString());
-				} else {
-					ctx.stdout.println("["+((idx+1))+"] "+flag+" "+state+" "+job.toString());
+			if( !job.isDisowned()) {
+				boolean show = false;
+				JobState state = job.getState();
+				if( state == JobState.Running) {				
+					show = !options.options.contains(Options.s) || options.options.contains(Options.r);
+				} else if( state == JobState.Suspended) {
+					show = options.options.contains(Options.s) || !options.options.contains(Options.r);
+				} else if( state == JobState.Termnated) {
+					show = !options.options.contains(Options.s) && !options.options.contains(Options.r);
+				}
+
+
+				if( show ) {
+					String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
+					if(options.options.contains(Options.l)) {
+						ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.getPid()+" "+state+" "+job.toString());
+					} else {
+						ctx.stdout.println("["+((idx+1))+"] "+flag+" "+state+" "+job.toString());
+					}
 				}
 			}
 		}
-		
+
 		return ret;
 	}
 

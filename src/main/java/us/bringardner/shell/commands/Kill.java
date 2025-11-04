@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import sun.misc.Signal;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -145,8 +144,8 @@ public class Kill extends ShellCommand{
 			if( val.startsWith("SIG") ) {
 				val = val.substring(3);
 			}			
-			Signal s = new Signal(val);
-			ret = s.getNumber();
+			ConsoleSignal tmp = ConsoleSignal.find(val);
+			ret = tmp.value;
 		}
 
 		return ret;

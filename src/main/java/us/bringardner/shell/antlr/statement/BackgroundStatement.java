@@ -43,7 +43,7 @@ public class BackgroundStatement extends Statement{
 				}
 			}
 			if( ctx.console.isInteractive) {
-				String tmp = "["+(job.jobNumber+1)+"] "+job.pid;			
+				String tmp = "["+(job.getJobNumber()+1)+"] "+job.pid;			
 				sc.stdout.println(tmp);
 			}
 		} catch (Exception e) {

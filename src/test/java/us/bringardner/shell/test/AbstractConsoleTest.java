@@ -101,13 +101,19 @@ public abstract class AbstractConsoleTest {
 		List<IJob> jobs = console.jobManager.getJobs();
 		long start = System.currentTimeMillis();
 
+	
 		if( waitForJobs) {
 			boolean done = false;
+			int cnt = 0;
 			while( !done ) {
 				long time = System.currentTimeMillis()-start;
 				if( time > 2000) {
 					System.out.println("Waiting for jobs to stop...");
 					start = System.currentTimeMillis();
+					if( ++cnt > 5) {
+						System.out.println("Exit Waiting for jobs to stop...");
+						break;
+					}
 				}
 
 				done = true;
