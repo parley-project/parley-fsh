@@ -98,7 +98,7 @@ public class TreeViewer2 extends JComponent {
 			FontMetrics fontMetrics = viewer.getFontMetrics(viewer.font);
 			String s = viewer.getText(tree);
 			int w = fontMetrics.stringWidth(s) + viewer.nodeWidthPadding*2;
-			System.out.println("s="+s+" w="+w);
+			//System.out.println("s="+s+" w="+w);
 			return w;
 		}
 
