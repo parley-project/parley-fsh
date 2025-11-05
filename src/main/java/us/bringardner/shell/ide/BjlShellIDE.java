@@ -97,10 +97,10 @@ public class BjlShellIDE extends JFrame  {
 
 
 
-	private static  List<BjlShellIDE> procs = new ArrayList<>();
+	private static  List<BjlShellIDE> ideWindows = new ArrayList<>();
 
 	private synchronized static void register(BjlShellIDE p) {
-		procs.add(p);
+		ideWindows.add(p);
 	}
 
 	private synchronized static void close(BjlShellIDE p) {
@@ -113,7 +113,7 @@ public class BjlShellIDE extends JFrame  {
 			}
 		}
 
-		if(!approved && procs.size() == 1) {
+		if(!approved && ideWindows.size() == 1) {
 			Object[] options = { "Exit Application", "No, Don't exit" };
 
 			int ret = JOptionPane.showOptionDialog(p, "Closing this window will cause the application to exit.\nClose anyway?", "Warning",
@@ -129,10 +129,10 @@ public class BjlShellIDE extends JFrame  {
 		}
 
 
-		procs.remove(p);
+		ideWindows.remove(p);
 		p.dispose();
 
-		if( procs.size() == 0 ) {
+		if( ideWindows.size() == 0 ) {
 			System.exit(0);
 		}
 
@@ -196,7 +196,7 @@ public class BjlShellIDE extends JFrame  {
 		String msg;
 	}
 
-	
+
 	private class RuntimeOuputStream extends OutputStream {
 
 		@Override
@@ -338,8 +338,8 @@ public class BjlShellIDE extends JFrame  {
 		BjlShellIDE frame = new BjlShellIDE();
 		frame.setIconImages(imageList);
 
-		if( procs.size() > 0 ) {
-			BjlShellIDE last = procs.get(procs.size()-1);
+		if( ideWindows.size() > 0 ) {
+			BjlShellIDE last = ideWindows.get(ideWindows.size()-1);
 			Rectangle b = last.getBounds();
 			b.x+=50;
 			b.y+=50;
@@ -356,7 +356,7 @@ public class BjlShellIDE extends JFrame  {
 		}
 
 		register(frame);
-		
+
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -392,7 +392,7 @@ public class BjlShellIDE extends JFrame  {
 			if( scriptFile !=null ) {
 				tmp = scriptFile.getAbsolutePath()+" "+tmp;
 			} else {
-				tmp = "FsShIde "+tmp;
+				tmp = "FsshIde "+tmp;
 			}
 			Object args[] =  tmp.split("\\s");
 
@@ -403,17 +403,35 @@ public class BjlShellIDE extends JFrame  {
 			console.setDebugContext(debugContext);
 
 
-			PrintStream out = System.out;
-			PrintStream err = System.err;
-			System.setOut(new PrintStream(new RuntimeOuputStream()));
-			System.setErr(new PrintStream(new RuntimeOuputStream()));
-			if(useSelectedCodeCheckItem.isSelected() && code.selectedCode!=null) {
-				console.executeUsingAntlr(code.selectedCode);
-			} else {
-				console.executeUsingAntlr(code.allCode);
+			console.setStdOut(new PrintStream(new RuntimeOuputStream()));
+			console.setStdErr(new PrintStream(new RuntimeOuputStream()));
+			// console will use NativeKeyboardReader
+			console.setStdIn(System.in);
+
+			try {
+				if(!stdInTextField.getText().trim().isEmpty()) {
+					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdInTextField.getText().trim());
+					console.setStdIn(file.getInputStream());
+				}
+				if(!stdOutTextField.getText().trim().isEmpty()) {
+					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdOutTextField.getText().trim());
+					console.setStdOut(new PrintStream(file.getOutputStream()));
+				}
+				if(!stdErrTextField.getText().trim().isEmpty()) {
+					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdErrTextField.getText().trim());
+					console.setStdErr(new PrintStream(file.getOutputStream()));
+				}
+				
+				if(useSelectedCodeCheckItem.isSelected() && code.selectedCode!=null) {
+					console.executeUsingAntlr(code.selectedCode);
+				} else {
+					console.executeUsingAntlr(code.allCode);
+				}
+			} catch (Throwable e) {
+				e.printStackTrace(console.getStdErr());
+				//String msg = e.toString();
+				//console.getStdErr().println(msg);
 			}
-			System.setOut(out);
-			System.setErr(err);
 
 			running = false;
 			SwingUtilities.invokeLater(()->{
@@ -715,12 +733,12 @@ public class BjlShellIDE extends JFrame  {
 		menuPanel.add(executePanel);
 		executePanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
-		horizontalStrut = Box.createHorizontalStrut(400);
+		horizontalStrut = Box.createHorizontalStrut(40);
 		executePanel.add(horizontalStrut);
 
 
 		debugButton = new JButton("");
-		debugButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_debug_exc@2x.png")));
+		debugButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_debug_view.png")));
 		executePanel.add(debugButton);
 		debugButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -731,13 +749,64 @@ public class BjlShellIDE extends JFrame  {
 
 		executeButton = new JButton("");
 		executeButton.setSelectedIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_delete_config@2x.png")));
-		executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc@2x.png")));
+		executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc.png")));
 		executePanel.add(executeButton);
 
 		argumentsTextField = new JTextField();
 		argumentsTextField.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "Script Arguments", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 		menuPanel.add(argumentsTextField);
 		argumentsTextField.setColumns(30);
+
+		JPanel panel = new JPanel();
+		panel.setBorder(new TitledBorder(null, "stdin", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+		menuPanel.add(panel);
+
+		JButton btnNewButton = new JButton("");
+		btnNewButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/redirect_in.png")));
+		btnNewButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionBrowse(stdInTextField);
+			}
+		});
+		panel.add(btnNewButton);
+
+		stdInTextField = new JTextField();
+		panel.add(stdInTextField);
+		stdInTextField.setColumns(10);
+
+		JPanel panel_1 = new JPanel();
+		panel_1.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "stdout", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+		menuPanel.add(panel_1);
+
+		JButton btnNewButton_1 = new JButton("");
+		btnNewButton_1.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/redirect_out.png")));
+		btnNewButton_1.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionBrowse(stdOutTextField);
+			}
+		});
+		panel_1.add(btnNewButton_1);
+
+		stdOutTextField = new JTextField();
+		panel_1.add(stdOutTextField);
+		stdOutTextField.setColumns(10);
+
+		JPanel panel_1_1 = new JPanel();
+		panel_1_1.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "stderr", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+		menuPanel.add(panel_1_1);
+
+		JButton btnNewButton_1_1 = new JButton("");
+		btnNewButton_1_1.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/redirect_out.png")));
+		btnNewButton_1_1.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionBrowse(stdErrTextField);
+			}
+		});
+		panel_1_1.add(btnNewButton_1_1);
+
+		stdErrTextField = new JTextField();
+		stdErrTextField.setColumns(10);
+		panel_1_1.add(stdErrTextField);
 		executeButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionExecute(true);
@@ -874,6 +943,7 @@ public class BjlShellIDE extends JFrame  {
 		});
 
 		new Thread(()->{
+
 			String lastCode = null;
 			while(true) {
 				try {
@@ -885,7 +955,7 @@ public class BjlShellIDE extends JFrame  {
 							ShellContext ctx = new ShellContext(new Console());
 							code = ctx.console.preProcess(code, ctx);
 							editorPane.clearErrorMarkers();
-							
+
 							List<CompileError> errors = new ArrayList<>();
 							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code));
 							lexer.removeErrorListeners();
@@ -907,9 +977,9 @@ public class BjlShellIDE extends JFrame  {
 							});
 
 							ParseTree tree = parser.script();
-							
-							
-							
+
+
+
 							List<CompileError> compileErors = errors;
 							SwingUtilities.invokeLater(()->{
 								StringBuilder buf = new StringBuilder();
@@ -926,9 +996,10 @@ public class BjlShellIDE extends JFrame  {
 				} catch (Throwable e) {
 				}
 			}
-		}).start();
+		},"BjlShellIDE Treeview updater").start();
 
 		new Thread(()->{
+
 			while(!isDisplayable()) {
 				try {
 					Thread.sleep(100);
@@ -953,28 +1024,30 @@ public class BjlShellIDE extends JFrame  {
 				}
 
 			}
-			System.out.println("Exit updat etitle thread");
-		}).start();
+			System.out.println("Exit update title thread");
+		},"BjlShellIDE Title manager").start();
 
 		if( recentFiles != null && recentFiles.size()>0) {
 			String path = recentFiles.get(0);
-			String fName = path;
+			if( path !=null && !path.isEmpty()) {
+				String fName = path;
 
-			final String name = fName;
-			SwingUtilities.invokeLater(()->{
-				try {
-					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(name);
-					try(InputStream in = file.getInputStream()) {
-						String tmp = new String(in.readAllBytes());
-						setCode (tmp,autoExecuteCheckItem.isSelected());
-						scriptFile = file;
+				final String name = fName;
+				SwingUtilities.invokeLater(()->{
+					try {
+						FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(name);
+						try(InputStream in = file.getInputStream()) {
+							String tmp = new String(in.readAllBytes());
+							setCode (tmp,autoExecuteCheckItem.isSelected());
+							scriptFile = file;
 
-					};
+						};
 
-				} catch (IOException ex) {
-					showError(ex, "Can't write file");
-				}
-			});
+					} catch (IOException ex) {
+						showError(ex, "Can't read last edited file = "+name);
+					}
+				});
+			}
 		}
 
 
@@ -982,6 +1055,25 @@ public class BjlShellIDE extends JFrame  {
 	}
 
 
+
+	protected void actionBrowse(JTextField fld) {
+		try {
+
+			String current = fld.getText().trim();
+			FileSourceChooserDialog fc = new FileSourceChooserDialog();
+			if( !current.isEmpty()) {
+				FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(current);
+				fc.setSelectedFile(file);
+			}
+			if(fc.showOpenDialog(this) == FileSourceChooserDialog.APPROVE_OPTION) {
+				FileSource file = fc.getSelectedFile();
+				fld.setText(file.getAbsolutePath());
+			}
+		} catch (Exception e) {
+			showError(e, "");
+		}
+
+	}
 
 	protected void actionShowDebugView() {
 		if( runState == SolidFrameRunstate.Idel) {
@@ -1021,7 +1113,7 @@ public class BjlShellIDE extends JFrame  {
 
 
 
-	
+
 	protected void actionNewWindow() {
 		main(new String[0]);
 
@@ -1106,6 +1198,9 @@ public class BjlShellIDE extends JFrame  {
 	// -Xss4m
 	private long stackSize=((1024*1024));
 	private JTextField argumentsTextField;
+	private JTextField stdInTextField;
+	private JTextField stdOutTextField;
+	private JTextField stdErrTextField;
 	protected void actionExecute(boolean logError) {
 
 		switch (runState) {
@@ -1143,7 +1238,7 @@ public class BjlShellIDE extends JFrame  {
 			}
 
 
-			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc@2x.png")));		
+			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc.png")));		
 			horizontalStrut.setVisible(true);
 			debugButton.setVisible(true);
 			executeButton.setVisible(true);
@@ -1172,7 +1267,7 @@ public class BjlShellIDE extends JFrame  {
 
 			logView.setText("");
 			outputTextArea.setText("");
-			
+
 			currentTask = new ExecuteTask(code);
 
 			Thread th = new Thread(null,currentTask,"ExecuteThread",stackSize);
@@ -1197,8 +1292,8 @@ public class BjlShellIDE extends JFrame  {
 		}
 		try {
 			if( scriptFile != null && scriptFile.exists()) {
-					String code =  (new String(Files.readAllBytes(Paths.get(scriptFile.getCanonicalPath())), "UTF-8"));
-					setCode(code,autoExecuteCheckItem.isSelected());
+				String code =  (new String(Files.readAllBytes(Paths.get(scriptFile.getCanonicalPath())), "UTF-8"));
+				setCode(code,autoExecuteCheckItem.isSelected());
 			}			
 		} catch (IOException e) {
 			showError(e, "Can't read file");			
