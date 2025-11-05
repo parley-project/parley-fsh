@@ -60,7 +60,12 @@ public class FunctionDefStatement extends Statement{
 		if( debug == RunState.StepOver) {
 			ctx.console.getDebugContext().setCurrentState(RunState.Running);
 		}
-		ctx.enterFunction(args,this);
+		//  functions args must be evaluated before function stack is updated
+		Object [] tmp = new Object[args.length];
+		for (int idx = 0; idx < args.length; idx++) {
+			tmp[idx] = args[idx].getValue(ctx);
+		}
+		ctx.enterFunction(tmp,this);
 		try {
 			for(Statement s : stmts) {				
 				ret=s.process(ctx);

@@ -186,4 +186,30 @@ public class TestFunction extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 	}
 	
+	
+	@Test
+	public void testFunction06() throws Exception{
+		String cmd = "function fun() {\n"
+				+ "	echo $1\n"
+				+ "	echo two\n"
+				+ "}\n"
+				+ "\n"
+				+ "fun $1\n"
+				+ "fun $2\n";
+		
+		String expect = 
+				"arg1\n"
+				+ "two\n"
+				+ "arg2\n"
+				+ "two\n"
+				;
+		//System.out.println(cmd);
+		ExecuteResult res = executeCommand(cmd,"","arg1","arg2");
+		String out = new String(res.bao.toByteArray());
+		String err = new String(res.bae.toByteArray());
+		assertEquals("", err);
+		assertEquals(expect, out);
+		assertEquals(0, res.exitCode);
+	}
+	
 }

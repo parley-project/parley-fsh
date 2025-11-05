@@ -388,7 +388,8 @@ $
 		if( !functionStack.isEmpty()) {
 			FunctionInvocation inv = functionStack.peek();
 			if(pos>0 && pos < inv.args.size()) {
-				return inv.args.get(pos);
+				Object val = inv.args.get(pos);
+				return val;
 			} else {
 				return null;
 			}
@@ -458,16 +459,17 @@ $
 		FunctionDefStatement function;
 		Map<String,Object> local = new TreeMap<>();
 
-		public FunctionInvocation(Argument[] args2, FunctionDefStatement function) {
+		public FunctionInvocation(Object[] args2, FunctionDefStatement function) throws IOException {
+			this.function = function;
 			this.args.add(function.getName());
 			this.args.addAll(Arrays.asList(args2));
-			this.function = function;
+						
 		}
 
 	}
 	Stack<FunctionInvocation> functionStack = new Stack<>();
 
-	public void enterFunction(Argument[] args, FunctionDefStatement function) {
+	public void enterFunction(Object[] args, FunctionDefStatement function) throws IOException {
 		Object tmp = getEvironmentVariable("FUNCNEST");
 		if( tmp != null ) {
 			try {
@@ -479,7 +481,7 @@ $
 			} catch (Exception e) {
 			}
 		}
-
+		
 		functionStack.push(new FunctionInvocation(args,function));		
 	}
 
