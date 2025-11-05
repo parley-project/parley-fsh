@@ -195,6 +195,7 @@ public class Console extends SignalEnabledThread {
 		, NoClobberRedirect ("C")
 		, DontFollowLinks ("P")
 		, KeyboardEcho ("kbecho")
+		, VerboseError ("verboseError")
 		;
 		public final String label;
 
@@ -2337,6 +2338,9 @@ delimiter
 			//e.printStackTrace();
 			ret = 1;
 			sc.stderr.println(e);
+			if( isOptionEnabled(Option.VerboseError)) {
+				e.printStackTrace(sc.stderr);
+			}
 			logError("", e);
 			handleMetaSignal(ConsoleMetaSignal.Err);
 		}
