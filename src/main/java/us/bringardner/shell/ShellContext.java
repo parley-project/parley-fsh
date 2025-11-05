@@ -399,7 +399,7 @@ $
 				return console.positionalParameters.get(pos);
 			}
 		}
-		return null;
+		return "";
 	}
 
 	@SuppressWarnings("unchecked")
