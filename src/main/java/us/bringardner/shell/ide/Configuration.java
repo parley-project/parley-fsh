@@ -100,7 +100,7 @@ public class Configuration {
 			synchronized (Configuration.class) {
 				if( configFile == null ) {
 					File home = new File(System.getProperty("user.home"));
-					File dir = new File(home,".bjlsh");
+					File dir = new File(home,".bjlshellIde");
 					if(!dir.exists()) {
 						dir.mkdirs();
 					}
@@ -170,6 +170,11 @@ public class Configuration {
 					+ "  ${echo}\n"
 					+ "done\n"),
 			
+			new Template( "for", "for-c-style", 
+					"for((${var}=${start}; ${var}<${end}; ${var}++))\n"
+					+ "do\n"
+					+ "\n\techo ${var};\n"
+					+ "done\n"),
 			new Template( "for", "for-array", 
 					"for ${i} in ${1 2};\n"
 					+ "do\n"
