@@ -25,7 +25,7 @@ public class Set extends ShellCommand{
 			+ "set -- [argument...]\n"
 			+ "set -o\n"
 			+ "set +o\n";
-	
+
 	public Set() {
 		super(name, help);
 	}
@@ -41,12 +41,12 @@ public class Set extends ShellCommand{
 
 		, PrintLinesAsRead ("v")
 		, PrintCommandTrace ("x")
-	
+
 
 	 */
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		
+
 		int ret = 0;
 		if( args == null || args.length == 0) {
 			throw new IOException("Args are not availible");
@@ -67,39 +67,45 @@ public class Set extends ShellCommand{
 				break;
 			} else if(val.startsWith("-") || val.startsWith("+")) {
 				boolean set = val.startsWith("-");
-				for(char c : val.substring(1).toCharArray()) {
-					Option o = Option.find(""+c);
-					
-					if( o == Option.Unsupported) {
-						String tmp = ""+ctx.getVariable("$0");
-						
-						tmp+=" "+a.getContext().getStart().getLine()+","+a.getContext().getStart().getCharPositionInLine()+": ";
-						tmp += (set?"-":"+")+""+c+": invalid option";
-						ctx.stderr.println(tmp);
-						return 1;
-					}
-					if( o == Option.Option) {
-						if(idx < args.length-1) {
-							Argument a2 = args[++idx];
-							val = ""+a2.getValue(ctx);
-							Option o2 = Option.find(val);
-							if( o2 == null ) {
-								throw new IOException("unknown -o option name");
-							}
-							ctx.console.setOption(o2, set);							
-						} else {
-							for(Option oo : Console.Option.values()) {
-								if(oo != Option.Option) {
-									if( set ) {
-										ctx.stdout.printf("%s\t: %s\n",oo.toString(), (ctx.console.isOptionEnabled(oo)?"on":"off"));
-									} else {
-										ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.toString());
+				String val1 = val.substring(1);
+				Option o1 = Option.find(val1);
+				if( o1 != Option.Unsupported) {
+					ctx.console.setOption(o1, set);	
+				} else {
+					for(char c : val.substring(1).toCharArray()) {
+						Option o = Option.find(""+c);
+
+						if( o == Option.Unsupported) {
+							String tmp = ""+ctx.getVariable("$0");
+
+							tmp+=" "+a.getContext().getStart().getLine()+","+a.getContext().getStart().getCharPositionInLine()+": ";
+							tmp += (set?"-":"+")+""+c+": invalid option";
+							ctx.stderr.println(tmp);
+							return 1;
+						}
+						if( o == Option.Option) {
+							if(idx < args.length-1) {
+								Argument a2 = args[++idx];
+								val = ""+a2.getValue(ctx);
+								Option o2 = Option.find(val);
+								if( o2 == null ) {
+									throw new IOException("unknown -o option name");
+								}
+								ctx.console.setOption(o2, set);							
+							} else {
+								for(Option oo : Console.Option.values()) {
+									if(oo != Option.Option) {
+										if( set ) {
+											ctx.stdout.printf("%s\t: %s\n",oo.toString(), (ctx.console.isOptionEnabled(oo)?"on":"off"));
+										} else {
+											ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.toString());
+										}
 									}
 								}
 							}
+						} else {
+							ctx.console.setOption(o, set);
 						}
-					} else {
-						ctx.console.setOption(o, set);
 					}
 				}
 			} else {
@@ -109,7 +115,7 @@ public class Set extends ShellCommand{
 		if( idx < args.length) {
 			// set them
 			FsshList pp = new FsshList();
-			
+
 			for (; idx < args.length; idx++) {
 				Object val2 = args[idx].getValue(ctx);
 				pp.add(val2);
@@ -118,7 +124,7 @@ public class Set extends ShellCommand{
 		} else if( val.equals("--")) {
 			ctx.console.setPositionalParameters(isMain,new FsshList());
 		}
-		
+
 		return ret;
 	}
 
