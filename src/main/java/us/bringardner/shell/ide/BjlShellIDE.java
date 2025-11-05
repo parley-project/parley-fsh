@@ -40,7 +40,6 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.prefs.BackingStoreException;
@@ -84,6 +83,7 @@ import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.DebugContext;
 import us.bringardner.shell.DebugContext.RunState;
+import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.Compare;
@@ -389,15 +389,26 @@ public class BjlShellIDE extends JFrame  {
 
 			Console console = new Console();
 			String tmp =  argumentsTextField.getText();
-			if( scriptFile !=null ) {
-				tmp = scriptFile.getAbsolutePath()+" "+tmp;
-			} else {
-				tmp = "FsshIde "+tmp;
+			
+			String tmpargs[] =  tmp.split("\\s");
+			List<String> ops = new ArrayList<String>();
+			for(String a : tmpargs) {
+				if( !a.startsWith("-")) {
+					break;
+				}
+				ops.add(a);
 			}
-			Object args[] =  tmp.split("\\s");
-
-
-			console.setPositionalParameters(true, Arrays.asList(args));
+			
+			List<String> args = new ArrayList<String>();
+			for(int idx = ops.size(); idx < tmpargs.length;idx++) {
+				args.add(tmpargs[idx]);
+			}
+			
+			
+			String codeToRun = code.allCode;
+			if(useSelectedCodeCheckItem.isSelected() && code.selectedCode!=null) {
+				codeToRun=code.selectedCode;
+			} 
 
 			debugContext.setCurrentState(RunState.Running);
 			console.setDebugContext(debugContext);
@@ -421,12 +432,28 @@ public class BjlShellIDE extends JFrame  {
 					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdErrTextField.getText().trim());
 					console.setStdErr(new PrintStream(file.getOutputStream()));
 				}
-				
-				if(useSelectedCodeCheckItem.isSelected() && code.selectedCode!=null) {
-					console.executeUsingAntlr(code.selectedCode);
-				} else {
-					console.executeUsingAntlr(code.allCode);
+			
+				// let console call set to init options
+				if( ops.size()>0) {
+					console.execute((String[])ops.toArray(new String[ops.size()]));	
+					console.isInteractive=false;
 				}
+				
+				// correct $0
+				FsshList pp = new FsshList();
+				if( scriptFile !=null ) {
+					pp.add(0, scriptFile.getAbsolutePath());
+				} else {
+					pp.add(0, "FsshIde");
+				}
+				for(String a : args) {
+					pp.add(a);
+				}
+				
+				console.setPositionalParameters(true, pp);
+				
+				console.executeUsingAntlr(codeToRun);
+				
 			} catch (Throwable e) {
 				e.printStackTrace(console.getStdErr());
 				//String msg = e.toString();
