@@ -30,9 +30,9 @@ public class BackgroundJob extends AbstractJob{
 	
 	@Override
 	public void handleSignal(ConsoleSignal signal)  {
-		JobState cstate = getState();
+		JobState currentState = getState();
 		
-		switch (cstate) {
+		switch (currentState) {
 		case Termnated:
 		case Notified:return;
 		default:
@@ -45,7 +45,7 @@ public class BackgroundJob extends AbstractJob{
 				child.handleSignal(signal);
 				break;
 			case Continue: 
-				if( cstate == JobState.Suspended) {
+				if( currentState == JobState.Suspended) {
 					setState(JobState.Running);
 				}
 				
@@ -62,7 +62,7 @@ public class BackgroundJob extends AbstractJob{
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + signal);
 			}
-				
+			
 		}
 	} 
 	
@@ -90,6 +90,13 @@ public class BackgroundJob extends AbstractJob{
 		}
 		
 		return child.exitCode;
+	}
+
+
+	@Override
+	protected void interrupt() {
+		thread.interrupt();
+		child.interrupt();		
 	}
 
 }

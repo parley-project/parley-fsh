@@ -141,9 +141,12 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 				listners.get(idx).JobStateChanged(this, lastState,state);
 			}
 		}
-		
+		interrupt();
 	}
 	
+	protected abstract void interrupt();
+
+
 	public int getJobNumber() {
 		return jobNumber;
 	}

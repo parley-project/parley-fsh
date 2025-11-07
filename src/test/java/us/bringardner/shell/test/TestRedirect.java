@@ -157,6 +157,23 @@ public class TestRedirect extends AbstractConsoleTest {
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 		
 	}
+	
+	@Test
+	public void testRedirect01_7() throws Exception{
+		String cmd = "echo here 2>&1/dev/null"
+				;
+
+		String expectOut = 
+				""
+				;
+		String stdIn = "";
+		String expectErr = "";
+		int exitCode = 0;
+		
+		
+		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+		
+	}
 
 
 

@@ -42,7 +42,7 @@ public class Sleep extends ShellCommand{
 			ret = 1;
 		} else {
 			if( debug ) System.out.println("args len="+args.length);
-			int amt = 0;
+			int timeToSleep = 0;
 			long multiplyer = Second;
 
 			for(Argument a :args) {
@@ -64,10 +64,10 @@ public class Sleep extends ShellCommand{
 					multiplyer = MilliSecond;
 				}
 				long tmp = Integer.parseInt(val)*multiplyer;
-				amt += tmp;
+				timeToSleep += tmp;
 			}
-			if( debug ) System.out.println("start amt="+amt);
-			while( amt > 0 ) {
+			if( debug ) System.out.println("start amt="+timeToSleep);
+			while( timeToSleep > 0 ) {
 				if( ctx.getException()!=null) {
 					return ret;
 				}
@@ -77,16 +77,18 @@ public class Sleep extends ShellCommand{
 					} catch (InterruptedException e) {
 					}
 				} else {
+					long start = System.currentTimeMillis();
 					try {
-						int tmp = amt>10?10:amt;
-						Thread.sleep(tmp);
-						amt -= tmp;
-						if( debug ) System.out.println("sleep amt="+amt);
+						Thread.sleep(timeToSleep);
 					} catch (InterruptedException e) {
+						System.out.println("Sleep interupted");
+						Thread.currentThread().interrupt();
 					}
+					long end = System.currentTimeMillis();
+					timeToSleep -= (end-start);
 				}
 			}
-			if( debug ) System.out.println("end amt="+amt);
+			if( debug ) System.out.println("end amt="+timeToSleep);
 		}
 
 

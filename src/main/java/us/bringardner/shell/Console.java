@@ -558,6 +558,10 @@ delimiter
 			}
 		}
 
+		public void interrupt() {
+			thread.interrupt();			
+		}
+
 	}
 
 

@@ -154,8 +154,8 @@ public class BjlShellIDE extends JFrame  {
 
 	private boolean hasChanged() {
 
-
-		boolean ret = !original.equals(getCode());
+		String tmp = getCode();
+		boolean ret = !original.equals(tmp);
 
 		return ret;
 	}
@@ -378,6 +378,7 @@ public class BjlShellIDE extends JFrame  {
 		ExecutableCode code = null;
 		private boolean running = false;
 		private boolean canceled = false;
+		public Thread thread;
 
 		public ExecuteTask(ExecutableCode code) {
 			this.code = code;
@@ -456,8 +457,6 @@ public class BjlShellIDE extends JFrame  {
 				
 			} catch (Throwable e) {
 				e.printStackTrace(console.getStdErr());
-				//String msg = e.toString();
-				//console.getStdErr().println(msg);
 			}
 
 			running = false;
@@ -477,6 +476,7 @@ public class BjlShellIDE extends JFrame  {
 
 		public synchronized  void cancel() {
 			canceled = true;
+			thread.interrupt();
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
 			}
@@ -1215,8 +1215,37 @@ public class BjlShellIDE extends JFrame  {
 		return ret1;
 	}
 
-	protected String getCode() {			
-		return editorPane.getText();
+	private static final String SCRIPT_ARGS="#BjlIdeScriptArgs=";
+	private static final String SCRIPT_IN  ="#BjlIdeScriptIn=";
+	private static final String SCRIPT_OUT ="#BjlIdeScriptOut=";
+	private static final String SCRIPT_ERR ="#BjlIdeScriptErr=";
+	
+	protected String getCode() {		
+		
+		StringBuilder buf = new StringBuilder();
+		String args = argumentsTextField.getText().trim();
+		
+		if(!args.isEmpty()) {
+			buf.append(SCRIPT_ARGS+args+"\n");
+		}
+		
+		args = stdInTextField.getText().trim();		
+		if(!args.isEmpty()) {
+			buf.append(SCRIPT_IN+args+"\n");
+		}
+		args = stdOutTextField.getText().trim();		
+		if(!args.isEmpty()) {
+			buf.append(SCRIPT_OUT+args+"\n");
+		}
+		
+		args = stdErrTextField.getText().trim();		
+		if(!args.isEmpty()) {
+			buf.append(SCRIPT_ERR+args+"\n");
+		}
+		
+		String ret = buf+editorPane.getText();
+		
+		return ret;
 	}
 
 
@@ -1248,6 +1277,9 @@ public class BjlShellIDE extends JFrame  {
 		if( SwingUtilities.isEventDispatchThread()) {
 			if(currentTask !=null && currentTask.isRunning() ) {
 				currentTask.cancel();
+				
+				
+				
 				int cnt = 0;
 				do {
 					try {
@@ -1285,11 +1317,13 @@ public class BjlShellIDE extends JFrame  {
 			for(Breakpoint bp: map.values()) {
 				bp.reset();
 			}
+			
 			ExecutableCode code = getExecutableCode();
 			if( code.allCode == null || code.allCode.isEmpty()) {
 				return;
 			}
-			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_delete_config@2x.png")));
+			
+			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/Stop.png")));
 
 
 			logView.setText("");
@@ -1298,6 +1332,7 @@ public class BjlShellIDE extends JFrame  {
 			currentTask = new ExecuteTask(code);
 
 			Thread th = new Thread(null,currentTask,"ExecuteThread",stackSize);
+			currentTask.thread = th;
 			th.setDaemon(true);
 			th.setName("Execute thread "+(++count));
 			runState = state;
@@ -1330,7 +1365,23 @@ public class BjlShellIDE extends JFrame  {
 
 	protected void setCode(String code,boolean execute) {
 		original = code;
-		editorPane.setText(code,scriptFile);
+		String [] lines = code.split("\n");
+		StringBuilder buf = new StringBuilder();
+		for(String line:lines) {
+			if( line.startsWith(SCRIPT_ARGS)) {
+				argumentsTextField.setText(line.substring(SCRIPT_ARGS.length()));
+			} else if( line.startsWith(SCRIPT_IN)) {
+				stdInTextField.setText(line.substring(SCRIPT_IN.length()));
+			} else if( line.startsWith(SCRIPT_OUT)) {
+				stdOutTextField.setText(line.substring(SCRIPT_OUT.length()));
+			} else if( line.startsWith(SCRIPT_ERR)) {
+				stdErrTextField.setText(line.substring(SCRIPT_ERR.length()));
+			} else  {
+				buf.append(line+"\n");
+			}
+		}
+		
+		editorPane.setText(buf.toString(),scriptFile);
 	}
 
 	protected void actionSave() {
@@ -1432,7 +1483,7 @@ public class BjlShellIDE extends JFrame  {
 		if(fc.showOpenDialog(null) == FileSourceChooserDialog.APPROVE_OPTION) {
 			scriptFile = fc.getSelectedFile();
 			try(InputStream in = scriptFile.getInputStream()) {
-				String code = new String(in.readAllBytes());
+				String code = new String(in.readAllBytes());				
 				setCode(code, false);
 				recentFiles.remove(scriptFile.getAbsolutePath());
 				recentFiles.add(0, scriptFile.getAbsolutePath());
