@@ -25,10 +25,11 @@ public class TestEcho extends AbstractConsoleTest {
 
 
 	@Test
-	public void testEcho() throws IOException {
+	public void testEcho01() throws IOException {
 		String [] code = 
 			{
-					"help"
+				 "list of extra cool words   with space\t and tab"
+					,"help"
 					, "list of words"
 					, "list of extra cool words"
 			}
