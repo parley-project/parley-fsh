@@ -33,6 +33,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -81,6 +82,8 @@ import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceChooserDialog;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.Console;
+import us.bringardner.shell.Console.ConsoleState;
+import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.DebugContext;
 import us.bringardner.shell.DebugContext.RunState;
 import us.bringardner.shell.FsshList;
@@ -89,6 +92,7 @@ import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.Compare;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.statement.LoopStatement.LoopControlException;
+import us.bringardner.shell.job.AbstractJob;
 
 
 public class BjlShellIDE extends JFrame  {
@@ -378,92 +382,110 @@ public class BjlShellIDE extends JFrame  {
 		ExecutableCode code = null;
 		private boolean running = false;
 		private boolean canceled = false;
-		public Thread thread;
+		AbstractJob job;
 
 		public ExecuteTask(ExecutableCode code) {
 			this.code = code;
 		}
 
-		@Override 
-		public void run()  {
-			running = true;
-
-			Console console = new Console();
-			String tmp =  argumentsTextField.getText();
-			
-			String tmpargs[] =  tmp.split("\\s");
-			List<String> ops = new ArrayList<String>();
-			for(String a : tmpargs) {
-				if( !a.startsWith("-")) {
-					break;
-				}
-				ops.add(a);
-			}
-			
-			List<String> args = new ArrayList<String>();
-			for(int idx = ops.size(); idx < tmpargs.length;idx++) {
-				args.add(tmpargs[idx]);
-			}
-			
-			
-			String codeToRun = code.allCode;
+		private String getCodeToRun() {
+			String codeToRun;
 			if(useSelectedCodeCheckItem.isSelected() && code.selectedCode!=null) {
 				codeToRun=code.selectedCode;
-			} 
+			} else {
+				codeToRun= code.allCode;
+			}
 
-			debugContext.setCurrentState(RunState.Running);
-			console.setDebugContext(debugContext);
+			codeToRun = "#!fssh\n"+codeToRun;
+
+			return codeToRun;
+		}
+
+		private FileSource getFileToRun() throws IOException {
+			FileSource ret = scriptFile;
+
+			String codeToRun = getCodeToRun();
+
+			String fileName = ret == null?"bjlsh":ret.getName();
+			File tmp = File.createTempFile(fileName, ".fssh");
+			tmp.deleteOnExit();
+			ret = FileSourceFactory.getDefaultFactory().createFileSource(tmp.getCanonicalPath());
+			try(OutputStream out = ret.getOutputStream()) {
+				out.write(codeToRun.getBytes());
+			}				
 
 
+			if( !ret.canExecute()) {
+				if( !ret.setExecutable(true)) {
+					throw new IOException("Can't set executable permission for "+ret);
+				}
+			}
+			return ret;
+		}
+
+		private Console getConsoleToRun() throws IOException {
+			Console console = new Console();
 			console.setStdOut(new PrintStream(new RuntimeOuputStream()));
 			console.setStdErr(new PrintStream(new RuntimeOuputStream()));
 			// console will use NativeKeyboardReader
 			console.setStdIn(System.in);
 
+			if(!stdInTextField.getText().trim().isEmpty()) {
+				FileSource file1 = FileSourceFactory.getDefaultFactory().createFileSource(stdInTextField.getText().trim());
+				console.setStdIn(file1.getInputStream());
+			}
+			if(!stdOutTextField.getText().trim().isEmpty()) {
+				FileSource file1 = FileSourceFactory.getDefaultFactory().createFileSource(stdOutTextField.getText().trim());
+				console.setStdOut(new PrintStream(file1.getOutputStream()));
+			}
+			if(!stdErrTextField.getText().trim().isEmpty()) {
+				FileSource file1 = FileSourceFactory.getDefaultFactory().createFileSource(stdErrTextField.getText().trim());
+				console.setStdErr(new PrintStream(file1.getOutputStream()));
+			}
+			return console;
+		}
+
+		@Override 
+		public void run()  {			
+
+			running = true;
+
+			FileSource file=null;
+
 			try {
-				if(!stdInTextField.getText().trim().isEmpty()) {
-					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdInTextField.getText().trim());
-					console.setStdIn(file.getInputStream());
-				}
-				if(!stdOutTextField.getText().trim().isEmpty()) {
-					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdOutTextField.getText().trim());
-					console.setStdOut(new PrintStream(file.getOutputStream()));
-				}
-				if(!stdErrTextField.getText().trim().isEmpty()) {
-					FileSource file = FileSourceFactory.getDefaultFactory().createFileSource(stdErrTextField.getText().trim());
-					console.setStdErr(new PrintStream(file.getOutputStream()));
-				}
-			
-				// let console call set to init options
-				if( ops.size()>0) {
-					console.execute((String[])ops.toArray(new String[ops.size()]));	
-					console.isInteractive=false;
-				}
-				
-				// correct $0
-				FsshList pp = new FsshList();
-				if( scriptFile !=null ) {
-					pp.add(0, scriptFile.getAbsolutePath());
-				} else {
-					pp.add(0, "FsshIde");
-				}
-				for(String a : args) {
-					pp.add(a);
-				}
-				
-				console.setPositionalParameters(true, pp);
-				
-				console.executeUsingAntlr(codeToRun);
-				
-			} catch (Throwable e) {
-				e.printStackTrace(console.getStdErr());
+				file = getFileToRun();
+			} catch (IOException e) {
+				running=false;
+				showError(e, "");
 			}
 
-			running = false;
+			if( file != null ) {
+
+				Console console = null;						
+				try {				
+					console = getConsoleToRun();
+				} catch (Exception e) {
+					running=false;
+					showError(e, "");
+				}
+
+				if( console != null ) {
+					String args1[] =  argumentsTextField.getText().split("\\s");
+					String [] args = new String[args1.length+1];
+					args[0]=file.getAbsolutePath();
+					for (int idx = 1; idx < args.length; idx++) {
+						args[idx] = args1[idx-1];
+					}
+
+					int exitCode = console.execute(args);
+					System.out.println("exitCode = "+exitCode);
+				}
+			}
+			running=false;
 			SwingUtilities.invokeLater(()->{
 				stopTask();	
 			});
-			return;
+
 		}
 
 		public synchronized boolean isRunning () {
@@ -476,7 +498,7 @@ public class BjlShellIDE extends JFrame  {
 
 		public synchronized  void cancel() {
 			canceled = true;
-			thread.interrupt();
+			job.handleSignal(ConsoleSignal.Kill);
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
 			}
@@ -1176,7 +1198,7 @@ public class BjlShellIDE extends JFrame  {
 			if( e1 != null ) {
 				err = e1.toString();
 			}
-			JOptionPane.showMessageDialog(contentPane, msg, err, JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(contentPane, err,msg, JOptionPane.ERROR_MESSAGE);
 		} else {
 			SwingUtilities.invokeLater(()->showError(e1, msg));
 		}		
@@ -1219,16 +1241,16 @@ public class BjlShellIDE extends JFrame  {
 	private static final String SCRIPT_IN  ="#BjlIdeScriptIn=";
 	private static final String SCRIPT_OUT ="#BjlIdeScriptOut=";
 	private static final String SCRIPT_ERR ="#BjlIdeScriptErr=";
-	
+
 	protected String getCode() {		
-		
+
 		StringBuilder buf = new StringBuilder();
 		String args = argumentsTextField.getText().trim();
-		
+
 		if(!args.isEmpty()) {
 			buf.append(SCRIPT_ARGS+args+"\n");
 		}
-		
+
 		args = stdInTextField.getText().trim();		
 		if(!args.isEmpty()) {
 			buf.append(SCRIPT_IN+args+"\n");
@@ -1237,14 +1259,14 @@ public class BjlShellIDE extends JFrame  {
 		if(!args.isEmpty()) {
 			buf.append(SCRIPT_OUT+args+"\n");
 		}
-		
+
 		args = stdErrTextField.getText().trim();		
 		if(!args.isEmpty()) {
 			buf.append(SCRIPT_ERR+args+"\n");
 		}
-		
+
 		String ret = buf+editorPane.getText();
-		
+
 		return ret;
 	}
 
@@ -1277,9 +1299,9 @@ public class BjlShellIDE extends JFrame  {
 		if( SwingUtilities.isEventDispatchThread()) {
 			if(currentTask !=null && currentTask.isRunning() ) {
 				currentTask.cancel();
-				
-				
-				
+
+
+
 				int cnt = 0;
 				do {
 					try {
@@ -1288,7 +1310,7 @@ public class BjlShellIDE extends JFrame  {
 					}
 					if( ++cnt > 100) {
 						System.out.println("Waiting for task to complete");
-						currentTask.cancel();
+						//currentTask.cancel();
 						cnt=0;
 					}
 				} while(currentTask.isRunning());
@@ -1317,12 +1339,12 @@ public class BjlShellIDE extends JFrame  {
 			for(Breakpoint bp: map.values()) {
 				bp.reset();
 			}
-			
+
 			ExecutableCode code = getExecutableCode();
 			if( code.allCode == null || code.allCode.isEmpty()) {
 				return;
 			}
-			
+
 			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/Stop.png")));
 
 
@@ -1332,7 +1354,6 @@ public class BjlShellIDE extends JFrame  {
 			currentTask = new ExecuteTask(code);
 
 			Thread th = new Thread(null,currentTask,"ExecuteThread",stackSize);
-			currentTask.thread = th;
 			th.setDaemon(true);
 			th.setName("Execute thread "+(++count));
 			runState = state;
@@ -1380,7 +1401,7 @@ public class BjlShellIDE extends JFrame  {
 				buf.append(line+"\n");
 			}
 		}
-		
+
 		editorPane.setText(buf.toString(),scriptFile);
 	}
 

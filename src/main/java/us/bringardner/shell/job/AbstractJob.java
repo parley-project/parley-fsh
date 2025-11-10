@@ -6,11 +6,10 @@ import java.util.List;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.SignalEnabledThread;
+import us.bringardner.shell.antlr.signal.ExitException;
 
 public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	
-	public long startTime; 
-	public long stopTime;
 	public int pid=-1;
 	public int exitCode;
 	public Exception error;
@@ -26,6 +25,10 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		this.ctx = ctx;
 	}
 	
+	
+	public Thread getThread() {
+		return thread;
+	}
 	
 	public abstract int process() throws Exception;
 	
@@ -64,7 +67,7 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	@Override
 	public void run() {
 		started = running = true;;
-		exitCode = 0;
+		exitCode = -2121;
 		
 		try {
 			exitCode = process();
@@ -83,21 +86,6 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	@Override
 	public abstract void handleSignal(ConsoleSignal signal) ;
 
-	public long getStartTime() {
-		return startTime;
-	}
-	
-	public void setStartTime(long startTime) {
-		this.startTime = startTime;
-	}
-	
-	public long getStopTime() {
-		return stopTime;
-	}
-	
-	public void setStopTime(long stopTime) {
-		this.stopTime = stopTime;
-	}
 	
 	public int getPid() {
 		return pid;
@@ -124,14 +112,17 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		return state;
 	}
 	
-	public void setState(JobState state) {
+	public final void setState(JobState state) {
 		JobState lastState = this.state;
 		this.state = state;
 		switch (state) {
 		case Notified:break;
 		case Running:getShellContext().setPause(false);break;
 		case Suspended:getShellContext().setPause(true);break;
-		case Termnated:
+		case Termnated: 
+				ctx.setExecption(new ExitException(ctx, 1));
+				stop();
+				interuptJob();
 				break;
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + state);
@@ -140,16 +131,19 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 			if( !removedListners.contains(idx)) {
 				listners.get(idx).JobStateChanged(this, lastState,state);
 			}
-		}
-		interrupt();
+		}		
 	}
 	
-	protected abstract void interrupt();
+	
+
+
+	public abstract void interuptJob();
 
 
 	public int getJobNumber() {
 		return jobNumber;
 	}
+	
 	public void setJobNumber(int jobNumber) {
 		this.jobNumber = jobNumber;
 	}
@@ -166,18 +160,7 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		removedListners.add(idx);		
 	}
 	
-	@Override
-	public void start() {
-		super.start();
-		startTime = System.currentTimeMillis();
-	}
-
-	@Override
-	public void stop() {
-		super.stop();
-		stopTime = System.currentTimeMillis();
-	}
-	
+		
 	
 
 }

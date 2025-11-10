@@ -25,8 +25,8 @@ public class Sleep extends ShellCommand{
 	public Sleep() {
 		super(name, help);
 	}
-	public static boolean debug = false;
-	
+
+
 
 	static final long MilliSecond = 1;
 	static final long Second = 1000*MilliSecond;
@@ -36,40 +36,57 @@ public class Sleep extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
+		boolean debug = false;
 		int ret = 0;
 		if(args.length==0) {
 			ctx.stdout.println("Unit can be 's' (seconds, the default), m (minutes), h (hours), d (days) or M (millisecond).");
 			ret = 1;
 		} else {
-			if( debug ) System.out.println("args len="+args.length);
-			int timeToSleep = 0;
-			long multiplyer = Second;
+			long timeToSleep = 0;
+			Integer ival = null;
+			Long multiplyer=null;
 
+			/**
+			 * an argument in the form of 1s is parsed as two args. a number and a path segment
+			 */
+			
 			for(Argument a :args) {
-				String val = ""+a.getValue(ctx);
-				if( val.endsWith("s")) {
-					val = val.substring(0,val.length()-1);
-					multiplyer = Second;
-				} else if( val.endsWith("m")) {
-					val = val.substring(0,val.length()-1);
-					multiplyer = Minute;
-				} else if( val.endsWith("h")) {
-					val = val.substring(0,val.length()-1);
-					multiplyer = Hour;
-				} else if( val.endsWith("d")) {
-					val = val.substring(0,val.length()-1);
-					multiplyer = Day;
-				} else if( val.endsWith("M")) {
-					val = val.substring(0,val.length()-1);
-					multiplyer = MilliSecond;
+				String val = (""+a.getValue(ctx)).trim();
+				if(val.isEmpty()) {
+					continue;
 				}
-				long tmp = Integer.parseInt(val)*multiplyer;
-				timeToSleep += tmp;
+				if( Character.isDigit(val.charAt(0))) {
+					ival = Integer.parseInt(val);
+				} else if( val.equals("s")) {
+					multiplyer = Second;
+				} else if( val.equals("m")) {
+					multiplyer = Minute;
+				} else if( val.equals("h")) {
+					multiplyer = Hour;
+				} else if( val.equals("d")) {
+					multiplyer = Day;
+				} else if( val.equals("M")) {
+					multiplyer = MilliSecond;
+				} else if( val.equals("-db")) {
+					debug = true;											
+				} 
 			}
-			if( debug ) System.out.println("start amt="+timeToSleep);
+			
+			if( ival == null ) {
+				ctx.stderr.println("No valid tiem ");
+				return 1;
+			}
+			if( multiplyer==null) {
+				multiplyer = Second;
+			}
+			timeToSleep = ival.longValue() * multiplyer;
+			if( debug ) {
+				System.out.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
+				ctx.stdout.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
+			}
 			while( timeToSleep > 0 ) {
 				if( ctx.getException()!=null) {
-					return ret;
+					throw new IOException( ctx.getException());
 				}
 				if(ctx.isPaused()) {
 					try {
@@ -81,14 +98,21 @@ public class Sleep extends ShellCommand{
 					try {
 						Thread.sleep(timeToSleep);
 					} catch (InterruptedException e) {
-						System.out.println("Sleep interupted");
-						Thread.currentThread().interrupt();
+						// reset flag interrupted 
+						Thread.currentThread().isInterrupted();
+						if( debug) {
+							System.out.println("Interupted sleep time="+timeToSleep);
+						}
+						// give time for exceptions to be set
+						try {
+							Thread.sleep(10);
+						} catch (InterruptedException e1) {
+						}
 					}
 					long end = System.currentTimeMillis();
 					timeToSleep -= (end-start);
 				}
-			}
-			if( debug ) System.out.println("end amt="+timeToSleep);
+			}			
 		}
 
 

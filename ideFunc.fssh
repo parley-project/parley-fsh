@@ -1,8 +1,8 @@
-#BjlIdeScriptArgs=one two
-##  Function to test IDE execute,save and load
+#BjlIdeScriptArgs=one two three
+##  function to test IDE execute,save and load
 #
 echo $0
-function fun() {
+function work() {
 	if [ "$1" == "" ]; then
 	  echo "Nor args"
 	else 
@@ -13,5 +13,5 @@ function fun() {
 	
 }
 
-fun $1
-fun $2
+work $1
+work $2

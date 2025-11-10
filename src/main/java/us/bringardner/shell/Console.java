@@ -29,6 +29,7 @@ import javax.management.JMRuntimeException;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import org.antlr.v4.parse.ATNBuilder.subrule_return;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -460,7 +461,7 @@ delimiter
 	}
 
 	public static class CommandThread extends SignalEnabledThread {
-		public int exitCode;
+		public int exitCode=-1212;
 		public long start;
 		public long end;
 		public Exception error;
@@ -471,6 +472,10 @@ delimiter
 			this.ctx = ctx;
 			this.cmd = cmd;
 			setName("Command "+getCmdCnt());
+		}
+		
+		public Thread getThread() {
+			return thread;
 		}
 
 		public void pause(boolean b) {
@@ -513,9 +518,11 @@ delimiter
 		}
 
 		@Override
-		public void stop() {			
+		public void stop() {
+			
 			ctx.setExecption(new ExitException(ctx, 1));
 			ctx.setPause(true);
+			super.stop();
 		}
 
 		@Override
@@ -558,10 +565,7 @@ delimiter
 			}
 		}
 
-		public void interrupt() {
-			thread.interrupt();			
-		}
-
+		
 	}
 
 
@@ -766,7 +770,8 @@ delimiter
 				code.append(a);
 				code.append(' ');
 			}
-			ret = executeUsingAntlr(code.toString().trim());
+			String codeToRun = code.toString().trim();
+			ret = executeUsingAntlr(codeToRun);
 		} else {
 			isInteractive = true;
 		}
@@ -1148,7 +1153,7 @@ delimiter
 	 * 
 	 */
 
-	private synchronized int executeAsJob(IJob job) throws Exception {
+	public synchronized int executeAsJob(IJob job) throws Exception {
 		if( currentJob.get() !=null) {
 			throw new JMRuntimeException("Current job is already set");
 		}
@@ -2014,7 +2019,7 @@ delimiter
 		this.adminMessage = adminMessage;
 	}
 
-	AtomicReference<IJob> currentJob = new AtomicReference<>();
+	public AtomicReference<IJob> currentJob = new AtomicReference<>();
 
 	private Stack<ConsoleMetaSignal> inProcess = new Stack<>();
 
@@ -2194,7 +2199,7 @@ delimiter
 				if( signal==ConsoleSignal.Suspend) {
 					job.setState(JobState.Suspended);
 					Thread.yield();
-				} else if( signal == ConsoleSignal.Interupt) {
+				} else if( signal == ConsoleSignal.Interupt || signal == ConsoleSignal.Kill) {
 					job.setState(JobState.Termnated);
 					Thread.yield();
 				}
