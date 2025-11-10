@@ -266,7 +266,7 @@ backgroundCommand:
 	@Override
 	public JobControlStatement visitJob_control_statement(Job_control_statementContext ctx) {
 		JobControlStatement ret = new JobControlStatement(ctx);
-		ret.setArgs(visitArgument_list(ctx.argument()));
+		ret.setArgs(visitArgument_list(ctx.argument()), null);
 		ret.setJobSpecs(visitJobspec(ctx.jobspec()));
 		return ret;
 	}
@@ -306,10 +306,11 @@ commandStatement
 		ret.setName(name);
 		Argument[] args = null;
 		if( ctx.argument()!=null) {
+			
 			List<ArgumentContext> argsCtx = ctx.argument();
 			if( argsCtx.size()>0) {
 				args = visitArgument_list(argsCtx);
-				ret.setArgs(args);
+				ret.setArgs(args,ctx.argument());
 			}
 		}
 		if( ctx.hereDocument()!=null) {
@@ -343,7 +344,7 @@ commandStatement
 				for (int idx = 0; idx < args2.length; idx++) {
 					args2[idx] = args[idx];
 				}
-				stmt.setArgs(args2);
+				stmt.setArgs(args2, null);
 			}
 		}
 		return ret;
@@ -624,7 +625,7 @@ forStatement
 					args.add(a);
 				}
 			}
-			ret.setArgs(args.toArray(new Argument[args.size()]));
+			ret.setArgs(args.toArray(new Argument[args.size()]), null);
 		}
 		List<Statement> stmts = visitDoStatement(ctx.doStatement());
 		ret.setStmts(stmts);
@@ -650,7 +651,7 @@ forStatement
 					args.add(a);
 				}
 			}
-			ret.setArgs(args.toArray(new Argument[args.size()]));
+			ret.setArgs(args.toArray(new Argument[args.size()]), null);
 		}
 		List<Statement> stmts = visitDoStatement(ctx.doStatement());
 		ret.setStmts(stmts);

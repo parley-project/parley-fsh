@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
@@ -234,7 +235,16 @@ public abstract class Statement {
 
 	protected ParserRuleContext context;
 	protected Argument [] args=new Argument[0];
+	private List<ArgumentContext> argCtx;
 
+
+	public List<ArgumentContext> getArgCtx() {
+		return argCtx;
+	}
+
+	public void setArgCtx(List<ArgumentContext> argCtx) {
+		this.argCtx = argCtx;
+	}
 
 	public Statement(ParserRuleContext context) {
 		this.context = context;
@@ -255,8 +265,9 @@ public abstract class Statement {
 		return args;
 	}
 
-	public void setArgs(Argument[] args) {
+	public void setArgs(Argument[] args, List<ArgumentContext> argCtx) {
 		this.args = args;
+		this.argCtx = argCtx;
 	}
 
 	public final int process(ShellContext ctx) throws IOException{

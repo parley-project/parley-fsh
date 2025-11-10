@@ -93,9 +93,6 @@ public class JobControlStatement extends Statement{
 					throw new IllegalArgumentException("Unexpected value: " + tmp.charAt(0));
 				}
 			}
-		} else {
-			int ret = Integer.parseInt(tmp);
-			return ret;
 		}
 		return -1;
 	}

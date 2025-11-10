@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.antlr.Argument;
@@ -28,6 +30,19 @@ public abstract class ShellCommand {
 	String name;
 	String help;
 	protected Argument[] args;
+	protected ParserRuleContext context;
+
+	public ParserRuleContext getContext() {
+		return context;
+	}
+
+	public void setContext(ParserRuleContext context) {
+		this.context = context;
+	}
+
+	public Argument[] getArgs() {
+		return args;
+	}
 
 	public ShellCommand(String name,String help) {
 		this.name = name;
@@ -42,8 +57,8 @@ public abstract class ShellCommand {
 		return help;
 	}
 
+	
 	public abstract int process(ShellContext ctx) throws IOException;
-
 	public class ShellArgument {
 		public List<Object> options = new ArrayList<>();
 		public List<String> paths = new ArrayList<>();

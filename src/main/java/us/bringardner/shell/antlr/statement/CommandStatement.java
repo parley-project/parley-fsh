@@ -429,6 +429,7 @@ public class CommandStatement extends Statement{
 						try {
 							cmd = con.newInstance();
 							cmd.setArgs(args);
+							cmd.setContext(context);
 							ret = cmd.process(ctx);
 						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 							throw new IOException(e);
@@ -577,7 +578,7 @@ public class CommandStatement extends Statement{
 		}
 
 		if( !file.canExecute()) {
-			throw new IOException("permission denied: "+execName);
+			throw new IOException("execute permission denied: "+execName);
 		}
 
 
