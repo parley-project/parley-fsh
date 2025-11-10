@@ -103,12 +103,14 @@ public abstract class AbstractConsoleTest {
 
 	
 		if( waitForJobs) {
+			int id = -1;
 			boolean done = false;
 			int cnt = 0;
 			while( !done ) {
+				Thread.yield();
 				long time = System.currentTimeMillis()-start;
 				if( time > 2000) {
-					System.out.println("Waiting for jobs to stop...");
+					System.out.println("Waiting for jobs to stop... id="+id);
 					start = System.currentTimeMillis();
 					if( ++cnt > 5) {
 						System.out.println("Exit Waiting for jobs to stop...");
@@ -117,8 +119,10 @@ public abstract class AbstractConsoleTest {
 				}
 
 				done = true;
+				id = -1;
 				for(IJob job : jobs) {
 					if( job.isRunning()) {
+						id = job.getJobNumber();
 						done = false;
 					}
 				}

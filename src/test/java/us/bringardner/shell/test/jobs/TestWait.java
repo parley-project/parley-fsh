@@ -109,6 +109,7 @@ public class TestWait extends AbstractConsoleTest {
 		String expectErr = "";
 		
 		String code = ""
+				//          sleep return
 				+ "my_function 1 2 &\n"
 				+ "pid1=$!\n"
 				+ "pid=$!\n"

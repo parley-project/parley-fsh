@@ -47,12 +47,10 @@ public class Disown extends ShellCommand{
 
 		JobManager jm = ctx.console.jobManager;
 
-		int jobSize = jm.getJobs().size();
-
 		List<IJob> jobs = new ArrayList<>();
 		if( ops.paths.size()>0) {
 			for(String val : ops.paths) {
-				int id = JobControlStatement.parseJobSpec(jobSize, val);
+				int id = JobControlStatement.parseJobSpec(jm, val);
 				IJob job = jm.getJob(id);
 				if( job!=null ) {
 					if( !jobs.contains(job)) {

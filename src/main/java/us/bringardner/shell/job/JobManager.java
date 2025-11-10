@@ -58,9 +58,9 @@ public class JobManager {
 		return ret;
 	}
 
-	public IJob getJob(int idx) {
+	public IJob getJob(int pid_or_job_number) {
 		for(IJob j : jobs) {
-			if( j.getPid()==idx || j.getJobNumber()==idx) {
+			if( j.getPid()==pid_or_job_number || j.getJobNumber()==pid_or_job_number) {
 				return j;
 			}
 		}

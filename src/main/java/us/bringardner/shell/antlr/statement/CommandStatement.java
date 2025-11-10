@@ -78,7 +78,7 @@ public class CommandStatement extends Statement{
 						//Console.debugFrame.append("Closing 01 in."+getName()+"\n");
 						in.close();
 						//Console.debugFrame.append("Closing 02 in."+getName()+"\n");
-						thread.interrupt();
+						//thread.interrupt();
 						//Console.debugFrame.append("Closing 03 in."+getName()+"\n");
 					}
 				} catch (Exception e2) {}
@@ -97,7 +97,7 @@ public class CommandStatement extends Statement{
 			super.stop();
 			try {
 				//boolean isStdin = in == Console.System_in;
-				thread.interrupt();
+				//thread.interrupt();
 
 				//Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
 			} catch (Exception e) {
@@ -155,7 +155,7 @@ public class CommandStatement extends Statement{
 						//Console.debugFrame.append("Closing 01 in."+getName()+"\n");
 						in.close();
 						//Console.debugFrame.append("Closing 02 in."+getName()+"\n");
-						thread.interrupt();
+						//thread.interrupt();
 						//Console.debugFrame.append("Closing 03 in."+getName()+"\n");
 					}
 				} catch (Exception e2) {}
@@ -174,7 +174,7 @@ public class CommandStatement extends Statement{
 			super.stop();
 			try {
 				//boolean isStdin = in == Console.System_in;
-				thread.interrupt();
+				//thread.interrupt();
 
 				//Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
 			} catch (Exception e) {

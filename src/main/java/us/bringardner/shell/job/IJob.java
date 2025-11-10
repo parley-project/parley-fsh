@@ -41,4 +41,6 @@ public interface IJob {
 	boolean isDisowned();
 	void setDisowned(boolean val);
 
+	String getCommandLine();
+
 }

@@ -56,8 +56,6 @@ public class Wait extends ShellCommand{
 
 		JobManager jm = ctx.console.jobManager;
 
-		int jobSize = jm.getJobs().size();
-
 		List<IJob> jobs = new ArrayList<>();
 
 		// parse all the args
@@ -84,7 +82,7 @@ public class Wait extends ShellCommand{
 					}
 				}
 			} else {
-				int id = JobControlStatement.parseJobSpec(jobSize, val);
+				int id = JobControlStatement.parseJobSpec(jm, val);
 				IJob job = jm.getJob(id);
 				if( job!=null) {
 					jobs.add(job);
@@ -112,8 +110,11 @@ public class Wait extends ShellCommand{
 			while( !done ) {
 				for(IJob job : jobs) {
 					if( !complete.contains(job.getPid())) {
-						if( !job.isRunning()) {
+						if(job.hasStarted() && !job.isRunning()) {
 							ret = job.getExitCode();
+							if( ret < 0) {
+								ret = job.getExitCode();
+							}
 							jobId = job.getPid();
 							complete.add(jobId);
 							//System.out.println("jobId="+jobId+" ret = "+ret);

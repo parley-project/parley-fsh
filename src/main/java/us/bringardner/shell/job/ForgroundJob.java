@@ -37,8 +37,13 @@ public class ForgroundJob extends AbstractJob {
 	}
 
 	@Override
-	protected void interrupt() {
+	public void interuptJob() {
 		thread.interrupt();		
+	}
+
+	@Override
+	public String getCommandLine() {
+		return code;
 	}
 
 }

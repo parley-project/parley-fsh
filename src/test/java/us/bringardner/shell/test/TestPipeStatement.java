@@ -184,7 +184,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 
 
 	public void executeBackground03(boolean interactive) throws Exception{
-		String cmd = "sleep 1000 &\n"
+		String cmd = 
+				  "sleep 1000 &\n"
 				+ "sleep 2000 &\n"
 				+ "sleep 3000 &\n"				
 				+ "jobs\n"

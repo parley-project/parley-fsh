@@ -51,14 +51,12 @@ public class Jobs extends ShellCommand{
 		 */
 		//  this defines the current job
 		JobManager jm = ctx.console.jobManager;
-		List<IJob> ijobs = jm.getJobs();
-		int jobSize = ijobs.size();
 
 		List<Integer> jobs = new ArrayList<>();
 		//  %[0-9] is parse as signed number rather that jobSpec 
 		if(options.paths.size()>0) {
 			for(String tmp : options.paths) {
-				int i = JobControlStatement.parseJobSpec(jobSize, tmp);
+				int i = JobControlStatement.parseJobSpec(jm, tmp);
 				if( i >=0) {
 					jobs.add(i);
 				}
@@ -69,7 +67,7 @@ public class Jobs extends ShellCommand{
 		} 
 
 		if( jobs.size()==0) {
-			for(IJob job : ijobs) {
+			for(IJob job : jm.getJobs()) {
 				jobs.add(job.getJobNumber());
 			}
 		}
@@ -92,6 +90,7 @@ public class Jobs extends ShellCommand{
 
 
 				if( show ) {
+					int jobSize = jm.getJobs().size();
 					String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
 					if(options.options.contains(Options.l)) {
 						ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.getPid()+" "+state+" "+job.toString());

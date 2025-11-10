@@ -7,9 +7,9 @@ public class BackgroundJob extends AbstractJob{
 
 	CommandThread child;
 	
-	public BackgroundJob(CommandThread thread) {
-		super(thread.ctx);
-		child = thread;			
+	public BackgroundJob(CommandThread cmdThread) {
+		super(cmdThread.ctx);
+		child = cmdThread;			
 	}
 
 	
@@ -53,7 +53,7 @@ public class BackgroundJob extends AbstractJob{
 			case Hup: 
 			case Interupt:
 			case Terminate:
-			case Kill: 
+			case Kill: 				
 				setState(JobState.Termnated);
 				break;
 			case Suspend:
@@ -65,6 +65,11 @@ public class BackgroundJob extends AbstractJob{
 			
 		}
 	} 
+	
+	@Override
+	public boolean isRunning() {
+		return child.isRunning() && super.isRunning();
+	}
 	
 	@Override
 	public int process() throws Exception {
@@ -91,12 +96,43 @@ public class BackgroundJob extends AbstractJob{
 		
 		return child.exitCode;
 	}
+	
+	@Override
+	public int getExitCode() {
+		if( started && running) {
+			System.out.println("asking at wrong time started="+started+"running="+running+" isRunning="+isRunning()+" child="+child.isRunning());
+		}
+		return child.exitCode;
+		
+	}
 
 
 	@Override
-	protected void interrupt() {
-		thread.interrupt();
-		child.interrupt();		
+	public void interuptJob() {
+		child.getThread().interrupt();
+		
 	}
+
+/*
+Amoxicillin
+Atorvastatin Calcium
+Lisinopril
+HumaLOG KwikPen
+Telmisartan-HCTZ
+Kariva
+Methadone HCl
+Mirtazapine
+Lialda
+Temazepam
+Xanax
+Levothyroxine Sodium
+Aspirin-Dipyridamole ER
+
+ */
+	@Override
+	public String getCommandLine() {		
+		return child.toString();
+	}
+	
 
 }

@@ -5,12 +5,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
+import us.bringardner.shell.antlr.statement.JobControlStatement;
 import us.bringardner.shell.job.IJob;
 import us.bringardner.shell.job.JobManager;
 
@@ -39,21 +39,25 @@ public class Kill extends ShellCommand{
 		super(name, help);
 	}
 
-	
+
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		Map<Integer, String> signals = Trap.getLocalSignals();
 		int ret = 0;
 		Integer signum = null;
-		List<Integer> ids = new ArrayList<>();
+		List<IJob> jobs = new ArrayList<>();
 		boolean list = false;
 		Integer exitStatus= null;
+		JobManager jm = ctx.console.jobManager;
 
 		// parse all the args
 		for (int idx = 0; idx < args.length; idx++) {
 			Argument a = args[idx];
-			String val = ""+a.getValue(ctx);
+			String val = (""+a.getValue(ctx)).trim();
+			if( val.isEmpty()) {
+				continue;
+			}
 			//[-s sigspec] [-n signum] [-sigspec] id [...]
 			if( val.equals("-l") || val.equals("-L")) {
 				list = true;
@@ -66,12 +70,14 @@ public class Kill extends ShellCommand{
 			} else if( val.startsWith("-")) {				
 				signum = parseSigNum(val.substring(1));				
 			} else {
-				if( val.startsWith("%")) {
-					val = val.substring(1);
-				} 
-				int id = Integer.parseInt(val);
-				ids.add(id);
-
+				
+				int id = JobControlStatement.parseJobSpec(jm, val);
+				IJob job = jm.getJob(id);
+				if( job==null) {
+					ctx.stderr.println("kill: ("+val+") - No such process");
+					return 1;
+				}
+				jobs.add(job);
 
 			}
 		}
@@ -89,43 +95,20 @@ public class Kill extends ShellCommand{
 				ctx.stdout.println(toColumns(ctx, tmp).trim());
 			}
 		} else {
+
 			ConsoleSignal signal = ConsoleSignal.Terminate;
 			if( signum != null ) {
 				signal = ConsoleSignal.find(signum);
 			}
-			JobManager jm = ctx.console.jobManager;
-			List<IJob> jobs = jm.getJobs();
-			for(Integer id : ids) {
-				IJob ct = null;
-				int sz = jobs.size();
-				if(id<= sz) {
-					ct = jm.getJob(id-1);
-				} else {
-					for(IJob c : jobs) {
-						if( c.getPid() == id) {
-							ct = c;
-							break;
-						}
-					}
-				}
+			if( jobs.size()==0) {
+				ctx.stderr.println("kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]");
+				return 1;
+			}
+			for(IJob job: jobs) {
+				ctx.console.handleSignal(job.getPid(),signal);
 				
-				if( ct == null ) {
-					//  is this an external process???
-					Process p = new ProcessBuilder("kill","-"+signum,""+id).start();
-					try {
-						p.waitFor(1000, TimeUnit.MILLISECONDS);
-					} catch (InterruptedException e) {
-					}
-					if( !p.isAlive()) {
-						int exitCode = p.exitValue();
-						if( exitCode!=0) {
-							return ret;
-						}
-					}
-				} else {
-					ctx.console.handleSignal(ct.getPid(),signal);
-					Thread.yield();
-				}
+				System.out.println("sent signal "+signal+" job="+job.getJobNumber()+" "+job.isRunning());
+				Thread.yield();
 			}
 		}
 

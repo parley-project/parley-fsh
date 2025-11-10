@@ -37,14 +37,11 @@ public class Fg extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		//  this defines the current job
 		JobManager jm = ctx.console.jobManager;
-		List<IJob> ijobs = jm.getJobs();
-		int jobSize = ijobs.size();
-
 		List<Integer> jobs = new ArrayList<>();
 		//  %[0-9] is parse as signed number rather that jobSpec
 		for (int idx = 0; idx < args.length; idx++) {
 			String tmp = ""+args[idx].getValue(ctx);
-			int i = JobControlStatement.parseJobSpec(jobSize, tmp);
+			int i = JobControlStatement.parseJobSpec(jm, tmp);
 			if( i >=0) {
 				jobs.add(i);
 			}
