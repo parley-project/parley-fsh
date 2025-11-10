@@ -125,7 +125,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? you picked AbcFile.php ( 2 )\n";
+		String expectOut = 	"#? you picked AbcFile.php (2)\n";
 		String expectErr = 	
 				    "1) AbcFile.js                 \n"
 				  + "2) AbcFile.php                \n"

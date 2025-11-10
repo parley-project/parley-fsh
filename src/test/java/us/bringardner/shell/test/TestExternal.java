@@ -284,7 +284,8 @@ public class TestExternal {
 		String cmd = "test02.sh dude\n"
 				;
 
-		String expectErr = "java.io.IOException: permission denied: test02.sh\n";
+		String expectErr = "java.io.IOException: execute permission denied: test02.sh\n"
+				+ "";
 		
 		String stdIn = "";
 		String expectOut = "";
@@ -331,12 +332,27 @@ public class TestExternal {
 		
 		
 	}
-
 	@Test
 	public void testExternal10() throws Exception{
 		setup("ExternalTestFiles");
 		
 		String cmd[] = {"test03.fssh","dude"};
+		String expectOut = "hello dude\n";
+		
+		String stdIn = "";
+		String expectErr = "";
+		int exitCode = 0;
+		
+		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+		
+	}
+	
+	@Test
+	public void testExternal11() throws Exception{
+		setup("ExternalTestFiles");
+		String path = new File(testFilesDir,"test03.fssh").getCanonicalPath();
+		
+		String cmd[] = {path,"dude"};
 		String expectOut = "hello dude\n";
 		
 		String stdIn = "";

@@ -27,27 +27,38 @@ public class Echo extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		int start = 0;
 		boolean nl = true;
-		String val1 = null;
 		ParserRuleContext cc = context;
 		List<ParseTree> kids = cc.children;
+		int sz = kids.size()-1;
+		int numArgs = args.length;
 		
 		StringBuilder buf = new StringBuilder();
 		if( args.length>0 ) {
-			for(ParseTree kid : kids) {
+			// args are always cmd WS ... wS so ignore the first and last WS
+			int start = 1;
+			int cnt = 0;
+			for (int idx = start; idx <= sz; idx++) {
+				ParseTree kid = kids.get(idx);
 				if (kid instanceof ArgumentContext) {
+					
 					ArgumentContext actx = (ArgumentContext) kid;
 					Argument a = new Argument(actx);
 					String val =""+a.getValue(ctx);
 					if( val.equals("-n") ) {
 						nl = false;
+						start++;
 					} else {
 						buf.append(val);
 					}
-				} else if (kid instanceof TerminalNode) {
+					if(++cnt==numArgs) {
+						break;
+					};
+				} else if (kid instanceof TerminalNode && idx>start && idx < sz) {
 					String val = kid.getText();
 					buf.append(val);
+				} else if(!(kid instanceof TerminalNode)) {
+					System.out.println("Unexcpected    token = "+kid.getClass());
 				}
 			}
 		}

@@ -30,9 +30,9 @@ public class TestUntilStatement extends AbstractConsoleTest {
 				;
 
 		String expect = 
-				"Number : 0\n"
-				+"Number : 1\n"
-				+"Number : 2\n"
+				"Number: 0\n"
+				+"Number: 1\n"
+				+"Number: 2\n"
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
@@ -60,8 +60,8 @@ public class TestUntilStatement extends AbstractConsoleTest {
 				;
 
 		String expect = 
-				"Number : 0\n"
-				+"Number : 1\n"
+				"Number: 0\n"
+				+"Number: 1\n"
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
@@ -90,9 +90,9 @@ public class TestUntilStatement extends AbstractConsoleTest {
 				;
 
 		String expect = 
-				"Number : 1\n"
-				+"Number : 3\n"
-				+"Number : 4\n"
+				"Number: 1\n"
+				+"Number: 3\n"
+				+"Number: 4\n"
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");

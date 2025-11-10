@@ -24,15 +24,16 @@ public class TestExpantion {
 	@Test
 	public void testStringLiterals()throws Exception{
 		String cmd = 
-				"s1=\"this is a double quoted string $v \"\n"
-				+ "s2='this is a single quoted string $v '\n"
-				+ "echo \"$s1 \"\n"
+				"v=value\n"
+				+ "s1=\"this is a double quoted string $v\"\n"
+				+ "s2='this is a single quoted string $v'\n"
+				+ "echo $s1 \n"
 				+ "echo $s2 \n"
 						;
 
 		//System.out.println(cmd);
 		List<Statement> stmts = parse(cmd);
-		assertEquals(4, stmts.size());
+		assertEquals(5, stmts.size());
 
 		Console console = new Console();
 		ShellContext ctx = new ShellContext(console);
@@ -46,8 +47,8 @@ public class TestExpantion {
 			stmt.process(ctx);
 		}
 		
-		String expect = "this is a double quoted string null  \n"
-				+ "this is a single quoted string $v \n";
+		String expect = "this is a double quoted string value\n"
+				+ "this is a single quoted string $v\n";
 		String actual = new String(bao.toByteArray());
 		assertEquals(expect, actual);
 		

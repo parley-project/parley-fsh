@@ -46,8 +46,9 @@ public class TestEval  extends AbstractConsoleTest{
 		assertEquals(expect, out);
 		assertEquals("", err);
 	}
-	//                                    "Sun         Aug         3          09         : 49         : 01         EDT      2025"
-	Pattern datePattern = Pattern.compile("[a-zA-Z]{3}\\s+[a-zA-Z]{3}\\s+[0-9]{1,2}\\s+[0-9]{1,2}\\s+:\\s+[0-9]{1,2}\\s+:\\s+[0-9]{1,2}\\s+[A-Z]{3}\\s+[0-9]{4}\\s*");
+	//									   Sun            Nov              9             20      : 53       :28             EST      2025
+	//                                    "Sun            Aug              3             09      : 49       :01             EDT      2025"
+	Pattern datePattern = Pattern.compile("[a-zA-Z]{3}\\s+[a-zA-Z]{3}\\s+[0-9]{1,2}\\s+[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}\\s+[A-Z]{3}\\s+[0-9]{4}\\s*");
 	
 	@Test
 	public void testExport02() throws Exception{
