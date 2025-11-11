@@ -2,7 +2,6 @@ package us.bringardner.shell.antlr.statement;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
