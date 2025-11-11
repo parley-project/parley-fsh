@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-21">
 		<attributes>
-			<attribute name="module" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" output="target/classes" path="src/main/java">
@@ -46,13 +46,7 @@
 			<attribute name="optional" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystem"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlCore"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystemJdbc"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlFileSystemSftp"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlIo"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlNetFramework"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlNetworkCore"/>
 	<classpathentry kind="lib" path="lib/antlr-4.13.2-complete.jar">
 		<attributes>
 			<attribute name="org.eclipse.jst.component.dependency" value="../"/>
