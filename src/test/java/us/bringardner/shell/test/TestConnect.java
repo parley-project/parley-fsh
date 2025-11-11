@@ -97,6 +97,7 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals("", err,"stderr");				
 	}
 	
+	
 	public void testConnectSftpStdin() throws IOException {
 		String expect = ""
 				+ "sftp connected as /sftp2";
