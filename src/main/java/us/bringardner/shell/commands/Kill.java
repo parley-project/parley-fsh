@@ -106,9 +106,17 @@ public class Kill extends ShellCommand{
 			}
 			for(IJob job: jobs) {
 				ctx.console.handleSignal(job.getPid(),signal);
-				
-				System.out.println("sent signal "+signal+" job="+job.getJobNumber()+" "+job.isRunning());
 				Thread.yield();
+				/*
+				System.out.println("sent signal "+signal+" job="+job.getJobNumber()+" "+job.isRunning());
+				try {
+					Thread.sleep(20);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				System.out.println("after yeild "+signal+" job="+job.getJobNumber()+" "+job.isRunning());
+				*/
 			}
 		}
 
