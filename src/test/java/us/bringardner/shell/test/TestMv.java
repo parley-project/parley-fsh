@@ -172,6 +172,7 @@ public class TestMv extends AbstractConsoleTest{
 			FileSource dst = console.createFileSource("/mem/"+src.getName());
 			assertTrue(dst.exists());
 			
+			
 	}
 	
 	@Test
@@ -191,6 +192,109 @@ public class TestMv extends AbstractConsoleTest{
 			String err = new String(res.bae.toByteArray());
 			assertEquals("", err);
 			assertEquals("memory connected as /mem4\n", out);
+			assertEquals(0, res.exitCode);
+			assertFalse(src.exists());
+			FileSource dst = console.createFileSource("/mem4/"+src.getName());
+			assertTrue(dst.exists());
+			
+	}
+
+	@Test
+	@Order(5)
+	public void testMn05() throws IOException {
+		
+			
+			FileSource src = srcDir.getChild("AbcFile.js");
+			FileSource dst = srcDir.getChild("AbcFile.php");
+			//  both should exist
+			assertTrue(src.exists());
+			assertTrue(dst.exists());
+			
+			String code = ""
+					+ "mv -n "+src+"  "+dst ;
+			
+			ExecuteResult res = executeCommand(code,"");
+			
+			String out = new String(res.bao.toByteArray());
+			String err = new String(res.bae.toByteArray());
+			assertEquals("", err);
+			assertEquals(dst.getAbsolutePath()+" not overwritten\n", out);
+			assertEquals(1, res.exitCode);
+			assertTrue(src.exists());
+			assertTrue(dst.exists());
+			
+			code = ""
+					+ "mv -i "+src+"  "+dst ;
+			
+			res = executeCommand(code,"n");
+			
+			out = new String(res.bao.toByteArray());
+			err = new String(res.bae.toByteArray());
+			assertEquals("", err);
+			String expect = "overwrite "+dst+"? (y/n [n])"+dst+" not overwritten.\n";
+					
+			assertEquals(expect, out);
+			assertEquals(1, res.exitCode);
+			assertTrue(src.exists());
+			assertTrue(dst.exists());
+			
+			code = ""
+					+ "mv -i "+src+"  "+dst ;
+			
+			res = executeCommand(code,"Y");
+			
+			out = new String(res.bao.toByteArray());
+			err = new String(res.bae.toByteArray());
+			assertEquals("", err);
+			expect = "overwrite "+dst+"? (y/n [n])";
+					
+			assertEquals(expect, out);
+			assertEquals(0, res.exitCode);
+			assertFalse(src.exists());
+			assertTrue(dst.exists());
+	}
+	
+
+	@Test
+	@Order(6)
+	public void testMn06() throws IOException {
+			beforeAll();
+			
+			FileSource src = srcDir.getChild("Folder01");
+			
+			
+			String code = "connect memory /mem4\n"
+					+ "mv -v "+src+"  /mem4/"+src.getName() ;
+			
+			ExecuteResult res = executeCommand(code,"");
+			
+			String expect = "memory connected as /mem4\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/AbcFile.php -> /mem4/Folder01/AbcFile.php\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/AbcFile.properties -> /mem4/Folder01/AbcFile.properties\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/AbcFile.php -> /mem4/Folder01/Folder01abc.1/AbcFile.php\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/AbcFile.properties\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php -> /mem4/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi -> /mem4/Folder01/Folder01abc.1/Folder01ghi\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php -> /mem4/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl -> /mem4/Folder01/Folder01abc.1/Folder01jkl\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Hotel California.txt\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01abc.1 -> /mem4/Folder01/Folder01abc.1\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01def.2/AbcFile.php -> /mem4/Folder01/Folder01def.2/AbcFile.php\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01def.2/AbcFile.properties -> /mem4/Folder01/Folder01def.2/AbcFile.properties\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01def.2/Hotel California.txt -> /mem4/Folder01/Folder01def.2/Hotel California.txt\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Folder01def.2 -> /mem4/Folder01/Folder01def.2\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01/Hotel California.txt -> /mem4/Folder01/Hotel California.txt\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01 -> /mem4/Folder01\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01 -> /mem4/Folder01\n"
+					;
+			String out = new String(res.bao.toByteArray());
+			String err = new String(res.bae.toByteArray());
+			assertEquals("", err);
+			assertEquals(expect.split("\n").length,out.split("\n").length);
 			assertEquals(0, res.exitCode);
 			assertFalse(src.exists());
 			FileSource dst = console.createFileSource("/mem4/"+src.getName());

@@ -1,7 +1,5 @@
 package us.bringardner.shell.commands;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -76,7 +74,37 @@ public class Mv extends ShellCommand{
 		ShellArgument sa = parserArgs(sc, MvOptions.class);
 
 		List<String> paths = sa.paths;
-
+		List<MvOptions> options = new ArrayList<Mv.MvOptions>();
+		
+		//[-f | -i | -n] [-hv
+		for(Object o : sa.options) {
+			if (o instanceof MvOptions) {
+				MvOptions op = (MvOptions) o;
+				options.add(op);
+				switch (op) {
+				case f:
+					//The -f option overrides any previous -i or -n options.)
+					options.remove(MvOptions.i);
+					options.remove(MvOptions.n);
+					break;
+				case i:
+					//(The -i option overrides any previous -f or -n options.)
+					options.remove(MvOptions.f);
+					options.remove(MvOptions.n);
+					break;
+				case n:
+					//(The -n option overrides any previous -f or -i options.)
+					options.remove(MvOptions.f);
+					options.remove(MvOptions.i);
+					break;
+					
+				default:
+					// v and h are ok
+					break;
+				}
+			}
+		}
+		
 		List<FileSource> files = new ArrayList<>();
 
 		for(String path : paths) {
@@ -137,25 +165,42 @@ public class Mv extends ShellCommand{
 				return 1;
 			}
 		}
-		
+
 		return 0;
 	}
-	
+
 	private int mv_or_copy(ShellContext sc,FileSource source, FileSource dest, List<Object> options) throws IOException {
 		if( !source.exists()) {
 			sc.stderr.println(source.getAbsolutePath()+" does not exist.");
 			return 1;
 		}
-		if( !options.contains(MvOptions.f) && dest.exists()) {
-
+		int ret = 0;
+		if( options.contains(MvOptions.n) && dest.exists()) {
+			sc.stdout.println(dest.getAbsolutePath()+" not overwritten");
+			return 1;
 		}
+		if( options.contains(MvOptions.i) && dest.exists()) {
+
+			String str = promptAndGetReponse(sc, "overwrite "+dest+"? (y/n [n])");
+
+			if( !str.trim().toLowerCase().startsWith("y")) {
+				sc.stdout.println(dest+" not overwritten.");
+				return 1;
+			} 
+		}
+
+
 		if( !source.renameTo(dest)) {
 			copy(sc,source,dest,options);
 			// copy worked 
-			return deleteIfExists(source);
+			ret = deleteIfExists(source);
 		}
 
-		return 0;
+		if(ret == 0 && options.contains(MvOptions.v)) {
+			sc.stdout.println(source.getAbsolutePath()+" -> "+dest);
+		}
+
+		return ret;
 	}
 
 	public static void copy(ShellContext sc,FileSource from, FileSource to,List<Object> options) throws IOException {
@@ -176,6 +221,9 @@ public class Mv extends ShellCommand{
 					copy(sc,in,out);		
 				}
 			}			
+		}
+		if( options.contains(MvOptions.v)) {
+			sc.stdout.println(from.getAbsolutePath()+" -> "+to);
 		}
 	}
 
