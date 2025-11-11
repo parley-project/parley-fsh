@@ -29,7 +29,6 @@ import javax.management.JMRuntimeException;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import org.antlr.v4.parse.ATNBuilder.subrule_return;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -69,6 +68,7 @@ import us.bringardner.shell.commands.Kill;
 import us.bringardner.shell.commands.Ln;
 import us.bringardner.shell.commands.Ls;
 import us.bringardner.shell.commands.Mkdir;
+import us.bringardner.shell.commands.Mv;
 import us.bringardner.shell.commands.Popd;
 import us.bringardner.shell.commands.Pushd;
 import us.bringardner.shell.commands.Pwd;
@@ -351,7 +351,8 @@ delimiter
 		registerCommand(new Ls());
 
 		registerCommand(new Mkdir());
-
+		registerCommand(new Mv());
+		
 		registerCommand(new Popd());
 		registerCommand(new Pushd());
 		registerCommand(new Pwd());
