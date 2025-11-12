@@ -496,6 +496,9 @@ public class BjlShellIDE extends JFrame  {
 
 		public synchronized  void cancel() {
 			canceled = true;
+			if( job == null) {
+				System.out.println("What the hell");
+			}
 			job.handleSignal(ConsoleSignal.Kill);
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
