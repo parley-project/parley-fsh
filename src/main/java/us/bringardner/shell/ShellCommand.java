@@ -2,6 +2,7 @@ package us.bringardner.shell;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -59,6 +60,27 @@ public abstract class ShellCommand {
 
 	
 	public abstract int process(ShellContext ctx) throws IOException;
+	
+	public void copyStream(ShellContext sc,InputStream in, OutputStream out) throws IOException {
+		byte [] data = new byte[1024*10];
+		int got = 0;
+
+		while( (got=in.read(data)) >= 0) {
+			if( got > 0 ) {
+				out.write(data,0,got);
+			}
+			if(sc.getException() !=null) {
+				throw new IOException(sc.getException());
+			}
+			while(sc.isPaused()) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+				}
+			}
+		}
+	}
+
 	public class ShellArgument {
 		public List<Object> options = new ArrayList<>();
 		public List<String> paths = new ArrayList<>();

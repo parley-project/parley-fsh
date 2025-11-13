@@ -203,7 +203,7 @@ public class Mv extends ShellCommand{
 		return ret;
 	}
 
-	public static void copy(ShellContext sc,FileSource from, FileSource to,List<Object> options) throws IOException {
+	public  void copy(ShellContext sc,FileSource from, FileSource to,List<Object> options) throws IOException {
 		FileSource parent = to.getParentFile();
 		if( parent != null && !parent.exists()) {
 			parent.mkdirs();
@@ -218,7 +218,7 @@ public class Mv extends ShellCommand{
 		} else {
 			try(InputStream in = from.getInputStream()) {
 				try(OutputStream out = to.getOutputStream()) {
-					copy(sc,in,out);		
+					copyStream(sc,in,out);		
 				}
 			}			
 		}
@@ -227,25 +227,6 @@ public class Mv extends ShellCommand{
 		}
 	}
 
-	public static void copy(ShellContext sc,InputStream in, OutputStream out) throws IOException {
-		// use a small buffer to get multiple reads 
-		byte [] data = new byte[1024*10];
-		int got = 0;
 
-		while( (got=in.read(data)) >= 0) {
-			if( got > 0 ) {
-				out.write(data,0,got);
-			}
-			if(sc.getException() !=null) {
-				throw new IOException(sc.getException());
-			}
-			while(sc.isPaused()) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-			}
-		}
-	}
 
 }

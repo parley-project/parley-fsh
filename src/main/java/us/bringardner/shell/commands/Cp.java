@@ -74,22 +74,13 @@ public class Cp extends ShellCommand{
 	private void copyFileToFile(ShellContext ctx, List<Arguments> options, FileSource from, FileSource to) throws IOException {
 		try(InputStream in = from.getInputStream()) {
 			try(OutputStream out = to.getOutputStream()) {
-				copySteam(ctx,options,in,out);
+				copyStream(ctx,in,out);
 			}
 		}		
 	}
 
 
-	private void copySteam(ShellContext ctx, List<Arguments> options, InputStream in, OutputStream out) throws IOException {
-		byte [] buffer = new byte[1024*10];
-		int got = in.read(buffer);
-		while( got >=0 ) {
-			if( got > 0 ) {
-				out.write(buffer, 0, got);
-			}
-			got = in.read(buffer);
-		}
-	}
+	
 
 	private void copyToDir(ShellContext ctx, List<Arguments> options, List<FileSource> files, FileSource dir) throws IOException {
 		if( !dir.exists()) {
