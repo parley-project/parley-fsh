@@ -47,7 +47,7 @@ public class DebugVariablePanel extends JPanel  {
 	private ShellContext ctx ;	
 
 	
-	private String [] variablesColumnNames = {"Name","Type","Value"};
+	private String [] variablesColumnNames = {"Name","Value"};
 	private List<Variable> variables = new ArrayList<Variable>();		
 	private DefaultTableModel variableTableModel = new DefaultTableModel() {
 
@@ -71,31 +71,38 @@ public class DebugVariablePanel extends JPanel  {
 			Variable val = variables.get(row);
 			switch (col) {
 			case 0: return val.getName();
-			case 1:Object obj = val.getValue();
-					String tmp = obj.getClass().getName();
-					tmp = tmp.substring(tmp.lastIndexOf('.')+1);
-					return tmp;
-			case 2:return val.getValue();
+			case 1:return val.getValue();
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + col);
 			}
 		}
 
 		public boolean isCellEditable(int row, int col){
-			boolean ret = col == 2;
+			boolean ret = col == 1;
 
 			return ret; 
 		}	    
 
 		public void setValueAt(Object aValue, int row, int column) {
-			if( column == 2) {
-				try {
-				} catch (Exception e) {
-					showError(e, "Could not change value");
+			if( column == 1) {
+				Variable val = variables.get(row);
+				String name = ""+val.getName();
+				if( name.startsWith("$")) {
+					try {
+						int pos = Integer.parseInt(name.substring(1));
+						
+						List<Object> vals = ctx.getAllPositionalParameters();
+						vals.set(pos, aValue);
+						ctx.console.setPositionalParameters(true, vals);
+						
+					} catch (Exception e) {
+						// TODO: handle exception
+					} 
+				} else {
+					ctx.setVariable(name, aValue);
 				}
-
-
-			}
+				createNodes();
+			} 
 		}
 
 
