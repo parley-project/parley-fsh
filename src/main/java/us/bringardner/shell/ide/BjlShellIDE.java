@@ -90,7 +90,6 @@ import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.Compare;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.statement.LoopStatement.LoopControlException;
-import us.bringardner.shell.job.AbstractJob;
 
 
 public class BjlShellIDE extends JFrame  {
@@ -387,8 +386,9 @@ public class BjlShellIDE extends JFrame  {
 		ExecutableCode code = null;
 		private boolean running = false;
 		private boolean canceled = false;
-		AbstractJob job;
-
+		private Console console;
+		private Thread thread;
+		
 		public ExecuteTask(ExecutableCode code) {
 			this.code = code;
 		}
@@ -429,7 +429,7 @@ public class BjlShellIDE extends JFrame  {
 		}
 
 		private Console getConsoleToRun() throws IOException {
-			Console console = new Console();
+			console = new Console();
 			console.setStdOut(new PrintStream(new RuntimeOuputStream()));
 			console.setStdErr(new PrintStream(new RuntimeOuputStream()));
 			// console will use NativeKeyboardReader
@@ -509,10 +509,8 @@ public class BjlShellIDE extends JFrame  {
 
 		public synchronized  void cancel() {
 			canceled = true;
-			if( job == null) {
-				System.out.println("What the hell");
-			}
-			job.handleSignal(ConsoleSignal.Kill);
+			console.handleSignal(ConsoleSignal.Kill);
+			thread.interrupt();
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
 			}
@@ -1315,22 +1313,27 @@ public class BjlShellIDE extends JFrame  {
 				currentTask.cancel();
 
 
+				new Thread(()->{
+					int cnt = 0;
+					do {
+						try {
+							Thread.sleep(10);
+						} catch (InterruptedException e) {
+						}
+						if( ++cnt > 100) {
+							SwingUtilities.invokeLater(()->{
+								outputTextArea.append("Waiting for task to complete\n");
+							});
+							
+							currentTask.thread.interrupt();
+							cnt=0;
+						}
+					} while(currentTask.isRunning());
 
-				int cnt = 0;
-				do {
-					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-					}
-					if( ++cnt > 100) {
-						System.out.println("Waiting for task to complete");
-						//currentTask.cancel();
-						cnt=0;
-					}
-				} while(currentTask.isRunning());
-
-				currentTask = null;
-			}
+					currentTask = null;
+	
+				}).start();
+				}
 
 
 			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc.png")));		
@@ -1370,6 +1373,7 @@ public class BjlShellIDE extends JFrame  {
 			Thread th = new Thread(null,currentTask,"ExecuteThread",stackSize);
 			th.setDaemon(true);
 			th.setName("Execute thread "+(++count));
+			currentTask.thread = th;
 			runState = state;
 			th.start();
 		} else {
