@@ -410,28 +410,6 @@ public class BjlShellIDE extends JFrame  {
 			return codeToRun;
 		}
 
-		private FileSource getFileToRun() throws IOException {
-			FileSource ret = scriptFile;
-
-			String codeToRun = getCodeToRun();
-
-			String fileName = ret == null?"bjlsh":ret.getName();
-			File tmp = File.createTempFile(fileName, ".fssh");
-			tmp.deleteOnExit();
-			ret = FileSourceFactory.getDefaultFactory().createFileSource(tmp.getCanonicalPath());
-			try(OutputStream out = ret.getOutputStream()) {
-				out.write(codeToRun.getBytes());
-			}				
-
-
-			if( !ret.canExecute()) {
-				if( !ret.setExecutable(true)) {
-					throw new IOException("Can't set executable permission for "+ret);
-				}
-			}
-			return ret;
-		}
-
 		private Console getConsoleToRun() throws IOException {
 			console = new Console();
 			console.setStdOut(new PrintStream(new RuntimeOuputStream()));
