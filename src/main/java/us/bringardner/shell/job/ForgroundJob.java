@@ -32,8 +32,40 @@ public class ForgroundJob extends AbstractJob {
 
 	@Override
 	public void handleSignal(ConsoleSignal signal) {
-		throw new RuntimeException("I don't know what to do???");
 		
+		JobState currentState = getState();
+		
+		switch (currentState) {
+		case Termnated:
+		case Notified:return;
+		default:
+			break;
+		}
+		
+		if(!isIgnoreSignal(signal)) {
+			switch (signal) {
+			case ChildStopped: 				
+				break;
+			case Continue: 
+				if( currentState == JobState.Suspended) {
+					setState(JobState.Running);
+				}
+				
+				break;
+			case Hup: 
+			case Interupt:
+			case Terminate:
+			case Kill: 				
+				setState(JobState.Termnated);
+				break;
+			case Suspend:
+				setState(JobState.Suspended);
+				break;
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + signal);
+			}
+			
+		}		
 	}
 
 	@Override

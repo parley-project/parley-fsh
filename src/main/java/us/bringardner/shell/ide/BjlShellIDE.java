@@ -85,11 +85,15 @@ import us.bringardner.shell.Console;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.DebugContext;
 import us.bringardner.shell.DebugContext.RunState;
+import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.Compare;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
+import us.bringardner.shell.antlr.statement.CommandStatement.StringArgument;
 import us.bringardner.shell.antlr.statement.LoopStatement.LoopControlException;
+import us.bringardner.shell.job.AbstractJob;
+import us.bringardner.shell.job.ForgroundJob;
 
 
 public class BjlShellIDE extends JFrame  {
@@ -234,19 +238,19 @@ public class BjlShellIDE extends JFrame  {
 				Map<Integer, Breakpoint> map =  editorPane.getBreakpoints();
 				int line = linePt.x+lineAdjust;
 				if( line >=0) {
-				Breakpoint bp = map.get(line);
+					Breakpoint bp = map.get(line);
 
-				ret = bp !=null && bp.isEnabled(true);
-				if( ret && bp.isConditional()) {
-					try {
-						String code =  bp.getCondition();
-						code = ctx.console.preProcess(code, ctx);
-						Compare c = FileSourceShVisitorImpl.parseCompare(code);
-						ret = c.evaluate(ctx);
-					} catch (Exception e) {
-						showError(e, "Condition evaluation failed");
+					ret = bp !=null && bp.isEnabled(true);
+					if( ret && bp.isConditional()) {
+						try {
+							String code =  bp.getCondition();
+							code = ctx.console.preProcess(code, ctx);
+							Compare c = FileSourceShVisitorImpl.parseCompare(code);
+							ret = c.evaluate(ctx);
+						} catch (Exception e) {
+							showError(e, "Condition evaluation failed");
+						}
 					}
-				}
 				}
 			}
 			return  ret;
@@ -282,12 +286,12 @@ public class BjlShellIDE extends JFrame  {
 				int line = context.start.getLine()+lineAdjust;
 				//System.out.println("After  line="+line+" state="+debugContext.getCurrentState()+" contex="+context.getClass().getSimpleName());
 				if( line >=0) {
-				String msg = ""+line+": "+context.getText();
-				SwingUtilities.invokeLater(()->{
-					editorPane.removeAllLineHighlights();
-					debugVariablePanel.setContext(editorPane, ctx);
-					logView.append(msg+"\n");
-				});
+					String msg = ""+line+": "+context.getText();
+					SwingUtilities.invokeLater(()->{
+						editorPane.removeAllLineHighlights();
+						debugVariablePanel.setContext(editorPane, ctx);
+						logView.append(msg+"\n");
+					});
 				}
 
 			}
@@ -384,11 +388,11 @@ public class BjlShellIDE extends JFrame  {
 
 	public class ExecuteTask implements Runnable {
 		ExecutableCode code = null;
-		private boolean running = false;
 		private boolean canceled = false;
 		private Console console;
 		private Thread thread;
-		
+		private AbstractJob job;
+
 		public ExecuteTask(ExecutableCode code) {
 			this.code = code;
 		}
@@ -458,49 +462,56 @@ public class BjlShellIDE extends JFrame  {
 		@Override 
 		public void run()  {			
 
-			running = true;
-
-			FileSource file=null;
-
-			try {
-				file = getFileToRun();
-			} catch (IOException e) {
-				running=false;
-				showError(e, "");
-			}
-
-			if( file != null ) {
-
+			String codeToRun = getCodeToRun().trim();
+			if( !codeToRun.isEmpty()) {
 				Console console = null;						
 				try {				
 					console = getConsoleToRun();
 				} catch (Exception e) {
-					running=false;
+
 					showError(e, "");
 				}
 
 				if( console != null ) {
 					String args1[] =  argumentsTextField.getText().split("\\s");
-					String [] args = new String[args1.length+1];
-					args[0]=file.getAbsolutePath();
-					for (int idx = 1; idx < args.length; idx++) {
-						args[idx] = args1[idx-1];
+					FsshList args = new FsshList();
+
+					args.add(new StringArgument( scriptFile!=null?scriptFile.getAbsolutePath():"fssh"));
+					for (String a : args1) {
+						args.add( new StringArgument(a));
 					}
 
-					int exitCode = console.execute(args);
-					
+					console.setPositionalParameters(true, args);
+					ShellContext sc = new ShellContext(console);
+
+					job = new ForgroundJob(sc, getCodeToRun());
+					job.start();
+
+					while(!job.hasStarted()) {
+						try {
+							Thread.sleep(10);
+						} catch (InterruptedException e) {
+						}
+					}
+					while(job.isRunning()) {
+						try {
+							Thread.sleep(10);
+						} catch (InterruptedException e) {
+						}
+					}
+					int exitCode = job.getExitCode();
 					logView.append("exitCode = "+exitCode);
 				}
-			}
-			running=false;
-			SwingUtilities.invokeLater(()->{
-				stopTask();	
-			});
 
+				SwingUtilities.invokeLater(()->{
+					stopTask();	
+				});
+			}
 		}
 
 		public synchronized boolean isRunning () {
-			return running;
+			boolean ret = job !=null && job.isRunning();
+			return ret;
 		}
 
 		public synchronized boolean isCancelled() {
@@ -508,8 +519,12 @@ public class BjlShellIDE extends JFrame  {
 		}
 
 		public synchronized  void cancel() {
+			
 			canceled = true;
-			console.handleSignal(ConsoleSignal.Kill);
+			if( job !=null ) {
+				job.handleSignal(ConsoleSignal.Kill);
+			}
+			
 			thread.interrupt();
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
@@ -1324,16 +1339,16 @@ public class BjlShellIDE extends JFrame  {
 							SwingUtilities.invokeLater(()->{
 								outputTextArea.append("Waiting for task to complete\n");
 							});
-							
+
 							currentTask.thread.interrupt();
 							cnt=0;
 						}
 					} while(currentTask.isRunning());
 
 					currentTask = null;
-	
+
 				}).start();
-				}
+			}
 
 
 			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc.png")));		

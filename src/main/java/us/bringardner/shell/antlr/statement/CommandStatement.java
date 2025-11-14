@@ -592,7 +592,7 @@ public class CommandStatement extends Statement{
 		hereId = hereDocument.ID().getText();		
 	}
 
-	protected static class StringArgument extends Argument {
+	public static class StringArgument extends Argument {
 		String value;
 		public StringArgument(String value) {
 			super(null);
@@ -601,6 +601,11 @@ public class CommandStatement extends Statement{
 		
 		@Override
 		public Object getValue(ShellContext ctx) throws IOException {
+			return value;
+		}
+		
+		@Override
+		public String toString() {
 			return value;
 		}
 		
