@@ -25,12 +25,10 @@ import java.util.Map;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
-import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
@@ -95,8 +93,7 @@ public class DebugVariablePanel extends JPanel  {
 						vals.set(pos, aValue);
 						ctx.console.setPositionalParameters(true, vals);
 						
-					} catch (Exception e) {
-						// TODO: handle exception
+					} catch (Exception e) {						
 					} 
 				} else {
 					ctx.setVariable(name, aValue);
@@ -243,7 +240,6 @@ public class DebugVariablePanel extends JPanel  {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if( e.getClickCount() == 2) {
-					System.out.println("Edit current row");
 					int row = btable.getSelectedRow();
 					Breakpoint bp = breakpoints.get(row);
 					BreakpointPropertiesDialog d = new BreakpointPropertiesDialog();
@@ -286,15 +282,7 @@ public class DebugVariablePanel extends JPanel  {
 		treeScrollPane.setViewportView(treeView);
 	}
 
-	private void showError(Throwable e1,String msg) {
-		if( SwingUtilities.isEventDispatchThread()) {
-			JOptionPane.showMessageDialog(this, msg, e1.toString(), JOptionPane.ERROR_MESSAGE);
-		} else {
-			SwingUtilities.invokeLater(()->showError(e1,msg));
-		}		
-
-	}
-
+	
 
 	protected void actionEnableAll(boolean b) {
 		for(Breakpoint bo : breakpoints) {
