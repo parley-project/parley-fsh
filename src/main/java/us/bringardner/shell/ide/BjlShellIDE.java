@@ -1001,7 +1001,7 @@ public class BjlShellIDE extends JFrame  {
 			String lastCode = null;
 			while(true) {
 				try {
-					String code = getExecutableCode().allCode;
+					String code = getExecutableCode().allCode.trim();
 					if(!code.equals(lastCode)) {
 
 						lastCode = code;
