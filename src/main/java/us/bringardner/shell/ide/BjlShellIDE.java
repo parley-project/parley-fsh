@@ -213,6 +213,7 @@ public class BjlShellIDE extends JFrame  {
 
 	private DebugContext debugContext = new DebugContext() {
 
+		int lineAdjust = -2;
 		public void suspend() {
 			setCurrentState(RunState.StepInto);
 		};
@@ -227,12 +228,14 @@ public class BjlShellIDE extends JFrame  {
 		};
 
 		@Override
-		public  synchronized boolean isBreakpoint(Point line,ShellContext ctx) {
+		public  synchronized boolean isBreakpoint(Point linePt,ShellContext ctx) {
 			boolean ret = false;
 
 			if( runState == SolidFrameRunstate.Debugging) {
 				Map<Integer, Breakpoint> map =  editorPane.getBreakpoints();
-				Breakpoint bp = map.get(line.x-1);
+				int line = linePt.x+lineAdjust;
+				if( line >=0) {
+				Breakpoint bp = map.get(line);
 
 				ret = bp !=null && bp.isEnabled(true);
 				if( ret && bp.isConditional()) {
@@ -245,6 +248,7 @@ public class BjlShellIDE extends JFrame  {
 						showError(e, "Condition evaluation failed");
 					}
 				}
+				}
 			}
 			return  ret;
 		}
@@ -255,34 +259,37 @@ public class BjlShellIDE extends JFrame  {
 				throw new LoopControlException(LoopControl.Break, 100000);
 			}
 			if(runState == SolidFrameRunstate.Debugging && context != null ) {
-				int line = context.start.getLine();
+				int line = context.start.getLine()+lineAdjust;
 				//System.out.println("Before  line="+line+" state="+debugContext.getCurrentState()+" contex="+context.getClass().getSimpleName());
 
-				SwingUtilities.invokeLater(()->{				
-					//editorPane.setCeretPosotionFromLine(line-1);
-					try {
-						editorPane.removeAllLineHighlights();
-						editorPane.addLineHighlight(line-1, Color.green);
-					} catch (BadLocationException e) {
-						showError(e, "Add hilight");
-					}
-					debugVariablePanel.setContext(editorPane, ctx);
-				});								
+				if( line >=0) {
+					SwingUtilities.invokeLater(()->{				
+						//editorPane.setCeretPosotionFromLine(line-1);
+						try {
+							editorPane.removeAllLineHighlights();
+							editorPane.addLineHighlight(line, Color.green);
+						} catch (BadLocationException e) {
+							showError(e, "Add hilight");
+						}
+						debugVariablePanel.setContext(editorPane, ctx);
+					});				
+				}
 			}
 		}
 
 		@Override
 		public synchronized void after(ParserRuleContext context,ShellContext ctx) {
 			if(runState == SolidFrameRunstate.Debugging && context != null ) {
-				int line = context.start.getLine();
+				int line = context.start.getLine()+lineAdjust;
 				//System.out.println("After  line="+line+" state="+debugContext.getCurrentState()+" contex="+context.getClass().getSimpleName());
+				if( line >=0) {
 				String msg = ""+line+": "+context.getText();
 				SwingUtilities.invokeLater(()->{
 					editorPane.removeAllLineHighlights();
 					debugVariablePanel.setContext(editorPane, ctx);
 					logView.append(msg+"\n");
 				});
-
+				}
 
 			}
 
@@ -440,6 +447,11 @@ public class BjlShellIDE extends JFrame  {
 				FileSource file1 = FileSourceFactory.getDefaultFactory().createFileSource(stdErrTextField.getText().trim());
 				console.setStdErr(new PrintStream(file1.getOutputStream()));
 			}
+			if( debugContext !=null ) {
+				debugContext.setCurrentState(RunState.Running);
+				console.setDebugContext(debugContext);
+			}
+
 			return console;
 		}
 
@@ -476,7 +488,8 @@ public class BjlShellIDE extends JFrame  {
 					}
 
 					int exitCode = console.execute(args);
-					System.out.println("exitCode = "+exitCode);
+					
+					logView.append("exitCode = "+exitCode);
 				}
 			}
 			running=false;

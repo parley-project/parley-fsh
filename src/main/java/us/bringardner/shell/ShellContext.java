@@ -671,7 +671,7 @@ $
 				}
 			}
 			sub.setPositionalParameters(true, tmp);
-
+			sub.setDebugContext(console.getDebugContext());
 
 			int ret = sub.executeUsingAntlr(code);
 
