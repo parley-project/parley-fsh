@@ -241,7 +241,15 @@ public class Configuration {
 					+ "done"
 					),
 			
-			new Template( "name", "name2", ""),
+			new Template( "select02", "select-variable", 
+					"select ${name} in $$var;\n"
+					+ "do\n"
+					+ "	echo you picked ${$name}\n"
+					+ "	break;\n"
+					+ "done"
+					),
+			
+			//new Template( "name", "name2", ""),
 			
 	};
 	
