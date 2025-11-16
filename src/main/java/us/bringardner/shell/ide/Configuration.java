@@ -220,10 +220,18 @@ public class Configuration {
 			
 			
 			new Template( "case", "case-statement", 
-					"until [ ${true} ]\n"
-					+ "do\n"
-					+ "  ${echo}\n"
-					+ "done"),
+					"case word  in\n"
+					+ "  option1 | option2 ) echo \"type1\";;\n"
+					+ "  option3 | option4 ) echo \"type2\";;\n"
+					+ "  *) echo \"an unknown type\";;\n"
+					+ "esac"),
+			
+			new Template( "case", "case-statement-variable", 
+					"case $$var  in\n"
+					+ "  option1 | option2 ) echo \"$$var is type1\";;\n"
+					+ "  option3 | option4 ) echo \"$$var is type2\";;\n"
+					+ "  *) echo \"$$var is an unknown type\";;\n"
+					+ "esac"),
 			
 			new Template( "select01", "select", 
 					"select ${name} in ${list};\n"
