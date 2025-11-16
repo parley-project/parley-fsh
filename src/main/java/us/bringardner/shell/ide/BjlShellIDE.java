@@ -97,7 +97,7 @@ import us.bringardner.shell.job.ForgroundJob;
 
 public class BjlShellIDE extends JFrame  {
 
-	private enum SolidFrameRunstate {Idel,Running,Debugging}
+	private enum IdeRunstate {Idel,Running,Debugging}
 
 
 
@@ -233,7 +233,7 @@ public class BjlShellIDE extends JFrame  {
 		public  synchronized boolean isBreakpoint(Point linePt,ShellContext ctx) {
 			boolean ret = false;
 
-			if( runState == SolidFrameRunstate.Debugging) {
+			if( runState == IdeRunstate.Debugging) {
 				Map<Integer, Breakpoint> map =  editorPane.getBreakpoints();
 				int line = linePt.x+lineAdjust;
 				if( line >=0) {
@@ -260,7 +260,7 @@ public class BjlShellIDE extends JFrame  {
 			if( getCurrentState() == RunState.Terminate) {
 				throw new LoopControlException(LoopControl.Break, 100000);
 			}
-			if(runState == SolidFrameRunstate.Debugging && context != null ) {
+			if(runState == IdeRunstate.Debugging && context != null ) {
 				int line = context.start.getLine()+lineAdjust;
 				//System.out.println("Before  line="+line+" state="+debugContext.getCurrentState()+" contex="+context.getClass().getSimpleName());
 
@@ -281,7 +281,7 @@ public class BjlShellIDE extends JFrame  {
 
 		@Override
 		public synchronized void after(ParserRuleContext context,ShellContext ctx) {
-			if(runState == SolidFrameRunstate.Debugging && context != null ) {
+			if(runState == IdeRunstate.Debugging && context != null ) {
 				int line = context.start.getLine()+lineAdjust;
 				//System.out.println("After  line="+line+" state="+debugContext.getCurrentState()+" contex="+context.getClass().getSimpleName());
 				if( line >=0) {
@@ -505,6 +505,7 @@ public class BjlShellIDE extends JFrame  {
 			thread.interrupt();
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
+				editorPane.removeAllLineHighlights();
 			}
 		}
 
@@ -539,7 +540,7 @@ public class BjlShellIDE extends JFrame  {
 
 
 	JMenu openRecentMenu = new JMenu("Open Recent");
-	private SolidFrameRunstate runState = SolidFrameRunstate.Idel;
+	private IdeRunstate runState = IdeRunstate.Idel;
 
 	private JButton executeButton;
 
@@ -1129,7 +1130,7 @@ public class BjlShellIDE extends JFrame  {
 	}
 
 	protected void actionShowDebugView() {
-		if( runState == SolidFrameRunstate.Idel) {
+		if( runState == IdeRunstate.Idel) {
 			boolean b = showDebugViewCheckBox.isSelected();
 			if( b ) {
 				debugVariablePanel.setContext(editorPane, null);
@@ -1149,7 +1150,7 @@ public class BjlShellIDE extends JFrame  {
 			debugControlPanel.setVisible(true);
 			debugSplitPane.setVisible(true);
 			centerSplitPane.resetToPreferredSizes();
-			startTask(SolidFrameRunstate.Debugging);
+			startTask(IdeRunstate.Debugging);
 
 			break;
 		case Debugging:
@@ -1287,7 +1288,7 @@ public class BjlShellIDE extends JFrame  {
 
 		switch (runState) {
 		case Idel:				
-			startTask(SolidFrameRunstate.Running);
+			startTask(IdeRunstate.Running);
 			break;
 		case Running:
 			stopTask();
@@ -1333,7 +1334,7 @@ public class BjlShellIDE extends JFrame  {
 			debugButton.setVisible(true);
 			executeButton.setVisible(true);
 			debugControlPanel.setVisible(false);
-			runState = SolidFrameRunstate.Idel;
+			runState = IdeRunstate.Idel;
 			editorPane.setHighlightCurrentLine(false);
 			actionShowDebugView();
 		} else {
@@ -1341,7 +1342,7 @@ public class BjlShellIDE extends JFrame  {
 		}
 	}
 
-	private void startTask(SolidFrameRunstate state) {
+	private void startTask(IdeRunstate state) {
 
 		if( SwingUtilities.isEventDispatchThread()) {
 			Map<Integer, Breakpoint> map =  editorPane.getBreakpoints();
