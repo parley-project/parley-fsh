@@ -20,17 +20,18 @@ public class Help extends ShellCommand{
 		int ret = 0;
 
 		try {
-			if( args.length  < 2) {
+			if( args.length  == 0) {
 				for(Constructor<? extends ShellCommand> cmd : Console.commands.values()) {
-					ctx.stdout.println(cmd.getName()+": "+ cmd.newInstance((Class<?>)null).getHelp());
+					ShellCommand scmd = cmd.newInstance();
+					ctx.stdout.println(scmd.getName());
 				}
 			} else {
-				for (int idx = 1; idx < args.length; idx++) {
+				for (int idx = 0; idx < args.length; idx++) {
 					Constructor<? extends ShellCommand> cmd = Console.commands.get(args[idx].getValue(ctx).toString());
 					if( cmd == null ) {
 						ctx.stdout.println("No command for "+args[idx].getValue(ctx).toString());
 					} else {
-						ctx.stdout.println(args[idx].getValue(ctx).toString()+ " "+cmd.newInstance((Class<?>)null).getHelp());
+						ctx.stdout.println(args[idx].getValue(ctx).toString()+ " "+cmd.newInstance().getHelp());
 					}
 				}
 			}
