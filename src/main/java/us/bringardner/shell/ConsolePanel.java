@@ -177,7 +177,7 @@ public class ConsolePanel extends JPanel implements KeyboardReader {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				//System.out.println(e);
-				Console.System_out.println(e);
+				//Console.System_out.println(e);
 
 				StringBuilder db = new StringBuilder("inReadline="+inReadline+"\n");
 
@@ -342,7 +342,7 @@ public class ConsolePanel extends JPanel implements KeyboardReader {
 					}
 					textArea.setCaretPosition(currentPos+editLineText.length());
 				}
-				System.out.println("pos="+pos+" lisn="+lineStart+" len="+textArea.getText().length()+" idx="+lineIndex); 
+				//System.out.println("pos="+pos+" lisn="+lineStart+" len="+textArea.getText().length()+" idx="+lineIndex); 
 
 
 			});
