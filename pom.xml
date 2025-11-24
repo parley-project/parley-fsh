@@ -156,9 +156,9 @@
 			<version>0.1.1</version>
 		</dependency>
 		<dependency>
-			<groupId>us.bringardner</groupId>
-			<artifactId>bjl_network_framework</artifactId>
-			<version>0.1.0</version>
+  			<groupId>us.bringardner</groupId>
+  			<artifactId>bjl_net_framework</artifactId>
+  			<version>0.1.1</version>
 		</dependency>
 
 		<dependency>

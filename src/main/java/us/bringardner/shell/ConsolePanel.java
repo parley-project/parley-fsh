@@ -32,7 +32,7 @@ import javax.swing.text.StyledDocument;
 
 import sun.misc.Signal;
 
-public class ConsolPanel extends JPanel implements KeyboardReader {
+public class ConsolePanel extends JPanel implements KeyboardReader {
 
 
 
@@ -136,7 +136,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	/**
 	 * Create the panel.
 	 */
-	public ConsolPanel() {
+	public ConsolePanel() {
 		setLayout(new BorderLayout(0, 0));
 
 		JPanel debugPanel = new JPanel();
@@ -280,7 +280,7 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 						if(last.charAt(0)!='\\') {							
 							String all = textArea.getText();
 							String line = all.substring(lineStart);
-							ConsolPanel.this.line.set(line);
+							ConsolePanel.this.line.set(line);
 							inReadline.set(false);						
 						} 
 					} catch (BadLocationException e1) {
@@ -418,17 +418,20 @@ public class ConsolPanel extends JPanel implements KeyboardReader {
 	}
 
 	public void clear() {
-		try {
-			SwingUtilities.invokeAndWait(()->{
-				prompt = "";
-				textArea.setText("");
-				lineStart=currentPos=0;			
-			});
-		} catch (InvocationTargetException | InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		if( SwingUtilities.isEventDispatchThread()) {
+			prompt = "";
+			textArea.setText("");
+			lineStart=currentPos=0;
+		} else {
+			try {
+				SwingUtilities.invokeAndWait(()->{
+					prompt = "";
+					textArea.setText("");
+					lineStart=currentPos=0;			
+				});
+			} catch (InvocationTargetException | InterruptedException e) {
+			}
 		}
-
 
 
 	}

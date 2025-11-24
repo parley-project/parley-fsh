@@ -18,7 +18,7 @@ public class ConsoleFrame extends JFrame implements KeyboardReader {
 	
 
 
-	private ConsolPanel consolePanel;
+	private ConsolePanel consolePanel;
 	
 
 	/**
@@ -77,7 +77,7 @@ public class ConsoleFrame extends JFrame implements KeyboardReader {
 	public ConsoleFrame() {
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(100, 100, 1193, 739);
-		consolePanel = new ConsolPanel();
+		consolePanel = new ConsolePanel();
 		consolePanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(consolePanel);
 		

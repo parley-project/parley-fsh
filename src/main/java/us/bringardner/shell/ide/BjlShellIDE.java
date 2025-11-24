@@ -80,6 +80,7 @@ import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceChooserDialog;
 import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.shell.ConsolePanel;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.DebugContext;
@@ -200,18 +201,6 @@ public class BjlShellIDE extends JFrame  {
 		String msg;
 	}
 
-
-	private class RuntimeOuputStream extends OutputStream {
-
-		@Override
-		public void write(int b) throws IOException {
-			SwingUtilities.invokeLater(()->{
-				//Console.terminal.println("b="+((char)b));
-				outputTextArea.append(""+(char)b);
-			});			
-		}
-
-	}
 
 	private DebugContext debugContext = new DebugContext() {
 
@@ -411,10 +400,10 @@ public class BjlShellIDE extends JFrame  {
 
 		private Console getConsoleToRun() throws IOException {
 			console = new Console();
-			console.setStdOut(new PrintStream(new RuntimeOuputStream()));
-			console.setStdErr(new PrintStream(new RuntimeOuputStream()));
+			console.setStdOut(outputTextArea.getStdOut());
+			console.setStdErr(outputTextArea.getStdErr());
 			// console will use NativeKeyboardReader
-			console.setStdIn(System.in);
+			console.setStdIn(outputTextArea.getStdIn());
 
 			if(!stdInTextField.getText().trim().isEmpty()) {
 				FileSource file1 = FileSourceFactory.getDefaultFactory().createFileSource(stdInTextField.getText().trim());
@@ -564,7 +553,7 @@ public class BjlShellIDE extends JFrame  {
 
 	private JPanel debugPanel;
 
-	private JTextArea outputTextArea;
+	private ConsolePanel outputTextArea;
 
 	private JSplitPane centerSplitPane;
 
@@ -899,8 +888,7 @@ public class BjlShellIDE extends JFrame  {
 
 		contentPane.add(centerSplitPane, BorderLayout.CENTER);
 		JScrollPane stdViewScrollPane = new JScrollPane();
-		outputTextArea = new JTextArea();
-		outputTextArea.setText("");
+		outputTextArea = new ConsolePanel();		
 		stdViewScrollPane.setViewportView(outputTextArea);
 
 
@@ -1315,7 +1303,7 @@ public class BjlShellIDE extends JFrame  {
 						}
 						if( ++cnt > 100) {
 							SwingUtilities.invokeLater(()->{
-								outputTextArea.append("Waiting for task to complete\n");
+								outputTextArea.getStdOut().println("Waiting for task to complete\n");
 							});
 
 							currentTask.thread.interrupt();
@@ -1359,7 +1347,7 @@ public class BjlShellIDE extends JFrame  {
 
 
 			logView.setText("");
-			outputTextArea.setText("");
+			outputTextArea.clear();
 
 			currentTask = new ExecuteTask(code);
 
