@@ -485,12 +485,12 @@ public class BjlShellIDE extends JFrame  {
 		}
 
 		public synchronized  void cancel() {
-			
+
 			canceled = true;
 			if( job !=null ) {
 				job.handleSignal(ConsoleSignal.Kill);
 			}
-			
+
 			thread.interrupt();
 			if( debugContext != null ) {
 				debugContext.setCurrentState(RunState.Terminate);
@@ -795,14 +795,17 @@ public class BjlShellIDE extends JFrame  {
 		executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc.png")));
 		executePanel.add(executeButton);
 
+		scriptArgPanel = new JPanel();
+		menuPanel.add(scriptArgPanel);
+
 		argumentsTextField = new JTextField();
+		scriptArgPanel.add(argumentsTextField);
 		argumentsTextField.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "Script Arguments", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-		menuPanel.add(argumentsTextField);
 		argumentsTextField.setColumns(30);
 
 		JPanel panel = new JPanel();
+		scriptArgPanel.add(panel);
 		panel.setBorder(new TitledBorder(null, "stdin", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-		menuPanel.add(panel);
 
 		JButton btnNewButton = new JButton("");
 		btnNewButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/redirect_in.png")));
@@ -818,8 +821,8 @@ public class BjlShellIDE extends JFrame  {
 		stdInTextField.setColumns(10);
 
 		JPanel panel_1 = new JPanel();
+		scriptArgPanel.add(panel_1);
 		panel_1.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "stdout", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-		menuPanel.add(panel_1);
 
 		JButton btnNewButton_1 = new JButton("");
 		btnNewButton_1.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/redirect_out.png")));
@@ -835,8 +838,8 @@ public class BjlShellIDE extends JFrame  {
 		stdOutTextField.setColumns(10);
 
 		JPanel panel_1_1 = new JPanel();
+		scriptArgPanel.add(panel_1_1);
 		panel_1_1.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null), "stderr", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-		menuPanel.add(panel_1_1);
 
 		JButton btnNewButton_1_1 = new JButton("");
 		btnNewButton_1_1.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/redirect_out.png")));
@@ -850,6 +853,12 @@ public class BjlShellIDE extends JFrame  {
 		stdErrTextField = new JTextField();
 		stdErrTextField.setColumns(10);
 		panel_1_1.add(stdErrTextField);
+
+		debugControlPanel = new DebugControlPanel(debugContext);
+		menuPanel.add(debugControlPanel);
+		debugControlPanel.setVisible(false);
+		FlowLayout flowLayout_1 = (FlowLayout) debugControlPanel.getLayout();
+		flowLayout_1.setAlignment(FlowLayout.CENTER);
 		executeButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionExecute(true);
@@ -866,12 +875,6 @@ public class BjlShellIDE extends JFrame  {
 
 		debugPanel = new JPanel();
 		debugPanel.setLayout(new BorderLayout(0, 0));
-
-		debugControlPanel = new DebugControlPanel(debugContext);
-		debugControlPanel.setVisible(false);
-		FlowLayout flowLayout_1 = (FlowLayout) debugControlPanel.getLayout();
-		flowLayout_1.setAlignment(FlowLayout.CENTER);
-		debugPanel.add(debugControlPanel, BorderLayout.NORTH);
 
 		JSplitPane editSplitPane = new JSplitPane();
 		editSplitPane.setResizeWeight(0.6);
@@ -1272,6 +1275,7 @@ public class BjlShellIDE extends JFrame  {
 	private JTextField stdInTextField;
 	private JTextField stdOutTextField;
 	private JTextField stdErrTextField;
+	private JPanel scriptArgPanel;
 	protected void actionExecute(boolean logError) {
 
 		switch (runState) {
@@ -1316,7 +1320,7 @@ public class BjlShellIDE extends JFrame  {
 				}).start();
 			}
 
-
+			scriptArgPanel.setVisible(true);
 			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/eclipe_run_exc.png")));		
 			horizontalStrut.setVisible(true);
 			debugButton.setVisible(true);
@@ -1345,10 +1349,12 @@ public class BjlShellIDE extends JFrame  {
 
 			executeButton.setIcon(new ImageIcon(BjlShellIDE.class.getResource("/img/Stop.png")));
 
-
+			scriptArgPanel.setVisible(false);
 			logView.setText("");
 			outputTextArea.clear();
-
+			if( state == IdeRunstate.Debugging) {
+				debugControlPanel.setVisible(true);
+			}
 			currentTask = new ExecuteTask(code);
 
 			Thread th = new Thread(null,currentTask,"ExecuteThread",stackSize);
