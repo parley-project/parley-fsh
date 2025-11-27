@@ -1,6 +1,0 @@
-
-until [ $counter > 5 ]
-do
-  echo Counter: $counter
-  ((counter++))
-done

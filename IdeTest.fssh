@@ -1,4 +1,0 @@
-x=one
-y=two
-echo $x
-echo $y

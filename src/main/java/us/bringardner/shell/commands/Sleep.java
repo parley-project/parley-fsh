@@ -81,7 +81,7 @@ public class Sleep extends ShellCommand{
 			}
 			timeToSleep = ival.longValue() * multiplyer;
 			if( debug ) {
-				System.out.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
+				//System.out.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
 				ctx.stdout.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
 			}
 			while( timeToSleep > 0 ) {
@@ -101,7 +101,7 @@ public class Sleep extends ShellCommand{
 						// reset flag interrupted 
 						Thread.currentThread().isInterrupted();
 						if( debug) {
-							System.out.println("Interupted sleep time="+timeToSleep);
+							//System.out.println("Interupted sleep time="+timeToSleep);
 						}
 						// give time for exceptions to be set
 						try {

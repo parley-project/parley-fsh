@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project name="AntlrBuild" default="build" basedir="."> 
-  <target name="build">
-    <java classname="us.bringardner.io.filesource.console.test.AntlrBuilder" classpath="target/test-classes:/Volumes/Data/eclipse-workspace-jmail/BjlFileSystemConsole/lib/antlr-4.13.2-complete.jar">
-    </java>
-  </target>
-</project>

@@ -1,5 +1,0 @@
-
-do 
-  echo Counter: $counter
-  ((counter++))
- done

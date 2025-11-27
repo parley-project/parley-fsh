@@ -1,2 +1,0 @@
-s1="this is a double quoted string $v "
-s2='this is a single quoted string $v '

@@ -99,9 +99,9 @@ public class BackgroundJob extends AbstractJob{
 	
 	@Override
 	public int getExitCode() {
-		if( started && running) {
-			System.out.println("asking at wrong time started="+started+"running="+running+" isRunning="+isRunning()+" child="+child.isRunning());
-		}
+		//if( started && running) {
+		//	System.out.println("asking at wrong time started="+started+"running="+running+" isRunning="+isRunning()+" child="+child.isRunning());
+		//}
 		return child.exitCode;
 		
 	}
@@ -113,22 +113,6 @@ public class BackgroundJob extends AbstractJob{
 		
 	}
 
-/*
-Amoxicillin
-Atorvastatin Calcium
-Lisinopril
-HumaLOG KwikPen
-Telmisartan-HCTZ
-Kariva
-Methadone HCl
-Mirtazapine
-Lialda
-Temazepam
-Xanax
-Levothyroxine Sodium
-Aspirin-Dipyridamole ER
-
- */
 	@Override
 	public String getCommandLine() {		
 		return child.toString();
