@@ -1,4 +1,4 @@
-package us.bringardner.shell.test;
+package us.bringardner.shell.test.utilities;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
