@@ -67,7 +67,7 @@ assignment
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* expression
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* mathExpression
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* parameter
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* list // Could be single element
+    //| (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* list // Could be single element
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* id2=ID
     | (LOCAL WS)? WS* id1=(ID|ARG_ID) (WS* (associative_index | array_index))? WS* EQ WS* path
     ;
@@ -104,11 +104,12 @@ argument_list: (argument WS*)*
 
 
 	
-argument
-    : ARG_ID 
+argument:
+      ARG_ID 
     | arg_command_substitution
     | signed_number
     | NUMBER    
+   //	| braceExpansion
    	| TEXT
     | string         
     | assignStatement            
@@ -118,6 +119,7 @@ argument
 	| ID
 	| variable
 	| PERC
+	
     ;
     
 signed_number: (MINUS|PLUS|PERC)? NUMBER;    
@@ -389,8 +391,8 @@ arrayInitializer
     : LPAREN argument_list RPAREN
     ;
 
-list
-    : (argument white*)+
+list: 
+	  (argument white*)+
     | white* LSQUARE white* argument white* RSQUARE white*
     ;
 
@@ -461,9 +463,21 @@ declareAssociativeArrayStatement
     ;
 
 associativeArrayInitializer
-    : white* LPAREN white* (associativeArrayElement white*) * RPAREN
+    : white* LPAREN white* (associativeArrayElement white*) * RPAREN    
     ;
 
+/*
+braceExpansion: 
+				  white* prefix=associativeArrayValue? LCURLY (braceRange|braceArgList) RCURLY suffix=associativeArrayValue?
+	;
+	
+braceArgList:associativeArrayValue (COMMA associativeArrayValue)*;
+braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue);
+
+*/
+
+
+	
 associativeArrayElement
     :white* LSQUARE key=argument RSQUARE WS* EQ WS* value=argument white*
     ;

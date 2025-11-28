@@ -193,7 +193,7 @@ PERC_QUESTION:'%?';
 ARG_ID  :~[a-zA-Z0-9]('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 //ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
-LETTER_OR_DIGIT:[a-zA-Z_0-9.];
+LETTER_OR_DIGIT:[a-zA-Z_0-9];
 fragment COLON: ':';
 P1:COLON MINUS;
 AT:'@';

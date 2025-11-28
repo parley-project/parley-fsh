@@ -284,7 +284,7 @@ public class Console extends SignalEnabledThread {
 delimiter
 	 */
 	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?<<\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
-	private static final Pattern expandBrace = Pattern.compile("(?<pre>[a-zA-Z_0-9\\-_]+)?(\\{)(?<start>[a-zA-Z0-9_]+)\\.\\.(?<end>[a-zA-Z0-9_]+)(\\.\\.(?<inc>[0-9]+))?\\}(?<post>[a-zA-Z0-9_]+)?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern expandBraceRange = Pattern.compile("(?<pre>[a-zA-Z_0-9\\-_]+)?(\\{)(?<start>[a-zA-Z0-9_]+)\\.\\.(?<end>[a-zA-Z0-9_]+)(\\.\\.(?<inc>[0-9]+))?\\}(?<post>[a-zA-Z0-9_]+)?", Pattern.CASE_INSENSITIVE);
 	public static boolean debugPositional = false;
 	//terminal used for debugging
 	public static PrintStream System_out = System.out;
@@ -1728,7 +1728,7 @@ delimiter
 			return code;
 		}
 
-		Matcher m = expandBrace.matcher(code);
+		Matcher m = expandBraceRange.matcher(code);
 		StringBuilder sb = new StringBuilder();
 
 		while( m.find()) {

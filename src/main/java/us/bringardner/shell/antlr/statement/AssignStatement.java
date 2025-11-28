@@ -92,6 +92,7 @@ assignStatement
 				list.add(v);
 			}
 			val = list;
+		/*
 		} else if( actx.list()!=null) {
 			List<Object> list = new FsshList();
 			for(ArgumentContext ac : actx.list().argument()) {
@@ -100,6 +101,7 @@ assignStatement
 				list.add(v);
 			}
 			val = list;
+			*/
 		} else if( actx.command_substitution()!=null) {
 			CommandSubstitutionStatement cs = new CommandSubstitutionStatement(actx.command_substitution());
 			if( cs.process(ctx)==0) {
