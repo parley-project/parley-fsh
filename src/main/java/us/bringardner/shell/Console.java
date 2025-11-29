@@ -1667,7 +1667,7 @@ delimiter
 
 		String ret0 = convertMathSymbols(code);
 		String ret00 = convertHash(ret0);
-		String ret1 = expandBrace(ret00,ctx);
+		String ret1 = ret00;//expandBrace(ret00,ctx);
 		int start = code.indexOf("<<");
 		List<String> ids = new ArrayList<>();
 

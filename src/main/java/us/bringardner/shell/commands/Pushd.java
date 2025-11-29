@@ -80,7 +80,7 @@ public class Pushd extends DirStack {
 			}else {
 				if( !n ) {
 					Cd cd = new Cd();
-					Argument [] aa = {new DirStackArgument(a)};
+					Argument [] aa = {new Argument(a)};
 					
 					cd.setArgs(aa);
 					ret = cd.process(ctx);

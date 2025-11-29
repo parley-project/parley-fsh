@@ -28,6 +28,7 @@ public class TestEcho extends AbstractConsoleTest {
 	public void testEcho01() throws IOException {
 		String [] code = 
 			{
+				"list of  extra   cool",
 				 "list of extra cool words   with space\t and tab"
 					,"help"
 					, "list of words"

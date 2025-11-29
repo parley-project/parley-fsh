@@ -5,11 +5,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceArgListContext;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceExpansionContext;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceRangeContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.IRandomAccessStream;
@@ -113,7 +118,7 @@ public abstract class Statement {
 							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
 							ctx.console.setFileDistcriptor(fd);								
 						}
-						
+
 						break;
 
 					case Duplicate:
@@ -126,7 +131,7 @@ public abstract class Statement {
 						if( tmp == null) {
 							throw new IOException("bad fid="+fid);
 						}
-						
+
 						ctx.stdout = tmp.getOut();	
 						if(closeAfterDup) {
 							ctx.console.closeFileDistcriptor(fid);
@@ -147,7 +152,7 @@ public abstract class Statement {
 							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
 							ctx.console.setFileDistcriptor(fd);								
 						}
-						
+
 						break;
 					case Move: 
 						if( fid2 == null) {
@@ -278,6 +283,20 @@ public abstract class Statement {
 			} catch (Exception e) {
 			}
 		}
+
+		// do brace expansion
+		List<Argument> tmp = new ArrayList<Argument>();
+		for(Argument a : args) {
+			if( a.context.braceExpansion()!=null) {
+				tmp.addAll( visit(a.context.braceExpansion(),ctx));
+			} else {
+				tmp.add(a);
+			}
+		}
+
+		if( tmp.size() != args.length) {
+			args = tmp.toArray(new Argument[tmp.size()]);
+		}
 		ctx.enterStatement(this);
 
 		try {
@@ -286,6 +305,83 @@ public abstract class Statement {
 
 			ctx.exitStatement(ret,this);
 		}
+		return ret;
+	}
+
+	//	braceExpansion: white* prefix=associativeArrayValue? LCURLY (braceRange|braceArgList) RCURLY suffix=associativeArrayValue?			
+	private List<Argument> visit(BraceExpansionContext exp, ShellContext ctx) throws IOException {
+
+		List<Argument> ret = new ArrayList<>();
+		List<String> newArgs=null;
+		String prefix = "";
+		String suffix = "";
+		if( exp.prefix!=null) {
+			prefix = Argument.visit(exp.prefix, ctx);
+		}
+		if( exp.suffix!=null) {
+			suffix = Argument.visit(exp.suffix, ctx);
+		}
+
+		if( exp.braceRange()!=null) {
+			newArgs = visit(exp.braceRange(),ctx);
+		} else if(exp.braceArgList()!=null) {
+			newArgs = visit(exp.braceArgList(),ctx);
+		} else {
+			throw new IOException("Invalid brace expantion "+exp);
+		}
+		for(String val : newArgs) {
+			ret.add(new Argument(prefix+val+suffix));
+		}
+		return ret;
+	}
+
+
+	//	braceArgList:associativeArrayValue (COMMA associativeArrayValue)*;
+	private List<String> visit(BraceArgListContext args, ShellContext ctx) throws IOException {
+		List<String> ret = new ArrayList<>();
+		for(AssociativeArrayValueContext arg : args.associativeArrayValue()) {
+			ret.add(Argument.visit(arg, ctx));
+		}
+
+		return ret;
+	}
+
+	//	braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue);
+	private List<String> visit(BraceRangeContext range, ShellContext ctx) throws IOException {
+		List<String>  ret = new ArrayList<>();
+		String startStr = Argument.visit(range.start, ctx);
+		String endStr   = Argument.visit(range.end, ctx);
+		boolean isChar = Character.isLetter(startStr.charAt(0));
+		int start = isChar?startStr.charAt(0): Integer.parseInt( startStr);
+		int end = isChar?endStr.charAt(0): Integer.parseInt( endStr);
+
+		int inc = 1;
+		if( !isChar ) {
+			if( range.incr !=null) {
+				String tmp = Argument.visit(range.incr, ctx);
+				inc = Math.abs(Integer.parseInt(tmp));
+			}
+		}
+
+
+		if(start < end) {
+			for(int idx=start; idx <=end; idx += inc) {
+				if( isChar) {
+					ret.add(""+((char)idx));
+				} else {
+					ret.add(""+idx);
+				}
+			}
+		} else {
+			for(int idx=start; idx >=end; idx -= inc) {
+				if( isChar) {
+					ret.add(""+((char)idx));
+				} else {
+					ret.add(""+idx);
+				}
+			}
+		}
+
 		return ret;
 	}
 

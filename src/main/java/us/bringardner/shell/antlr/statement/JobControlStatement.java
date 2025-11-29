@@ -68,12 +68,7 @@ public class JobControlStatement extends Statement{
 			}
 			for (int idx = args.length; idx < tmpArgs.length; idx++) {
 				final Object tid = specs.get(idx-args.length);
-				tmpArgs[idx] = new Argument(null) {
-					@Override
-					public Object getValue(ShellContext ctx) throws IOException {
-						return tid;
-					}
-				};
+				tmpArgs[idx] = new Argument(""+tid);
 			}
 			
 			argsToUse = tmpArgs;

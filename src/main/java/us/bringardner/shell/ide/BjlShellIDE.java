@@ -80,17 +80,17 @@ import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceChooserDialog;
 import us.bringardner.io.filesource.FileSourceFactory;
-import us.bringardner.shell.ConsolePanel;
 import us.bringardner.shell.Console;
+import us.bringardner.shell.ConsolePanel;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.DebugContext;
 import us.bringardner.shell.DebugContext.RunState;
 import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.ShellContext.LoopControl;
+import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Compare;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
-import us.bringardner.shell.antlr.statement.CommandStatement.StringArgument;
 import us.bringardner.shell.antlr.statement.LoopStatement.LoopControlException;
 import us.bringardner.shell.job.AbstractJob;
 import us.bringardner.shell.job.ForgroundJob;
@@ -442,9 +442,9 @@ public class BjlShellIDE extends JFrame  {
 					String args1[] =  argumentsTextField.getText().split("\\s");
 					FsshList args = new FsshList();
 
-					args.add(new StringArgument( scriptFile!=null?scriptFile.getAbsolutePath():"fssh"));
+					args.add(new Argument( scriptFile!=null?scriptFile.getAbsolutePath():"fssh"));
 					for (String a : args1) {
-						args.add( new StringArgument(a));
+						args.add( new Argument(a));
 					}
 
 					console.setPositionalParameters(true, args);

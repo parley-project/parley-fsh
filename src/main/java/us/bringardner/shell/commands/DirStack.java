@@ -7,7 +7,6 @@ import java.util.List;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Argument;
 
 public abstract class DirStack extends ShellCommand{
 
@@ -17,19 +16,6 @@ public abstract class DirStack extends ShellCommand{
 
 	public static final String DIRSTACK="DIRSTACK";
 	
-	protected static class DirStackArgument extends Argument {
-		String value;
-		public DirStackArgument(String value) {
-			super(null);
-			this.value = value;
-		}
-		
-		@Override
-		public Object getValue(ShellContext ctx) throws IOException {
-			return value;
-		}
-		
-	}
 	
 	public int process(ShellContext ctx) throws IOException {
 		@SuppressWarnings({ "unchecked", "rawtypes" })

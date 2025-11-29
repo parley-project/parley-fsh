@@ -515,6 +515,24 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitAssociativeArrayInitializer(FileSourceShParser.AssociativeArrayInitializerContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#braceExpansion}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBraceExpansion(FileSourceShParser.BraceExpansionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#braceArgList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBraceArgList(FileSourceShParser.BraceArgListContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#braceRange}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBraceRange(FileSourceShParser.BraceRangeContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#associativeArrayElement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

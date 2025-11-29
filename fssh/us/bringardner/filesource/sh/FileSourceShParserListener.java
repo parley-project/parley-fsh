@@ -848,6 +848,36 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitAssociativeArrayInitializer(FileSourceShParser.AssociativeArrayInitializerContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#braceExpansion}.
+	 * @param ctx the parse tree
+	 */
+	void enterBraceExpansion(FileSourceShParser.BraceExpansionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#braceExpansion}.
+	 * @param ctx the parse tree
+	 */
+	void exitBraceExpansion(FileSourceShParser.BraceExpansionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#braceArgList}.
+	 * @param ctx the parse tree
+	 */
+	void enterBraceArgList(FileSourceShParser.BraceArgListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#braceArgList}.
+	 * @param ctx the parse tree
+	 */
+	void exitBraceArgList(FileSourceShParser.BraceArgListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#braceRange}.
+	 * @param ctx the parse tree
+	 */
+	void enterBraceRange(FileSourceShParser.BraceRangeContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#braceRange}.
+	 * @param ctx the parse tree
+	 */
+	void exitBraceRange(FileSourceShParser.BraceRangeContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#associativeArrayElement}.
 	 * @param ctx the parse tree
 	 */

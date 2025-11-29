@@ -58,7 +58,7 @@ public class Popd extends DirStack {
 				stack.remove(idx);
 				if( !n && stack.size()>0) {
 					Cd cd = new Cd();
-					Argument [] aa = {new DirStackArgument(stack.get(0).toString())};
+					Argument [] aa = {new Argument(stack.get(0).toString())};
 					cd.setArgs(aa);
 					ret = cd.process(ctx);
 					if( ret == 0 ) {

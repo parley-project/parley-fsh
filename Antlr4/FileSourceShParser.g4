@@ -109,7 +109,7 @@ argument:
     | arg_command_substitution
     | signed_number
     | NUMBER    
-   //	| braceExpansion
+   	| braceExpansion
    	| TEXT
     | string         
     | assignStatement            
@@ -466,18 +466,13 @@ associativeArrayInitializer
     : white* LPAREN white* (associativeArrayElement white*) * RPAREN    
     ;
 
-/*
-braceExpansion: 
-				  white* prefix=associativeArrayValue? LCURLY (braceRange|braceArgList) RCURLY suffix=associativeArrayValue?
+
+braceExpansion: white* prefix=associativeArrayValue? LCURLY (braceRange|braceArgList) RCURLY suffix=associativeArrayValue?
 	;
 	
 braceArgList:associativeArrayValue (COMMA associativeArrayValue)*;
-braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue);
+braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue)?;
 
-*/
-
-
-	
 associativeArrayElement
     :white* LSQUARE key=argument RSQUARE WS* EQ WS* value=argument white*
     ;

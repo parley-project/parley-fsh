@@ -592,24 +592,6 @@ public class CommandStatement extends Statement{
 		hereId = hereDocument.ID().getText();		
 	}
 
-	public static class StringArgument extends Argument {
-		String value;
-		public StringArgument(String value) {
-			super(null);
-			this.value = value;
-		}
-		
-		@Override
-		public Object getValue(ShellContext ctx) throws IOException {
-			return value;
-		}
-		
-		@Override
-		public String toString() {
-			return value;
-		}
-		
-	}
 	private int execute(FileSource exec, ShellContext ctx) throws IOException {
 		List<String> cmd =  new ArrayList<>();
 		cmd.add(exec.getAbsolutePath());
@@ -621,7 +603,7 @@ public class CommandStatement extends Statement{
 				tmp = tmp.substring(0,idx1).trim();
 				if(tmp.equals("fssh")) {
 					Argument[] args2 = new Argument[args.length+1];
-					args2[0] = new StringArgument(exec.getName());
+					args2[0] = new Argument(exec.getName());
 					for(int idx = 0; idx < args.length; idx++ ) {
 						args2[idx+1] = args[idx];
 					}
