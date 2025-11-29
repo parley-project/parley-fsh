@@ -88,7 +88,7 @@ path_segment: TILDE
         | MINUS
         | MINUS_MINUS
         | NUMBER
-                
+        | LOCAL        
 		;
 
 path_segment_list: path_segment +;
