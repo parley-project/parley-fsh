@@ -9,7 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
+import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BraceArgListContext;
@@ -284,6 +288,39 @@ public abstract class Statement {
 			}
 		}
 
+		/*
+		if( context!=null) {
+			// combine any arguments with no WS between them. mainly path each / is an arg:-(
+			List<ParseTree> kids = context.children;
+			
+			int cnt = 0;
+			List<List<Integer>> merge = new ArrayList<List<Integer>>(); 
+			List<Integer> list = new ArrayList<Integer>();
+			for (int idx = 0; idx < kids.size(); idx++) {
+				ParseTree kid = kids.get(idx);
+				if (kid instanceof ArgumentContext) {
+					list.add(cnt++);					
+				} else if (kid instanceof TerminalNode) {
+					int sym = ((TerminalNode)kid).getSymbol().getType();
+					if( sym == FileSourceShParser.WS) {
+						if( list.size()>1) {
+							merge.add(list);
+						}
+						list = new ArrayList<Integer>();
+					}
+				} else {
+					list = new ArrayList<Integer>();
+				}
+			}
+			if( list.size()>1) {
+				merge.add(list);
+			}
+			if( !merge.isEmpty()) {
+				System.out.println("final merger "+merge);
+			}
+		}
+		*/
+		
 		// do brace expansion
 		List<Argument> tmp = new ArrayList<Argument>();
 		for(Argument a : args) {
