@@ -73,6 +73,7 @@ public class TestForStatement extends AbstractConsoleTest {
 				+ ""
 				
 				;
+		showError=true;
 		
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = new String(res.bao.toByteArray());

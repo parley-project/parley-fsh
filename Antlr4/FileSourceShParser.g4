@@ -67,7 +67,6 @@ assignment
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* expression
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* mathExpression
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* parameter
-    //| (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* list // Could be single element
     | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* id2=ID
     | (LOCAL WS)? WS* id1=(ID|ARG_ID) (WS* (associative_index | array_index))? WS* EQ WS* path
     ;

@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -19,6 +18,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueCont
 import us.bringardner.filesource.sh.FileSourceShParser.BraceArgListContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BraceExpansionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BraceRangeContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ListContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.IRandomAccessStream;
@@ -292,7 +292,7 @@ public abstract class Statement {
 		if( context!=null) {
 			// combine any arguments with no WS between them. mainly path each / is an arg:-(
 			List<ParseTree> kids = context.children;
-			
+
 			int cnt = 0;
 			List<List<Integer>> merge = new ArrayList<List<Integer>>(); 
 			List<Integer> list = new ArrayList<Integer>();
@@ -319,20 +319,74 @@ public abstract class Statement {
 				System.out.println("final merger "+merge);
 			}
 		}
-		*/
-		
-		// do brace expansion
-		List<Argument> tmp = new ArrayList<Argument>();
-		for(Argument a : args) {
-			if( a.context.braceExpansion()!=null) {
-				tmp.addAll( visit(a.context.braceExpansion(),ctx));
-			} else {
-				tmp.add(a);
-			}
-		}
+		 */
 
-		if( tmp.size() != args.length) {
-			args = tmp.toArray(new Argument[tmp.size()]);
+		List<ParseTree> kids = context.children;
+
+		if( kids.size()>1) {
+			// do brace expansion
+			List<Argument> newArgs = new ArrayList<Argument>();
+			List<ParseTree> newKids = new ArrayList<ParseTree>();
+
+			ParseTree ws = kids.get(1);
+
+			int aidx1=0;
+			//int aidx=0;
+			boolean changed = false;
+/*
+list: 
+	  (argument white*)+
+    | white* LSQUARE white* argument white* RSQUARE white*
+    ;
+ */
+
+			for (int idx = 0; idx < kids.size(); idx++) {
+				ParseTree kid = kids.get(idx);
+				
+				if (kid instanceof ListContext	) {
+					ListContext lc = (ListContext)kid;
+					if(lc.argument()!=null) {
+						List<Argument> tmp = visit(lc.argument(),ctx);
+						changed = true;
+						for(int idx2=0,sz=tmp.size(); idx2 < sz; idx2++) {
+							Argument arg = tmp.get(idx2);
+							newArgs.add(arg);
+							newKids.add(kid);
+							newKids.add(ws);
+						}
+					} else {
+						newKids.add(kid);
+					}
+				} else 
+				
+				if (kid instanceof ArgumentContext	) {
+					ArgumentContext ac = (ArgumentContext) kid;
+					Argument a = args[aidx1++];
+					if(ac.braceExpansion()!=null) {
+						changed = true;
+						List<Argument> tmp = visit(a.context.braceExpansion(),ctx);
+						for(int idx2=0,sz=tmp.size(); idx2 < sz; idx2++) {
+							Argument arg = tmp.get(idx2);
+							newArgs.add(arg);
+							newKids.add(kid);
+							newKids.add(ws);
+						}
+					} else {
+						newArgs.add(a);
+						newKids.add(kid);
+					}				
+				} else  {
+					newKids.add(kid);
+				}
+			}
+
+
+
+			if( changed ) {
+				args = newArgs.toArray(new Argument[newArgs.size()]);
+				context.children = newKids;
+
+			}
 		}
 		ctx.enterStatement(this);
 
@@ -341,6 +395,18 @@ public abstract class Statement {
 		} finally {
 
 			ctx.exitStatement(ret,this);
+		}
+		return ret;
+	}
+
+	private List<Argument> visit(List<ArgumentContext> args, ShellContext ctx) throws IOException {
+		List<Argument>  ret = new ArrayList<Argument>();
+		for(ArgumentContext ac: args) {
+			if(ac.braceExpansion()!=null) {
+				ret.addAll(visit(ac.braceExpansion(), ctx));
+			} else {
+				ret.add(new Argument(ac));
+			}
 		}
 		return ret;
 	}

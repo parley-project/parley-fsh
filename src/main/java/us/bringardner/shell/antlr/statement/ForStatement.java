@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -21,7 +22,7 @@ public class ForStatement extends LoopStatement{
 	AssignStatement assign;
 	Compare compare;
 	Expression expr;
-	
+
 
 	public AssignStatement getAssign() {
 		return assign;
@@ -76,18 +77,18 @@ public class ForStatement extends LoopStatement{
 			return executeCStyle(sc);
 		}
 	}
-	
+
 	private List<String> argsToString(ShellContext ctx) throws IOException {
 		List<String> ret = new ArrayList<>();
-		
+
 		for (int idx = 0; idx < args.length; idx++) {
 
 			Argument a = args[idx];
 			String val = ""+a.getValue(ctx);
-			
-			//TODO: probably need a more comprehensive way to generate file lists
-			if( a.getContext().path() != null ) {
 
+			ArgumentContext actx = a.getContext();
+			//TODO: probably need a more comprehensive way to generate file lists
+			if( actx !=null && actx.path() !=null) {
 				List<FileSource> list = ShellCommand.getFiles(ctx, val);
 				if( list.size()>0) {
 					for(FileSource file : list) {
@@ -95,9 +96,7 @@ public class ForStatement extends LoopStatement{
 						String name = file.getName();
 						ret.add(name);						
 					}		
-				} else {
-					ret.add(val);
-				}
+				} 				
 			} else {
 				ret.add(val);
 			}
@@ -115,8 +114,8 @@ public class ForStatement extends LoopStatement{
 			}
 			Object val = arg;
 			sc.setLocalVariable(varName, val);	
-			
-			
+
+
 			for(Statement stmt : stmts) {
 				try {
 					ret = stmt.process(sc);
@@ -147,7 +146,7 @@ public class ForStatement extends LoopStatement{
 			if(ShellContext.LoopControl.Break.equals(tmp)) {
 				break;
 			}
-			
+
 			for(Statement stmt : stmts) {
 				try {
 					ret = stmt.process(sc);
@@ -161,7 +160,7 @@ public class ForStatement extends LoopStatement{
 			}
 			expr.evaluate(sc);
 		}
-	
+
 		return ret;
 	}
 }

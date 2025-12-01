@@ -30,7 +30,9 @@ public class TestExpantion {
 				+ "echo $s1 \n"
 				+ "echo $s2 \n"
 						;
-
+		
+		//conf # :rri491aak452
+		//desk 740-922-0774
 		//System.out.println(cmd);
 		List<Statement> stmts = parse(cmd);
 		assertEquals(5, stmts.size());

@@ -39,7 +39,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	@Test
 	public void testArgList02() throws IOException {
 		String cmd = "echo /usr//// a\n";		
-		String expect = "/usr/\n";
+		String expect = "/usr//// a\n";
 		showError=true;
 		String actual = executeCommand(cmd);
 		
