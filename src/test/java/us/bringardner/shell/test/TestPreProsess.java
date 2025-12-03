@@ -4,8 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.junit.jupiter.api.Test;
 
+import us.bringardner.filesource.sh.FileSourceShLexer;
+import us.bringardner.filesource.sh.FileSourceShParser;
+import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceExpansionContext;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceRangeContext;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
@@ -329,46 +338,130 @@ public class TestPreProsess {
 	
 	@Test
 	public void testExpandBrace01() {
+		enum Type {Range,List};
+		class Result {
+			Type type;
+			Object pre;
+			Object start;
+			Object end;
+			Object incr;
+			Object post;
+			private Object[] list;
+			
+			public Result(Type type,Object pre,Object start,Object end,Object incr,Object post) {
+				this.type = type;
+				this.pre = pre;
+				this.start = start;
+				this.end = end;
+				this.incr = incr;
+				this.post = post;
+			}
+			
+			public Result(Type type,Object pre,Object start,Object end,Object incr,Object post,Object ...objects) {
+				this(type,pre,start,end,incr,post);
+				list = objects;
+			}
+			
+			public int compare(BraceExpansionContext result) {
+				int ret = 0;
+				String tmp1 = ""+pre;
+				String tmp2 = ""+(result.prefix==null?null:result.prefix.getText());
+				if(!tmp1.equals(tmp2)) {
+					return 1;
+				}
+		
+				tmp1 = ""+post;
+				tmp2 = ""+""+(result.suffix==null?null:result.suffix.getText());
+				if(!tmp1.equals(tmp2)) {
+					return 2;
+				}
+		
+				if( type==Type.Range && result.braceRange()!=null) {
+					BraceRangeContext range = result.braceRange();
+					tmp1 = ""+start;
+					tmp2 = ""+(range.start==null?"null":range.start.getText());
+					if(!tmp1.equals(tmp2)) {
+						return 3;
+					}
+					tmp1 = ""+end;
+					tmp2 = ""+(range.end==null?"null":range.end.getText());
+					if(!tmp1.equals(tmp2)) {
+						return 4;
+					}
+					tmp1 = ""+incr;
+					tmp2 = ""+(range.incr==null?"null":range.incr.getText());
+					if(!tmp1.equals(tmp2)) {
+						return 5;
+					}
+					
+					
+				} else if( type==Type.List && result.braceArgList()!=null) {
+					if( list == null ) {
+						return 6;
+					}
+					
+					List<AssociativeArrayValueContext> list1 = result.braceArgList().associativeArrayValue();
+					if( list1 == null) {
+						return 7;
+					}
+					if( list.length != list1.size()) {
+						return 8;						
+					}
+					
+					for(int idx=0; idx< list.length; idx++ ) {
+						tmp1 = ""+list[idx];
+						tmp2 = list1.get(idx).getText();
+						if( !tmp1.equals(tmp2)) {
+							return 900+idx;
+						}
+					}
+					
+				} else {
+					return -2;
+				}
+				
+				return ret;
+			}
+		}
 		
 		String [] code = {
-				"nothin to do here\n",
-				"for j in {1..3}; do\n"
-				+ "for j in {12..33..3}; do\n"
-				+ "    if [[ $j -eq 2 ]]; then\n"
-				+ "      break\n"
-				+ "    fi\n"
-				+ "    echo \"j: $j\"\n"
-				+ "  done\n",
+				"{a,b,c}",
+				"pre{a,b,c}post",
+				"{1..3}\n",
+				"{12..33..3}\n",
 				"pre{1..8}\n",
-				"cmd arg {12..20..2}post\n",
+				"{12..20..2}post\n",
 				"pre{1..2}post\n",
 				"pre{a..z..3}post\n",
 				"pre{A..Z..3}\n",
 				"pre{a..z}post\n",
+				"pre{a..z}\n",
+				"{a..z}\n",
 
 		};
 
-		String [] expect = {
-				"nothin to do here\n",
-				 "for j in 1 2 3; do\n"
-				+ "for j in 12 15 18 21 24 27 30 33; do\n"
-				+ "    if [[ $j == 2 ]]; then\n"
-				+ "      break\n"
-				+ "    fi\n"
-				+ "    echo \"j: $j\"\n"
-				+ "  done\n",
-				 "pre1 pre2 pre3 pre4 pre5 pre6 pre7 pre8\n",
-				 "cmd arg 12post 14post 16post 18post 20post\n",
-				 "pre1post pre2post\n",
-				 "preapost predpost pregpost prejpost prempost preppost prespost prevpost preypost\n",
-				 "preA preD preG preJ preM preP preS preV preY\n",
-				 "preapost prebpost precpost predpost preepost prefpost pregpost prehpost preipost prejpost prekpost prelpost prempost prenpost preopost preppost preqpost prerpost prespost pretpost preupost prevpost prewpost prexpost preypost prezpost\n"
+		Result [] expect = {
+				
+				 new Result(Type.List, null, null, null, null, null,"a","b","c"),
+				 new Result(Type.List, "pre", null, null, null, "post","a","b","c"),
+				 new Result(Type.Range, null, 1, 3, null, null),
+				 new Result(Type.Range, null, 12, 33, 3, null),
+				 new Result(Type.Range, "pre", 1, 8, null, null),
+				 new Result(Type.Range, null, 12, 20, 2, "post"),
+				 new Result(Type.Range, "pre", 1, 2, null, "post"),
+				 new Result(Type.Range, "pre", "a", "z", 3, "post"),
+				 new Result(Type.Range, "pre", "A", "Z", 3, null),
+				 new Result(Type.Range, "pre", "a", "z", null, "post"),
+				 new Result(Type.Range, "pre", "a", "z", null, null),
+				 new Result(Type.Range, null, "a", "z", null, null),
 		};
-		Console console = new Console();
-		ShellContext ctx = new ShellContext(console);
+		
 		for (int idx = 0; idx < expect.length; idx++) {
-			String actual = console.preProcess(code[idx], ctx);			
-			assertEquals(expect[idx], actual,code[idx]);
+			FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code[idx]));
+			FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
+			BraceExpansionContext result = parser.braceExpansion();
+			int ok = expect[idx].compare(result);
+			assertEquals(0, ok,"idx="+idx+" "+code[idx]);
 		}
 		
 	}

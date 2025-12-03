@@ -8,10 +8,12 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
+import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
@@ -351,16 +353,25 @@ list:
 						for(int idx2=0,sz=tmp.size(); idx2 < sz; idx2++) {
 							Argument arg = tmp.get(idx2);
 							newArgs.add(arg);
-							newKids.add(kid);
+							String val = ""+arg.getValue(ctx);
+							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(val));
+							FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
+							ArgumentContext na = parser.argument();
+							na.start = lc.start;
+							na.stop = lc.stop;
+							
+							newKids.add(na);
 							newKids.add(ws);
+						
 						}
 					} else {
 						newKids.add(kid);
 					}
 				} else 
 				
-				if (kid instanceof ArgumentContext	) {
+				if (kid instanceof ArgumentContext	&& aidx1< args.length) {
 					ArgumentContext ac = (ArgumentContext) kid;
+					
 					Argument a = args[aidx1++];
 					if(ac.braceExpansion()!=null) {
 						changed = true;
@@ -368,7 +379,14 @@ list:
 						for(int idx2=0,sz=tmp.size(); idx2 < sz; idx2++) {
 							Argument arg = tmp.get(idx2);
 							newArgs.add(arg);
-							newKids.add(kid);
+							String val = ""+arg.getValue(ctx);
+							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(val));
+							FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
+							ArgumentContext na = parser.argument();
+							na.start = ac.start;
+							na.stop = ac.stop;
+							
+							newKids.add(na);
 							newKids.add(ws);
 						}
 					} else {

@@ -1,7 +1,6 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -42,7 +41,7 @@ public class Echo extends ShellCommand{
 			int aidx=0;				
 			for (int idx = 0; idx < kids.size(); idx++) {
 				ParseTree kid = kids.get(idx);
-				if (kid instanceof ArgumentContext	) {
+				if (kid instanceof ArgumentContext	&& aidx<args.length) {
 					//ArgumentContext ac = (ArgumentContext) kid;
 					Argument a = args[aidx];
 					String val =""+a.getValue(ctx);

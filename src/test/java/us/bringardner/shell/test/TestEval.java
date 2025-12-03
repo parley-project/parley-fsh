@@ -76,7 +76,6 @@ public class TestEval  extends AbstractConsoleTest{
 	
 	@Test
 	public void testExport03() throws Exception{
-		showError = false;
 		// make sure we fail in the same way bash does
 		String cmd = "command=\"$(date)\"\n"
 				+ "eval \"$command\""

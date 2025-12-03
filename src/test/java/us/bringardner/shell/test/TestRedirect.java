@@ -170,7 +170,6 @@ public class TestRedirect extends AbstractConsoleTest {
 		String expectErr = "";
 		int exitCode = 0;
 		
-		
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 		
 	}
@@ -270,7 +269,6 @@ exec 3>&- #close fd 3.
 		String stdIn = "";
 		String expectErr = "";
 		int exitCode = 0;
-		
 		
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 

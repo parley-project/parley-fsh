@@ -25,7 +25,7 @@ public class TestExec extends AbstractConsoleTest {
 		}
 		
 		logDir = console.createFileSource(file.getAbsolutePath());
-		showError = true;
+		
 	}
 
 

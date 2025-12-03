@@ -30,7 +30,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgList01() throws IOException {
 		String cmd = "echo a{d,c,b}e\n";		
 		String expect = "ade ace abe\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -40,7 +39,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgList02() throws IOException {
 		String cmd = "echo /usr//// a\n";		
 		String expect = "/usr//// a\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -50,7 +48,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgRange01() throws IOException {
 		String cmd = "echo {1..4}\n";		
 		String expect = "1 2 3 4\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -60,7 +57,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgRange02() throws IOException {
 		String cmd = "echo {10..20..2}\n";		
 		String expect = "10 12 14 16 18 20\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -70,7 +66,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgRange03() throws IOException {
 		String cmd = "echo {20..10..2}\n";		
 		String expect = "20 18 16 14 12 10\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -80,7 +75,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgAlphaRange01() throws IOException {
 		String cmd = "echo {a..e}\n";
 		String expect = "a b c d e\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -90,7 +84,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgAlphaRange02() throws IOException {
 		String cmd = "echo {e..a}\n";
 		String expect = "e d c b a\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);
@@ -100,7 +93,6 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 	public void testArgAlphaRange03() throws IOException {
 		String cmd = "echo p{k..r}s\n";
 		String expect = "pks pls pms pns pos pps pqs prs\n";
-		showError=true;
 		String actual = executeCommand(cmd);
 		
 		assertEquals(expect, actual);

@@ -284,7 +284,6 @@ public class Console extends SignalEnabledThread {
 delimiter
 	 */
 	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?<<\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
-	private static final Pattern expandBraceRange = Pattern.compile("(?<pre>[a-zA-Z_0-9\\-_]+)?(\\{)(?<start>[a-zA-Z0-9_]+)\\.\\.(?<end>[a-zA-Z0-9_]+)(\\.\\.(?<inc>[0-9]+))?\\}(?<post>[a-zA-Z0-9_]+)?", Pattern.CASE_INSENSITIVE);
 	public static boolean debugPositional = false;
 	//terminal used for debugging
 	public static PrintStream System_out = System.out;
@@ -1720,53 +1719,6 @@ delimiter
 		return ret1;
 	}
 
-
-
-
-	private String expandBrace(String code, ShellContext ctx) {
-		if( code.indexOf('{')<0 || code.indexOf('}')<0) {
-			return code;
-		}
-
-		Matcher m = expandBraceRange.matcher(code);
-		StringBuilder sb = new StringBuilder();
-
-		while( m.find()) {
-			String pre = m.group("pre");
-			if( pre == null ) {
-				pre = "";
-			}
-			String tmpx = m.group("start");				
-			boolean isChar = Character.isLetter(tmpx.charAt(0));
-			int start = isChar?tmpx.charAt(0): Integer.parseInt( tmpx);
-			tmpx = m.group("end");
-			int end = isChar?tmpx.charAt(0): Integer.parseInt( tmpx);
-			String incStr = m.group("inc");
-			int inc = 1;
-			if( incStr != null ) {
-				inc = Integer.parseInt(incStr);
-			}
-			String post = m.group("post");
-			if( post == null) {
-				post = "";
-			}
-			StringBuilder list = new StringBuilder();
-			for(int idx=start; idx <= end; idx+=inc) {
-				if( !list.isEmpty()) {
-					list.append(' ');
-				}
-				if( isChar) {
-					list.append(pre+((char)idx)+post);
-				} else {
-					list.append(pre+idx+post);
-				}
-			}
-			m.appendReplacement(sb, list.toString());
-		}
-		m.appendTail(sb);
-
-		return sb.toString();
-	}
 
 
 
