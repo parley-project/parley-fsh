@@ -331,7 +331,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 	@Test
 	public void testMkdir3() throws Exception {
 
-		boolean tmp = showError;showError=false;
+
 		String code = "connect memory /mem4\n";
 		ExecuteResult res = executeCommand(code, "");
 
@@ -345,14 +345,16 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 		String expect = "mkdir: could not create directory for /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"				
 				;
+		boolean tmp = showError;showError=false;
 		res = executeCommand(code, "");
-		showError=tmp;
+		
 		assertEquals(expect,new String(res.bae.toByteArray()));
 		assertEquals("",new String(res.bao.toByteArray()));
 		assertEquals(1, res.exitCode);
 
 		code = "ls -l /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
+		showError=tmp;
 		assertEquals("ls: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9 no such file or directory\n",new String(res.bae.toByteArray()));
 		assertEquals("",new String(res.bao.toByteArray()));
 		assertEquals(1, res.exitCode);
