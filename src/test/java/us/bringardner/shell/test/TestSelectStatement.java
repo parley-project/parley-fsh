@@ -43,8 +43,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				+ "4) four             \n"
 				+ "5) five             \n";
 		String stdin = "2\n";
-		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);
@@ -77,8 +78,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				+ "5) five             \n"
 				+ "";
 		String stdin = "\n2\n";
-		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);
@@ -105,8 +107,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				+ "4) four             \n"
 				+ "5) five             \n";
 		String stdin = "test\n";
-		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);
@@ -135,7 +138,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				  + "";
 		String stdin = "2\n";
 		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);
@@ -163,7 +168,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				+ "5) Folder01/Hotel California.txt       \n";
 		String stdin = "2\n";
 		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);
@@ -198,8 +205,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				  + "10) ten         \n"
 				  + "";
 		String stdin = "2\n";
-		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);
@@ -242,8 +250,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				    + " 14) 14         28) 28         42) 42         56) 56         70) 70         84) 84         98) 98        \n"
 				    + "";
 		String stdin = "20\n";
-		
+		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
+		showError=true;
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
 		assertEquals(0, res.exitCode);

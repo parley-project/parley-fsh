@@ -84,9 +84,9 @@ public class TestEval  extends AbstractConsoleTest{
 		String stdIn = "";
 		int exitCode = 1;
 		String expect = "";
-		
+		showError=false;
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
-		
+		showError=true;
 		String out = new String(ret.bao.toByteArray());
 		String err = new String(ret.bae.toByteArray());
 		assertTrue(err.startsWith("java.io.IOException: command not found:"));

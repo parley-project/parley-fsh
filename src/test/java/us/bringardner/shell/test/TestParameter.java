@@ -13,7 +13,7 @@ import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 
-public class TestParameter {
+public class TestParameter extends AbstractConsoleTest {
 
 	@Test
 	public void testParameter01() throws IOException {
@@ -247,7 +247,7 @@ public class TestParameter {
 				+ ")\n"
 				+ "echo ${array[Brazil]}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -262,7 +262,7 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:7}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -277,7 +277,7 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:7:2}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -292,7 +292,7 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:2}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -307,7 +307,9 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:-2}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		boolean tmp = showError;showError=false;
+		ExecuteResult res = executeCommand(code, "");
+		showError=tmp;
 		String actual = new String(res.bae.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -322,7 +324,7 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:0}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -337,7 +339,7 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:0:2}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -352,7 +354,7 @@ public class TestParameter {
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:0}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -369,7 +371,7 @@ public class TestParameter {
 				+ "var3=3\n"
 				+ "echo ${!var*}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -383,7 +385,7 @@ public class TestParameter {
 		String code = "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${!array[*]}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -397,7 +399,7 @@ public class TestParameter {
 		String code = ""
 				+ "echo ${!array[*]}\n";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -412,7 +414,7 @@ public class TestParameter {
 				+ "echo ${#array[@]}\n"
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -427,7 +429,7 @@ public class TestParameter {
 				+ "echo ${#var}\n"
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -442,7 +444,7 @@ public class TestParameter {
 				+ "echo ${var#/etc/}\n"
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -461,7 +463,7 @@ public class TestParameter {
 
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -477,7 +479,7 @@ public class TestParameter {
 				;
 
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -492,7 +494,7 @@ public class TestParameter {
 				+ "echo ${FILE%.tar.gz}"
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -510,7 +512,7 @@ public class TestParameter {
 
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -528,7 +530,7 @@ public class TestParameter {
 
 				+ "";
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -546,7 +548,7 @@ public class TestParameter {
 				;
 
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -576,7 +578,7 @@ public class TestParameter {
 				;
 
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -612,7 +614,7 @@ public class TestParameter {
 				;
 
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
@@ -633,7 +635,7 @@ public class TestParameter {
 				;
 
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actual = new String(res.bao.toByteArray());
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
@@ -651,8 +653,9 @@ public class TestParameter {
 		String code = "echo ${var:?bad things will happen}\n"
 				;
 
-		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		boolean tmp = showError;showError=false;
+		ExecuteResult res = executeCommand(code, "");
+		showError=tmp;
 		String actualOut = new String(res.bao.toByteArray());
 		String actualErr = new String(res.bae.toByteArray());
 		//System.out.println("actual = "+actual);
@@ -673,7 +676,7 @@ public class TestParameter {
 		String expect = "7890abcdefgh\n";
 		
 		//System.out.println(code);
-		TestForStatement.ExecuteResult res = TestForStatement.executeCommand(code, "");
+		ExecuteResult res = executeCommand(code, "");
 		String actualOut = new String(res.bao.toByteArray());
 		//String actualErr = new String(res.bae.toByteArray());
 		//System.out.println("actual = "+actual);
