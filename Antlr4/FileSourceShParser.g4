@@ -8,13 +8,6 @@ options {
 
 script: SHEBANG? statement+ EOF;
 
-
-value:
-		boolean
-		| signed_number 
-		| variable
-		|  
-	;
 	
 conditionalStatement:
 	  white* left=statement1 white* op=(OR|AND) white* right=statement1 white*
@@ -496,4 +489,3 @@ associativeArrayValue:
 job_control_statement: cmd=ID WS* (argument WS*)* (jobspec WS*)*;
 jobspec:(signed_number|PERC_PERC|PERC_PLUS|PERC_MINUS|PERC_QUESTION ID?);
 
-expre
