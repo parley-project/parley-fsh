@@ -8,19 +8,27 @@ options {
 
 script: SHEBANG? statement+ EOF;
 
-conditionalStatement
-	: white* left=statement1 white* op=(OR|AND) white* right=statement1 white*
+
+value:
+		boolean
+		| signed_number 
+		| variable
+		|  
+	;
+	
+conditionalStatement:
+	  white* left=statement1 white* op=(OR|AND) white* right=statement1 white*
 	| conditionalStatement white* op=(OR|AND) white* right=statement1 white*
 	;
 	
 		
-statement
-	: white* statement1 WS* (NL|SEMI|EOF)
+statement:
+	  white* statement1 WS* (NL|SEMI|EOF)
 	| conditionalStatement  (NL|SEMI|EOF)
 	;
 	
-statement1
-    : backgroundCommand
+statement1:
+      backgroundCommand
     | ifStatement
     | mathStatement
     | pipeStatement
@@ -211,6 +219,7 @@ associative_index:
 		;
 
 regular_expression:	rx_pattern+ ;
+
 
 expression:
       simpleTerm=term
@@ -486,3 +495,5 @@ associativeArrayValue:
 
 job_control_statement: cmd=ID WS* (argument WS*)* (jobspec WS*)*;
 jobspec:(signed_number|PERC_PERC|PERC_PLUS|PERC_MINUS|PERC_QUESTION ID?);
+
+expre
