@@ -50,7 +50,9 @@ public class TestAlias extends AbstractConsoleTest{
 				+"alias lll='ls -ltr'\n"
 			
 				;
-		
+		if( getOs()==OperatingSystem.Windows) {
+			expect = expect.replaceAll("\n", "\r\n");
+		}
 		ExecuteResult res = executeCommand(cmd,"", 0);
 		String out = new String(res.bao.toByteArray());
 		String err = new String(res.bae.toByteArray());
