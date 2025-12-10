@@ -85,24 +85,15 @@ public class ManageTestFiles {
 		//4 lastModifiedTime=03-14-2025 11:05:31,
 		//5 permissions=OWNER_READ:GROUP_READ:OWNER_WRITE:OTHERS_READ:OWNER_EXECUTE:GROUP_EXECUTE:OTHERS_EXECUTE:
 
+		if( line.startsWith("/Volumes/Data/eclipse-git/BjlShell/TestFiles/SymLink2Folder01")) {
+			System.out.println("here");
+		}
 		String []parts = line.split("[,]");
 		int idx = parts[0].indexOf("BjlShell");
-		String fileName = parts[0].substring(idx+9);
+		String fileName = parts[0].substring(idx+9).trim();
 		
 		File file = new File(fileName).getCanonicalFile();
 		
-	String str = parts[1].substring(parts[1].indexOf('=')+1);
-		long create =  dateFmt.parse(str).getTime();
-
-		str = parts[2].substring(parts[2].indexOf('=')+1);
-		long lastAccess = dateFmt.parse(str).getTime();
-
-		str = parts[3].substring(parts[3].indexOf('=')+1);
-		long lastMod = dateFmt.parse(str).getTime();
-
-		String tmp = parts[4].substring(parts[4].indexOf('=')+1);
-		String perms [] = tmp.split(":");
-
 		System.out.println("file="+file);
 		if( file.getName().startsWith("HardLink2")) {
 			if( file.exists()) {
@@ -148,6 +139,18 @@ public class ManageTestFiles {
 				}
 			}
 		} else {
+			String str = parts[1].substring(parts[1].indexOf('=')+1);
+			long create =  dateFmt.parse(str).getTime();
+
+			str = parts[2].substring(parts[2].indexOf('=')+1);
+			long lastAccess = dateFmt.parse(str).getTime();
+
+			str = parts[3].substring(parts[3].indexOf('=')+1);
+			long lastMod = dateFmt.parse(str).getTime();
+
+			String tmp = parts[4].substring(parts[4].indexOf('=')+1);
+			String perms [] = tmp.split(":");
+
 			FileSource fs = FileSourceFactory.getDefaultFactory().createFileSource(file.getAbsolutePath());
 			fs.setCreateTime(create);
 			fs.setLastAccessTime(lastAccess);
