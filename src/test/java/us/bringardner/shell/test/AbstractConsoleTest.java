@@ -25,6 +25,21 @@ import us.bringardner.shell.job.IJob;
 @TestMethodOrder(OrderAnnotation.class)
 public abstract class AbstractConsoleTest {
 
+	public enum OperatingSystem {UnKnown,Windows,Mac,Linux};
+	
+	public static OperatingSystem getOs() {
+		OperatingSystem ret = OperatingSystem.UnKnown;
+		String os = System.getProperty("os.name").toLowerCase();
+		if( os.contains("win")) {
+			ret = OperatingSystem.Windows;
+		} else if (os.contains("mac")) {
+			ret = OperatingSystem.Mac;
+		} 	else if (os.contains("linux")) {
+			ret = OperatingSystem.Linux;
+		}
+		return ret;
+	}
+
 	public static String fileDate;
 	public static Console console;
 	public static File testFilesDir;
@@ -33,7 +48,6 @@ public abstract class AbstractConsoleTest {
 	public static void setup(String home) throws IOException {
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 		testFilesDir = new File(home).getCanonicalFile();
-
 		System.setProperty("user.home", testFilesDir.getAbsolutePath());
 		console = new Console();
 	}
