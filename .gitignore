@@ -4,3 +4,6 @@ LnTestFiles/SymLink2AbcFileA.js
 LnTestFiles/SymLink2AbcFileA.js
 LnTestFiles/TargetDir/SymLink2AbcFileA.js
 LnTestFiles/TargetDir/SymLink2AbcFileA2.js
+LnTestFiles/HardLink2AbcFileA.js
+LnTestFiles/TargetDir/HardLink2AbcFileA.js
+TestFiles/SymLink2Folder01
