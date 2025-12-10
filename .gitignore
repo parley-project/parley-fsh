@@ -2,3 +2,5 @@ target/
 .DS_*
 LnTestFiles/SymLink2AbcFileA.js
 LnTestFiles/SymLink2AbcFileA.js
+LnTestFiles/TargetDir/SymLink2AbcFileA.js
+LnTestFiles/TargetDir/SymLink2AbcFileA2.js
