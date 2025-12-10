@@ -67,11 +67,19 @@ public class TestCd extends AbstractConsoleTest{
 		String actual = executeCommand("cd Folder01/Folder01abc.1").trim();		
 		assertEquals("",actual);
 		actual = executeCommand("pwd").trim();
-		assertTrue(actual.endsWith("Folder01/Folder01abc.1"));
+		if(getOs()==OperatingSystem.Windows) {
+			assertTrue(actual.endsWith("Folder01\\Folder01abc.1"));
+		} else {
+			assertTrue(actual.endsWith("Folder01/Folder01abc.1"));
+		}
 		actual = executeCommand("cd ..").trim();		
 		assertEquals("",actual);
 		actual = executeCommand("pwd").trim();
-		assertTrue(actual.endsWith("TestFiles/Folder01"));
+		if( getOs()==OperatingSystem.Windows) {
+			assertTrue(actual.endsWith("TestFiles\\Folder01"));
+		} else {
+			assertTrue(actual.endsWith("TestFiles/Folder01"));
+		}
 		
 		
 	}
