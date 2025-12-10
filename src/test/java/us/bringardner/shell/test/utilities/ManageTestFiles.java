@@ -1,21 +1,18 @@
 package us.bringardner.shell.test.utilities;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
@@ -85,9 +82,6 @@ public class ManageTestFiles {
 		//4 lastModifiedTime=03-14-2025 11:05:31,
 		//5 permissions=OWNER_READ:GROUP_READ:OWNER_WRITE:OTHERS_READ:OWNER_EXECUTE:GROUP_EXECUTE:OTHERS_EXECUTE:
 
-		if( line.startsWith("/Volumes/Data/eclipse-git/BjlShell/TestFiles/SymLink2Folder01")) {
-			System.out.println("here");
-		}
 		String []parts = line.split("[,]");
 		int idx = parts[0].indexOf("BjlShell");
 		String fileName = parts[0].substring(idx+9).trim();
