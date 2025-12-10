@@ -19,8 +19,43 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
+import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.FileSourceFactory;
+
 public class ManageTestFiles {
 
+	public static enum Permissions {
+		UnDefined(' '),
+		OWNER_READ('r'),
+		OWNER_WRITE('w'),
+		OWNER_EXECUTE('x'),
+
+		GROUP_READ('r'),
+		GROUP_WRITE('w'),
+		GROUP_EXECUTE('x'),
+
+		OTHERS_READ('r'),
+		OTHERS_WRITE('w'),
+		OTHERS_EXECUTE('x');
+
+	    public final char label;
+
+	    private Permissions(char label) {
+	        this.label = label;
+	    }
+	    
+	    public static Permissions find(String name) {
+	    	Permissions ret = UnDefined;
+	    	char id = name.charAt(0);
+	    	for(Permissions p : values()) {
+	    		if(id == p.label ) {
+	    			return p;
+	    		}
+	    	}
+	    	return ret;
+	    }
+	}
+	
 	public static void main(String[] args) throws IOException, ParseException {
 		boolean capture = false;
 		if( capture ) {
@@ -32,11 +67,11 @@ public class ManageTestFiles {
 	}
 
 	public static void restore() throws IOException, ParseException {
-		File dir = new File(".").getCanonicalFile();
-		File dataFile = new File(dir,"TestFileData.txt");
-		InputStream in = new FileInputStream(dataFile);
-		String [] lines = new String(in.readAllBytes()).split("\n");
-		in.close();
+		String [] lines = null;
+		try(	InputStream in = ManageTestFiles.class.getResourceAsStream("/TestFileData.txt")){
+			lines = new String(in.readAllBytes()).split("\n");
+		}
+
 		for(String line : lines) {
 			restore(line);			
 		}
@@ -51,8 +86,12 @@ public class ManageTestFiles {
 		//5 permissions=OWNER_READ:GROUP_READ:OWNER_WRITE:OTHERS_READ:OWNER_EXECUTE:GROUP_EXECUTE:OTHERS_EXECUTE:
 
 		String []parts = line.split("[,]");
-		File file = new File(parts[0]);
-		String str = parts[1].substring(parts[1].indexOf('=')+1);
+		int idx = parts[0].indexOf("BjlShell");
+		String fileName = parts[0].substring(idx+9);
+		
+		File file = new File(fileName).getCanonicalFile();
+		
+	String str = parts[1].substring(parts[1].indexOf('=')+1);
 		long create =  dateFmt.parse(str).getTime();
 
 		str = parts[2].substring(parts[2].indexOf('=')+1);
@@ -100,21 +139,42 @@ public class ManageTestFiles {
 			File dir = file.getParentFile();
 			File target = new File(dir,file.getName().substring(8));
 			
-			Path path = Files.createSymbolicLink(file.toPath(), target.toPath());
+			Path path = Files.createSymbolicLink(file.toPath(),target.toPath());
 			if( path == null || !Files.exists(path)) {
-				throw new IOException("Can't create symbolic link to : "+file);
+				if( FileSourceFactory.isWindows()) {
+					throw new IOException("Can't create symbolic link to : "+file+" Windoes MUST be in developer mode.\nSettings->System->Advanced : Toggle Developer mode");
+				} else {
+					throw new IOException("Can't create symbolic link to : "+file);
+				}
 			}
 		} else {
+			FileSource fs = FileSourceFactory.getDefaultFactory().createFileSource(file.getAbsolutePath());
+			fs.setCreateTime(create);
+			fs.setLastAccessTime(lastAccess);
+			fs.setLastModifiedTime(lastMod);
 			
-
-			PosixFileAttributeView view = Files.getFileAttributeView(file.toPath(), PosixFileAttributeView.class,LinkOption.NOFOLLOW_LINKS);
-			view.setTimes(FileTime.fromMillis(lastMod), FileTime.fromMillis(lastAccess),FileTime.fromMillis(create));
-
-			Set<PosixFilePermission> perm = new HashSet<>();
 			for(String p : perms) {
-				perm.add(PosixFilePermission.valueOf(p));	
+				p = p.trim();
+				if( p.isEmpty()) {
+					continue;
+				}
+
+				Permissions perm = Permissions.valueOf(p);
+					switch (perm) {
+					case OWNER_READ:fs.setOwnerReadable(true);break;
+					case OWNER_WRITE:fs.setOwnerWritable(true);break;
+					case OWNER_EXECUTE:fs.setOwnerExecutable(true);break;
+					case GROUP_READ:fs.setGroupReadable(true);break;
+					case GROUP_WRITE:fs.setGroupWritable(true);break;
+					case GROUP_EXECUTE:fs.setGroupExecutable(true);break;
+					case OTHERS_READ:fs.setOtherExecutable(true);break;
+					case OTHERS_WRITE:fs.setOtherExecutable(true);break;
+					case OTHERS_EXECUTE:fs.setOtherExecutable(true);break;
+					default:
+						throw new IllegalArgumentException("Unexpected value: " + perm);
+					}
 			}
-			view.setPermissions(perm);	
+				
 		}
 	}
 
