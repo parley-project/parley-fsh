@@ -20,7 +20,8 @@ public class MountFactory extends FileSourceFactory {
 	private FileSource currentDirectory;
 
 	public MountFactory() throws IOException {
-		FileSource localRoot = FileSourceFactory.getDefaultFactory().listRoots()[0];
+		FileSource localRoot = FileSourceFactory.getDefaultFactory()
+				.listRoots()[0];
 		fileSystem = new VirtualFileSystem(localRoot);
 		FileSource[] tmp = {fileSystem};
 		roots = tmp;
