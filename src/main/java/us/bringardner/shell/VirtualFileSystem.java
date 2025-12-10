@@ -87,7 +87,7 @@ public class VirtualFileSystem implements FileSource {
 		System.out.println("tmp="+tmp);
 		return ret;
 	}
-	
+
 	public synchronized boolean mount(FileSource dir, String name ) throws IOException {
 		FileSource tmp[] = primary.listFiles();		
 		for (int idx = 0; idx < tmp.length; idx++) {
@@ -117,11 +117,11 @@ public class VirtualFileSystem implements FileSource {
 				break;
 			}
 		}
-		
+
 		if( pos >=0 ) {
 			ret = mounts.remove(pos) !=null;
 		}
-		
+
 		return ret;
 	}
 
@@ -256,25 +256,19 @@ public class VirtualFileSystem implements FileSource {
 		FileSource ret = null;
 		
 		for(RootFile rf : mounts) {
-			if(rf.name.equals(name)) {
+			if(rf.name.equalsIgnoreCase(name)) {
 				return rf;
 			}
 		}
-	
-		String[] parts = name.split("["+primary.getFileSourceFactory().getSeperatorChar()+"]");
-		FileSource parent = primary;
-		
-		
-		for(String part : parts) {
-			for(RootFile rf : mounts) {
-				if(rf.name.equals(part)) {
-					parent = rf;
-					break;
-				}
-			}
+
+		String root = primary.getAbsolutePath().toLowerCase();;
+		if( name.toLowerCase().startsWith(root)) {
+			String child = name.substring(root.length());
+			ret = primary.getChild(child);
+		} else {
+			throw new IOException("VirtualFileSystem Don't know what to do...");
 		}
-		
-		ret =  parent.getChild(parts[parts.length-1]);
+							
 		
 		return ret;
 	}
@@ -298,7 +292,7 @@ public class VirtualFileSystem implements FileSource {
 	public boolean isChildOfMine(FileSource child) throws IOException {
 		boolean ret = false;
 		FileSource lastParent =null, tmp= child.getParentFile();
-		
+
 		while(tmp !=null) {
 			lastParent = tmp;
 			tmp = tmp.getParentFile();
@@ -306,7 +300,7 @@ public class VirtualFileSystem implements FileSource {
 		if( lastParent != null ) {
 			ret = lastParent.getAbsolutePath().equals(primary.getAbsolutePath());
 		}
-		
+
 		return ret;
 	}
 
