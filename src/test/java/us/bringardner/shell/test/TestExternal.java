@@ -3,11 +3,8 @@ package us.bringardner.shell.test;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,6 +15,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
+import us.bringardner.shell.test.AbstractConsoleTest.ExecuteResult;
 
 
 @TestMethodOrder(OrderAnnotation.class)
@@ -32,24 +30,16 @@ public class TestExternal {
 		System.setProperty("user.home", testFilesDir.getAbsolutePath());
 	}
 
-	public static class ExecuteResult {
-		int exitCode=0;		
-		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();			
-	}
-	
+
 	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode,String expectOut,String expectErr) {
 		Console console = new Console();
 		
 		ExecuteResult ret = new ExecuteResult();
-		console.setStdOut(new PrintStream(ret.bao));
-		console.setStdErr(new PrintStream(ret.bae));
-		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 		
 		ret.exitCode=console.executeUsingAntlr(command);
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = ret.getStdOut();
+		String err = ret.getStdErr();
 		if(debug && !err.isEmpty()) {
 			System.out.println(command);
 			System.out.println(err);
@@ -67,15 +57,12 @@ public class TestExternal {
 		Console console = new Console();
 		
 		ExecuteResult ret = new ExecuteResult();
-		console.setStdOut(new PrintStream(ret.bao));
-		console.setStdErr(new PrintStream(ret.bae));
-		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 
 		ret.exitCode = console.execute(args);
 		
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = ret.getStdOut();
+		String err = ret.getStdErr();
 		if(debug && !err.isEmpty()) {
 			System.out.println(args);
 			System.out.println(err);
@@ -150,12 +137,12 @@ public class TestExternal {
 		
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
-		String out = new String(ret.bao.toByteArray());
+		String out = ret.getStdOut();
 		Pattern p = Pattern.compile(expectOut);
 		Matcher m = p.matcher(out);
 		boolean ok = m.matches();
 		assertTrue(ok);
-		String err = new String(ret.bae.toByteArray());
+		String err = ret.getStdErr();
 		assertEquals(expectErr, err);
 		
 		
@@ -367,17 +354,9 @@ public class TestExternal {
 		Console console = new Console();
 		
 		ExecuteResult ret = new ExecuteResult();
-		console.setStdOut(new PrintStream(ret.bao));
-		console.setStdErr(new PrintStream(ret.bae));
-		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
-		
-		
-		
 		ret.exitCode = console.executeUsingAntlr(cmd);
 		
-		
-		
-		String err = new String(ret.bae.toByteArray());
+		String err = ret.getStdErr();
 		if(debug && !err.isEmpty()) {
 			System.out.println(cmd);
 			System.out.println(err);

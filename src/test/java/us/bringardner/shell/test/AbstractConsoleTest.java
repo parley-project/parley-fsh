@@ -59,8 +59,8 @@ public abstract class AbstractConsoleTest {
 
 	public static class ExecuteResult {
 		public int exitCode=0;		
-		public ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		public ByteArrayOutputStream bae = new ByteArrayOutputStream();	
+		private ByteArrayOutputStream bao = new ByteArrayOutputStream();
+		private ByteArrayOutputStream bae = new ByteArrayOutputStream();	
 
 		public String toString() {
 			return "Exitcode="+exitCode+"\n"
@@ -68,6 +68,14 @@ public abstract class AbstractConsoleTest {
 					+ "err="+(new String(bae.toByteArray()))+"\n"
 					;
 		}
+		
+		public String getStdOut() {
+			return new String(bao.toByteArray()).replaceAll("\r", "");
+		}
+		public String getStdErr() {
+			return new String(bae.toByteArray()).replaceAll("\r", "");
+		}
+		
 	}
 
 	public static ExecuteResult executeCommand(String command,String stdIn,String ... args) {

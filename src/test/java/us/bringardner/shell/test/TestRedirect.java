@@ -26,8 +26,8 @@ public class TestRedirect extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(command, stdIn, exitCode);
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = ret.getStdOut();
+		String err = ret.getStdErr();
 		assertEquals(expectErr, err);
 		assertEquals(expectOut, out);
 		

@@ -258,7 +258,7 @@ public class TestLn extends AbstractConsoleTest{
 		ExecuteResult exit = executeCommand(cmd, "");
 		assertEquals(0, exit.exitCode,"ln exit code");
 		
-		String out = new String(exit.bao.toByteArray());
+		String out = exit.getStdOut();
 		String [] lines = out.split("\n");
 		assertEquals(4, lines.length,"ln verbose line count");
 		

@@ -33,10 +33,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 	
@@ -53,10 +53,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -73,10 +73,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -94,10 +94,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -121,10 +121,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -145,10 +145,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -169,10 +169,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -191,10 +191,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 	
@@ -213,10 +213,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -235,10 +235,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 	
@@ -256,10 +256,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 	@Test
@@ -277,10 +277,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 
@@ -301,10 +301,10 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String actual = new String(ret.bao.toByteArray());
+		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
 		
-		//String err = new String(ret.bae.toByteArray());
+		//String err = ret.getStdErr();
 		
 	}
 }

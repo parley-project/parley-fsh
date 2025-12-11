@@ -248,7 +248,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[Brazil]}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -263,7 +263,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[@]:7}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -278,7 +278,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[@]:7:2}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -293,7 +293,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[@]: -7:2}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -310,7 +310,7 @@ public class TestParameter extends AbstractConsoleTest {
 		boolean tmp = showError;showError=false;
 		ExecuteResult res = executeCommand(code, "");
 		showError=tmp;
-		String actual = new String(res.bae.toByteArray());
+		String actual = res.getStdErr();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -325,7 +325,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[@]:0}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -340,7 +340,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[@]:0:2}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -355,7 +355,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${array[@]: -7:0}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -372,7 +372,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${!var*}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -386,7 +386,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${!array[*]}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -400,7 +400,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "echo ${!array[*]}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -415,7 +415,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -430,7 +430,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -445,7 +445,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -464,7 +464,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -480,7 +480,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -495,7 +495,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -513,7 +513,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -531,7 +531,7 @@ public class TestParameter extends AbstractConsoleTest {
 				+ "";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -549,7 +549,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -579,7 +579,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -615,7 +615,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -636,7 +636,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 		assertEquals(0, res.exitCode);
@@ -656,8 +656,8 @@ public class TestParameter extends AbstractConsoleTest {
 		boolean tmp = showError;showError=false;
 		ExecuteResult res = executeCommand(code, "");
 		showError=tmp;
-		String actualOut = new String(res.bao.toByteArray());
-		String actualErr = new String(res.bae.toByteArray());
+		String actualOut = res.getStdOut();
+		String actualErr = res.getStdErr();
 		//System.out.println("actual = "+actual);
 		assertEquals(expectOut, actualOut);
 		assertEquals(expectErr, actualErr);
@@ -677,8 +677,8 @@ public class TestParameter extends AbstractConsoleTest {
 		
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
-		String actualOut = new String(res.bao.toByteArray());
-		//String actualErr = new String(res.bae.toByteArray());
+		String actualOut = res.getStdOut();
+		//String actualErr = res.getStdErr();
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actualOut);
 		assertEquals(0, res.exitCode);

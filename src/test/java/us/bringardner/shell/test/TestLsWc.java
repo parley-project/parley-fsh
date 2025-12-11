@@ -62,7 +62,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		
 		String cmd = "ls";
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		
 		assertEquals(expect, actual);
 		
@@ -87,7 +87,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		
 		String cmd = "ls -l";
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = new String(res.bao.toByteArray());		
+		String actual = res.getStdOut();		
 		assertEquals(expect, actual);
 		
 	}
@@ -99,7 +99,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		
 		String cmd = "wc";
 		ExecuteResult res = executeCommand(cmd,stdin);
-		String actual = new String(res.bao.toByteArray());				
+		String actual = res.getStdOut();				
 		assertEquals(expect, actual.trim());
 		
 		
@@ -115,7 +115,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		//c.executeWithoutAntlr("wc -l");
 		String cmd = "wc -l";
 		ExecuteResult res = executeCommand(cmd,stdin);
-		String actual = new String(res.bao.toByteArray());				
+		String actual = res.getStdOut();				
 		assertEquals(expect, actual.trim());
 		
 		
@@ -138,7 +138,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		
 		String cmd = ("ls -l *.txt");
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = new String(res.bao.toByteArray());
+		String actual = res.getStdOut();
 		
 		assertEquals(expect, actual);
 		
@@ -161,7 +161,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		
 		String cmd = "ls -l /Folder01/*.txt";
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = new String(res.bao.toByteArray());		
+		String actual = res.getStdOut();		
 		assertEquals(expect, actual);
 		
 	}

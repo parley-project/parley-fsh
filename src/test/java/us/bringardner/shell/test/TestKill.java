@@ -41,8 +41,8 @@ public class TestKill extends AbstractConsoleTest {
 
 		ExecuteResult res = executeCommand(code, "");
 		assertEquals(0, res.exitCode);
-		assertEquals(expect, new String(res.bao.toByteArray()));
-		assertEquals("", new String(res.bae.toByteArray()));
+		assertEquals(expect, res.getStdOut());
+		assertEquals("", res.getStdErr());
 
 		code = "kill -L\n"
 				+ ""
@@ -50,8 +50,8 @@ public class TestKill extends AbstractConsoleTest {
 
 		res = executeCommand(code, "");
 		assertEquals(0, res.exitCode);
-		assertEquals(expect, new String(res.bao.toByteArray()));
-		assertEquals("", new String(res.bae.toByteArray()));
+		assertEquals(expect, res.getStdOut());
+		assertEquals("", res.getStdErr());
 
 		code = "kill -l 9\n"
 				+ ""
@@ -59,8 +59,8 @@ public class TestKill extends AbstractConsoleTest {
 
 		res = executeCommand(code, "");
 		assertEquals(0, res.exitCode);
-		assertEquals("KILL\n", new String(res.bao.toByteArray()));
-		assertEquals("", new String(res.bae.toByteArray()));
+		assertEquals("KILL\n", res.getStdOut());
+		assertEquals("", res.getStdErr());
 
 		code = "kill -l HUP\n"
 				+ ""
@@ -68,8 +68,8 @@ public class TestKill extends AbstractConsoleTest {
 
 		res = executeCommand(code, "");
 		assertEquals(0, res.exitCode);
-		assertEquals("HUP\n", new String(res.bao.toByteArray()));
-		assertEquals("", new String(res.bae.toByteArray()));
+		assertEquals("HUP\n", res.getStdOut());
+		assertEquals("", res.getStdErr());
 	}
 	
 	@Test
@@ -102,9 +102,9 @@ public class TestKill extends AbstractConsoleTest {
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling
 		Thread.sleep(50);
-		String val = new String(res.bae.toByteArray());
+		String val = res.getStdErr();
 		assertEquals("", val);
-		assertEquals(expect, new String(res.bao.toByteArray()));
+		assertEquals(expect, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
 	}
@@ -141,8 +141,8 @@ public class TestKill extends AbstractConsoleTest {
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling
 		Thread.sleep(50);
-		assertEquals("", new String(res.bae.toByteArray()));
-		assertEquals(expect, new String(res.bao.toByteArray()));
+		assertEquals("", res.getStdErr());
+		assertEquals(expect, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
 	}
@@ -159,8 +159,8 @@ public class TestKill extends AbstractConsoleTest {
 		console.jobManager.clear();
 		//console.isInteractive=true;
 		ExecuteResult res = executeCommand(code, "");
-		String err = new String(res.bae.toByteArray());
-		String out = new String(res.bao.toByteArray());
+		String err = res.getStdErr();
+		String out = res.getStdOut();
 		
 		assertEquals("", err);
 		assertEquals(expect, out);

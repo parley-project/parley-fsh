@@ -55,9 +55,9 @@ public class TestWait extends AbstractConsoleTest {
 		Console.setNextPid(100000);
 		console.jobManager.clear();
 		ExecuteResult res = executeCommand(code, "");
-		String val = new String(res.bae.toByteArray());
+		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, new String(res.bao.toByteArray()));
+		assertEquals(expectOut, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
 	}
@@ -88,8 +88,8 @@ public class TestWait extends AbstractConsoleTest {
 		
 		
 		
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(expectErr, err);
 		assertEquals(expectOut, out);
 		assertEquals(3, res.exitCode);
@@ -126,8 +126,8 @@ public class TestWait extends AbstractConsoleTest {
 		
 		
 		
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(expectErr, err);
 		assertEquals(expectOut, out);
 		assertEquals(2, res.exitCode);

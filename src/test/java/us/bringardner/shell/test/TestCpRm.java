@@ -210,25 +210,25 @@ public class TestCpRm extends AbstractConsoleTest{
 		 * -i with no STDIN should prompt and slightly leave the file there 
 		 */
 		cmd = "rm -i "+dest;
-		ExecuteResult result = executeCommand(cmd, "");
-		String out = new String(result.bao.toByteArray());
-		String err = new String(result.bae.toByteArray());
-		assertEquals(0, result.exitCode,"Rm exit code");
+		res = executeCommand(cmd, "");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,"Rm exit code");
 		assertTrue(out.startsWith("remove"),"First part of the prompt is wrong");
 		assertTrue(out.endsWith("CpTestFiles/../target/Co01.txt?"),"Last part of the prompt is wrong");
 		
 		assertEquals("", err,"Err should be empty");
 		assertTrue(file.exists(),"File should exist after rm");
 		
-		result = executeCommand(cmd, "y\n");
-		out = new String(result.bao.toByteArray());
-		err = new String(result.bae.toByteArray());
-		assertEquals(0, result.exitCode,"Rm exit code");		
+		res = executeCommand(cmd, "y\n");
+		out = res.getStdOut();
+		err = res.getStdErr();
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertTrue(out.startsWith("remove"),"First part of the prompt is wrong");
 		assertTrue(out.endsWith("CpTestFiles/../target/Co01.txt?"),"Last part of the prompt is wrong");
 		
 		assertEquals("", err,"Err should be empty");
-		assertEquals(0, result.exitCode,"Rm exit code");		
+		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}

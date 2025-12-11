@@ -69,8 +69,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -94,8 +94,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -122,8 +122,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -152,8 +152,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -182,8 +182,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -212,8 +212,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -252,8 +252,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -292,8 +292,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -332,8 +332,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -373,8 +373,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -410,8 +410,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -444,8 +444,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -483,8 +483,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -522,8 +522,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -560,8 +560,8 @@ public class TestDirStack extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);

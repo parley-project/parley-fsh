@@ -36,8 +36,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -55,8 +55,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -80,8 +80,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -97,8 +97,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out.trim());
 		assertEquals(0, res.exitCode);
@@ -116,8 +116,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertTrue(err.startsWith("real"));
 		assertEquals(expect, out.trim());
 		assertEquals(0, res.exitCode);
@@ -135,8 +135,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		
 		assertTrue(err.startsWith("posix real"));
 		assertEquals(expect, out.trim());
@@ -162,8 +162,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		console.jobManager.clear();
 		console.isInteractive=true;
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		
 		assertEquals("", err);
 		assertEquals(expect, out.trim());
@@ -223,8 +223,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		// give time for stdout to get written
 		Thread.sleep(10);
 		
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
@@ -233,8 +233,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		cmd = "jobs %3\n";
 		expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
-		out = new String(res.bao.toByteArray());
-		err = new String(res.bae.toByteArray());		
+		out = res.getStdOut();
+		err = res.getStdErr();		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
@@ -242,8 +242,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		cmd = "jobs %1\n";
 		expect = "[1]   Running sleep   1000   \n";
 		res = executeCommand(cmd,"");
-		out = new String(res.bao.toByteArray());
-		err = new String(res.bae.toByteArray());		
+		out = res.getStdOut();
+		err = res.getStdErr();		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
@@ -251,8 +251,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		cmd = "jobs %-\n";
 		expect = "[2] - Running sleep   2000   \n";
 		res = executeCommand(cmd,"");
-		out = new String(res.bao.toByteArray());
-		err = new String(res.bae.toByteArray());		
+		out = res.getStdOut();
+		err = res.getStdErr();		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
@@ -260,8 +260,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		cmd = "jobs %+\n";
 		expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
-		out = new String(res.bao.toByteArray());
-		err = new String(res.bae.toByteArray());		
+		out = res.getStdOut();
+		err = res.getStdErr();		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
@@ -269,8 +269,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		cmd = "jobs %%\n";
 		expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
-		out = new String(res.bao.toByteArray());
-		err = new String(res.bae.toByteArray());		
+		out = res.getStdOut();
+		err = res.getStdErr();		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);
@@ -282,8 +282,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		expect = "";
 		waitForJobs=true;
 		res = executeCommand(cmd,"");
-		out = new String(res.bao.toByteArray());
-		err = new String(res.bae.toByteArray());		
+		out = res.getStdOut();
+		err = res.getStdErr();		
 		assertEquals("", err);
 		assertEquals(expect.trim(), out.trim());
 		assertEquals(0, res.exitCode);

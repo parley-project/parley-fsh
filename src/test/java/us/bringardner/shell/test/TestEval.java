@@ -37,8 +37,8 @@ public class TestEval  extends AbstractConsoleTest{
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = ret.getStdOut();
+		String err = ret.getStdErr();;
 		if( !err.isEmpty()) {
 			System.out.println(cmd);
 			System.out.println(err);
@@ -62,8 +62,8 @@ public class TestEval  extends AbstractConsoleTest{
 		
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = ret.getStdOut();;
+		String err = ret.getStdErr();;
 		if( !err.isEmpty()) {
 			System.out.println(cmd);
 			System.out.println(err);
@@ -85,8 +85,8 @@ public class TestEval  extends AbstractConsoleTest{
 		int exitCode = 1;
 		String expect = "";
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = ret.getStdOut();;
+		String err = ret.getStdErr();;
 		assertTrue(err.startsWith("java.io.IOException: command not found:"));
 		assertEquals(expect, out);
 		

@@ -74,8 +74,8 @@ public class TestSource extends AbstractConsoleTest {
 
 	private void validate(String msg,ExecuteResult res ,int exitCode, String stdOut, String stdErr) {
 		assertEquals(0, res.exitCode,msg);
-		assertEquals(stdOut, new String(res.bao.toByteArray()),msg);
-		assertEquals(stdErr, new String(res.bae.toByteArray()),msg);
+		assertEquals(stdOut, res.getStdOut(),msg);
+		assertEquals(stdErr, res.getStdErr(),msg);
 
 		
 	}

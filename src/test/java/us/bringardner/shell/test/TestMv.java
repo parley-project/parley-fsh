@@ -116,8 +116,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			ExecuteResult res = executeCommand(code,"");
 			
-			String out = new String(res.bao.toByteArray());
-			String err = new String(res.bae.toByteArray());
+			String out = res.getStdOut();
+			String err = res.getStdErr();
 			assertEquals("", err);
 			assertEquals("", out);
 			assertEquals(0, res.exitCode);
@@ -139,8 +139,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			ExecuteResult res = executeCommand(code,"");
 			
-			String out = new String(res.bao.toByteArray());
-			String err = new String(res.bae.toByteArray());
+			String out = res.getStdOut();
+			String err = res.getStdErr();
 			assertEquals("", err);
 			assertEquals("", out);
 			assertEquals(0, res.exitCode);
@@ -163,8 +163,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			ExecuteResult res = executeCommand(code,"");
 			
-			String out = new String(res.bao.toByteArray());
-			String err = new String(res.bae.toByteArray());
+			String out = res.getStdOut();
+			String err = res.getStdErr();
 			assertEquals("", err);
 			assertEquals("memory connected as /mem\n", out);
 			assertEquals(0, res.exitCode);
@@ -188,8 +188,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			ExecuteResult res = executeCommand(code,"");
 			
-			String out = new String(res.bao.toByteArray());
-			String err = new String(res.bae.toByteArray());
+			String out = res.getStdOut();
+			String err = res.getStdErr();
 			assertEquals("", err);
 			assertEquals("memory connected as /mem4\n", out);
 			assertEquals(0, res.exitCode);
@@ -215,8 +215,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			ExecuteResult res = executeCommand(code,"");
 			
-			String out = new String(res.bao.toByteArray());
-			String err = new String(res.bae.toByteArray());
+			String out = res.getStdOut();
+			String err = res.getStdErr();
 			assertEquals("", err);
 			assertEquals(dst.getAbsolutePath()+" not overwritten\n", out);
 			assertEquals(1, res.exitCode);
@@ -228,8 +228,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			res = executeCommand(code,"n");
 			
-			out = new String(res.bao.toByteArray());
-			err = new String(res.bae.toByteArray());
+			out = res.getStdOut();
+			err = res.getStdErr();
 			assertEquals("", err);
 			String expect = "overwrite "+dst+"? (y/n [n])"+dst+" not overwritten.\n";
 					
@@ -243,8 +243,8 @@ public class TestMv extends AbstractConsoleTest{
 			
 			res = executeCommand(code,"Y");
 			
-			out = new String(res.bao.toByteArray());
-			err = new String(res.bae.toByteArray());
+			out = res.getStdOut();
+			err = res.getStdErr();
 			assertEquals("", err);
 			expect = "overwrite "+dst+"? (y/n [n])";
 					
@@ -291,8 +291,8 @@ public class TestMv extends AbstractConsoleTest{
 					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01 -> /mem4/Folder01\n"
 					+ "/Volumes/Data/eclipse-git/BjlShell/target/mvsrc/Folder01 -> /mem4/Folder01\n"
 					;
-			String out = new String(res.bao.toByteArray());
-			String err = new String(res.bae.toByteArray());
+			String out = res.getStdOut();
+			String err = res.getStdErr();
 			assertEquals("", err);
 			assertEquals(expect.split("\n").length,out.split("\n").length);
 			assertEquals(0, res.exitCode);

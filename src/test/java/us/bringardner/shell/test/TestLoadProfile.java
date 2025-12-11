@@ -29,13 +29,13 @@ public class TestLoadProfile extends AbstractConsoleTest {
 		assertEquals(2, var2);
 		ExecuteResult res = executeCommand("ll", "");
 		assertEquals(0, res.exitCode);
-		assertEquals("", new String(res.bae.toByteArray()));
+		assertEquals("", res.getStdErr());
 		/*
 		 * -rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js
 -rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php
 -rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt
 		 */
-		String out = new String(res.bao.toByteArray());
+		String out = res.getStdOut();
 		String [] lines = out.split("\n");
 		
 		assertEquals(3, lines.length);

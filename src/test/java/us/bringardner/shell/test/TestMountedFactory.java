@@ -202,15 +202,15 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String code = "connect memory /mem\n";
 		ExecuteResult res = executeCommand(code, "");
 
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("memory connected as /mem\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("memory connected as /mem\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = "cd /mem\n";
 
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = 
@@ -223,14 +223,14 @@ public class TestMountedFactory extends AbstractConsoleTest {
 						;
 
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = "ls /mem/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("Level10\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 
@@ -243,15 +243,15 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String code = "connect memory /mem2\n";
 		ExecuteResult res = executeCommand(code, "");
 
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("memory connected as /mem2\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("memory connected as /mem2\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = "cd /mem2\n";
 
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = 
@@ -274,14 +274,14 @@ public class TestMountedFactory extends AbstractConsoleTest {
 				+ "mkdir: /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
 				;
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals(expect,new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals(expect,res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = "ls /mem2/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("Level10\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 
@@ -294,15 +294,15 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String code = "connect memory /mem3\n";
 		ExecuteResult res = executeCommand(code, "");
 
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("memory connected as /mem3\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("memory connected as /mem3\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = "cd /mem3\n";
 
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = 
@@ -313,14 +313,14 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String expect = "mkdir: /mem3/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
 				;
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals(expect,new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals(expect,res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 		code = "ls /mem3/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("Level10\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 
@@ -335,8 +335,8 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String code = "connect memory /mem4\n";
 		ExecuteResult res = executeCommand(code, "");
 
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("memory connected as /mem4\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("memory connected as /mem4\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 
 
@@ -348,14 +348,14 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		boolean tmp = showError;showError=false;
 		res = executeCommand(code, "");
 		
-		assertEquals(expect,new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals(expect,res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(1, res.exitCode);
 
 		code = "ls -l /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
-		assertEquals("ls: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9 no such file or directory\n",new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals("ls: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9 no such file or directory\n",res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(1, res.exitCode);
 		showError = tmp;
 
@@ -368,15 +368,15 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String code = "connect memory /mem5\n";
 		ExecuteResult res = executeCommand(code, "");
 	
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("memory connected as /mem5\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("memory connected as /mem5\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 	
 		code = "cd /mem5\n";
 	
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("",res.getStdOut());
 		assertEquals(0, res.exitCode);
 	
 		code = 
@@ -390,14 +390,14 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		String expect = ""
 				;
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals(expect,new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals(expect,res.getStdOut());
 		assertEquals(0, res.exitCode);
 	
 		code = "ls /mem5/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
-		assertEquals("",new String(res.bae.toByteArray()));
-		assertEquals("Level10\n",new String(res.bao.toByteArray()));
+		assertEquals("",res.getStdErr());
+		assertEquals("Level10\n",res.getStdOut());
 		assertEquals(0, res.exitCode);
 	
 	

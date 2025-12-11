@@ -40,16 +40,16 @@ public class TestConnect extends AbstractConsoleTest {
 		String cmd = "connect memory /mem";
 		
 		ExecuteResult res = executeCommandFudge(cmd, "");
-		String out = new String(res.bao.toByteArray()).trim();
-		String err = new String(res.bae.toByteArray()).trim();
+		String out = res.getStdOut().trim();
+		String err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
 		assertEquals(expect, out,"stdout");
 		assertEquals("", err,"stderr");		
 		
 		cmd = "ls -l /mem";
 		res = executeCommandFudge(cmd, "");
-		out = new String(res.bao.toByteArray()).trim();
-		err = new String(res.bae.toByteArray()).trim();
+		out = res.getStdOut().trim();
+		err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
 		assertEquals("", out,"stdout");
 		assertEquals("", err,"stderr");		
@@ -57,8 +57,8 @@ public class TestConnect extends AbstractConsoleTest {
 		/*
 		cmd = "unmount /mem";
 		res = executeCommandFudge(cmd, "");
-		out = new String(res.bao.toByteArray()).trim();
-		err = new String(res.bae.toByteArray()).trim();
+		out = res.getStdOut().trim();
+		err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
 		assertEquals("", out,"stdout");
 		assertEquals("", err,"stderr");		
@@ -74,8 +74,8 @@ public class TestConnect extends AbstractConsoleTest {
 		String cmd = "connect memory -f~/Memory02.properties /mem02";
 		
 		ExecuteResult res = executeCommandFudge(cmd, "");
-		String out = new String(res.bao.toByteArray()).trim();
-		String err = new String(res.bae.toByteArray()).trim();
+		String out = res.getStdOut().trim();
+		String err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
 		assertEquals(expect, out,"stdout");
 		assertEquals("", err,"stderr");				
@@ -90,8 +90,8 @@ public class TestConnect extends AbstractConsoleTest {
 		String cmd = "connect sftp user=unittest1 password=0000 host=localhost /sftp1";
 		
 		ExecuteResult res = executeCommandFudge(cmd, "");
-		String out = new String(res.bao.toByteArray()).trim();
-		String err = new String(res.bae.toByteArray()).trim();
+		String out = res.getStdOut().trim();
+		String err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
 		assertEquals(expect, out,"stdout");
 		assertEquals("", err,"stderr");				
@@ -110,8 +110,8 @@ public class TestConnect extends AbstractConsoleTest {
 			e.printStackTrace();
 		}
 		ExecuteResult res = executeCommandFudge(cmd, "user=unittest2 password=0000 host=localhost");
-		String out = new String(res.bao.toByteArray()).trim();
-		String err = new String(res.bae.toByteArray()).trim();
+		String out = res.getStdOut().trim();
+		String err = res.getStdErr().trim();
 		if( res.exitCode !=0) {
 			System.out.println(err);
 		}

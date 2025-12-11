@@ -42,8 +42,8 @@ public class TestForStatement extends AbstractConsoleTest {
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -75,8 +75,8 @@ public class TestForStatement extends AbstractConsoleTest {
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -110,8 +110,8 @@ public class TestForStatement extends AbstractConsoleTest {
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -143,8 +143,8 @@ public class TestForStatement extends AbstractConsoleTest {
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -175,8 +175,8 @@ public class TestForStatement extends AbstractConsoleTest {
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -203,8 +203,8 @@ public class TestForStatement extends AbstractConsoleTest {
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -221,8 +221,8 @@ public class TestForStatement extends AbstractConsoleTest {
 		
 		//System.out.println(cmd);
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		String lines[] = out.split("\n");
 		assertEquals(1, lines.length,err);
@@ -247,8 +247,8 @@ public class TestForStatement extends AbstractConsoleTest {
 		};
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		String lines[] = out.split("\n");
 		assertEquals(5, lines.length,err);

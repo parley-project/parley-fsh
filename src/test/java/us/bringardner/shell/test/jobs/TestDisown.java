@@ -50,9 +50,9 @@ public class TestDisown extends AbstractConsoleTest {
 		
 		ExecuteResult res = executeCommand(code, "");
 		Thread.sleep(20);
-		String val = new String(res.bae.toByteArray());
+		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, new String(res.bao.toByteArray()));
+		assertEquals(expectOut, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
 	}
@@ -83,9 +83,9 @@ public class TestDisown extends AbstractConsoleTest {
 		waitForJobs = false;
 		ExecuteResult res = executeCommand(code, "");
 		Thread.sleep(10);
-		String val = new String(res.bae.toByteArray());
+		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, new String(res.bao.toByteArray()));
+		assertEquals(expectOut, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
 	}
@@ -112,9 +112,9 @@ public class TestDisown extends AbstractConsoleTest {
 		waitForJobs = false;
 		ExecuteResult res = executeCommand(code, "");
 		Thread.sleep(10);
-		String val = new String(res.bae.toByteArray());
+		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, new String(res.bao.toByteArray()));
+		assertEquals(expectOut, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
 	}

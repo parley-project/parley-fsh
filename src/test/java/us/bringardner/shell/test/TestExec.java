@@ -43,7 +43,7 @@ public class TestExec extends AbstractConsoleTest {
 
 		ExecuteResult res = executeCommand(cmd, "");
 		assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);
-		String out = new String(res.bao.toByteArray());
+		String out = res.getStdOut();
 		assertEquals(expect,out,"Stdout for cmd="+cmd);
 
 	}
@@ -63,7 +63,7 @@ public class TestExec extends AbstractConsoleTest {
 
 		ExecuteResult res = executeCommand(cmd, "");
 		assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);
-		String out = new String(res.bao.toByteArray());
+		String out = res.getStdOut();
 		assertEquals("",out,"Stdout for cmd="+cmd);
 
 		try (InputStream in = logFile.getInputStream()){

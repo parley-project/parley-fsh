@@ -46,8 +46,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);
@@ -81,8 +81,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);
@@ -110,8 +110,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);
@@ -141,8 +141,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);
@@ -171,8 +171,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);
@@ -208,8 +208,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);
@@ -253,8 +253,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		showError=false;
 		ExecuteResult res = executeCommand(cmd,stdin);
 		showError=true;
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
 		assertEquals(expectErr, err);

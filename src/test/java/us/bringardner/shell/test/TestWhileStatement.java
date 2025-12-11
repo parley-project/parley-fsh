@@ -36,8 +36,8 @@ public class TestWhileStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -65,8 +65,8 @@ public class TestWhileStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expect, out);
 		assertEquals("", err);
@@ -96,8 +96,8 @@ public class TestWhileStatement extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expect, out);
 		assertEquals("", err);

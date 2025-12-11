@@ -33,8 +33,8 @@ public class TestFunction extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -57,8 +57,8 @@ public class TestFunction extends AbstractConsoleTest{
 				;
 		//System.out.println(cmd);
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -89,8 +89,8 @@ public class TestFunction extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -121,8 +121,8 @@ public class TestFunction extends AbstractConsoleTest{
 				;
 		//System.out.println(cmd);
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		if( !err.isEmpty()) {
 			System.out.println(err);
 		}
@@ -152,8 +152,8 @@ public class TestFunction extends AbstractConsoleTest{
 		
 		//System.out.println(cmd);
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		if( !err.isEmpty()) {
 			System.out.println(err);
 		}
@@ -179,8 +179,8 @@ public class TestFunction extends AbstractConsoleTest{
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -205,8 +205,8 @@ public class TestFunction extends AbstractConsoleTest{
 				;
 		//System.out.println(cmd);
 		ExecuteResult res = executeCommand(cmd,"","arg1","arg2");
-		String out = new String(res.bao.toByteArray());
-		String err = new String(res.bae.toByteArray());
+		String out = res.getStdOut();
+		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
