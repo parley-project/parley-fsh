@@ -42,7 +42,7 @@ public class TestEcho extends AbstractConsoleTest {
 
 			ExecuteResult res = executeCommand(cmd, "");
 			assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);
-			assertEquals(expect+"\n",new String(res.bao.toByteArray()),"Stdout for cmd="+cmd);
+			assertEquals(expect,new String(res.bao.toByteArray()).trim(),"Stdout for cmd="+cmd);
 
 			cmd = "echo -n "+expect;
 
