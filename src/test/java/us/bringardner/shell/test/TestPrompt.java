@@ -56,6 +56,7 @@ public class TestPrompt extends AbstractConsoleTest {
 		
 		
 		Date date = fmt.parse("09/07/2025 13:22:15.123 EDT");
+		boolean isWin = getOs() == OperatingSystem.Windows;
 		
 		Map<String,String> expect = new TreeMap<>();
 		expect.put("\\a", ""+((char)7));
@@ -78,8 +79,9 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("\\v", Console.VERSION);
 		expect.put("\\V", Console.VERSION);
 		//PROMPT_DIRTRIM
-		expect.put("\\w", "~/TestFiles");
-		expect.put("\\W", "~/TestFiles");
+	
+		expect.put("\\w",isWin?"~\\TestFiles": "~/TestFiles");
+		expect.put("\\W",isWin?"~\\TestFiles": "~/TestFiles");
 		expect.put("\\!", "0");
 		expect.put("\\#", "0");
 		expect.put("\\$", "$");
@@ -138,14 +140,15 @@ public class TestPrompt extends AbstractConsoleTest {
 				+ "\\\\ \n"
 				+ "A backslash space.\n"
 				
-				
+				// 3837 attiuc dr. powell
 			;
 
 		String [] lines = tmp.split("\n");
 		for (int idx = 0; idx < lines.length; idx++) {
 			String val = lines[idx];
 			String actual = console.expandPrompt(val,date);
-			//System.out.println(val+"="+actual+" ("+lines[++idx]+")"); 
+		
+			//System.out.println("idx="+idx+" val="+ val+"="+actual+" ("+lines[++idx]+")"); 
 			String exp = expect.get(val);
 			if( exp !=null ) {
 				assertEquals(exp, actual,"val="+val);
