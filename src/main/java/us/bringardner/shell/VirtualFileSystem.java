@@ -261,12 +261,18 @@ public class VirtualFileSystem implements FileSource {
 			}
 		}
 
-		String root = primary.getAbsolutePath().toLowerCase();;
-		if( name.toLowerCase().startsWith(root)) {
+		if(FileSourceFactory.isWindows()) {
+			if( name.endsWith(":")) {
+				name = name +"\\";
+			}
+		}
+		
+		String root = primary.getAbsolutePath();
+		if( name.startsWith(root)) {
 			String child = name.substring(root.length());
 			ret = primary.getChild(child);
 		} else {
-			throw new IOException("VirtualFileSystem Don't know what to do...");
+			ret = primary.getChild(name);
 		}
 							
 		

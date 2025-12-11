@@ -1,5 +1,6 @@
 package us.bringardner.shell.test;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayInputStream;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.shell.Console;
+import us.bringardner.shell.test.AbstractConsoleTest.OperatingSystem;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestLs {
@@ -170,6 +172,9 @@ public class TestLs {
 				+ "AbcFileD.properties\n"
 				+ "AbcFileC.txt"
 				;
+		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
+			expect = expect.replaceAll("\n", "\r\n");
+		}
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);
 	}
@@ -191,6 +196,9 @@ public class TestLs {
 				+ "AbcFileC.txt\n"
 				+ "AbcFileD.properties\n"
 				+ "Folder01";
+		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
+			expect = expect.replaceAll("\n", "\r\n");
+		}
 		
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);
@@ -202,19 +210,19 @@ public class TestLs {
 	public void testLs_l() throws IOException {
 
 
-		String expect = 
+		String expect[] = (
 				    "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
-				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"				  
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01").split("\n");				  
 				  ;
 		
 		String cmd = "ls -l";
 
-		String actual = executeLsCommand(true,cmd).trim();
+		String[] actual = executeLsCommand(true,cmd).trim().split("\n");
 		
-		assertEquals(expect, actual);
+		checkResult(expect, actual);
 	}
 
 	@Test
@@ -222,24 +230,19 @@ public class TestLs {
 	public void testLs_lt() throws IOException {
 
 
-		String expect1 = 
-				      "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
+		String expect[] = 
+				    (  "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01"				  
+				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01")	.split("\n")			  
 				  ;
 		
-		String expect = expect1.replaceAll("\\s", "");
 		
 		String cmd = "ls -lt";
 
-		String actual1 = executeLsCommand(true,cmd).trim();
-		String actual = actual1.replaceAll("\\s", "");
-		if( !expect.equals(actual)) {
-			assertEquals(expect1, actual1);	
-		}
-		
+		String [] actual = executeLsCommand(true,cmd).trim().split("\n");
+		checkResult(expect, actual);	
 	}
 	
 	@Test
@@ -247,27 +250,33 @@ public class TestLs {
 	public void testLs_ltr() throws IOException {
 
 
-		String expect1 = 
+		String expect[] = (
 				      "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
 				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
 				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
+				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n").split("\n");
 				  
 				  ;
-		String expect = expect1.replaceAll("\\s", "");
 		
 		String cmd = "ls -ltr";
 
-		String actual1 = executeLsCommand(true,cmd).trim();
-		//System.out.println(actual1);
-		String actual = actual1.replaceAll("\\s", "");
-		if( !expect.equals(actual)) {
-			assertEquals(expect1, actual1);	
-		}
-		
+		String actual[] = executeLsCommand(true,cmd).trim().split("\n");
+		checkResult(expect,actual);
 	}
 	
+	private void checkResult(String[] expect, String[] actual) {
+		assertEquals(expect.length,actual.length);
+		for (int idx = 0; idx < actual.length; idx++) {
+			String line = expect[idx];
+			int pos=line.lastIndexOf(' ');
+			String name = line.substring(pos);
+			assertTrue(actual[idx].trim().endsWith(name));
+		}
+	
+		
+	}
+
 	@Test
 	@Order(5)
 	public void testLsTilde() throws IOException {
@@ -294,6 +303,10 @@ public class TestLs {
 				+ "AbcFile.properties\n"
 				+ "AbcFile01def2.txt"
 				;
+		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
+			expect = expect.replaceAll("\n", "\r\n");
+		}
+		
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);
 	}

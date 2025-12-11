@@ -378,11 +378,18 @@ public abstract class ShellCommand {
 		}
 		if( isRelative(path)) {
 			cwd = ctx.console.getCurrentDirectory();
-		} else {						
+		} else {
 			cwd = ctx.console.createFileSource("/");
 		}
 
-		String pathSegments [] = path.split("["+cwd.getFileSourceFactory().getSeperatorChar()+"]");
+		String pathSegments [] = null;
+		char sep = cwd.getFileSourceFactory().getSeperatorChar();
+		if( sep == '\\') {
+			pathSegments  = path.split("[\\\\]");
+		} else {
+			pathSegments  = path.split("["+cwd.getFileSourceFactory().getSeperatorChar()+"]");
+		}
+		
 		//  these are all the files that match this segment
 		glob2a(ctx,ret, cwd, pathSegments, 0);
 
@@ -400,8 +407,12 @@ public abstract class ShellCommand {
 		return false;
 	};
 
-	protected static boolean isRelative(String path) {
-		return !path.startsWith("/");
+	public static boolean isRelative(String path) {
+		if(FileSourceFactory.isWindows()){
+			return !(path.length()>=2&& path.charAt(1)==':');
+		} else {
+			return !path.startsWith("/");
+		}
 	}
 
 	protected String promptAndGetReponse(ShellContext ctx, String prompt) throws IOException {

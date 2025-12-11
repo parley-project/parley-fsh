@@ -13,7 +13,7 @@ import us.bringardner.io.filesource.FileSourceFactory;
 
 public class MountFactory extends FileSourceFactory {
 
-	
+
 	private static final long serialVersionUID = 1L;
 	private FileSource [] roots;
 	private VirtualFileSystem fileSystem;
@@ -36,7 +36,7 @@ public class MountFactory extends FileSourceFactory {
 
 	public boolean unmount(String name) throws IOException {
 		boolean ret = fileSystem.unmount(name);
-		
+
 		return ret;
 	}
 
@@ -65,12 +65,7 @@ public class MountFactory extends FileSourceFactory {
 		if(path == null || (path=path.trim()).isEmpty()) {
 			throw new IOException("Invalide file name");
 		}
-
-		if(path.indexOf('~') >=0) {
-			String home = System.getProperty("user.home");			
-			path = home + path.substring(1);
-		}
-
+		
 		if( path.equals("/")) {
 			return fileSystem;
 		}
@@ -79,18 +74,51 @@ public class MountFactory extends FileSourceFactory {
 			return getCurrentDirectory();
 		}
 		
-		
-		String parts[] = path.split("["+getSeperatorChar()+"]");
-		FileSource ret = fileSystem;
-		if( path.charAt(0) != '/') {
-			ret = getCurrentDirectory();
+		if(path.indexOf('~') >=0) {
+			String home = System.getProperty("user.home");			
+			path = home + path.substring(1);
 		}
+
+		if(FileSourceFactory.isWindows() && path.length()==2 && path.charAt(1)==':') {
+			path = path+"\\";
+		}
+
+		String rootPath = listRoots()[0].getAbsolutePath();
+		if(rootPath.equals(path)) {
+			return listRoots()[0];
+		}
+
+		if(!ShellCommand.hasWildcard(path)) {
+			if( ShellCommand.isRelative(path)) {
+					return getCurrentDirectory().getChild(path);
+			} else {
+				return fileSystem.getFileSourceFactory().createFileSource(path);
+			}
+		}
+	
+		char sep = getSeperatorChar();
+		String parts[] =null;
+		if( sep == '\\' ) {
+			parts=path.split("[\\\\]");
+		} else {
+			parts=path.split("["+sep+"]");
+		}
+		FileSource mount = fileSystem;
 		
+		Map<String, FileSource> mounts = getMounts();
+		for(String point : mounts.keySet()) {
+			if(parts[0].equals(point)) {
+				mount = mounts.get(point);
+				break;
+			}
+		}
+
+		FileSource ret = mount;
 		for(String part : parts) {
 			if( part.equals(".")|| part.isEmpty()) {
 				continue;
 			}
-			
+
 			if( part.equals("..")) {
 				ret = ret.getParentFile();
 				if( ret == null) {
@@ -100,14 +128,14 @@ public class MountFactory extends FileSourceFactory {
 				ret = ret.getChild(part);
 			}
 		}
-		
-		
+
+
 
 		return ret;
-		
+
 	}
 
-	
+
 
 	@Override
 	public String getTypeId() {
@@ -150,7 +178,8 @@ public class MountFactory extends FileSourceFactory {
 
 	@Override
 	public char getSeperatorChar() {
-		return '/';
+
+		return FileSourceFactory.getDefaultFactory().getSeperatorChar();
 	}
 
 	@Override
@@ -207,7 +236,7 @@ public class MountFactory extends FileSourceFactory {
 				return mount.name;
 			}
 		}
-		
+
 		return null;
 	}
 
@@ -219,6 +248,6 @@ public class MountFactory extends FileSourceFactory {
 		this.fileSystem = fileSystem;
 	}
 
-	
-	
+
+
 }
