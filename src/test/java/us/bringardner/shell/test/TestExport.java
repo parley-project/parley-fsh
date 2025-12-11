@@ -36,7 +36,7 @@ public class TestExport extends AbstractConsoleTest {
 		
 		ExecuteResult ret = executeCommand(new Console(),cmd,stdIn,exitCode);
 		
-		String out = new String(ret.bao.toByteArray());
+		String out = new String(ret.bao.toByteArray()).replaceAll("\r", "");
 		String err = new String(ret.bae.toByteArray());
 		if( !err.isEmpty()) {
 			System.out.println(cmd);
@@ -61,8 +61,8 @@ public class TestExport extends AbstractConsoleTest {
 		c1.isInteractive = true;
 		ExecuteResult ret = executeCommand(c1,cmd,stdIn,exitCode);
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = new String(ret.bao.toByteArray()).replaceAll("\r", "");
+		String err = new String(ret.bae.toByteArray()).replaceAll("\r", "");
 		if( !err.isEmpty()) {
 			System.out.println(cmd);
 			System.out.println(err);
@@ -86,8 +86,8 @@ public class TestExport extends AbstractConsoleTest {
 		console.isInteractive = false;
 		ExecuteResult ret = executeCommand(console,cmd,stdIn,exitCode);
 		
-		String out = new String(ret.bao.toByteArray());
-		String err = new String(ret.bae.toByteArray());
+		String out = new String(ret.bao.toByteArray()).replaceAll("\r", "");
+		String err = new String(ret.bae.toByteArray()).replaceAll("\r", "");
 		if( !err.isEmpty()) {
 			System.out.println(cmd);
 			System.out.println(err);
@@ -115,7 +115,7 @@ public class TestExport extends AbstractConsoleTest {
 		
 		cmd = "export -p";
 		ExecuteResult ret = executeCommand(console,cmd,stdIn,exitCode);
-		String out = new String(ret.bao.toByteArray());
+		String out = new String(ret.bao.toByteArray()).replaceAll("\r", "");
 		int idx = out.indexOf(fulVAl);
 		assertTrue(idx>=0);
 		
@@ -125,7 +125,7 @@ public class TestExport extends AbstractConsoleTest {
 		cmd = "export -p";
 		ret = executeCommand(console,cmd,stdIn,exitCode);
 		
-		out = new String(ret.bao.toByteArray());
+		out = new String(ret.bao.toByteArray()).replaceAll("\r", "");
 		idx = out.indexOf(var);
 		assertTrue(idx<0);
 		
