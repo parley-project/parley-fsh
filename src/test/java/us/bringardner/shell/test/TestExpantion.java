@@ -51,7 +51,7 @@ public class TestExpantion {
 		
 		String expect = "this is a double quoted string value\n"
 				+ "this is a single quoted string $v\n";
-		String actual = new String(bao.toByteArray());
+		String actual = new String(bao.toByteArray()).replaceAll("\r", "");
 		assertEquals(expect, actual);
 		
 	}
