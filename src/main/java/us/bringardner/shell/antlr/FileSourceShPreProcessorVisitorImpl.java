@@ -189,6 +189,9 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				String val = null;
 				if( cs.execute(cmd, sc)!=0) {
 					val = "Expansion error "+cmd+" exitCode="+cs.getExitCode();
+					if( !cs.getStderr().isBlank()) {
+						val += "\n"+cs.getStderr();
+					}
 				} else {
 					val = cs.getStdout();
 				}

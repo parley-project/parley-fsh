@@ -434,12 +434,13 @@ public class CommandStatement extends Statement{
 						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 							throw new IOException(e);
 						}
-						
-						
+
+
 					} else {
 						String tmp = "xx"+ctx.getVariable("$0");
 						boolean ok = name.equals(tmp);
 						FileSource exec = findExecutable(name,ctx);
+						
 						if( exec != null ) {
 							if( ok ) {
 								if(!exec.exists()) {
@@ -464,7 +465,26 @@ public class CommandStatement extends Statement{
 								ret = execute(exec,ctx);
 							}
 						} else {
-							throw new IOException("No function or builtin command named '"+name+"'");
+							//  No executable was found but try to execute anyway
+							List<String> cmd = new ArrayList<String>();
+							cmd.add(name);
+							argsToString(cmd, ctx);
+							
+							if(FileSourceFactory.isWindows()) {
+								exec = findExecutable("cmd",ctx);
+								if( exec !=null) {
+									cmd.add(0, "/r");
+									cmd.add(0, exec.getAbsolutePath());
+									ret = execute(cmd,ctx);
+								} else {
+									cmd.add(0, "/r");
+									cmd.add(0, "cmd");									
+									ret = execute(cmd, ctx);
+								}
+							} else {						
+								ret = execute(cmd, ctx);
+							}
+							//throw new IOException("No function or builtin command named '"+name+"'");
 						}
 					}
 
@@ -545,6 +565,12 @@ public class CommandStatement extends Statement{
 			};
 
 			ret =  ep.exitCode;
+			if( ret !=0) {
+				ctx.stderr.print("external command failed. cmd="+cmd+" exit="+ret+"\n");
+				if( ep.error!=null) {
+					ctx.stderr.print("\tstderr="+ep.error.getMessage());
+				}				
+			}
 		} 
 
 		return ret;
@@ -558,27 +584,30 @@ public class CommandStatement extends Statement{
 			// do we have absolute path
 			file = ctx.getFileSource(execName);	
 			if( !file.exists()) {
-				//command not found: bassh
+				//command not found: bash
 				FileSourceFactory factory = file.getFileSourceFactory();
-
+				String [] exts =new String[0];
+				Object tmpExt = ctx.getEvironmentVariable("PATHEXT");
+				if( tmpExt!=null) {
+					exts = tmpExt.toString().split(""+factory.getPathSeperatorChar());
+				}
+				
 				for(String path : (""+ctx.getEvironmentVariable("PATH")).split(""+factory.getPathSeperatorChar())) {
-					FileSource dir = ctx.getFileSource(path);
-					if( dir.exists()) {
-						file = dir.getChild(execName);
-						if( file.exists()) {
-							break;
-						}
+					file = findExecutable(execName,path,exts,ctx);
+					if( file !=null) {
+						break;
 					}
 				}
 			}
 		}
 
 		if( file == null || !file.exists()) {
-			throw new IOException("command not found: "+execName);
+			//throw new IOException("command not found: "+execName);
+			return null;
 		}
 
 		if( !file.canExecute()) {
-			throw new IOException("execute permission denied: "+execName);
+			//throw new IOException("execute permission denied: "+execName);
 		}
 
 
@@ -587,7 +616,25 @@ public class CommandStatement extends Statement{
 		return file;
 	}
 
-	
+
+	private FileSource findExecutable(String execName,String path, String[] exts,ShellContext ctx) throws IOException {
+		FileSource file = null;
+		FileSource dir = ctx.getFileSource(path);
+		if( dir.exists()) {
+			file = dir.getChild(execName);
+			if( file.exists()) {
+				return file;
+			}
+			for(String ext : exts) {
+				file = dir.getChild(execName+ext);
+				if( file.exists()) {
+					return file;
+				}
+			}
+		}
+		return null;
+	}
+
 	public void setHereDocument(HereDocumentContext hereDocument) {
 		hereId = hereDocument.ID().getText();		
 	}

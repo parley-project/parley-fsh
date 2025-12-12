@@ -257,7 +257,7 @@ public class Console extends SignalEnabledThread {
 
 	}
 
-	private static String defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin";
+	private static String defaultPath ;//= "/usr/bin:/bin:/usr/sbin:/sbin";
 	public static final String PATH = "PATH";
 	public static final String VARIABLE_OLDPWD = "OLDPWD";
 	public static final String VARIABLE_PWD = "PWD";
@@ -311,7 +311,7 @@ delimiter
 	Map<String,Object> variables = new TreeMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
 	public List<Option> options = new ArrayList<>();
-	private Map<String,Object> environmentVariables = new TreeMap<>();
+	private Map<String,Object> environmentVariables = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	DebugContext debugContext = new DebugContext();
 	private int lastPid = 0;
 	public JobManager jobManager = new JobManager();
@@ -797,7 +797,9 @@ delimiter
 	public Console() {
 		try {
 			environmentVariables.putAll(System.getenv());
-			environmentVariables.put(PATH, getDefaultPath());
+			if( defaultPath !=null) {
+				environmentVariables.put(PATH, getDefaultPath());
+			}
 			environmentVariables.put(VARIABLE_HISTSIZE, 500);
 			environmentVariables.put(VARIABLE_HISTFILE, "~/.fssh_history");
 
