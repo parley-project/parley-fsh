@@ -114,7 +114,7 @@ public class MountFactory extends FileSourceFactory {
 		for(String point : mounts.keySet()) {
 			if( parts.length>1 && parts[0].isBlank() && parts[1].equalsIgnoreCase(point)) {
 				mount = mounts.get(point);
-				idx+=2;
+				idx++;
 				break;
 			} else if(parts[0].equals(point)) {
 				mount = mounts.get(point);
