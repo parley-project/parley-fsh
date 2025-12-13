@@ -47,7 +47,8 @@ public abstract class AbstractConsoleTest {
 
 	public static void setup(String home) throws IOException {
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		testFilesDir = new File(home).getCanonicalFile();
+		File tmp = new File(home).getCanonicalFile();
+		testFilesDir = tmp;
 		System.setProperty("user.home", testFilesDir.getAbsolutePath());
 		console = new Console();
 	}

@@ -808,7 +808,9 @@ delimiter
 			String home = System.getProperty("user.home");
 			//  the java environment HOME does not match the java property user.home
 			environmentVariables.put("HOME", home);
-			homeDir = mountFactory.createFileSource(home);
+			
+			FileSource tmp = mountFactory.createFileSource(home);
+			homeDir=tmp;
 			if( homeDir.exists()) {
 				mountFactory.setCurrentDirectory(homeDir);
 			}

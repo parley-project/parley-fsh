@@ -186,6 +186,7 @@ public class Wc extends ShellCommand{
 		int i = in.read();
 
 		while( i >=0 ) {
+			if( i != 13) {
 			ret.byteCount++;
 			lineSize ++;
 
@@ -210,6 +211,7 @@ public class Wc extends ShellCommand{
 				// not defined ???
 				throw new IOException("i="+i+" "+Integer.toBinaryString(i));
 			}			
+			}
 			i = in.read();
 		}
 

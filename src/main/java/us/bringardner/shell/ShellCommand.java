@@ -137,6 +137,12 @@ public abstract class ShellCommand {
 		}
 
 		String segment = segments[segmentIdx];
+		if( segment.equals("*")) {
+			for(FileSource file :dir.listFiles()) {
+				ret.add(file);
+			}
+			return;
+		}
 		if( segment.isEmpty()) {
 			glob2a(ctx, ret, dir, segments, segmentIdx+1);
 		} else {

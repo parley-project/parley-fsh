@@ -108,7 +108,8 @@ public class MountFactory extends FileSourceFactory {
 			parts=path.split("["+sep+"]");
 		}
 		FileSource mount = fileSystem;
-		int idx = 0;
+		// by no path is always absolute so first node is the root
+		int idx = 1;
 		
 		for(String point : mounts.keySet()) {
 			if( parts.length>1 && parts[0].isBlank() && parts[1].equalsIgnoreCase(point)) {
