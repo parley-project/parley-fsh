@@ -60,6 +60,17 @@ public abstract class AbstractConsoleTest {
 	public static class ExecuteResult {
 		public int exitCode=0;		
 		private ByteArrayOutputStream bao = new ByteArrayOutputStream();
+		public int getExitCode() {
+			return exitCode;
+		}
+
+		public ByteArrayOutputStream getBao() {
+			return bao;
+		}
+
+		public ByteArrayOutputStream getBae() {
+			return bae;
+		}
 		private ByteArrayOutputStream bae = new ByteArrayOutputStream();	
 
 		public String toString() {
@@ -78,6 +89,27 @@ public abstract class AbstractConsoleTest {
 		
 	}
 
+public static ExecuteResult executeCommand(String [] args,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
+		
+		Console console = new Console();
+		
+		ExecuteResult ret = new ExecuteResult();
+		console.setStdOut(new PrintStream(ret.bao));
+		console.setStdErr(new PrintStream(ret.bae));
+		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
+		
+		ret.exitCode = console.execute(args);
+		
+		
+		String out = ret.getStdOut();
+		String err = ret.getStdErr();
+		assertEquals(expectErr, err);
+		assertEquals(expectOut, out);
+		assertEquals(exitCode, ret.exitCode);
+		
+		return ret;
+	}
+	
 	public static ExecuteResult executeCommand(String command,String stdIn,String ... args) {
 
 		ExecuteResult ret = new ExecuteResult();
@@ -94,6 +126,14 @@ public abstract class AbstractConsoleTest {
 		return ret;
 	}
 
+	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
+		ExecuteResult ret = executeCommand(command, stdIn,exitCode);
+		assertEquals(expectOut, ret.getStdOut());
+		assertEquals(expectErr, ret.getStdErr());
+		
+		return ret;
+	}
+	
 	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode) throws IOException {
 		ExecuteResult ret = executeCommand(command, stdIn);
 		assertEquals(exitCode, ret.exitCode);

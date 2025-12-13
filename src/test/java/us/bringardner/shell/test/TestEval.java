@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -86,6 +85,7 @@ public class TestEval  extends AbstractConsoleTest{
 		
 	}
 	
+	@SuppressWarnings("unused")
 	@Test
 	public void testEval03() throws Exception{
 		// make sure we fail in the same way bash does

@@ -86,7 +86,7 @@ public class ManageTestFiles {
 		int idx = parts[0].indexOf("BjlShell");
 		String fileName = parts[0].substring(idx+9).trim();
 		
-		File file = new File(fileName).getCanonicalFile();
+		File file = new File(fileName);
 		
 		System.out.println("file="+file);
 		if( file.getName().startsWith("HardLink2")) {
@@ -122,7 +122,7 @@ public class ManageTestFiles {
 				}
 			}
 			File dir = file.getParentFile();
-			File target = new File(dir,file.getName().substring(8));
+			File target = new File(dir,file.getName().substring(8)).getCanonicalFile();
 			
 			Path path = Files.createSymbolicLink(file.toPath(),target.toPath());
 			if( path == null || !Files.exists(path)) {

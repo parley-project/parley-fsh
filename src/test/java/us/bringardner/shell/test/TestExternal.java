@@ -1,86 +1,29 @@
 package us.bringardner.shell.test;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-
-import us.bringardner.io.filesource.FileSourceFactory;
-import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
-import us.bringardner.shell.Console;
-import us.bringardner.shell.test.AbstractConsoleTest.ExecuteResult;
 
 
-@TestMethodOrder(OrderAnnotation.class)
-public class TestExternal {
+//TestMethodOrder(OrderAnnotation.class)
+public class TestExternal extends AbstractConsoleTest {
 
-	private static File testFilesDir;
-	public static boolean debug = false;
-
+	
 	public static void setup(String home) throws IOException {
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		testFilesDir = new File(home).getCanonicalFile();
-		System.setProperty("user.home", testFilesDir.getAbsolutePath());
+		AbstractConsoleTest.setup(home);
+		
 	}
 
 
-	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode,String expectOut,String expectErr) {
-		Console console = new Console();
-		
-		ExecuteResult ret = new ExecuteResult();
-		
-		ret.exitCode=console.executeUsingAntlr(command);
-		
-		String out = ret.getStdOut();
-		String err = ret.getStdErr();
-		if(debug && !err.isEmpty()) {
-			System.out.println(command);
-			System.out.println(err);
-		}
-		assertEquals(expectErr, err);
-		assertEquals(expectOut, out);
-		assertEquals(exitCode, ret.exitCode);
-		
-		return ret;
-	}
-	
-	
-	public static ExecuteResult executeCommand(String [] args,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
-		
-		Console console = new Console();
-		
-		ExecuteResult ret = new ExecuteResult();
-
-		ret.exitCode = console.execute(args);
-		
-		
-		String out = ret.getStdOut();
-		String err = ret.getStdErr();
-		if(debug && !err.isEmpty()) {
-			System.out.println(args);
-			System.out.println(err);
-		}
-		assertEquals(expectErr, err);
-		assertEquals(expectOut, out);
-		assertEquals(exitCode, ret.exitCode);
-		
-		return ret;
-	}
-	
-	
-	
-	
-	
-	
 	@Test
 	public void testExternal01() throws Exception{
+		setup("ExternalTestFiles");
 		String cmd = "/usr/bin/wc -w\n"
 				;
 
@@ -98,6 +41,7 @@ public class TestExternal {
 	
 	@Test
 	public void testExternal02() throws Exception{
+		setup("ExternalTestFiles");
 		String cmd = "/usr/bin/wc\n"
 				;
 
@@ -168,7 +112,7 @@ public class TestExternal {
 	
 	@Test
 	public void testExternal04_1() throws Exception{
-		
+		setup("ExternalTestFiles");
 		
 		String cmd = "set one two\n"
 				+ "echo $*\n"
@@ -187,7 +131,7 @@ public class TestExternal {
 
 	@Test
 	public void testExternal04_2() throws Exception{
-		
+		setup("ExternalTestFiles");
 		
 		String cmd = "set one -two\n"
 				+ "echo $*\n"
@@ -205,6 +149,8 @@ public class TestExternal {
 	}
 	@Test
 	public void testExternal04_3() throws Exception{
+		setup("ExternalTestFiles");
+		
 		String cmd = "set -One -two\n"
 				+ "echo $*\n"
 				;
@@ -213,11 +159,15 @@ public class TestExternal {
 		String stdIn = "";
 		String expectErr = "fssh 1,3: -O: invalid option\n";
 		int exitCode = 0;
+		boolean tmp = showError;
+		showError = false;
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+		showError = tmp;
 	}
 
 	@Test
 	public void testExternal04_4() throws Exception{
+		setup("ExternalTestFiles");
 		String cmd = "set -o kbecho\n"
 				
 				;
@@ -277,8 +227,10 @@ public class TestExternal {
 		String stdIn = "";
 		String expectOut = "";
 		int exitCode = 1;
-		
-		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);		
+		boolean tmp = showError;
+		showError = false;
+		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
+		showError = tmp;
 	}
 
 	@Test
@@ -312,10 +264,7 @@ public class TestExternal {
 		String in="";
 		String out="hello dude\n";
 		String err="";
-		
 		executeCommand(args, in, 0, out, err);
-		
-		
 		
 		
 	}
@@ -348,23 +297,6 @@ public class TestExternal {
 		
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 		
-	}
-
-	public static ExecuteResult executeCommand(String cmd,String stdIn,int exitCode) throws IOException {
-		Console console = new Console();
-		
-		ExecuteResult ret = new ExecuteResult();
-		ret.exitCode = console.executeUsingAntlr(cmd);
-		
-		String err = ret.getStdErr();
-		if(debug && !err.isEmpty()) {
-			System.out.println(cmd);
-			System.out.println(err);
-		}
-		
-		assertEquals(exitCode, ret.exitCode);
-		
-		return ret;
 	}
 	
 }

@@ -63,31 +63,6 @@ public class VirtualFileSystem implements FileSource {
 		this.primary = primary;
 	}
 
-	public boolean mount2(FileSource dir, String mountPoint ) throws IOException {
-		boolean ret = false;
-		if( mountPoint == null || mountPoint.isEmpty() || mountPoint.charAt(0) != '/') {
-			throw new IOException("Invalid mount point = "+mountPoint);
-		}
-		String [] parts = mountPoint.split("[/]");
-		FileSource parent = primary;
-		for (int idx = 1; idx < parts.length-1; idx++) {
-			String part = parts[idx].trim();
-			System.out.println(""+idx+") "+part);
-			if( !part.isEmpty()) {
-				FileSource tmp = parent.getChild(part);
-				if( !tmp.isDirectory()) {
-					throw new IOException("Invalid mount point : "+part+" is not a directory.");
-				}
-				parent = tmp;
-			}
-		}
-		String name = parts[parts.length-1];
-		FileSource tmp = parent.getChild(name);
-
-		System.out.println("tmp="+tmp);
-		return ret;
-	}
-
 	public synchronized boolean mount(FileSource dir, String name ) throws IOException {
 		FileSource tmp[] = primary.listFiles();		
 		for (int idx = 0; idx < tmp.length; idx++) {
@@ -252,30 +227,44 @@ public class VirtualFileSystem implements FileSource {
 	}
 
 	@Override
-	public  synchronized FileSource getChild(String name) throws IOException {
-		FileSource ret = null;
+	public  synchronized FileSource getChild(String path) throws IOException {
 		
-		for(RootFile rf : mounts) {
-			if(rf.name.equalsIgnoreCase(name)) {
-				return rf;
-			}
+		if(path == null || (path=path.trim()).isEmpty()) {
+			throw new IOException("Null or empty file name");
 		}
-
-		if(FileSourceFactory.isWindows()) {
-			if( name.endsWith(":")) {
-				name = name +"\\";
-			}
-		}
+		// the assumption here is the result WILL be a child of this file system (.. NOT an absolute path name)
+		// that's what make this different from mount factory create..
+		char sep =primary.getFileSourceFactory().getSeperatorChar();
 		
-		String root = primary.getAbsolutePath();
-		if( name.startsWith(root)) {
-			String child = name.substring(root.length());
-			ret = primary.getChild(child);
+		String parts[] =null;
+		if( sep == '\\' ) {
+			parts=path.split("[\\\\]");
 		} else {
-			ret = primary.getChild(name);
+			parts=path.split("["+sep+"]");
 		}
-							
-		
+		FileSource mount = primary;
+
+		FileSource ret = mount;
+		for(int idx=0; idx < parts.length; idx++) {
+			String part = parts[idx];
+			if( part.equals(".")|| part.isEmpty()) {
+				continue;
+			}
+
+			if( part.equals("..")) {
+				ret = ret.getParentFile();
+				if( ret == null) {
+					throw new IOException("Invalide file name .. too far");
+				}
+			} else {
+				ret = ret.getChild(part);
+				FileSource fs = getMountFromPath(ret.getAbsolutePath());
+				if( fs !=null ) {
+					ret = fs;
+				} 
+			}
+		}
+				
 		return ret;
 	}
 
@@ -609,6 +598,24 @@ public class VirtualFileSystem implements FileSource {
 		for(RootFile rf : mounts) {
 			if(rf.getFileSourceFactory().getSessionId()==f.getSessionId()) {
 				return rf.name;
+			}
+		}
+		return null;
+	}
+
+	public RootFile getMountFromPath(String path) {
+		for(RootFile rf : mounts) {
+			if(rf.getAbsolutePath().equals(path)) {
+				return rf;
+			}
+		}
+		return null;
+	}
+
+	public RootFile getMountFromName(String name) {
+		for(RootFile rf : mounts) {
+			if(rf.name.equals(name)) {
+				return rf;
 			}
 		}
 		return null;

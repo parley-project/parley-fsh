@@ -566,9 +566,9 @@ public class CommandStatement extends Statement{
 
 			ret =  ep.exitCode;
 			if( ret !=0) {
-				ctx.stderr.print("external command failed. cmd="+cmd+" exit="+ret+"\n");
+				//ctx.stderr.print("external command failed. cmd="+cmd+" exit="+ret+"\n");
 				if( ep.error!=null) {
-					ctx.stderr.print("\tstderr="+ep.error.getMessage());
+					//ctx.stderr.print("\tstderr="+ep.error.getMessage());
 				}				
 			}
 		} 
@@ -607,7 +607,7 @@ public class CommandStatement extends Statement{
 		}
 
 		if( !file.canExecute()) {
-			//throw new IOException("execute permission denied: "+execName);
+			throw new IOException("execute permission denied: "+execName);
 		}
 
 

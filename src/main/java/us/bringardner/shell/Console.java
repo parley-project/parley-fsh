@@ -289,7 +289,7 @@ delimiter
 	public static PrintStream System_out = System.out;
 	public static PrintStream System_err = System.err;
 	public static InputStream System_in = System.in;
-	private InputStream stdIn = null;
+	private InputStream stdIn = System.in;
 	private PrintStream stdOut = System.out;
 	private PrintStream stdErr = System.err;
 	public List<HistoryEntry> history = new ArrayList<>();
@@ -2234,10 +2234,6 @@ delimiter
 	}
 
 	public int executeUsingAntlr(String code)  {
-		//TODO: REmove after testing is complete
-		if( stdIn == null) {
-			throw new RuntimeException("Streams have not been set");
-		}
 		int ret = 0;
 		ShellContext sc = new ShellContext(this);
 

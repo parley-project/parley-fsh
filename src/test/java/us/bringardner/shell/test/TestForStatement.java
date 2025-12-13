@@ -244,6 +244,7 @@ public class TestForStatement extends AbstractConsoleTest {
 				, "AbcFile.js"
 				, "AbcFile.properties"
 				, "AbcFile.php"
+				, "SymLink2Folder01"
 		};
 		
 		ExecuteResult res = executeCommand(cmd,"");
@@ -251,7 +252,7 @@ public class TestForStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,err);
 		String lines[] = out.split("\n");
-		assertEquals(5, lines.length,err);
+		assertEquals(6, lines.length,err);
 		for(String val : expect) {
 			assertTrue(out.contains(val));
 		}

@@ -87,16 +87,20 @@ public class MountFactory extends FileSourceFactory {
 		if(rootPath.equals(path)) {
 			return listRoots()[0];
 		}
-
-		if(!ShellCommand.hasWildcard(path)) {
-			if( ShellCommand.isRelative(path)) {
-					return getCurrentDirectory().getChild(path);
-			} else {
-				return fileSystem.getFileSourceFactory().createFileSource(path);
+		
+		Map<String, FileSource> mounts = getMounts();
+		for(FileSource tmp : mounts.values()) {
+			if( path.equals(tmp.getAbsolutePath())) {
+				return tmp;
 			}
 		}
-	
+		
 		char sep = getSeperatorChar();
+		if( ShellCommand.isRelative(path)) {
+			FileSource cd = getCurrentDirectory();
+			path = cd.getAbsolutePath()+sep+path;
+		}
+		
 		String parts[] =null;
 		if( sep == '\\' ) {
 			parts=path.split("[\\\\]");
@@ -104,17 +108,23 @@ public class MountFactory extends FileSourceFactory {
 			parts=path.split("["+sep+"]");
 		}
 		FileSource mount = fileSystem;
+		int idx = 0;
 		
-		Map<String, FileSource> mounts = getMounts();
 		for(String point : mounts.keySet()) {
-			if(parts[0].equals(point)) {
+			if( parts.length>1 && parts[0].isBlank() && parts[1].equalsIgnoreCase(point)) {
 				mount = mounts.get(point);
+				idx+=2;
+				break;
+			} else if(parts[0].equals(point)) {
+				mount = mounts.get(point);
+				idx++;
 				break;
 			}
 		}
 
 		FileSource ret = mount;
-		for(String part : parts) {
+		for(; idx < parts.length; idx++) {
+			String part = parts[idx];
 			if( part.equals(".")|| part.isEmpty()) {
 				continue;
 			}
@@ -122,7 +132,7 @@ public class MountFactory extends FileSourceFactory {
 			if( part.equals("..")) {
 				ret = ret.getParentFile();
 				if( ret == null) {
-					throw new IOException("Invalide file name .. too far");
+					throw new IOException("Invalid file name .. too far");
 				}
 			} else {
 				ret = ret.getChild(part);

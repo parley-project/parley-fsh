@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,7 +20,7 @@ import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
 import us.bringardner.shell.VirtualFileSystem;
 
 @TestMethodOrder(OrderAnnotation.class)
-public class TestFileSourceFileSystem extends AbstractConsoleTest{
+public class TestVirtualFileSystem extends AbstractConsoleTest{
 
 	
 	@BeforeAll
@@ -48,15 +46,9 @@ public class TestFileSourceFileSystem extends AbstractConsoleTest{
 		}		
 	}
 	
-	FileSource getProxy(InvocationHandler fs) {
-		FileSource ret = (FileSource) Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] { FileSource.class }, fs);
-
-		return ret;
-	}
-	
 	@Test
 	@Order(1)
-	public void testRoot() throws IOException {
+	public void testRoot01() throws IOException {
 		FileSource localRoot = FileSourceFactory.getDefaultFactory().createFileSource("/");
 		FileSource [] localkids = localRoot.listFiles();
 		
@@ -106,7 +98,7 @@ public class TestFileSourceFileSystem extends AbstractConsoleTest{
 			assertTrue(kid.getAbsolutePath().startsWith("/mem/ChildDir"));
 		}
 
-		
+		// absolute path
 		FileSource mdir3 = fs.getChild("/mem/ChildDir");
 		assertTrue(mdir3.isDirectory());
 		kids = mdir3.listFiles();
@@ -114,6 +106,20 @@ public class TestFileSourceFileSystem extends AbstractConsoleTest{
 		
 		for(FileSource kid : kids) {
 			assertTrue(kid.getAbsolutePath().startsWith("/mem/ChildDir"));
+		}
+
+		// relative path
+		FileSource mdir4 = fs.getChild("mem/ChildDir");
+		assertTrue(mdir4.isDirectory());
+		kids = mdir4.listFiles();
+		assertEquals(10, kids.length);
+		
+		for(FileSource kid : kids) {
+			assertTrue(kid.getAbsolutePath().startsWith("/mem/ChildDir"));
+			String kidName = kid.getName();
+			FileSource kid2 = mdir4.getChild(kidName);
+			assertEquals(kid.getAbsolutePath(),kid2.getAbsolutePath());
+			
 		}
 
 		// /mem/ChildDir -> /mem

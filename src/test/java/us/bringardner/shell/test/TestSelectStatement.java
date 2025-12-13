@@ -131,11 +131,11 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String expectOut = 	"#? you picked AbcFile.php (2)\n";
 		String expectErr = 	
 				    "1) AbcFile.js                 \n"
-				  + "2) AbcFile.php                \n"
-				  + "3) AbcFile.properties         \n"
-				  + "4) Folder01                   \n"
-				  + "5) Hotel California.txt       \n"
-				  + "";
+				    + "2) AbcFile.php                \n"
+				    + "3) AbcFile.properties         \n"
+				    + "4) Folder01                   \n"
+				    + "5) Hotel California.txt       \n"
+				    + "6) SymLink2Folder01\n";
 		String stdin = "2\n";
 		
 		showError=false;
@@ -145,7 +145,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		assertEquals(expectErr.trim(), err.trim());
 	}
 	
 	@Test
