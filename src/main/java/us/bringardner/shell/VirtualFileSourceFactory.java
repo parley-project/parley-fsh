@@ -26,12 +26,14 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 		FileSourceFactory factory = FileSourceFactory.getDefaultFactory();
 		roots = factory.listRoots();
 		firstRoot = roots[0];
+		currentDirectory = factory.getCurrentDirectory();
 	}
 	
-	public VirtualFileSourceFactory(FileSource primary) {
+	public VirtualFileSourceFactory(FileSource primary) throws IOException {
 		firstRoot = primary;
 		roots=new FileSource[1];
 		roots[0] = primary;
+		currentDirectory = primary.getFileSourceFactory().getCurrentDirectory();
 	}
 
 	public boolean mount(String mountPoint,FileSource dir) throws IOException {
@@ -117,6 +119,16 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 			}
 		}
 
+		while(realPath.contains("..")) {
+			int idx = realPath.indexOf("..");
+			String left = realPath.substring(0,idx-1);
+			String right = realPath.substring(idx+2);
+			FileSource tmp = root.getChild(left);
+			FileSource tmp2 = tmp.getParentFile();
+			left = tmp2.getAbsolutePath();
+			realPath = left+right;
+		}
+		
 		if(root !=null &&  !realPath.isEmpty()) {
 
 			ret = root.getChild(realPath);
