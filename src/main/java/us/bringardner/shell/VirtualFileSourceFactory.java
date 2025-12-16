@@ -119,6 +119,7 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 			}
 		}
 
+		
 		while(realPath.contains("..")) {
 			int idx = realPath.indexOf("..");
 			String left = realPath.substring(0,idx-1);
@@ -126,6 +127,8 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 			FileSource tmp = root.getChild(left);
 			FileSource tmp2 = tmp.getParentFile();
 			left = tmp2.getAbsolutePath();
+			String rootPath = root.getAbsolutePath();
+			left = left.substring(rootPath.length());
 			realPath = left+right;
 		}
 		
