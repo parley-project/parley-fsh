@@ -52,12 +52,6 @@ public class Connect extends ShellCommand{
 					if( mountPoint.isEmpty()) {
 						throw new IOException("No valid mount point");
 					}
-					FileSource mount =  ctx.console.getMountFactory().createFileSource(mountPoint);
-
-					if( mount.exists()) {
-						throw new IOException(mountPoint+" already exists.");
-					}
-
 					Properties props = tmp.getConnectProperties();
 					if( props != null && props.size()>0) {
 
@@ -66,7 +60,12 @@ public class Connect extends ShellCommand{
 						}
 
 						if( tmp.connect(props)) {
-							if(!ctx.console.mount(tmp, mountPoint)) {
+							FileSource[] roots =  tmp.listRoots();
+							if( roots.length>1) {
+								throw new IOException("more than one root . factory = "+tmp.getTypeId());
+							}
+
+							if(!ctx.console.mount(roots[0],mountPoint)) {
 								throw new IOException("Can't mount "+tmp.getTypeId()+" to "+mountPoint);
 							}
 							ctx.stdout.println(tmp.getTypeId()+" connected as "+mountPoint);

@@ -303,7 +303,7 @@ delimiter
 	boolean eof = false;
 	Map<String,Object> alias = new TreeMap<>();
 
-	private MountFactory mountFactory;
+	private VirtualFileSourceFactory mountFactory;
 	public boolean forceHeadless=true;
 	public boolean isInteractive=false;	
 	private Map<String,FunctionDefStatement> functions = new TreeMap<>();
@@ -804,7 +804,7 @@ delimiter
 			environmentVariables.put(VARIABLE_HISTFILE, "~/.fssh_history");
 
 
-			mountFactory = new MountFactory();			
+			mountFactory = new VirtualFileSourceFactory();			
 			String home = System.getProperty("user.home");
 			//  the java environment HOME does not match the java property user.home
 			environmentVariables.put("HOME", home);
@@ -864,15 +864,15 @@ delimiter
 	}
 
 
-	public boolean mount(FileSourceFactory f, String mountPoint) throws IOException {
+	public boolean mount(FileSource f, String mountPoint) throws IOException {
 		if(mountPoint == null || mountPoint.isEmpty() || mountPoint.charAt(0) != '/'){
 			throw new IOException("Invalid mountpoint");
 		}
 		String name = mountPoint.substring(1);
-		return mountFactory.mount(f, name);
+		return mountFactory.mount(name,f);
 	}
 
-	public MountFactory getMountFactory() {
+	public FileSourceFactory getMountFactory() {
 		return mountFactory;
 	}
 
@@ -2035,7 +2035,7 @@ delimiter
 		alias.clear();		
 	}
 
-	public void setMountFactory(MountFactory mount) {
+	public void setMountFactory(VirtualFileSourceFactory mount) {
 		mountFactory = mount;		
 	}
 

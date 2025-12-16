@@ -33,8 +33,22 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 		    
 		    if( name.equals("getAbsolutePath") || name.equals("getCanonicalPath") || name.equals("toString")) {
 		    	RootFile root = findRoot(parent);
-		    	String path = root.getAbsolutePath()+target.getAbsolutePath();
-		    	if( path.startsWith("//")) {
+		    	String tmp2 = root.target.getAbsolutePath();
+		    	String tmp3 = target.getAbsolutePath();
+		    	String tmp5 = tmp3.substring(tmp2.length());
+		    	if(  tmp5.startsWith("\\")) {
+		    		tmp5 = tmp5.substring(1);
+		    	}
+		    	String path =null;
+		    	char sep = target.getFileSourceFactory().getSeperatorChar();
+		    	String tmp1 = root.getAbsolutePath();
+		    	if( tmp1.endsWith(""+sep) || tmp5.startsWith(""+sep)) {
+		    		path = tmp1+tmp5;
+		    	} else {
+		    		path = tmp1+sep+tmp5;
+		    	}
+		    	
+		    	if( path.startsWith("//") ) {
 		    		path = path.substring(1);
 		    	}
 		    	

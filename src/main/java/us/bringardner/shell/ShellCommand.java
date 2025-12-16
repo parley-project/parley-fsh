@@ -415,7 +415,7 @@ public abstract class ShellCommand {
 
 	public static boolean isRelative(String path) {
 		if(FileSourceFactory.isWindows()){
-			return !(path.length()>=2&& path.charAt(1)==':');
+			return !(path.startsWith("/")||(path.length()>=2&& path.charAt(1)==':'));
 		} else {
 			return !path.startsWith("/");
 		}

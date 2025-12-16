@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
@@ -12,10 +13,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.memory.MemoryFileSource;
 import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
-import us.bringardner.shell.MountFactory;
 import us.bringardner.shell.RootFile;
+import us.bringardner.shell.VirtualFileSourceFactory;
 
 public class TestMountedFactory extends AbstractConsoleTest {
 
@@ -42,10 +44,10 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 	@Test
 	public void testMount() throws IOException {
-		MountFactory factory = new MountFactory();
-
-		assertTrue(factory.mount(new MemoryFileSourceFactory(), "mem"),"Failed to mount mem");
-
+		VirtualFileSourceFactory factory = new VirtualFileSourceFactory();
+		MemoryFileSourceFactory memFactory = new MemoryFileSourceFactory();
+		
+		assertTrue(factory.mount( "mem",memFactory.listRoots()[0]),"Failed to mount mem");
 
 		String expectName = "/mem";
 		FileSource data = factory.createFileSource(expectName);
@@ -53,8 +55,8 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		assertEquals(expectName, data.getAbsolutePath());
 		assertTrue(data.exists(),expectName+" does not exists");
 
-
-		expectName = "/Volumes/Data";
+		File file = new File("target").getCanonicalFile();
+		expectName = file.getAbsolutePath();
 		data = factory.createFileSource(expectName);
 		assertEquals(expectName, data.getAbsolutePath());
 		assertTrue(data.exists(),expectName+" does not exists");
@@ -85,9 +87,9 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 	@Test
 	public void testMount2() throws Exception {
-		MountFactory factory = new MountFactory();
+		VirtualFileSourceFactory factory = new VirtualFileSourceFactory();
 		MemoryFileSourceFactory memoryFactory = new MemoryFileSourceFactory();
-		assertTrue(factory.mount(memoryFactory, "mem"),"Failed to mount mem");
+		assertTrue(factory.mount("mem",memoryFactory.listRoots()[0]),"Failed to mount mem");
 
 
 		String rootName1 = "/mem";
@@ -240,6 +242,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 	@Test
 	public void testMkdir1() throws Exception {
+		
 		String code = "connect memory /mem2\n";
 		ExecuteResult res = executeCommand(code, "");
 

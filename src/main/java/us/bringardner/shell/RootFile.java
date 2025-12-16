@@ -113,6 +113,9 @@ public class RootFile implements FileSource {
 	
 	@Override
 	public String getAbsolutePath() {
+		if( name.equals("/")) {
+			return name;
+		}
 		
 		return "/"+name;
 	}

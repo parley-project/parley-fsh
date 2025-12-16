@@ -22,7 +22,7 @@ public class ShellEnvironment {
 	
 	//the current working directory as set by cd, pushd, or popd, or inherited by the shell at invocation
 	public Map<String,FileSourceFactory> factories = new TreeMap<>();
-	public MountFactory mountFactory;	
+	public VirtualFileSourceFactory mountFactory;	
 	//the file creation mode mask as set by umask or inherited from the shell’s parent
 	public int umask = 022;
 	//current traps set by trap
