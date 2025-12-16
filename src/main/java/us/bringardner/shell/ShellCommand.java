@@ -58,9 +58,9 @@ public abstract class ShellCommand {
 		return help;
 	}
 
-	
+
 	public abstract int process(ShellContext ctx) throws IOException;
-	
+
 	public void copyStream(ShellContext sc,InputStream in, OutputStream out) throws IOException {
 		byte [] data = new byte[1024*10];
 		int got = 0;
@@ -132,7 +132,7 @@ public abstract class ShellCommand {
 					ret.add(f);
 				}
 			}
-			
+
 			return;
 		}
 
@@ -205,7 +205,7 @@ public abstract class ShellCommand {
 
 	public static String prepWildCards(String cleanPath,boolean greedy) {
 		String ret1 = posixToJava(cleanPath);
-		
+
 		StringBuilder ret = new StringBuilder();
 		char [] data = ret1.toCharArray();
 		for (char c : data) {
@@ -254,38 +254,27 @@ public abstract class ShellCommand {
 		if(ret != null && !ret.isEmpty()) {
 			if( segment.charAt(0) == '~') {
 				String home = System.getProperty("user.home");
-				String user = System.getProperty("user.name");
+				int idx=1;
 				if( segment.startsWith("~+")) {
 					home = ctx.console.getCurrentDirectory().getAbsolutePath();
+					idx++;
 				} else if( segment.startsWith("~-")) {
 					Object obj = ctx.console.variables.get(Console.VARIABLE_OLDPWD);
 					if (obj instanceof FileSource) {
 						home = ((FileSource)obj).getAbsolutePath();
 					}
+					idx++;
 				}
-				int idx = findFirstUnquotedSlash(ret);
-				if( idx < 0) {
-					idx = segment.length();
-				}
-				String prefix = ret.substring(1, idx);
-				if( !prefix.isEmpty()) {
-					home = home.replaceAll(user, prefix);
-				}
-
-				String right = ret.substring(idx);
-
-				ret = home;
-				if( !right.isEmpty()) {
-					ret = ret+right;
-				}
-			}
+				String tmp = segment.substring(idx);
+				ret = home+tmp;
+			}	
 		}
 		return ret;
 	}
 
-	private static int findFirstUnquotedSlash(String value) {
+	private static int findFirstUnquotedSlash(String value,char ch) {
 		int ret = -1;
-		int ch = (int)'/';
+
 		byte[] data = value.getBytes();
 		for (int idx = 0,sz = data.length-1; idx < sz; idx++) {
 			if( data[idx] == ch && data[idx+1] != ch) {
@@ -327,7 +316,7 @@ public abstract class ShellCommand {
 		}
 		return ret.toString();
 	}
-	
+
 	public List<FileSource>  globOld(ShellContext ctx,String path) throws IOException {
 		List<FileSource> ret = new ArrayList<>();
 		FileSource cwd = null;
@@ -395,7 +384,7 @@ public abstract class ShellCommand {
 		} else {
 			pathSegments  = path.split("["+cwd.getFileSourceFactory().getSeperatorChar()+"]");
 		}
-		
+
 		//  these are all the files that match this segment
 		glob2a(ctx,ret, cwd, pathSegments, 0);
 
@@ -410,8 +399,8 @@ public abstract class ShellCommand {
 				return true;
 			}
 		}
-		
-		
+
+
 		return false;
 	};
 
@@ -488,33 +477,33 @@ public abstract class ShellCommand {
 
 	public void setArgs(Argument[] args) {
 		this.args = args;
-		
+
 	}
 
 	public String toColumns(ShellContext ctx, List<String> out) {
-			StringBuilder ret = new StringBuilder();
-			int w = ctx.console.getTerminalWidth();
-			int max = 0;
-			for(String line : out) {
-				max = Math.max(max, line.length());
+		StringBuilder ret = new StringBuilder();
+		int w = ctx.console.getTerminalWidth();
+		int max = 0;
+		for(String line : out) {
+			max = Math.max(max, line.length());
+		}
+		// count for line end
+		max+=2;
+		int cols = w / max;
+		StringBuilder tmp = new StringBuilder();
+		for(int idx=0,sz=out.size(); idx < sz; idx++ ) {
+			if(idx>0 && idx % cols == 0 ) {
+				ret.append('\n');
 			}
-			// count for line end
-			max+=2;
-			int cols = w / max;
-			StringBuilder tmp = new StringBuilder();
-			for(int idx=0,sz=out.size(); idx < sz; idx++ ) {
-				if(idx>0 && idx % cols == 0 ) {
-					ret.append('\n');
-				}
-				tmp.setLength(0);
-				tmp.append(out.get(idx));
-				while(tmp.length() < max) {
-					tmp.append(' ');
-				}
-				ret.append(tmp);
+			tmp.setLength(0);
+			tmp.append(out.get(idx));
+			while(tmp.length() < max) {
+				tmp.append(' ');
 			}
-			
-			return ret.toString();
+			ret.append(tmp);
+		}
+
+		return ret.toString();
 	}
 
 }

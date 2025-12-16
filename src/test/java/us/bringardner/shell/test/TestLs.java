@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.test.AbstractConsoleTest.OperatingSystem;
 
@@ -287,7 +288,9 @@ public class TestLs {
 				  + "Folder01ghi           Folder01jkl           AbcFile.php           AbcFile.properties    AbcFile01def2.txt";
 		
 		String cmd = "ls ~/Folder01";
-
+		if(FileSourceFactory.isWindows()) {
+			cmd = "ls ~\\Folder01";
+		}
 		String actual = executeLsCommand(true,cmd).trim();		
 		assertEquals(expect, actual);
 		
