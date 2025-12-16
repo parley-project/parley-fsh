@@ -149,7 +149,14 @@ public abstract class ShellCommand {
 			segment = expandTilde(ctx,segment);		
 			String cleanPath = FileSourceFactory.expandDots(segment, dir.getFileSourceFactory().getSeperatorChar());
 			cleanPath = cleanPath.replaceAll("/./", "/");
-
+			if( FileSourceFactory.isWindows()) {
+				if(cleanPath.length()==2) {
+					if( cleanPath.endsWith(":")) {
+						cleanPath = cleanPath+"\\";
+					}
+				}
+			}
+			
 			if( !hasWildcard(cleanPath)) {
 				FileSource file = null;
 
