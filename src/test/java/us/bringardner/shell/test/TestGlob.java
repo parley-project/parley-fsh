@@ -81,9 +81,13 @@ public class TestGlob extends ShellCommand {
 		List<FileSource> list =getFiles(new ShellContext(new Console()), pattern);
 		
 		assertEquals(2, list.size());
-		assertTrue(list.get(0).getAbsolutePath().endsWith("TestFiles/Folder01/Folder01abc.1/Hotel California.txt"));
-		assertTrue(list.get(1).getAbsolutePath().endsWith("TestFiles/Folder01/Folder01def.2/Hotel California.txt"));
-		
+		if( FileSourceFactory.isWindows()) {
+			assertTrue(list.get(0).getAbsolutePath().endsWith("TestFiles\\Folder01\\Folder01abc.1\\Hotel California.txt"));
+			assertTrue(list.get(1).getAbsolutePath().endsWith("TestFiles\\Folder01\\Folder01def.2\\Hotel California.txt"));			
+		} else {
+			assertTrue(list.get(0).getAbsolutePath().endsWith("TestFiles/Folder01/Folder01abc.1/Hotel California.txt"));
+			assertTrue(list.get(1).getAbsolutePath().endsWith("TestFiles/Folder01/Folder01def.2/Hotel California.txt"));
+		}
 		
 	}
 
@@ -93,7 +97,7 @@ public class TestGlob extends ShellCommand {
 		ShellContext ctx = new ShellContext(new Console());
 		List<FileSource> list =getFiles(ctx, pattern);
 		assertEquals(1, list.size());
-		assertTrue(list.get(0).getAbsolutePath().endsWith("TestFiles/Hotel California.txt"));
+		assertTrue(list.get(0).getAbsolutePath().endsWith("Hotel California.txt"));
 		
 	}
 
@@ -104,7 +108,7 @@ public class TestGlob extends ShellCommand {
 		ShellContext ctx = new ShellContext(new Console());
 		List<FileSource> list =getFiles(ctx, pattern);
 		assertEquals(1, list.size());
-		assertTrue(list.get(0).getAbsolutePath().endsWith("TestFiles/AbcFile.properties"));		
+		assertTrue(list.get(0).getAbsolutePath().endsWith("AbcFile.properties"));		
 	}
 
 	@Override

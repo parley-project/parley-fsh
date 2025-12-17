@@ -1786,7 +1786,7 @@ delimiter
 		return code;
 	}
 
-	public String [] splitForArgs(String line) {
+	public static String [] splitForArgs(String line) {
 		List<String> ret = new ArrayList<>();
 		byte data [] = line.getBytes();
 		StringBuilder buf = new StringBuilder();

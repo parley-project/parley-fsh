@@ -147,7 +147,11 @@ public abstract class ShellCommand {
 			glob2a(ctx, ret, dir, segments, segmentIdx+1);
 		} else {
 			segment = expandTilde(ctx,segment);		
-			String cleanPath = FileSourceFactory.expandDots(segment, dir.getFileSourceFactory().getSeperatorChar());
+			String cleanPath = segment;
+			if( !hasWildcard(segment)) {
+				cleanPath = FileSourceFactory.expandDots(segment, dir.getFileSourceFactory().getSeperatorChar());
+			}
+			
 			cleanPath = cleanPath.replaceAll("/./", "/");
 			if( FileSourceFactory.isWindows()) {
 				if(cleanPath.length()==2) {
@@ -392,18 +396,12 @@ public abstract class ShellCommand {
 		if( path.startsWith("~")) {
 			path = expandTilde(ctx, path);
 		}
+		String pathSegments [] = splitFileName(path);;
+		
 		if( isRelative(path)) {
 			cwd = ctx.console.getCurrentDirectory();
 		} else {
 			cwd = ctx.console.createFileSource("/");
-		}
-
-		String pathSegments [] = null;
-		char sep = cwd.getFileSourceFactory().getSeperatorChar();
-		if( sep == '\\') {
-			pathSegments  = path.split("[\\\\]");
-		} else {
-			pathSegments  = path.split("["+cwd.getFileSourceFactory().getSeperatorChar()+"]");
 		}
 
 		//  these are all the files that match this segment
@@ -412,6 +410,32 @@ public abstract class ShellCommand {
 
 
 		return ret;
+	}
+
+	public static String[] splitFileName(String path) {
+		List<String> ret = new ArrayList<>();
+		char[] data = path.toCharArray();
+		StringBuilder buf = new StringBuilder();
+		for (int idx = 0; idx < data.length; idx++) {
+			char c = data[idx];
+			switch (c) {
+			case '/':
+			case '\\':
+				if(! buf.isEmpty()) {
+					ret.add(buf.toString());
+					buf = new StringBuilder();
+				}
+				break;
+			default:
+				buf.append(c);
+			}
+		}
+		
+		if(! buf.isEmpty()) {
+			ret.add(buf.toString());
+		}
+		
+		return ret.toArray(new String[ret.size()]);
 	}
 
 	public static  boolean hasWildcard(String seg) {
