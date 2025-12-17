@@ -273,7 +273,21 @@ public abstract class ShellCommand {
 					idx++;
 				}
 				String tmp = segment.substring(idx);
-				ret = home+tmp;
+				
+				if( !tmp.isBlank() && !(tmp.charAt(0)=='/' || tmp.charAt(0) == '\\')) {
+					FileSource fs = ctx.getFileSource(home);
+					FileSource fs2 = fs.getParentFile();
+					
+					if(segment.indexOf('/')>0) {
+						ret = fs2.getAbsolutePath()+"/"+tmp;
+					} else if(segment.indexOf('\\')>0) {
+						ret = fs2.getAbsolutePath()+"\\"+tmp;
+					} else {
+						ret = home+tmp;
+					}
+				} else {
+					ret = home+tmp;
+				}
 			}	
 		}
 		return ret;
@@ -284,7 +298,7 @@ public abstract class ShellCommand {
 
 		byte[] data = value.getBytes();
 		for (int idx = 0,sz = data.length-1; idx < sz; idx++) {
-			if( data[idx] == ch && data[idx+1] != ch) {
+			if( data[idx] == ch && data[idx+1] != '\\') {
 				ret = idx;
 				break;
 			}

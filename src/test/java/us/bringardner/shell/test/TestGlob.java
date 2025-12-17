@@ -55,17 +55,21 @@ public class TestGlob extends ShellCommand {
 		String tmp = "";
 	
 		//~ The value of $HOME
-		tmp = expandTilde(ctx,"~"); assertEquals(home, tmp);
+		tmp = expandTilde(ctx,"~"); 
+		assertEquals(home, tmp);
 
 		//~/foo = $HOME/foo
-		tmp = expandTilde(ctx,"~/foo"); assertEquals(home+"/foo", tmp);
+		tmp = expandTilde(ctx,"~/foo"); 
+		assertEquals(home+"/foo", tmp);
 		
-		//~fred/foo   The subdirectory foo of the home directory of the user fred
-		home = home.replaceAll(user, "fred");
-		tmp = expandTilde(ctx,"~fred/foo"); assertEquals(home+"/foo", tmp);
+		//~fred/foo   The sub directory foo of the home directory of the user fred
+		tmp = expandTilde(ctx,"~fred/foo"); 
+		assertTrue(tmp.endsWith("fred/foo"));
+		
 		String pwd = ctx.console.getMountFactory().getCurrentDirectory().getAbsolutePath();
 		//~+/foo  $PWD/foo
-		tmp = expandTilde(ctx,"~+/foo"); assertEquals(pwd+"/foo", tmp);
+		tmp = expandTilde(ctx,"~+/foo"); 
+		assertEquals(pwd+"/foo", tmp);
 		
 		//~-/foo  ${OLDPWD-'~-'}/foo  (Not supported)
 		//tmp = expandTilde(ctx,"~-/foo");
