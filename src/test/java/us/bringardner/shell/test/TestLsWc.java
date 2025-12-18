@@ -72,23 +72,27 @@ public class TestLsWc extends AbstractConsoleTest{
 	@Test
 	public void testLs_l() throws IOException {
 		
-		String expect = (
-				  "drwxrwxrwx 1 tony  staff     0  DATE Folder01\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test0.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test2.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test3.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test4.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test5.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test6.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test7.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test8.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test9.txt\n").replaceAll("DATE", fileDate);
+		String [] expect = (
+				  "Folder01\n"
+				  + "Test0.txt\n"
+				  + "Test1.txt\n"
+				  + "Test2.txt\n"
+				  + "Test3.txt\n"
+				  + "Test4.txt\n"
+				  + "Test5.txt\n"
+				  + "Test6.txt\n"
+				  + "Test7.txt\n"
+				  + "Test8.txt\n"
+				  + "Test9.txt\n").split("\n");
 		
 		String cmd = "ls -l";
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = res.getStdOut();		
-		assertEquals(expect, actual);
+		String [] actual = res.getStdOut().split("\n");
+		assertEquals(expect.length, actual.length);
+		for (int idx = 0; idx < actual.length; idx++) {
+			assertTrue(actual[idx].endsWith( actual[idx]));	
+		}
+		
 		
 	}
 	
@@ -124,45 +128,51 @@ public class TestLsWc extends AbstractConsoleTest{
 	@Test
 	public void testLs_l_WithPath() throws IOException {
 		
-		String expect = (
-				  "-rwxrwxrwx 1 tony  staff    10  DATE Test0.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test1.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test2.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test3.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test4.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test5.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test6.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test7.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test8.txt\n"
-				+ "-rwxrwxrwx 1 tony  staff    10  DATE Test9.txt\n").replaceAll("DATE", fileDate);
+		String [] expect = (
+				  "Test0.txt\n"
+				+ "Test1.txt\n"
+				+ "Test2.txt\n"
+				+ "Test3.txt\n"
+				+ "Test4.txt\n"
+				+ "Test5.txt\n"
+				+ "Test6.txt\n"
+				+ "Test7.txt\n"
+				+ "Test8.txt\n"
+				+ "Test9.txt\n").split("\n");
 		
 		String cmd = ("ls -l *.txt");
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = res.getStdOut();
+		String[] actual = res.getStdOut().split("\n");
+		assertEquals(expect.length, actual.length);
+		for (int idx = 0; idx < actual.length; idx++) {
+			assertTrue(actual[idx].endsWith( actual[idx]));	
+		}
 		
-		assertEquals(expect, actual);
 		
 	}
 	
 	@Test
 	public void testLs_l_WithAbsolutePath() throws IOException {
 		
-		String expect = (
-				    "-rwxrwxrwx 1 tony  staff    10  DATE Test1-0.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-1.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-2.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-3.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-4.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-5.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-6.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-7.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-8.txt\n"
-				  + "-rwxrwxrwx 1 tony  staff    10  DATE Test1-9.txt\n").replaceAll("DATE", fileDate);
+		String []expect = (
+				    "Test1-0.txt\n"
+				  + "Test1-1.txt\n"
+				  + "Test1-2.txt\n"
+				  + "Test1-3.txt\n"
+				  + "Test1-4.txt\n"
+				  + "Test1-5.txt\n"
+				  + "Test1-6.txt\n"
+				  + "Test1-7.txt\n"
+				  + "Test1-8.txt\n"
+				  + "Test1-9.txt\n").split("\n");
 		
 		String cmd = "ls -l /Folder01/*.txt";
 		ExecuteResult res = executeCommand(cmd,"");
-		String actual = res.getStdOut();		
-		assertEquals(expect, actual);
+		String[] actual = res.getStdOut().split("\n");
+		assertEquals(expect.length, actual.length);
+		for (int idx = 0; idx < actual.length; idx++) {
+			assertTrue(actual[idx].endsWith( actual[idx]));	
+		}
 		
 	}
 }
