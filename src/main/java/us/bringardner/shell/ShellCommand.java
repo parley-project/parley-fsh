@@ -297,19 +297,7 @@ public abstract class ShellCommand {
 		return ret;
 	}
 
-	private static int findFirstUnquotedSlash(String value,char ch) {
-		int ret = -1;
-
-		byte[] data = value.getBytes();
-		for (int idx = 0,sz = data.length-1; idx < sz; idx++) {
-			if( data[idx] == ch && data[idx+1] != '\\') {
-				ret = idx;
-				break;
-			}
-		}
-		return ret;
-	}
-
+	
 	private static String replaceAll(String path, String posix, String java) {
 		String ret = path;
 		int idx = ret.indexOf(posix);
