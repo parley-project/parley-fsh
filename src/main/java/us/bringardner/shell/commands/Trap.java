@@ -50,6 +50,11 @@ public class Trap extends ShellCommand implements SignalHandler {
 							Signal s = new Signal(name);
 							tmp.put(s.getNumber(),s.getName());
 						} catch (Exception e) {
+							try {
+								Signal s = new Signal(name.toLowerCase());
+								tmp.put(s.getNumber(),s.getName());
+							} catch (Exception e2) {
+							}
 						}
 					}
 					locals = tmp;

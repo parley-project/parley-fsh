@@ -86,7 +86,11 @@ public class Kill extends ShellCommand{
 
 			if( exitStatus!=null) {
 				String name = signals.get(exitStatus);
-				ctx.stdout.println(""+name);
+				if(name == null) {
+					ctx.stderr.println("kill: ("+exitStatus+") - No such signal");
+				} else {
+					ctx.stdout.println(""+name);
+				}
 			} else {
 				List<String> tmp = new ArrayList<>();
 				for(Entry<Integer, String> e : signals.entrySet()) {

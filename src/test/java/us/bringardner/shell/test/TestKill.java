@@ -30,10 +30,14 @@ public class TestKill extends AbstractConsoleTest {
 
 	@Test
 	public void testKill01() throws IOException {
-
+		boolean showErrTmp = showError;
+		showError = false;
 		String expect = "HUP     INT     QUIT    ILL     TRAP    ABRT    FPE     KILL    BUS     SEGV    SYS     PIPE    ALRM    TERM    URG     STOP    TSTP    CONT    \n"
 				+ "CHLD    TTIN    TTOU    IO      XCPU    XFSZ    VTALRM  PROF    WINCH   USR1    USR2\n"
 				;
+		if(getOs()==OperatingSystem.Windows) {
+			expect = "INT   ILL   FPE   SEGV  TERM  ABRT\n";
+		}
 		
 		String code = "kill -l\n"
 				+ ""
@@ -59,8 +63,13 @@ public class TestKill extends AbstractConsoleTest {
 
 		res = executeCommand(code, "");
 		assertEquals(0, res.exitCode);
-		assertEquals("KILL\n", res.getStdOut());
-		assertEquals("", res.getStdErr());
+		if(getOs()==OperatingSystem.Windows) {
+			assertEquals("", res.getStdOut());
+			assertEquals("kill: (9) - No such signal", res.getStdErr().trim());
+		} else {
+			assertEquals("KILL\n", res.getStdOut());
+			assertEquals("", res.getStdErr());
+		}
 
 		code = "kill -l HUP\n"
 				+ ""
@@ -68,8 +77,14 @@ public class TestKill extends AbstractConsoleTest {
 
 		res = executeCommand(code, "");
 		assertEquals(0, res.exitCode);
-		assertEquals("HUP\n", res.getStdOut());
-		assertEquals("", res.getStdErr());
+		if(getOs()==OperatingSystem.Windows) {
+			assertEquals("", res.getStdOut());
+			assertEquals("kill: (1) - No such signal", res.getStdErr().trim());
+		} else {
+			assertEquals("HUP\n", res.getStdOut());
+			assertEquals("", res.getStdErr());
+		}
+		showError = showErrTmp;
 	}
 	
 	@Test
