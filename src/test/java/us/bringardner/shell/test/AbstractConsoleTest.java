@@ -72,7 +72,11 @@ public abstract class AbstractConsoleTest {
 		public ByteArrayOutputStream getBae() {
 			return bae;
 		}
-		private ByteArrayOutputStream bae = new ByteArrayOutputStream();	
+		private ByteArrayOutputStream bae = new ByteArrayOutputStream() {
+			public synchronized void write(int b) {
+				super.write(b);
+			};
+		};	
 
 		public String toString() {
 			return "Exitcode="+exitCode+"\n"
@@ -154,7 +158,13 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 
 		ExecuteResult ret = new ExecuteResult();
 		PrintStream out = (new PrintStream(ret.bao));
-		PrintStream err = (new PrintStream(ret.bae));
+		PrintStream err = (new PrintStream(ret.bae) {
+			@Override
+			public void println(String x) {
+				// TODO Auto-generated method stub
+				super.println(x);
+			}
+		});
 		ByteArrayInputStream in = (new ByteArrayInputStream(stdIn.getBytes()));
 		console.setStdIn(in);
 		console.setStdOut(out);

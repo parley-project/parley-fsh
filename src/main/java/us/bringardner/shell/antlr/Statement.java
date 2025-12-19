@@ -82,6 +82,9 @@ public abstract class Statement {
 						ArgumentContext tmp = redirect.args;
 						Argument a = new Argument(tmp);
 						pathText=""+a.getValue(ctx);
+						if( pathText.startsWith(">")) {
+							pathText = pathText.substring(1).trim();
+						}
 						if( pathText.endsWith("-")) {
 							closeAfterDup = true;
 							pathText = pathText.substring(0,pathText.length()-1);

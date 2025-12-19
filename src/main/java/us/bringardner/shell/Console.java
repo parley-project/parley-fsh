@@ -156,6 +156,7 @@ public class Console extends SignalEnabledThread {
 
 	}
 
+
 	public static class ResumeException extends RuntimeException{
 
 		public IJob job;
@@ -2196,7 +2197,8 @@ delimiter
 			for(int idx=0, sz=stmts.size(); idx < sz; idx++ ) {
 				Statement	stmt = stmts.get(idx);
 				handleMetaSignal(ConsoleMetaSignal.Debug);
-				ret = stmt.process(sc);			
+				ret = stmt.process(sc);
+				sc.stderr.println("idx="+idx);
 				if( ret !=0) {
 					return ret;
 				}
