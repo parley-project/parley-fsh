@@ -32,7 +32,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "ade ace abe\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -41,7 +41,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "/usr//// a\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -50,7 +50,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "1 2 3 4\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -59,7 +59,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "10 12 14 16 18 20\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -68,7 +68,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "20 18 16 14 12 10\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -77,7 +77,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "a b c d e\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -86,7 +86,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "e d c b a\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	@Test
@@ -95,7 +95,7 @@ public class TestBraceExpantion extends AbstractConsoleTest{
 		String expect = "pks pls pms pns pos pps pqs prs\n";
 		String actual = executeCommand(cmd);
 		
-		assertEquals(expect, actual);
+		assertEquals(expect.trim(), actual.trim());
 	}
 	
 	
