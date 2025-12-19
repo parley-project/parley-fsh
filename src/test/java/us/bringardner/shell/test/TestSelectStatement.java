@@ -2,6 +2,7 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.awt.Window;
 import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -157,15 +158,26 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				 + "	break;\n"
 				 + "done\n"
 				;
+		if(getOs()== OperatingSystem.Windows) {
+			cmd = 	cmd.replaceAll("/", "\\\\");
+		}
 		
 		//System.out.println(cmd);
 		String expectOut = 	"#? you picked Folder01/AbcFile.properties (2)\n";
+		if(getOs()== OperatingSystem.Windows) {
+			expectOut = 	expectOut.replaceAll("/", "\\\\");
+		}
 		String expectErr = 	
 				  "1) Folder01/AbcFile.php                \n"
 				+ "2) Folder01/AbcFile.properties         \n"
 				+ "3) Folder01/Folder01abc.1              \n"
 				+ "4) Folder01/Folder01def.2              \n"
 				+ "5) Folder01/Hotel California.txt       \n";
+		
+		if(getOs()== OperatingSystem.Windows) {
+			expectErr = 	expectErr.replaceAll("/", "\\\\");
+		}
+		
 		String stdin = "2\n";
 		
 		showError=false;
