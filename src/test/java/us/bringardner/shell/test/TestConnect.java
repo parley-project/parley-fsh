@@ -84,6 +84,10 @@ public class TestConnect extends AbstractConsoleTest {
 	@Test
 	@Order(3)	
 	public void testConnectSftp() throws IOException {
+		if( getOs()==OperatingSystem.Windows) {
+			// no native server 
+			return;
+		}
 		String expect = ""
 				+ "sftp connected as /sftp1";
 		
@@ -99,6 +103,10 @@ public class TestConnect extends AbstractConsoleTest {
 	
 	
 	public void testConnectSftpStdin() throws IOException {
+		if( getOs()==OperatingSystem.Windows) {
+			// no native server 
+			return;
+		}
 		String expect = ""
 				+ "sftp connected as /sftp2";
 		
