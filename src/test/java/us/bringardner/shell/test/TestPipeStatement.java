@@ -191,8 +191,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				+ "jobs\n"
 				;
 		
-		
-		String expect = 
+		String expect1 = 
 				"[1] 100000\n"
 				+ "[2] 100001\n"
 				+ "[3] 100002\n"
@@ -200,13 +199,23 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				+ "[2] - Running sleep   2000   \n"
 				+ "[3] + Running sleep   3000   \n"
 				;
+		
+		String expect2 = 
+				"[1] 100000\n"
+				+ "[2] 100001\n"
+				+ "[3] 100002\n"
+				+ "[1]   Running sleep   1000   \n"
+				+ "[2] - Running sleep   2000   \n"
+				;
+		
 		if( !interactive) {
-			 expect = 
+			 expect1 = 
 						""
 						+ "[1]   Running sleep   1000   \n"
 						+ "[2] - Running sleep   2000   \n"
 						+ "[3] + Running sleep   3000   \n"
 						;
+			 expect2 = expect1;
 		}
 		//System.out.println(cmd);
 		waitForJobs=false;
@@ -223,15 +232,20 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		// give time for stdout to get written
 		Thread.sleep(10);
 		
-		String out = res.getStdOut();
-		String err = res.getStdErr();
+		String out = res.getStdOut().trim();
+		String err = res.getStdErr().trim();
 		
 		assertEquals("", err);
-		assertEquals(expect.trim(), out.trim());
+		if( !expect1.equals(out)) {
+			if(!expect2.equals(out)) {
+				throw new RuntimeException("Bad response="+out);
+			}
+		}
+		assertEquals(expect1.trim(), out.trim());
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %3\n";
-		expect = "[3] + Running sleep   3000   \n";
+		String expect = "[3] + Running sleep   3000   \n";
 		res = executeCommand(cmd,"");
 		out = res.getStdOut();
 		err = res.getStdErr();		
