@@ -49,8 +49,6 @@ public class TestGlob extends ShellCommand {
 	public void testTildeExpantion() throws IOException {
 		
 		String home = System.getProperty("user.home");
-		String user = System.getProperty("user.name");
-
 		ShellContext ctx = new ShellContext(new Console());
 		String tmp = "";
 	
