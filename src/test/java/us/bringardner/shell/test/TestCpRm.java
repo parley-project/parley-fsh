@@ -215,8 +215,11 @@ public class TestCpRm extends AbstractConsoleTest{
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode,"Rm exit code");
 		assertTrue(out.startsWith("remove"),"First part of the prompt is wrong");
-		assertTrue(out.endsWith("CpTestFiles/../target/Co01.txt?"),"Last part of the prompt is wrong");
-		
+		if( getOs()==OperatingSystem.Windows) {
+			assertTrue(out.endsWith("CpTestFiles/../target/Co01.txt?"),"Last part of the prompt is wrong");
+		} else {
+			assertTrue(out.endsWith("CpTestFiles\\..\\target\\Co01.txt?"));
+		}
 		assertEquals("", err,"Err should be empty");
 		assertTrue(file.exists(),"File should exist after rm");
 		
