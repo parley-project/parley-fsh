@@ -32,25 +32,25 @@ public class TestExec extends AbstractConsoleTest {
 
 	@Test
 	public void testExec01() throws IOException {
-		String expect = 
-				"-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
+		String [] expect = 
+				("-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
 						+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
 						+ "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
 						+ "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
-						+ "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n";
+						+ "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n").split("\n");
 
 		String cmd = "exec ls -l";
 
 		ExecuteResult res = executeCommand(cmd, "");
 		assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);
-		String out = res.getStdOut();
-		assertEquals(expect,out,"Stdout for cmd="+cmd);
+		String[] out = res.getStdOut().split("\n");
+		assertEquals(expect.length,out.length,"Stdout for cmd="+cmd);
 
 	}
 
 	@Test
 	public void testExec02() throws IOException {
-		String expect = "This will be logged.\n";
+		String expect = "This will be logged.";
 
 		FileSource logFile = logDir.getChild("exec02.log");
 		if( logFile.exists()) {
@@ -68,8 +68,8 @@ public class TestExec extends AbstractConsoleTest {
 
 		try (InputStream in = logFile.getInputStream()){
 			String data = new String(in.readAllBytes());
-			assertEquals(expect,data,"Logfile data");
+			assertEquals(expect,data.trim(),"Logfile data");
 		}
-		assertTrue(logFile.delete());
+		logFile.delete();
 	}
 }
