@@ -428,6 +428,9 @@ exec 3>&- #close fd 3.
 		if( getOs()==OperatingSystem.Windows) {
 			expectErr = "'C:\\Git\\BjlShell\\target\\logdir\\output.txt' is not recognized as an internal or external command,\n"
 					+ "operable program or batch file.\n";
+		} else {
+			expectErr = "external command failed. cmd=[/Volumes/Data/eclipse-git/BjlShell/target/logdir/output.txt] exit=1\n"
+					+ "	stderr=Cannot run program \"/Volumes/Data/eclipse-git/BjlShell/target/logdir/output.txt\" (in directory \"/Volumes/Data/eclipse-git/BjlShell/TestFiles\"): Exec failed, error: 2 (No such file or directory) ";
 		}
 		int exitCode = 0;
 		boolean tmp1= showError;
