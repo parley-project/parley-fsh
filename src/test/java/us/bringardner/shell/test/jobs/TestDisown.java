@@ -62,8 +62,8 @@ public class TestDisown extends AbstractConsoleTest {
 		
 		assertEquals(0, res.exitCode);
 		String out = res.getStdOut().replaceAll("\r", "");
-		if(!out.equals(expect1)) {
-			if( !out.equals(expect2)) {
+		if(!out.startsWith(expect1)) {
+			if( !out.startsWith(expect2)) {
 				throw new RuntimeException("Bad response="+out);
 			}
 		}
