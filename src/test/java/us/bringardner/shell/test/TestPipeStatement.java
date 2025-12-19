@@ -92,9 +92,11 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String cmd = "ls -l | wc"
 				;
 
-		String expect = 
-				"4      36     230"
-				;
+		String expect = "4      36     230";
+		
+		if( getOs()==OperatingSystem.Windows) {
+			expect = "4      36     322";
+		}
 		
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = res.getStdOut();
@@ -114,6 +116,9 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String expect = 
 				"4      36     230"
 				;
+		if( getOs()==OperatingSystem.Windows) {
+			expect = "4      36     322";
+		}
 		
 		boolean tmp = showError;
 		showError = false;
@@ -136,6 +141,9 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String expect = 
 				"4      36     230"
 				;
+		if( getOs()==OperatingSystem.Windows) {
+			expect = "4      36     322";
+		}
 		
 		boolean tmp = showError;
 		showError = false;
