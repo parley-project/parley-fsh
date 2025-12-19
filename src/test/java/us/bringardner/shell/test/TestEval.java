@@ -66,10 +66,11 @@ public class TestEval  extends AbstractConsoleTest{
 		}
 		String stdIn = "";
 		int exitCode = 0;
-		//String expect = "Test value\n";
 		
+		boolean tmp = showError;
+		showError=false;
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
-		
+		showError = tmp;
 		String out = ret.getStdOut();;
 		String err = ret.getStdErr();;
 		if( !err.isEmpty()) {
@@ -96,7 +97,10 @@ public class TestEval  extends AbstractConsoleTest{
 		String stdIn = "";
 		int exitCode = 1;
 		String expect = "";
+		boolean tmp = showError;
+		showError=false;
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
+		showError=tmp;
 		String out = ret.getStdOut();;
 		String err = ret.getStdErr();;
 		//assertTrue(err.startsWith("java.io.IOException: command not found:"));
