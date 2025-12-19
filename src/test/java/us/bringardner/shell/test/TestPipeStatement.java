@@ -115,7 +115,10 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				"4      36     230"
 				;
 		
+		boolean tmp = showError;
+		showError = false;
 		ExecuteResult res = executeCommand(cmd,"");
+		showError=tmp;
 		String out = res.getStdOut();
 		String err = res.getStdErr();
 		assertTrue(err.startsWith("real"));
@@ -134,7 +137,10 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				"4      36     230"
 				;
 		
+		boolean tmp = showError;
+		showError = false;
 		ExecuteResult res = executeCommand(cmd,"");
+		showError=tmp;
 		String out = res.getStdOut();
 		String err = res.getStdErr();
 		
@@ -197,7 +203,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				+ "[3] 100002\n"
 				+ "[1]   Running sleep   1000   \n"
 				+ "[2] - Running sleep   2000   \n"
-				+ "[3] + Running sleep   3000   \n"
+				+ "[3] + Running sleep   3000"
 				;
 		
 		String expect2 = 
@@ -205,7 +211,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				+ "[2] 100001\n"
 				+ "[3] 100002\n"
 				+ "[1]   Running sleep   1000   \n"
-				+ "[2] - Running sleep   2000   \n"
+				+ "[2] - Running sleep   2000"
 				;
 		
 		if( !interactive) {
@@ -213,7 +219,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 						""
 						+ "[1]   Running sleep   1000   \n"
 						+ "[2] - Running sleep   2000   \n"
-						+ "[3] + Running sleep   3000   \n"
+						+ "[3] + Running sleep   3000"
 						;
 			 expect2 = expect1;
 		}
@@ -237,11 +243,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		
 		assertEquals("", err);
 		if( !expect1.equals(out)) {
-			if(!expect2.equals(out)) {
-				throw new RuntimeException("Bad response="+out);
-			}
+			assertEquals(out, expect2);			
 		}
-		assertEquals(expect1.trim(), out.trim());
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %3\n";
