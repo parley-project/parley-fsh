@@ -42,14 +42,13 @@ public class TestConsoleArgAndInputParseing {
 		
 			
 		
-		Console console = new Console();
-		String args[] = console.splitForArgs("part1 part2 part3 part4");
+		String args[] = Console.splitForArgs("part1 part2 part3 part4");
 		assertEquals(4, args.length,"Args are wrong len");
 		String expect[] = {"part1","part2","part3","part4"};
 		for (int idx = 0; idx < expect.length; idx++) {
 			assertEquals(expect[idx], args[idx]);
 		}
-		args = console.splitForArgs("part1 \"part2 part3\" part4");
+		args = Console.splitForArgs("part1 \"part2 part3\" part4");
 		
 		assertEquals(3, args.length,"Args are wrong len");
 		String expect2[] = {"part1","part2 part3","part4"};
