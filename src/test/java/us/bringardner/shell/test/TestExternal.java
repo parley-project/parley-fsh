@@ -111,6 +111,10 @@ public class TestExternal extends AbstractConsoleTest {
 
 	@Test
 	public void testExternal04() throws Exception{
+		if( getOs()==OperatingSystem.Windows) {
+			return;
+		}
+		
 		setup("WcTestFiles");
 
 		String cmd = "/usr/bin/wc -Lclw AbcFile.js\n"
@@ -201,10 +205,13 @@ public class TestExternal extends AbstractConsoleTest {
 	public void testExternal05() throws Exception{
 		setup("ExternalTestFiles");
 
-		String cmd = "test01.sh\n"
-				;
-
+		String cmd = "test01.sh\n";
 		String expectOut = "hello\n";
+		if( getOs() == OperatingSystem.Windows) {
+			cmd = "test01.bat\n";
+			expectOut = "hello \n";
+		}
+		
 
 		String stdIn = "";
 		String expectErr = "";
@@ -221,7 +228,10 @@ public class TestExternal extends AbstractConsoleTest {
 
 		String cmd = "test01.sh dude\n"
 				;
-
+		if( getOs() == OperatingSystem.Windows) {
+			cmd = "test01.bat dude\n";
+		}
+		
 		String expectOut = "hello dude\n";
 
 		String stdIn = "";
@@ -233,11 +243,16 @@ public class TestExternal extends AbstractConsoleTest {
 
 	@Test
 	public void testExternal07() throws Exception{
+		if( getOs() == OperatingSystem.Windows) {
+			// on *nix machines this will fail because there is no shebag so nothing to do on windows
+			return;
+		}
+		
 		setup("ExternalTestFiles");
 
-		String cmd = "test02.sh dude\n"
-				;
-
+		String cmd = "test02.sh dude\n";
+		
+		
 		String expectErr = "java.io.IOException: execute permission denied: test02.sh\n"
 				+ "";
 
@@ -252,6 +267,11 @@ public class TestExternal extends AbstractConsoleTest {
 
 	@Test
 	public void testExternal08() throws Exception{
+		if( getOs() == OperatingSystem.Windows) {
+			// no shs command
+			return;
+		}
+		
 		setup("ExternalTestFiles");
 
 		String cmd = "sh test02.sh dude\n";

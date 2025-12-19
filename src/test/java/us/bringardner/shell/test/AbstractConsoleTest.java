@@ -133,8 +133,8 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 
 	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
 		ExecuteResult ret = executeCommand(command, stdIn,exitCode);
-		assertEquals(expectOut, ret.getStdOut());
-		assertEquals(expectErr, ret.getStdErr());
+		assertEquals(expectOut, ret.getStdOut().replaceAll("\r", ""));
+		assertEquals(expectErr, ret.getStdErr().replaceAll("\r", ""));
 		
 		return ret;
 	}

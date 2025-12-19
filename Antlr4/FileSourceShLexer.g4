@@ -109,7 +109,7 @@ LINE_COMMENT: '#'  ~[\r\n]* (EOF | NL) -> skip;
 
 
 
-SHEBANG: '#!' ~[\r\n]* NL;
+SHEBANG: '#!' ~[\r\n]* [\r\n];
 LOCAL:'local';
 LCURLY:'{';
 RCURLY:'}';
