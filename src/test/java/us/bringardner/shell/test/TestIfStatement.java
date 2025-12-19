@@ -11,6 +11,7 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 
@@ -288,9 +289,14 @@ public class TestIfStatement extends AbstractConsoleTest{
 	public void testIfStatent03_2() throws Exception{
 		File testFilesDir = new File("LnTestFiles").getCanonicalFile();
 
-		System.setProperty("user.home", testFilesDir.getAbsolutePath());
+		String home = testFilesDir.getAbsolutePath();
+		
+		System.setProperty("user.home", home);
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 
+		FileSource dir = FileSourceFactory.getDefaultFactory().createFileSource(home);
+		FileSource file = dir.getChild("AbcFileA.js");
+		
 		String [] options = {
 				"a","yes",
 				"b","no",
@@ -307,7 +313,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 				"t","no",
 				"u","no",
 				"w","yes",
-				"x","no",
+				"x",file.canExecute()?"yes":"no",
 				"G","no",
 				"L","no",
 				"N","no",
@@ -333,7 +339,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 				System.out.println(err);
 			}
 			assertEquals(0, res.exitCode);
-			assertEquals(expect, out.trim(),"idx="+idx+" cmd="+(cmd)+" home="+System.getProperty("user.home"));
+			assertEquals(expect, out.trim().replaceAll("\r", ""),"idx="+idx+" cmd="+(cmd)+" home="+System.getProperty("user.home"));
 			assertEquals("", err);
 		}
 
