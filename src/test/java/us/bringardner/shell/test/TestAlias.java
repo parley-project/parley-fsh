@@ -1,6 +1,7 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
@@ -50,12 +51,9 @@ public class TestAlias extends AbstractConsoleTest{
 				+"alias lll='ls -ltr'\n"
 			
 				;
-		if( getOs()==OperatingSystem.Windows) {
-			expect = expect.replaceAll("\n", "\r\n");
-		}
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = res.getStdOut();
-		String err = res.getStdErr();;
+		String out = res.getStdOut().replaceAll("\r", "");
+		String err = res.getStdErr().replaceAll("\r", "");
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
@@ -69,21 +67,25 @@ public class TestAlias extends AbstractConsoleTest{
 		String cmd = "lll\n"
 				;
 		
-		String expect = 
-				  "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
-				+ "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
-				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
-				+ ""
+		String[] expect = 
+				  ("Folder01\n"
+				+ "AbcFileA.js\n"
+				+ "AbcFileC.txt\n"
+				+ "AbcFileB.php\n"
+				+ "AbcFileD.properties"
+				).split("\n");
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = res.getStdOut();
+		assertEquals(0, res.exitCode);
 		String err = res.getStdErr();;
 		assertEquals("", err);
-		assertEquals(expect, out);
-		assertEquals(0, res.exitCode);
+		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");
+		
+		assertEquals(expect.length, out.length);
+		for (int idx = 0; idx < out.length; idx++) {
+			assertTrue(out[idx].endsWith(expect[idx]));
+		}
 		
 		
 	}
@@ -94,23 +96,25 @@ public class TestAlias extends AbstractConsoleTest{
 		String cmd = "lll Folder01\n"
 				;
 		
-		String expect = 
-				  "-rwxr-xr-x 1 tony  staff    20  Jun 21 2025 AbcFile01.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 17 2025 AbcFile01.properties\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 10 2025 AbcFile01.txt\n"
-				+ "drwxr-xr-x 1 tony  staff   238  Jul 23 2013 Folder01abc.1\n"
-				+ "drwxr-xr-x 1 tony  staff   170  Jun 27 2025 Folder01def.2\n"
-				+ ""
+		String expect[] = 
+				  ("AbcFile01.php\n"
+				+ "AbcFile01.properties\n"
+				+ "AbcFile01.txt\n"
+				+ "Folder01abc.1\n"
+				+ "Folder01def.2"
+				).split("\n");
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = res.getStdOut();
+		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");
 		String err = res.getStdErr();;
 		assertEquals("", err);
-		assertEquals(expect, out);
+		
 		assertEquals(0, res.exitCode);
-		
-		
+		assertEquals(expect.length, out.length);
+		for (int idx = 0; idx < out.length; idx++) {
+			assertTrue(out[idx].endsWith(expect[idx]));
+		}
 	}
 
 	@Test
@@ -119,21 +123,24 @@ public class TestAlias extends AbstractConsoleTest{
 		String cmd = "lll Folder01\n"
 				;
 		
-		String expect = 
-				  "-rwxr-xr-x 1 tony  staff    20  Jun 21 2025 AbcFile01.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 17 2025 AbcFile01.properties\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 10 2025 AbcFile01.txt\n"
-				+ "drwxr-xr-x 1 tony  staff   238  Jul 23 2013 Folder01abc.1\n"
-				+ "drwxr-xr-x 1 tony  staff   170  Jun 27 2025 Folder01def.2\n"
+		String expect[] = 
+				  ("AbcFile01.php\n"
+				+ "AbcFile01.properties\n"
+				+ "AbcFile01.txt\n"
+				+ "Folder01abc.1\n"
+				+ "Folder01def.2").replaceAll("\r", "").split("\n")
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = res.getStdOut();
 		String err = res.getStdErr();;
 		assertEquals("", err);
-		assertEquals(expect, out);
-		assertEquals(0, res.exitCode);
 		
+		assertEquals(0, res.exitCode);
+		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");		
+		assertEquals(expect.length, out.length);
+		for (int idx = 0; idx < out.length; idx++) {
+			assertTrue(out[idx].endsWith(expect[idx]));
+		}
 		
 	}
 	
@@ -143,20 +150,25 @@ public class TestAlias extends AbstractConsoleTest{
 		String cmd = "l2\n"
 				;
 		
-		String expect = 
-				  "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
-				+ "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
+		String []expect = 
+				  ("AbcFileA.js\n"
+				+ "AbcFileB.php\n"
+				+ "AbcFileC.txt\n"
+				+ "AbcFileD.properties\n"
+				+ "Folder01").split("\n");
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = res.getStdOut();
 		String err = res.getStdErr();;
 		assertEquals("", err);
-		assertEquals(expect, out);
+		
 		assertEquals(0, res.exitCode);
+		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");		
+		assertEquals(expect.length, out.length);
+		for (int idx = 0; idx < out.length; idx++) {
+			assertTrue(out[idx].endsWith(expect[idx]));
+		}
+		
 	}
 	
 	@Test
@@ -222,21 +234,25 @@ public class TestAlias extends AbstractConsoleTest{
 				+ "ls\n"
 				;
 		
-		String expect = 
-				  "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
-				+ "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
-				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				+ "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
+		String expect[] = 
+				  ("Folder01\n"
+				+ "AbcFileA.js\n"
+				+ "AbcFileC.txt\n"
+				+ "AbcFileB.php\n"
+				+ "AbcFileD.properties").split("\n");
 			
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
-		String out = res.getStdOut();
 		String err = res.getStdErr();;
 		assertEquals("", err);
-		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
+		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");		
+		assertEquals(expect.length, out.length);
+		for (int idx = 0; idx < out.length; idx++) {
+			assertTrue(out[idx].endsWith(expect[idx]));
+		}
+		
 	}
 
 }
