@@ -2,7 +2,6 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.awt.Window;
 import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeAll;
