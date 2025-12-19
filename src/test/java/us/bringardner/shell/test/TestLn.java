@@ -22,6 +22,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
+import us.bringardner.shell.test.AbstractConsoleTest.OperatingSystem;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestLn extends AbstractConsoleTest{
@@ -117,12 +118,17 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(3)
 	public void testLn_P_File2File() throws IOException {
+		if( getOs()==OperatingSystem.Windows) {
+			// requires admin  
+			return;
+		}
 		String linkPath = "target/SymLinkTo_P_.js";
 		
 		File file = new File(linkPath).getCanonicalFile();
 		if( file.exists()) {
 			assertTrue(file.delete(),"Can't delete existing file");
 		}
+		
 		
 		String source = "SymLink2AbcFileA2.js";
 		String target = "../"+linkPath;
@@ -186,6 +192,10 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(5)
 	public void testLn_h_File2File() throws IOException {
+		if( getOs()==OperatingSystem.Windows) {
+			// no native server 
+			return;
+		}
 		String linkPath = "target/SymLinkTo_P_.js";
 		
 		File file = new File(linkPath).getCanonicalFile();
