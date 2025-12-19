@@ -22,7 +22,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
-import us.bringardner.shell.test.AbstractConsoleTest.OperatingSystem;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestLn extends AbstractConsoleTest{
