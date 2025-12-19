@@ -97,7 +97,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//System.out.println("err = "+err);
 		//System.out.println("out = "+out);
 		assertEquals(expect, out);
-		assertEquals("bad stuff is happending\n", err);
+		assertEquals("bad stuff is happending\n", err.replaceAll("\r", ""));
 		assertEquals(1, exitCode);
 	}
 
