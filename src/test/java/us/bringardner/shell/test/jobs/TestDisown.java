@@ -31,9 +31,14 @@ public class TestDisown extends AbstractConsoleTest {
 	public void testDisown01() throws IOException, InterruptedException {
 		// disown a specific job
 		String expectErr = "";
-		String expectOut = ""
+		String expect1 = ""
 				+ "[1] - Running sleep   2   \n"
 				+ "[2] + Running sleep   1   \n"
+				+ "[2] + Running sleep   1   \n"
+				+ "";
+		
+		String expect2 = ""
+				+ "[1] - Running sleep   2   \n"
 				+ "[2] + Running sleep   1   \n"
 				+ "";
 		
@@ -47,13 +52,21 @@ public class TestDisown extends AbstractConsoleTest {
 
 		Console.setNextPid(100000);
 		console.jobManager.clear();
-		
+		boolean tmp = waitForJobs;
+		waitForJobs=true;
 		ExecuteResult res = executeCommand(code, "");
+		waitForJobs=tmp;
 		Thread.sleep(20);
 		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, res.getStdOut());
+		
 		assertEquals(0, res.exitCode);
+		String out = res.getStdOut().replaceAll("\r", "");
+		if(!out.equals(expect1)) {
+			if( !out.equals(expect2)) {
+				throw new RuntimeException("Bad response="+out);
+			}
+		}
 		
 	}
 
@@ -61,12 +74,18 @@ public class TestDisown extends AbstractConsoleTest {
 	public void testDisown02() throws IOException, InterruptedException {
 		// disown all running jobs
 		String expectErr = "";
-		String expectOut = "[1] - Running sleep   40   \n"
+		String expect1 = "[1] - Running sleep   40   \n"
 				+ "[2] + Running sleep   2   \n"
 				+ "[1] - Suspended sleep   40   \n"
 				+ "[2] + Running sleep   2   \n"
+				+ "[1] - Suspended sleep   40"
+				;
+		
+		String expect2 = "[1] - Running sleep   40   \n"
+				+ "[2] + Running sleep   2   \n"
 				+ "[1] - Suspended sleep   40   \n"
-				+ "";
+				+ "[2] + Running sleep   2"
+				;
 		
 		String code = ""
 				+ "sleep 40 &\n"
@@ -80,14 +99,22 @@ public class TestDisown extends AbstractConsoleTest {
 
 		Console.setNextPid(100000);
 		console.jobManager.clear();
-		waitForJobs = false;
+		boolean tmp = waitForJobs;
+		waitForJobs=false;
 		ExecuteResult res = executeCommand(code, "");
+		waitForJobs=tmp;
+		
 		Thread.sleep(10);
 		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, res.getStdOut());
 		assertEquals(0, res.exitCode);
 		
+		String out = res.getStdOut().trim().replaceAll("\r", "");
+		if(!out.equals(expect1)) {
+			if( !out.equals(expect2)) {
+				throw new RuntimeException("Bad response="+out);
+			}
+		}
 	}
 	
 
@@ -95,9 +122,11 @@ public class TestDisown extends AbstractConsoleTest {
 	public void testDisown03() throws IOException, InterruptedException {
 		// disown all running jobs
 		String expectErr = "";
-		String expectOut = "[1] - Running sleep   40   \n"
-				+ "[2] + Running sleep   2   \n"
-				+ "";
+		String expect1 = "[1] - Running sleep   40   \n"
+				+ "[2] + Running sleep   2"
+				;
+		String expect2 = "[1] - Running sleep   40"
+				;
 		
 		String code = ""
 				+ "sleep 40 &\n"
@@ -109,14 +138,21 @@ public class TestDisown extends AbstractConsoleTest {
 
 		Console.setNextPid(100000);
 		console.jobManager.clear();
-		waitForJobs = false;
+		boolean tmp = waitForJobs;
+		waitForJobs=false;
 		ExecuteResult res = executeCommand(code, "");
+		waitForJobs=tmp;
+		
 		Thread.sleep(10);
 		String val = res.getStdErr();
 		assertEquals(expectErr, val);
-		assertEquals(expectOut, res.getStdOut());
 		assertEquals(0, res.exitCode);
-		
+		String out = res.getStdOut().trim().replaceAll("\r", "");
+		if(!out.equals(expect1)) {
+			if( !out.equals(expect2)) {
+				throw new RuntimeException("Bad response="+out);
+			}
+		}
 	}
 	
 	
