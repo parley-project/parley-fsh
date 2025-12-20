@@ -1,6 +1,8 @@
 package us.bringardner.shell.test;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -51,18 +53,10 @@ public class TestConnect extends AbstractConsoleTest {
 		out = res.getStdOut().trim();
 		err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
-		assertEquals("", out,"stdout");
+		assertTrue(out.endsWith("mem"),"bad response="+out);
 		assertEquals("", err,"stderr");		
 		
-		/*
-		cmd = "unmount /mem";
-		res = executeCommandFudge(cmd, "");
-		out = res.getStdOut().trim();
-		err = res.getStdErr().trim();
-		assertEquals(0, res.exitCode,"Exit code");
-		assertEquals("", out,"stdout");
-		assertEquals("", err,"stderr");		
-		*/
+		
 	}
 	
 	@Test
