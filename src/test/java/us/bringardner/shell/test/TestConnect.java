@@ -84,7 +84,8 @@ public class TestConnect extends AbstractConsoleTest {
 	@Test
 	@Order(3)	
 	public void testConnectSftp() throws IOException {
-		if( getOs()==OperatingSystem.Windows) {
+		if( getOs()!=OperatingSystem.Mac
+				) {
 			// no native server 
 			return;
 		}
@@ -101,9 +102,9 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals("", err,"stderr");				
 	}
 	
-	
+	@Test()
 	public void testConnectSftpStdin() throws IOException {
-		if( getOs()==OperatingSystem.Windows) {
+		if( getOs()!=OperatingSystem.Mac) {
 			// no native server 
 			return;
 		}

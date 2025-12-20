@@ -284,8 +284,7 @@ public class TestLs {
 
 
 	
-		String expect = "AbcFile01.php         AbcFile01.properties  AbcFile01.txt         AbcFile.php           AbcFile.properties    AbcFile.txt           \n"
-				  + "Folder01ghi           Folder01jkl           AbcFile.php           AbcFile.properties    AbcFile01def2.txt";
+		String expect = "AbcFile01.php         AbcFile01.properties  AbcFile01.txt         Folder01abc.1         Folder01def.2";
 		
 		String cmd = "ls ~/Folder01";
 		if(FileSourceFactory.isWindows()) {
@@ -297,14 +296,8 @@ public class TestLs {
 		expect = "AbcFile01.php\n"
 				+ "AbcFile01.properties\n"
 				+ "AbcFile01.txt\n"
-				+ "AbcFile.php\n"
-				+ "AbcFile.properties\n"
-				+ "AbcFile.txt\n"
-				+ "Folder01ghi\n"
-				+ "Folder01jkl\n"
-				+ "AbcFile.php\n"
-				+ "AbcFile.properties\n"
-				+ "AbcFile01def2.txt"
+				+ "Folder01abc.1\n"
+				+ "Folder01def.2"
 				;
 		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
 			expect = expect.replaceAll("\n", "\r\n");

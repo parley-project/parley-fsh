@@ -206,10 +206,11 @@ public class Ls extends ShellCommand {
 	}
 
 	private void list(List<String> out,LsContext ctx, List<Argument> args, FileSource dir) throws IOException {
-		if( dir.isDirectory() && !args.contains(Argument.d)) {
+		boolean recursive = args.contains(Argument.R);
+		if( dir.isDirectory() && recursive && !args.contains(Argument.d)) {
 			FileSource[] kids = dir.listFiles();
 			if( kids != null ) {
-				boolean recursive = args.contains(Argument.R);
+				
 				boolean showAll = args.contains(Argument.a);
 				for(FileSource f : kids) {
 					if(!isHidden(f) || showAll) {
