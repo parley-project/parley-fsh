@@ -1,10 +1,8 @@
 package us.bringardner.shell.test;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -20,18 +18,6 @@ public class TestConnect extends AbstractConsoleTest {
 		setup("ConnectTestFiles");
 	}
 	
-	/**
-	 * TODO: MUST redo the connect cmd use of native keyboard
-	 * @param command
-	 * @param str
-	 * @return
-	 * @throws IOException
-	 */
-	public static ExecuteResult executeCommandFudge(String command,String str) throws IOException {
-		ByteArrayInputStream in = (new ByteArrayInputStream(str.getBytes()));
-		System.setIn(in);
-		return executeCommand(command, str);
-	}
 	
 	
 	@Test
@@ -41,7 +27,7 @@ public class TestConnect extends AbstractConsoleTest {
 		
 		String cmd = "connect memory /mem";
 		
-		ExecuteResult res = executeCommandFudge(cmd, "");
+		ExecuteResult res = executeCommand(cmd, "");
 		String out = res.getStdOut().trim();
 		String err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
@@ -49,7 +35,7 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals("", err,"stderr");		
 		
 		cmd = "ls -l /mem";
-		res = executeCommandFudge(cmd, "");
+		res = executeCommand(cmd, "");
 		out = res.getStdOut().trim();
 		err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
@@ -67,7 +53,7 @@ public class TestConnect extends AbstractConsoleTest {
 		
 		String cmd = "connect memory -f~/Memory02.properties /mem02";
 		
-		ExecuteResult res = executeCommandFudge(cmd, "");
+		ExecuteResult res = executeCommand(cmd, "");
 		String out = res.getStdOut().trim();
 		String err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
@@ -88,7 +74,7 @@ public class TestConnect extends AbstractConsoleTest {
 		
 		String cmd = "connect sftp user=unittest1 password=0000 host=localhost /sftp1";
 		
-		ExecuteResult res = executeCommandFudge(cmd, "");
+		ExecuteResult res = executeCommand(cmd, "");
 		String out = res.getStdOut().trim();
 		String err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
@@ -105,14 +91,14 @@ public class TestConnect extends AbstractConsoleTest {
 		String expect = ""
 				+ "sftp connected as /sftp2";
 		
-		String cmd = "connect sftp /sftp2";
+		String cmd = "connect sftp - /sftp2";
 		try {
 			Thread.sleep(5000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		ExecuteResult res = executeCommandFudge(cmd, "user=unittest2 password=0000 host=localhost");
+		ExecuteResult res = executeCommand(cmd, "user=unittest2 password=0000 host=localhost");
 		String out = res.getStdOut().trim();
 		String err = res.getStdErr().trim();
 		if( res.exitCode !=0) {

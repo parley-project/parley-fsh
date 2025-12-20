@@ -30,17 +30,25 @@ public class Connect extends ShellCommand{
 			ctx.stdout.println( help);
 			ret = -1;
 		} else {
-
+			boolean readStdin=false;
 			//put in a list to make it easier to manage
 			List<String> args = new ArrayList<>();
 			for(int idx=0; idx<this.args.length; idx++) {
 				String arg = ""+this.args[idx].getValue(ctx);
 				if( arg.equals("-f")) {
 					arg = "-f="+this.args[++idx].getValue(ctx); 
+				} else if(arg.equals("-")) {
+					readStdin=true;
+				} else {
+					args.add(arg);
 				}
-				args.add(arg);
 			}
 
+			if(args.size()<2) {
+				ctx.stdout.println( help);
+				ret = -1;
+			}
+			
 			String fid = args.removeFirst();
 			FileSourceFactory tmp = FileSourceFactory.getFileSourceFactory(fid);
 			if( tmp == null ) {
@@ -58,7 +66,14 @@ public class Connect extends ShellCommand{
 						for(String arg : args) {
 							processArg(ctx,arg,props);
 						}
-
+						if( readStdin) {
+							String line = readLine(ctx.stdin);
+							if( !line.isBlank()) {
+								for(String arg: line.split("\s")) {
+									processArg(ctx,arg,props);
+								}
+							}
+						}
 						if( tmp.connect(props)) {
 							FileSource[] roots =  tmp.listRoots();
 							if( roots.length>1) {
@@ -84,39 +99,39 @@ public class Connect extends ShellCommand{
 
 
 
-			return ret;
-		}
+		return ret;
+	}
 
-		private void processArg(ShellContext ctx,String arg, Properties props) throws IOException {
-			if( arg.startsWith("-f=")) {
-				String fileName=arg.substring(3).trim();
-				List<FileSource> files = getFiles(ctx, fileName);
-				if( files==null || files.size() == 0 ) {
-					throw new IOException("No property file after evauating "+fileName);
-				}
-				if( files.size() > 1 ) {
-					throw new IOException("Too many property files after evaluating  "+fileName);
-				}
-
-				FileSource file = files.removeFirst();
-				if( !file.exists() || file.length() <=0 ) {
-					throw new IOException("Can't load properies. "+file+" does not exists or is empty");
-				}
-				InputStream pin = file.getInputStream();
-				try {
-					props.load(pin);
-				} finally {
-					pin.close();
-				}			
-			} else {
-				String  [] parts=arg.split("=");
-				if( parts.length != 2) {
-					throw new IOException("Invalid arg = "+arg);
-				}
-				props.setProperty(parts[0].trim(), parts[1].trim());
+	private void processArg(ShellContext ctx,String arg, Properties props) throws IOException {
+		if( arg.startsWith("-f=")) {
+			String fileName=arg.substring(3).trim();
+			List<FileSource> files = getFiles(ctx, fileName);
+			if( files==null || files.size() == 0 ) {
+				throw new IOException("No property file after evauating "+fileName);
+			}
+			if( files.size() > 1 ) {
+				throw new IOException("Too many property files after evaluating  "+fileName);
 			}
 
+			FileSource file = files.removeFirst();
+			if( !file.exists() || file.length() <=0 ) {
+				throw new IOException("Can't load properies. "+file+" does not exists or is empty");
+			}
+			InputStream pin = file.getInputStream();
+			try {
+				props.load(pin);
+			} finally {
+				pin.close();
+			}			
+		} else {
+			String  [] parts=arg.split("=");
+			if( parts.length != 2) {
+				throw new IOException("Invalid arg = "+arg);
+			}
+			props.setProperty(parts[0].trim(), parts[1].trim());
 		}
 
-
 	}
+
+
+}
