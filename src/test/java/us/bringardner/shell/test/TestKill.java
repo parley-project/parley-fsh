@@ -37,6 +37,10 @@ public class TestKill extends AbstractConsoleTest {
 				;
 		if(getOs()==OperatingSystem.Windows) {
 			expect = "INT   ILL   FPE   SEGV  TERM  ABRT\n";
+		} else if( getOs()==OperatingSystem.Linux) {
+			expect = "HUP     INT     QUIT    ILL     TRAP    ABRT    BUS     FPE     KILL    USR1    SEGV    USR2    PIPE    ALRM    TERM    CHLD    CONT    STOP    \n"
+					+ "TSTP    TTIN    TTOU    URG     XCPU    XFSZ    VTALRM  PROF    WINCH   IO      SYS\n"
+					;
 		}
 		
 		String code = "kill -l\n"
