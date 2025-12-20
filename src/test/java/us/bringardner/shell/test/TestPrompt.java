@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -24,9 +26,21 @@ import us.bringardner.shell.Console.Prompt;
 public class TestPrompt extends AbstractConsoleTest {
 
 
+	private static Calendar cal;
+	private static Date date;
+	private static SimpleDateFormat Dow_Mon_Day = new SimpleDateFormat("EEE MMM dd");
 	@BeforeAll
-	public static void beforeAll() throws IOException {
+	public static void beforeAll() throws IOException, ParseException {
 		AbstractConsoleTest.setup("TestFiles");
+		
+		SimpleDateFormat fmt = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS Z");
+		
+		
+		date = fmt.parse("09/07/2025 13:22:15.123 EDT");
+		cal = Calendar.getInstance();
+		cal.setTime(date);
+		
+
 	}
 
 
@@ -51,11 +65,7 @@ public class TestPrompt extends AbstractConsoleTest {
 		String oval = Integer.toOctalString(aval);
 		
 		executeCommand("pwd");
-		
-		SimpleDateFormat fmt = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS z");
-		
-		
-		Date date = fmt.parse("09/07/2025 13:22:15.123 EDT");
+				
 		boolean isWin = getOs() == OperatingSystem.Windows;
 		
 		Map<String,String> expect = new TreeMap<>();
@@ -68,13 +78,29 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("\\H", InetAddress.getLocalHost().getHostName());
 		expect.put("\\\\", "\\");
 		expect.put("\\\\ ", "\\ ");
-		expect.put("\\d", "Sun Sep 07");
+		expect.put("\\d", Dow_Mon_Day.format(date));
 		expect.put("\\j", "0");
 		expect.put("\\l", "fssh");
-		expect.put("\\t", "13:22:15");
-		expect.put("\\T", "01:22:15");
-		expect.put("\\@", "01:22:15 PM");
-		expect.put("\\A", "13:22");
+		expect.put("\\t", String.format("%02d:%02d:%02d",
+				cal.get(Calendar.HOUR_OF_DAY),
+				cal.get(Calendar.MINUTE),
+				cal.get(Calendar.SECOND)
+				));
+		expect.put("\\T", String.format("%02d:%02d:%02d",
+				cal.get(Calendar.HOUR),
+				cal.get(Calendar.MINUTE),
+				cal.get(Calendar.SECOND)
+				));
+		expect.put("\\@", String.format("%02d:%02d:%02d %s",
+				cal.get(Calendar.HOUR),
+				cal.get(Calendar.MINUTE),
+				cal.get(Calendar.SECOND),
+				cal.get(Calendar.HOUR_OF_DAY) < 12 ? "AM":"PM"
+				));
+		expect.put("\\A", String.format("%02d:%02d",
+				cal.get(Calendar.HOUR_OF_DAY),
+				cal.get(Calendar.MINUTE)
+				));
 		expect.put("\\u", System.getProperty("user.name"));
 		expect.put("\\v", Console.VERSION);
 		expect.put("\\V", Console.VERSION);
@@ -160,18 +186,21 @@ public class TestPrompt extends AbstractConsoleTest {
 	@Test
 	@Order(3)
 	public void testPropmtPS1_03() throws IOException, ParseException {
-		SimpleDateFormat fmt = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss.SSS z");
-		Date date = fmt.parse("09/07/2025 13:22:15.123 EDT");
+		SimpleDateFormat fmt = new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy");
 		
 		Map<String,String> expect = new TreeMap<>();
 		expect.put("%a", "Sun");
-		expect.put("%A", "Sunday");
-		expect.put("%b", "Sep");
-		expect.put("%B", "September");
-		expect.put("%c", "Sun Sep 07 13:22:15 2025");
-		expect.put("%d", "07");
+		expect.put("%a", new SimpleDateFormat("E").format(date));
+		expect.put("%A", new SimpleDateFormat("EEEE").format(date));
+		expect.put("%b", new SimpleDateFormat("MM").format(date));
+		expect.put("%b", new SimpleDateFormat("MMM").format(date));
+		expect.put("%c", fmt.format(date));
+		
+		expect.put("%d", "07");		
 		expect.put("%H", "13");
+		expect.put("%H", new SimpleDateFormat("HH").format(date));
 		expect.put("%I", "01");
+		expect.put("%I", new SimpleDateFormat("hh").format(date));
 		expect.put("%j", "250");
 		expect.put("%m", "09");
 		expect.put("%M", "22");
@@ -181,11 +210,11 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("%w", "07");
 		expect.put("%W", "037");
 		
-		expect.put("%x", "09/07/25");
-		expect.put("%X", "13:22:15");
-		expect.put("%y", "25");
-		expect.put("%Y", "2025");
-		expect.put("%Z", "EDT");
+		expect.put("%x", new SimpleDateFormat("MM/dd/yy").format(date));//"09/07/25");
+		expect.put("%X", new SimpleDateFormat("HH:mm:ss").format(date));
+		expect.put("%y", new SimpleDateFormat("yy").format(date));
+		expect.put("%Y", new SimpleDateFormat("yyyy").format(date));
+		expect.put("%Z", new SimpleDateFormat("z").format(date));
 		expect.put("%%", "%");
 		
 		String tmp = 
@@ -226,7 +255,7 @@ public class TestPrompt extends AbstractConsoleTest {
 			//System.out.println(val+"="+actual+" ("+lines[++idx]+")"); 
 			String exp = expect.get(key);
 			if( exp !=null ) {
-				assertEquals(exp, actual," key="+key);
+				assertEquals(exp, actual,"idx="+idx+" key="+key);
 			}
 		}
 	}
