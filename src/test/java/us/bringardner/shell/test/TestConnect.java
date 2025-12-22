@@ -1,7 +1,6 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
@@ -39,7 +38,8 @@ public class TestConnect extends AbstractConsoleTest {
 		out = res.getStdOut().trim();
 		err = res.getStdErr().trim();
 		assertEquals(0, res.exitCode,"Exit code");
-		assertTrue(out.endsWith("mem"),"bad response="+out);
+		// not recursive and no kids so no output
+		assertEquals("", out,"stdout");
 		assertEquals("", err,"stderr");		
 		
 		
@@ -64,8 +64,7 @@ public class TestConnect extends AbstractConsoleTest {
 	@Test
 	@Order(3)	
 	public void testConnectSftp() throws IOException {
-		if( getOs()!=OperatingSystem.Mac
-				) {
+		if( getOs()!=OperatingSystem.Mac) {
 			// no native server 
 			return;
 		}
