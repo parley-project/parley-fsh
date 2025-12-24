@@ -29,12 +29,7 @@ public class TestLs {
 	public static String fileDate;
 	public static Console console;
 
-	/*
-	 TestConnect
-	 TestAlias
-	 TestRedirect
-	 TestMounted
-	 */
+	
 	@BeforeAll
 	public static void beforeAll() throws IOException, InterruptedException {
 
