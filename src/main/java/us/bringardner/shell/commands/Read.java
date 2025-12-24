@@ -97,7 +97,13 @@ public class Read extends ShellCommand{
 		
 
 		
-		String line = readLine(ctx,prompt,lineDelim,timeout,editLineText,n, N, options);
+		String line = "";
+		try {
+			line = readLine(ctx,prompt,lineDelim,timeout,editLineText,n, N, options);	
+		} catch (EOFException e2) {
+			return 1;
+		}
+		
 		if(arrayName == null &&  names.size()==0) {
 			ctx.setVariable("REPLY", line);
 		} else { 
