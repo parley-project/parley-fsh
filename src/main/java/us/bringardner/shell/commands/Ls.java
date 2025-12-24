@@ -69,13 +69,13 @@ public class Ls extends ShellCommand {
 		if(paths.size() == 0) {
 			FileSource cwd = ctx.console.getCurrentDirectory();
 			if(options.contains(LsArgument.d)) {
-				print(output, options, cwd);
+				print(ctx,output, options, cwd);
 			} else {
 				FileSource [] kids = cwd.listFiles();
 				sort(options, kids);
 				for(FileSource file :kids) {
 					if( !isHidden(file) || options.contains(LsArgument.a)) {
-						print(output, options, file);
+						print(ctx,output, options, file);
 					}
 				}
 			}
@@ -95,7 +95,10 @@ public class Ls extends ShellCommand {
 				if( !options.contains(LsArgument.d) && options.contains(LsArgument.R) ) {
 					listRecursive(ctx,output, options, files);				
 				} else {
-					list(output, options, files);					
+					if( files.length==1 && files[0].isDirectory()) {
+						files = files[0].listFiles();
+					}
+					list(ctx,output, options, files);					
 				}
 			}
 		}
@@ -141,10 +144,10 @@ public class Ls extends ShellCommand {
 		ctx.stdout.println(buf.toString());
 	}
 
-	private void list(List<String> output, List<LsArgument> options, FileSource[] files) throws IOException {
+	private void list(ShellContext ctx,List<String> output, List<LsArgument> options, FileSource[] files) throws IOException {
 		sort( options, files);
 		for(FileSource file : files) {
-			print(output, options, file);			 
+			print(ctx,output, options, file);			 
 		}
 
 	}
@@ -152,7 +155,7 @@ public class Ls extends ShellCommand {
 	private void listRecursive(ShellContext ctx,List<String> output,List<LsArgument> options, FileSource [] files1) throws IOException {
 		sort( options, files1);
 		for(FileSource file : files1) {
-			print(output, options, file);	
+			print(ctx,output, options, file);	
 		}
 		for(FileSource file2 : files1) {
 			if( file2.isDirectory()) {
@@ -256,10 +259,12 @@ public class Ls extends ShellCommand {
 	private void sort(List<LsArgument> args, FileSource [] files) {
 		Arrays.sort(files, getComparator(args));
 		if( args.contains(LsArgument.r)) {
-			for (int i = 0; i < files.length / 2; i++) {
-				FileSource temp = files[i];
-				files[i] = files[files.length - 1 - i];
-				files[files.length - 1 - i] = temp;
+			FileSource [] tmp = new FileSource[files.length];
+			for (int i = 0,i2=files.length-1; i < files.length ; i++, i2--) {
+				tmp[i2] = files[i];
+			}
+			for (int idx = 0; idx < tmp.length; idx++) {
+				files[idx] = tmp[idx];
 			}
 		}
 	}
@@ -271,8 +276,11 @@ public class Ls extends ShellCommand {
 	//      
 	//prmStr linkStr   usrStr  crpStr    sizeStr  |dateStr     | nameStr
 	//-rw-rw-r--    1     ec2-user ec2-user    2186     Feb  2 08:41 build.txt
-	private  void print(List<String> out,List<LsArgument> args, FileSource file) throws IOException {
-
+	private  void print(ShellContext ctx, List<String> out,List<LsArgument> args, FileSource file) throws IOException {
+		if( !file.exists()) {
+			throw new IOException("ls: "+file+": no such file or directory");
+			
+		}
 		if( args.contains(LsArgument.L)) {
 			FileSource link = file.getLinkedTo();
 			if( link !=null ) {
