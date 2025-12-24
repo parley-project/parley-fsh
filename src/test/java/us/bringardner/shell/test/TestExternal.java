@@ -11,6 +11,15 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 
+/*
+ TestKill
+ TestSpleep
+ TestParameter
+ TestExternal
+ TestIfStatement
+ TestPipeStatement
+ TestExec
+ */
 //TestMethodOrder(OrderAnnotation.class)
 public class TestExternal extends AbstractConsoleTest {
 
@@ -253,7 +262,7 @@ public class TestExternal extends AbstractConsoleTest {
 		String cmd = "test02.sh dude\n";
 		
 		
-		String expectErr = "java.io.IOException: execute permission denied: test02.sh\n"
+		String expectErr = "execute permission denied: test02.sh\n"
 				+ "";
 
 		String stdIn = "";
