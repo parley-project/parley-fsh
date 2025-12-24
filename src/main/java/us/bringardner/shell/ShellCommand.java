@@ -87,7 +87,7 @@ public abstract class ShellCommand {
 	}
 
 
-	protected ShellArgument parserArgs(ShellContext ctx,Class<?> cls) throws IOException {
+	protected ShellArgument parseArgs(ShellContext ctx,Class<?> cls) throws IOException {
 		ShellArgument ret = new ShellArgument();
 		if( args.length>0) {
 			try {
