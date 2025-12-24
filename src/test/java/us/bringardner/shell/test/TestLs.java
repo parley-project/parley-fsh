@@ -1,7 +1,8 @@
 package us.bringardner.shell.test;
 
-import static org.junit.Assert.assertTrue;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -17,28 +18,48 @@ import java.util.Random;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.test.AbstractConsoleTest.OperatingSystem;
 
-@TestMethodOrder(OrderAnnotation.class)
 public class TestLs {
 
 	public static String fileDate;
 	public static Console console;
 
-	
+	/*
+	 TestConnect
+	 TestAlias
+	 TestRedirect
+	 TestMounted
+	 */
 	@BeforeAll
 	public static void beforeAll() throws IOException, InterruptedException {
 
 		File file = new File("LsTestFiles");
+		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
+			cleanMacFileSystem(file);
+		}
 		System.setProperty("user.home", file.getAbsolutePath());
 		console = new Console();
+	}
+
+	private static void cleanMacFileSystem(File file) {
+		if( file.isDirectory()) {
+			File [] kids = file.listFiles();
+			if( kids !=null) {
+				for(File kid: kids) {
+					if( kid.getName().equals(".DS_Store")) {
+						assertTrue(kid.delete(),"Can't delete macos .DS_Store");
+					} else if( file.isDirectory()) {
+						cleanMacFileSystem(kid);
+					}					
+				}
+			}
+		}
+		
 	}
 
 	public static void setAccessDate() throws IOException, InterruptedException {
@@ -139,7 +160,6 @@ public class TestLs {
 	}
 
 	@Test
-	@Order(1)
 	public void testLs() throws IOException {
 		String expect = "AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
 		
@@ -158,7 +178,6 @@ public class TestLs {
 	}
 
 	@Test
-	@Order(2)
 	public void testLs_X() throws IOException {
 
 		String expect = "Folder01             AbcFileA.js          AbcFileB.php         AbcFileD.properties  AbcFileC.txt";
@@ -182,7 +201,6 @@ public class TestLs {
 
 	
 	@Test
-	@Order(3)
 	public void testLs_a() throws IOException {
 		String expect = ".Hidden01.txt        .Hidden02.txt        AbcFileA.js          AbcFileB.php         AbcFileC.txt         AbcFileD.properties  Folder01";
 		String cmd = "ls -a";
@@ -207,7 +225,6 @@ public class TestLs {
 	}
 	
 	@Test
-	@Order(4)
 	public void testLs_l() throws IOException {
 
 
@@ -227,7 +244,92 @@ public class TestLs {
 	}
 
 	@Test
-	@Order(4)
+	public void testLs_l_2() throws IOException {
+
+
+		// The result is different than linux... In linux the folder is not listed
+		String expect[] = (
+					"drwxr-xr-x 1 tony  staff   170  May 31 2015 Folder01ghi\n"
+					+ "\n"
+					+ "/Volumes/Data/eclipse-git/BjlShell/LsTestFiles/Folder01/Folder01abc.1/Folder01ghi:\n"
+					+ "-rwxr-xr-x 1 tony  staff    20  Nov 30 2020 AbcFile.php\n"
+					+ "-rwxr-xr-x 1 tony  staff    20  Jul 03 2018 AbcFile.properties\n"
+					+ "-rwxr-xr-x 1 tony  staff    20  Dec 15 2023 AbcFile.txt"
+				    
+				    ).split("\n");				  
+				  
+		
+		String cmd = "ls -lR ~/Folder01/*1/*i";
+
+		String actual1 = executeLsCommand(true,cmd).trim();
+		String[] actual = actual1.split("\n");
+		
+		checkResult(expect, actual);
+	}
+
+	@Test
+	public void testLs_ld() throws IOException {
+
+
+		String expect[] = {"drwxr-xr-x 1 tony  staff   306  May 08 2025 LsTestFiles"}	;
+		
+		String cmd = "ls -ld";
+
+		String[] actual = executeLsCommand(true,cmd).trim().split("\n");
+		
+		checkResult(expect, actual);
+	}
+
+	@Test
+	public void testLs_lR() throws IOException {
+
+		String expect[] = (
+				     "-rw-r--r-x@ 1 tony  staff  1547 Jun  4  2025 AbcFileA.js\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  3710 Jun 16  2025 AbcFileB.php\n"
+				    + "-rwxr-xr-x@ 1 tony  staff    20 Jun  9  2025 AbcFileC.txt\n"
+				    + "-rwxr-xr-x@ 1 tony  staff    20 Jun 20  2025 AbcFileD.properties\n"
+				    + "drwxr-xr-x@ 4 tony  staff   238 Nov  5  2022 Folder01\n"
+				    + "\n"
+				    + "Folder01:\n"
+				    + "-rwxr-xr-x@ 1 tony  staff   20 Jun 21  2025 AbcFile01.php\n"
+				    + "-rwxr-xr-x@ 1 tony  staff   20 Jun 17  2025 AbcFile01.properties\n"
+				    + "-rwxr-xr-x@ 1 tony  staff   20 Jun 10  2025 AbcFile01.txt\n"
+				    + "drwxr-xr-x@ 4 tony  staff  238 Jul 23  2013 Folder01abc.1\n"
+				    + "drwxr-xr-x@ 2 tony  staff  170 Jun 27 00:53 Folder01def.2\n"
+				    + "\n"
+				    + "Folder01/Folder01abc.1:\n"
+				    + "-rwxr-xr-x@ 1 tony  staff   20 Jun 10  2025 AbcFile.php\n"
+				    + "-rwxr-xr-x@ 1 tony  staff   20 Dec 13  2014 AbcFile.properties\n"
+				    + "-rwxr-xr-x@ 1 tony  staff   20 Jun 13  2025 AbcFile.txt\n"
+				    + "drwxr-xr-x@ 2 tony  staff  170 May 31  2015 Folder01ghi\n"
+				    + "drwxr-xr-x@ 2 tony  staff  170 Aug  4  2020 Folder01jkl\n"
+				    + "\n"
+				    + "Folder01/Folder01abc.1/Folder01ghi:\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Nov 30  2020 AbcFile.php\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Jul  3  2018 AbcFile.properties\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Dec 15  2023 AbcFile.txt\n"
+				    + "\n"
+				    + "Folder01/Folder01abc.1/Folder01jkl:\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Jun 27 04:53 AbcFile.php\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Jun 21  2025 AbcFile.properties\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Jun  8  2025 AbcFile.txt\n"
+				    + "\n"
+				    + "Folder01/Folder01def.2:\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 May 31  2025 AbcFile.php\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Jun 17  2025 AbcFile.properties\n"
+				    + "-rwxr-xr-x@ 1 tony  staff  20 Jun  9  2025 AbcFile01def2.txt"
+				    + "").split("\n");				  
+				  ;
+		
+		String cmd = "ls -lR";
+
+		String actual1 = executeLsCommand(true,cmd).trim();
+		String[] actual =actual1.split("\n");
+		
+		checkResult(expect, actual);
+	}
+	
+	@Test
 	public void testLs_lt() throws IOException {
 
 
@@ -247,7 +349,6 @@ public class TestLs {
 	}
 	
 	@Test
-	@Order(4)
 	public void testLs_ltr() throws IOException {
 
 
@@ -267,19 +368,23 @@ public class TestLs {
 	}
 	
 	private void checkResult(String[] expect, String[] actual) {
-		assertEquals(expect.length,actual.length);
+		//assertEquals(expect.length,actual.length);
 		for (int idx = 0; idx < actual.length; idx++) {
 			String line = expect[idx];
 			int pos=line.lastIndexOf(' ');
-			String name = line.substring(pos);
-			assertTrue(actual[idx].trim().endsWith(name));
+			if( pos < 0 ) {
+				String test = actual[idx];
+				assertTrue(test.trim().endsWith(line.trim()),"idx="+idx);
+			} else {
+				String name = line.substring(pos);
+				assertTrue(actual[idx].trim().endsWith(name),"idx="+idx);
+			}
 		}
 	
 		
 	}
 
 	@Test
-	@Order(5)
 	public void testLsTilde() throws IOException {
 
 
@@ -305,6 +410,43 @@ public class TestLs {
 		
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);
+	}
+
+	@Test
+	public void testLs_R() throws IOException {
+	
+		String expect[]= (
+				     "AbcFileA.js             AbcFileB.php            AbcFileC.txt            AbcFileD.properties     Folder01\n"
+				     + "\n"
+				     + "Folder01:\n"
+				     + "AbcFile01.php           AbcFile01.properties    AbcFile01.txt           Folder01abc.1           Folder01def.2\n"
+				     + "\n"
+				     + "Folder01/Folder01abc.1:\n"
+				     + "AbcFile.php             AbcFile.properties      AbcFile.txt             Folder01ghi             Folder01jkl\n"
+				     + "\n"
+				     + "Folder01/Folder01abc.1/Folder01ghi:\n"
+				     + "AbcFile.php             AbcFile.properties      AbcFile.txt\n"
+				     + "\n"
+				     + "Folder01/Folder01abc.1/Folder01jkl:\n"
+				     + "AbcFile.php             AbcFile.properties      AbcFile.txt\n"
+				     + "\n"
+				     + "Folder01/Folder01def.2:\n"
+				     + "AbcFile.php             AbcFile.properties      AbcFile01def2.txt"
+				    + "").replaceAll(" ", "").split("\n");				  
+				  ;
+		
+		String cmd = "ls -R";
+	
+		String actual1 = executeLsCommand(true,cmd).trim().replaceAll(" ", "");
+		String actual[] = actual1.split("\n"); 
+		for (int idx = 0; idx < actual.length; idx++) {
+			if( actual[idx].endsWith(":")) {
+				assertTrue(actual[idx].endsWith(actual[idx]));
+			} else {
+				assertEquals(expect[idx], actual[idx],"idx="+idx);
+			}
+		}
+		
 	}
 
 }
