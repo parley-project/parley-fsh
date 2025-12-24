@@ -393,7 +393,7 @@ public class CommandStatement extends Statement{
 
 		try {
 			configureRedirect(ctx,redirect);				
-
+		
 			if( hereId !=null ) {
 				Object obj = ctx.getValue(hereId);
 				String val = (""+obj);
@@ -494,6 +494,16 @@ public class CommandStatement extends Statement{
 			}
 		} catch (ReturnException e) {
 			returnStatus = e.exitCode;
+		} catch (Exception e) {
+			//e.printStackTrace();
+			returnStatus = 1;
+			String msg = e.getMessage();
+			if( msg== null) {
+				msg = e.toString();
+				int idx = msg.lastIndexOf('.');
+				msg = msg.substring(idx+1);
+			}
+			ctx.stderr.println(msg);
 		} finally {
 			if( name.equals("exec")) {
 				// special case: any redirect stays and is pushed to the console object
