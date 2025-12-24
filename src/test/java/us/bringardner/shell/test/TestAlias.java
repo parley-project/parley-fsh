@@ -17,12 +17,12 @@ public class TestAlias extends AbstractConsoleTest{
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		AbstractConsoleTest.setup("LsTestFiles");				
+		AbstractConsoleTest.setup("LsTestFiles");	
+		setupAlias01();
 	}	
 	
-	@Test
-	@Order(1)
-	public void testAlias01() throws Exception{
+	
+	public static void setupAlias01() throws IOException{
 		String cmd = "alias lll='ls -ltr' l2='ls -l'"
 				;
 		
@@ -97,11 +97,12 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String expect[] = 
-				  ("AbcFile01.php\n"
-				+ "AbcFile01.properties\n"
-				+ "AbcFile01.txt\n"
-				+ "Folder01abc.1\n"
-				+ "Folder01def.2"
+				  (
+				  "Folder01abc.1\n"
+				  + "AbcFile01.txt\n"
+				  + "AbcFile01.properties\n"
+				  + "AbcFile01.php\n"				
+				  + "Folder01def.2"
 				).split("\n");
 				;
 		
@@ -124,13 +125,14 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String expect[] = 
-				  ("AbcFile01.php\n"
-				+ "AbcFile01.properties\n"
-				+ "AbcFile01.txt\n"
-				+ "Folder01abc.1\n"
-				+ "Folder01def.2").replaceAll("\r", "").split("\n")
+				  (
+				  "Folder01abc.1\n"
+				  + "AbcFile01.txt\n"
+				  + "AbcFile01.properties\n"
+				  + "AbcFile01.php\n"				
+				  + "Folder01def.2"
+				).split("\n");
 				;
-		
 		ExecuteResult res = executeCommand(cmd,"", 0);
 		String err = res.getStdErr();;
 		assertEquals("", err);
