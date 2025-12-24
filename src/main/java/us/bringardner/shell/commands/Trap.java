@@ -70,7 +70,7 @@ public class Trap extends ShellCommand implements SignalHandler {
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		
-		ShellArgument ops = parserArgs(ctx, Args.class);
+		ShellArgument ops = parseArgs(ctx, Args.class);
 		if( ops.paths.size()>0) {
 			String action = ops.paths.remove(0);
 			for(String val : ops.paths) {

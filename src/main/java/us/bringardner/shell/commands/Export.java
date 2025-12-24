@@ -35,7 +35,7 @@ public class Export extends ShellCommand{
 		int ret = 0;
 
 
-		ShellArgument sa = parserArgs(ctx, Arguments.class);
+		ShellArgument sa = parseArgs(ctx, Arguments.class);
 
 		if(sa.options.contains(Arguments.f)) {
 			// function

@@ -43,7 +43,7 @@ public class Jobs extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		ShellArgument options = parserArgs(ctx, Options.class);
+		ShellArgument options = parseArgs(ctx, Options.class);
 
 		/*
 [1]+  Running                 sleep 10 &

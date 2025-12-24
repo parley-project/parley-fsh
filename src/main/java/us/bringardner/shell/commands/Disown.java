@@ -43,7 +43,7 @@ public class Disown extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 
-		ShellArgument ops = parserArgs(ctx, DisownOptions.class);
+		ShellArgument ops = parseArgs(ctx, DisownOptions.class);
 
 		JobManager jm = ctx.console.jobManager;
 

@@ -39,7 +39,7 @@ public class Mkdir extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 
-		ShellArgument ops = parserArgs(ctx, MkdirArgs.class);
+		ShellArgument ops = parseArgs(ctx, MkdirArgs.class);
 		boolean mkdirs = ops.options.contains(MkdirArgs.p);
 		boolean verbose = ops.options.contains(MkdirArgs.v);
 		for(String path : ops.paths) {

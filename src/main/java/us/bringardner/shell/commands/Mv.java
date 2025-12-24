@@ -71,7 +71,7 @@ public class Mv extends ShellCommand{
 	@Override
 	public int process(ShellContext sc) throws IOException {
 		int ret = 0;
-		ShellArgument sa = parserArgs(sc, MvOptions.class);
+		ShellArgument sa = parseArgs(sc, MvOptions.class);
 
 		List<String> paths = sa.paths;
 		List<MvOptions> options = new ArrayList<Mv.MvOptions>();

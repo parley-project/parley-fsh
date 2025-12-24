@@ -28,7 +28,7 @@ public class Cp extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		ShellArgument sa = parserArgs(ctx, Arguments.class);
+		ShellArgument sa = parseArgs(ctx, Arguments.class);
 
 		List<Arguments> options = new ArrayList<>();
 		for(Object o : sa.options) {
