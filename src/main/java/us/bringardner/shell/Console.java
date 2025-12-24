@@ -2301,7 +2301,13 @@ delimiter
 		} catch(Exception e) {
 			//e.printStackTrace();
 			ret = 1;
-			sc.stderr.println(e);
+			String msg = e.getMessage();
+			if( msg== null) {
+				msg = e.toString();
+				int idx = msg.lastIndexOf('.');
+				msg = msg.substring(idx+1);
+			}
+			sc.stderr.println(msg);
 			if( isOptionEnabled(Option.VerboseError)) {
 				e.printStackTrace(sc.stderr);
 			}
