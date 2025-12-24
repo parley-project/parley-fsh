@@ -1,7 +1,7 @@
 package us.bringardner.shell.test;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -414,24 +414,18 @@ exec 3>&- #close fd 3.
 		}
 		
 		String cmd = 
-				  "echo -n >|"+file+"\n"  				// this will fail but since we're in interactive mode the script will continue
-				+ "echo step1 &>>"+file+" \n"
+				 "echo step1 &>>"+file+" \n"
 				+ "ls nofile &>>"+file+"\n"
 				+ "echo step2 &>>"+file+" \n"
 				+ "ls "+file+" &>>"+file+" \n"
 				+ "echo step3 &>>"+file+" \n" // this the last command and the ultimate exitCode 
 				;
 		
+		//System.out.println("testRedirect04_03 cmd="+cmd);
 		String expectOut = "";
 		String stdIn = "";
 		String expectErr = "";
-		if( getOs()==OperatingSystem.Windows) {
-			expectErr = "'C:\\Git\\BjlShell\\target\\logdir\\output.txt' is not recognized as an internal or external command,\n"
-					+ "operable program or batch file.\n";
-		} else {
-			expectErr = "external command failed. cmd=[/Volumes/Data/eclipse-git/BjlShell/target/logdir/output.txt] exit=1\n"
-					+ "	stderr=Cannot run program \"/Volumes/Data/eclipse-git/BjlShell/target/logdir/output.txt\" (in directory \"/Volumes/Data/eclipse-git/BjlShell/TestFiles\"): Exec failed, error: 2 (No such file or directory) ";
-		}
+		
 		int exitCode = 0;
 		boolean tmp1= showError;
 		showError = false;
@@ -439,18 +433,27 @@ exec 3>&- #close fd 3.
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
 		showError = tmp1;
 		
-		String expectData [] = ("step1\n"
+		String expectData [] = (
+					"step1\n"
 				+ "no such file or directory\n"
 				+ "step2\n"
 				+ "output.txt\n"
 				+ "step3\n").split("\n");
+		
+		if( getOs()==OperatingSystem.Windows) {
+			expectErr = "'C:\\Git\\BjlShell\\target\\logdir\\output.txt' is not recognized as an internal or external command,\n"
+					+ "operable program or batch file.\n";
+		} else {
+			expectErr = "external command failed. cmd=[/Volumes/Data/eclipse-git/BjlShell/target/logdir/output.txt] exit=1\n"
+					+ "	stderr=Cannot run program \"/Volumes/Data/eclipse-git/BjlShell/target/logdir/output.txt\" (in directory \"/Volumes/Data/eclipse-git/BjlShell/TestFiles\"): Exec failed, error: 2 (No such file or directory) ";
+		}
 		
 		try (InputStream in = new FileInputStream(file)) {
 			String tmp = new String(in.readAllBytes()).replaceAll("\r", "");
 			String [] actual = tmp.split("\n");
 			assertEquals(expectData.length, actual.length);
 			for (int idx = 0; idx < actual.length; idx++) {
-				assertTrue(actual[idx].endsWith(expectData[idx]));
+				assertTrue(actual[idx].endsWith(expectData[idx]),"idx="+idx);
 			}
 		}
 		
