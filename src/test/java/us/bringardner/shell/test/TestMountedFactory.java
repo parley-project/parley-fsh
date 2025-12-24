@@ -356,7 +356,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 		code = "ls -l /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9\n";
 		res = executeCommand(code, "");
-		assertEquals("ls: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9 no such file or directory\n",res.getStdErr());
+		assertEquals("ls: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9: no such file or directory\n",res.getStdErr());
 		assertEquals("",res.getStdOut());
 		assertEquals(1, res.exitCode);
 		showError = tmp;
