@@ -98,7 +98,7 @@ argument:
 		return ret;
 	}
 
-	public static Object visit(AssignStatementContext assignStatement, ShellContext ctx) {
+	public static Object visit(AssignStatementContext assignStatement, ShellContext ctx) throws IOException {
 		String ret = assignStatement.getText();
 		if( ret.indexOf('$')>=0) {
 			ret = FileSourceShPreProcessorVisitorImpl.processString(ret, ctx);
@@ -122,12 +122,12 @@ argument:
 		return ret;
 	}
 
-	public static Object visit(ParameterContext parameter, ShellContext ctx) {
+	public static Object visit(ParameterContext parameter, ShellContext ctx) throws IOException {
 		Parameter p = new Parameter(parameter);
 		return p.evaluate(ctx);
 	}
 
-	public static Object visit(MathExpressionContext mathExpression, ShellContext ctx) {
+	public static Object visit(MathExpressionContext mathExpression, ShellContext ctx) throws IOException {
 		Expression expr = new Expression(mathExpression.expression());
 		return expr.evaluate(ctx);
 		
@@ -153,7 +153,7 @@ argument:
 		;
 
 	 */
-	public static String visit(Path_segmentContext path_segment, ShellContext ctx) {
+	public static String visit(Path_segmentContext path_segment, ShellContext ctx) throws IOException {
 		if( path_segment.string() != null ) {
 			return visit(path_segment.string(), ctx);
 		} //else if( path_segment.variable()!=null ) {
@@ -168,14 +168,14 @@ argument:
         |VARIABLE (associative_index | array_index)?
 
 	 */
-	public static String visit(VariableContext variable, ShellContext ctx) {
+	public static String visit(VariableContext variable, ShellContext ctx) throws IOException {
 		Object obj = ctx.getVariable(variable);
 		String ret = ""+obj;
 		return ret;
 	}
 
 	//string : DQ_STRING | SQ_STRING | ESC;
-	public static String visit(StringContext string, ShellContext ctx) {
+	public static String visit(StringContext string, ShellContext ctx) throws IOException {
 		String ret = ctx.expandString(string);
 		
 		return ret;

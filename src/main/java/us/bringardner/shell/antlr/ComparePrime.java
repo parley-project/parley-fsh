@@ -41,7 +41,7 @@ compare
 		this.ctx = ctx2;
 	}
 
-	public Object getValue(ShellContext sc) {
+	public Object getValue(ShellContext sc) throws IOException {
 		Object ret = false;
 		if( ctx.file_test()!=null) {
 			ret = getValue(ctx.file_test(),sc);
@@ -110,7 +110,7 @@ compare
 	/*
 regular_expression:	rx_pattern+ ;
 	 */
-	private String getValue(Regular_expressionContext rx, ShellContext sc) {
+	private String getValue(Regular_expressionContext rx, ShellContext sc) throws IOException {
 		StringBuilder ret = new StringBuilder();
 		if( rx.rx_pattern()!=null) {
 			for(Rx_patternContext p : rx.rx_pattern()) {
@@ -140,7 +140,7 @@ rx_pattern
 
 	 */
 
-	private String getValue(Rx_patternContext p,ShellContext sc) {
+	private String getValue(Rx_patternContext p,ShellContext sc) throws IOException {
 		StringBuilder ret = new StringBuilder();
 		if(p.variable()!=null ) {
 			ret.append(""+sc.getVariable(p.variable()));
@@ -567,7 +567,7 @@ True if the length of string is non-zero.
 
 	}
 
-	public boolean evaluate(ShellContext sc) {
+	public boolean evaluate(ShellContext sc) throws IOException {
 		Object val = getValue(sc);
 		boolean ret = toBoolean(val)==true;
 		return ret;

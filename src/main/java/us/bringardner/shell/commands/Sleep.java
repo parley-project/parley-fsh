@@ -86,7 +86,7 @@ public class Sleep extends ShellCommand{
 			}
 			while( timeToSleep > 0 ) {
 				if( ctx.getException()!=null) {
-					throw new IOException( ctx.getException());
+					throw  ctx.getException();
 				}
 				if(ctx.isPaused()) {
 					try {

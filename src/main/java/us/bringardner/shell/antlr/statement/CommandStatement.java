@@ -30,6 +30,7 @@ import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.RerdirectImpl;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.signal.ExitException;
 import us.bringardner.shell.antlr.signal.ReturnException;
 
 public class CommandStatement extends Statement{
@@ -494,6 +495,9 @@ public class CommandStatement extends Statement{
 			}
 		} catch (ReturnException e) {
 			returnStatus = e.exitCode;
+		} catch (ExitException e) {
+			returnStatus = e.exitCode;
+		
 		} catch (Exception e) {
 			//e.printStackTrace();
 			returnStatus = 1;
@@ -501,7 +505,9 @@ public class CommandStatement extends Statement{
 			if( msg== null) {
 				msg = e.toString();
 				int idx = msg.lastIndexOf('.');
-				msg = msg.substring(idx+1);
+				if(idx > 0 ) {
+					msg = msg.substring(idx+1);
+				}
 			}
 			ctx.stderr.println(msg);
 		} finally {

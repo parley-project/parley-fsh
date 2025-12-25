@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.antlr.v4.runtime.CharStreams;
@@ -113,7 +114,7 @@ public class TestPreProsess {
 	}
 	//Outer loop: $i
 	@Test
-	public void testExpandString03() {
+	public void testExpandString03() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("j", "1");
 		String expect = "    Inner loop: 1";
@@ -125,7 +126,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandString01() {
+	public void testExpandString01() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", "tony");
 		String expect = "hello tony";
@@ -137,7 +138,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandString02() {
+	public void testExpandString02() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("var", "tony");
 		String expect = "hello tony";
@@ -149,7 +150,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandString04() {
+	public void testExpandString04() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", "tony");
 		String expect = "hello tony";
@@ -161,7 +162,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandSubtract01() {
+	public void testExpandSubtract01() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		String expect = "7";
 		String code = "$((10-3))";
@@ -177,7 +178,7 @@ public class TestPreProsess {
 	}
 	
 	@Test
-	public void testExpandStringAdd01() {
+	public void testExpandStringAdd01() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		String expect = "7";
 		String code = "$((5+2))";
@@ -194,7 +195,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandStringMultiply01() {
+	public void testExpandStringMultiply01()throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		String expect = "10";
 		String code = "$((5*2))";
@@ -209,7 +210,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandStringDivide01() {
+	public void testExpandStringDivide01() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		String expect = "2";
 		String code = "$((5/2))";
@@ -224,7 +225,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandStringMod01() {
+	public void testExpandStringMod01()throws IOException  {
 		ShellContext ctx = new ShellContext(new Console());
 		String expect = "1";
 		String code = "$((5%2))";
@@ -239,7 +240,7 @@ public class TestPreProsess {
 	}
 	
 	@Test
-	public void testExpandStringPow01() {
+	public void testExpandStringPow01()throws IOException  {
 		ShellContext ctx = new ShellContext(new Console());
 		String expect = "100";
 		String code = "$((10**2))";
@@ -258,7 +259,7 @@ public class TestPreProsess {
 	}
 
 	@Test
-	public void testExpandStringPlusEq() {
+	public void testExpandStringPlusEq() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", 10);
 		String expect = "13";
@@ -273,7 +274,7 @@ public class TestPreProsess {
 		
 	}
 	@Test
-	public void testExpandStringMinusEq() {
+	public void testExpandStringMinusEq()throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", 13);
 		String expect = "10";
@@ -289,7 +290,7 @@ public class TestPreProsess {
 	}
 	
 	@Test
-	public void testExpandStringMultiplyEq() {
+	public void testExpandStringMultiplyEq() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", 10);
 		String expect = "100";
@@ -305,7 +306,7 @@ public class TestPreProsess {
 	}
 	
 	@Test
-	public void testExpandStringDivideEq() {
+	public void testExpandStringDivideEq() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", 10);
 		String expect = "5";
@@ -321,7 +322,7 @@ public class TestPreProsess {
 	}
 	
 	@Test
-	public void testExpandStringModEq() {
+	public void testExpandStringModEq() throws IOException {
 		ShellContext ctx = new ShellContext(new Console());
 		ctx.setVariable("name", 11);
 		String expect = "1";

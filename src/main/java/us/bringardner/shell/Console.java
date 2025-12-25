@@ -42,6 +42,7 @@ import us.bringardner.shell.ShellContext.LoopControl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
+import us.bringardner.shell.antlr.signal.FsshException;
 import us.bringardner.shell.antlr.statement.BackgroundStatement;
 import us.bringardner.shell.antlr.statement.CommandStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
@@ -142,7 +143,7 @@ public class Console extends SignalEnabledThread {
 
 	private volatile Map<Integer,FileDiscriptor> files;
 
-	public static class SuspendException extends RuntimeException{
+	public static class SuspendException extends FsshException {
 
 		public IJob job;
 
@@ -595,9 +596,6 @@ delimiter
 
 	public static void main(String args[]) throws IOException {
 
-		try {
-
-
 			Console c = new Console();
 			Runtime.getRuntime().addShutdownHook(new Thread(){
 				@Override
@@ -636,9 +634,7 @@ delimiter
 			} else {
 				Console.exit(c,ret);
 			}
-		} catch (ExitException e) {
-			Console.exit(null,e.exitCode);
-		}
+		
 
 	}
 
@@ -2130,7 +2126,7 @@ delimiter
 	}
 
 	@Override
-	public void handleSignal(ConsoleSignal signal)  {
+	public void handleSignal(ConsoleSignal signal) throws IOException  {
 		if( state == null) {
 			// non interactive console
 		} else if( state == ConsoleState.ReadLine) {

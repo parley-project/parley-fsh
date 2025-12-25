@@ -23,7 +23,7 @@ public class ExitException extends FsshException {
 	
 	public String toString() {
 		if( message == null) {
-			return "Exit "+exitCode;
+			return "";
 		} else {
 			return message;
 		}

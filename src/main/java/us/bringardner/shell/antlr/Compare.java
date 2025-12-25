@@ -1,5 +1,7 @@
 package us.bringardner.shell.antlr;
 
+import java.io.IOException;
+
 import us.bringardner.filesource.sh.FileSourceShParser.CompareContext;
 import us.bringardner.shell.ShellContext;
 
@@ -19,7 +21,7 @@ compare : LSQUARE compare_prime RSQUARE
 		;
 		
 	 */
-	public boolean evaluate(ShellContext sc) {
+	public boolean evaluate(ShellContext sc) throws IOException {
 		if( ctx.simpleCompare!=null) {
 			Compare tmp = new Compare(ctx.simpleCompare);
 			return tmp.evaluate(sc);

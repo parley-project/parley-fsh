@@ -1,5 +1,6 @@
 package us.bringardner.shell.antlr;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -156,7 +157,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 	}
 */
 	
-	public static String processString(String code1, ShellContext sc) {
+	public static String processString(String code1, ShellContext sc) throws IOException {
 		if( !code1.contains("$")) {
 			return code1;
 		}

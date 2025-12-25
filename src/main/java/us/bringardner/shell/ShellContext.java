@@ -42,7 +42,7 @@ public class ShellContext {
 	private List<String> activeAlias = new ArrayList<>();
 	private Stack<Statement> statementStack = new Stack<>();
 	private AtomicBoolean pause = new AtomicBoolean();
-	private AtomicReference<Exception> exeption = new AtomicReference<>();
+	private AtomicReference<IOException> exeption = new AtomicReference<>();
 
 	public ShellContext() {
 		enterCommand();
@@ -113,7 +113,7 @@ public class ShellContext {
 	}
 
 
-	public String expandString(StringContext context) {
+	public String expandString(StringContext context) throws IOException {
 		if( context.SQ_STRING() != null ) {
 			String tmp = context.SQ_STRING().getText();
 			return tmp.substring(1, tmp.length()-1);				
@@ -239,7 +239,7 @@ $
 		return ret;
 	}
 
-	public Object getVariable(VariableContext ctx) {
+	public Object getVariable(VariableContext ctx) throws IOException {
 		String name = ctx.getText();
 
 		if( ctx.idOnly !=null ) {
@@ -501,11 +501,11 @@ $
 		return pause.get();
 	}
 
-	public Exception getException() {
+	public IOException getException() {
 		return exeption.get();
 	}
 
-	public void setExecption(Exception e) {
+	public void setExecption(IOException e) {
 		exeption.set(e);
 	}
 
@@ -556,7 +556,7 @@ $
 		statementStack.pop();		
 		console.debugContext.after(stmt.getContext(), this);
 		if(exeption.get() != null) {
-			throw new IOException(exeption.get());
+			throw exeption.get();
 		}
 	}
 

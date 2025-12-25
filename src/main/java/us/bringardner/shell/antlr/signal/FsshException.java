@@ -1,6 +1,8 @@
 package us.bringardner.shell.antlr.signal;
 
-public class FsshException extends RuntimeException {
+import java.io.IOException;
+
+public class FsshException extends IOException {
 
 	private static final long serialVersionUID = 1L;
 	

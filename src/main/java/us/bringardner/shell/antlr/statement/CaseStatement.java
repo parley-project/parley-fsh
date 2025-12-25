@@ -97,7 +97,7 @@ pattern
 
 
 
-	private boolean matches(String val, List<PatternContext> patterns, ShellContext sc) {
+	private boolean matches(String val, List<PatternContext> patterns, ShellContext sc) throws IOException {
 		boolean ret = false;
 		for(PatternContext p : patterns) {
 			if((ret=matches(val,p,sc))) {
@@ -116,7 +116,7 @@ pattern
     |  '*'
     ;
 	 */
-	private boolean matches(String val,PatternContext p, ShellContext sc) {
+	private boolean matches(String val,PatternContext p, ShellContext sc) throws IOException {
 		String pat = p.getText();
 		if( p.expression()!=null) {
 			Expression e = new Expression(p.expression());
