@@ -514,7 +514,7 @@ list:
 		for(Argument a : getArgs()) {
 			try {
 				ret.append(""+a.getValue(ctx));
-			} catch (IOException e) {
+			} catch (Exception e) {
 				ret.append(e.toString());
 			}
 		}

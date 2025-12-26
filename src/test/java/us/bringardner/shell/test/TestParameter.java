@@ -85,7 +85,8 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.console.setStdErr(new PrintStream(bae));
 		ctx.console.setStdIn(new ByteArrayInputStream("".getBytes()));
 
-		String code = "echo hello ${name:?bad stuff is happending}";
+		String expectErr = "bad stuff is happending";
+		String code = "echo hello ${name:?"+expectErr+"}";
 		exitCode= ctx.console.executeUsingAntlr(code);
 		
 
@@ -97,7 +98,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//System.out.println("err = "+err);
 		//System.out.println("out = "+out);
 		assertEquals(expect, out);
-		assertEquals("bad stuff is happending\n", err.replaceAll("\r", ""));
+		assertEquals("name: "+expectErr, err.trim());
 		assertEquals(1, exitCode);
 	}
 
@@ -302,7 +303,7 @@ public class TestParameter extends AbstractConsoleTest {
 	public void testParameter21() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
-		String expect = "java.lang.RuntimeException: -2: substring expression < 0\n";
+		String expect = "-2: substring expression < 0\n";
 		String code = ""
 				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:-2}\n";
@@ -648,9 +649,10 @@ public class TestParameter extends AbstractConsoleTest {
 	public void testParameter40() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
-		String expectErr = "bad things will happen\n";
-		String expectOut = "";
-		String code = "echo ${var:?bad things will happen}\n"
+		String expectErr = "";
+		String expectOut = "name\n";
+		String code = "var=name\n"
+				+ "echo ${var:?bad things will happen}\n"
 				;
 
 		boolean tmp = showError;showError=false;
@@ -661,7 +663,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//System.out.println("actual = "+actual);
 		assertEquals(expectOut, actualOut);
 		assertEquals(expectErr, actualErr);
-		assertEquals(1, res.exitCode);
+		assertEquals(0, res.exitCode);
 		
 		
 	}

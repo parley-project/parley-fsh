@@ -52,7 +52,7 @@ argument:
 		return value !=null;
 	}
 	
-	public Object getValue(ShellContext ctx) throws IOException {
+	public Object getValue(ShellContext ctx)  {
 		if( value !=null) {
 			return value;
 		}
@@ -60,7 +60,7 @@ argument:
 		Object ret = context.getText().trim();
 
 		if( context.braceExpansion()!=null) {
-			throw new IOException("brace expantion must be done before calling getValue");
+			throw new RuntimeException("brace expantion must be done before calling getValue");
 		}
 
 		if( context.ARG_ID()!=null) {
@@ -98,7 +98,7 @@ argument:
 		return ret;
 	}
 
-	public static Object visit(AssignStatementContext assignStatement, ShellContext ctx) throws IOException {
+	public static Object visit(AssignStatementContext assignStatement, ShellContext ctx)  {
 		String ret = assignStatement.getText();
 		if( ret.indexOf('$')>=0) {
 			ret = FileSourceShPreProcessorVisitorImpl.processString(ret, ctx);
@@ -106,7 +106,7 @@ argument:
 		return ret;
 	}
 
-	public Object visit(Arg_command_substitutionContext arg_command_substitution, ShellContext ctx) {
+	public Object visit(Arg_command_substitutionContext arg_command_substitution, ShellContext ctx)  {
 		Object ret  = null;
 		CommandSubstitutionStatement cs = new CommandSubstitutionStatement(arg_command_substitution);
 		try {
@@ -122,12 +122,12 @@ argument:
 		return ret;
 	}
 
-	public static Object visit(ParameterContext parameter, ShellContext ctx) throws IOException {
+	public static Object visit(ParameterContext parameter, ShellContext ctx)  {
 		Parameter p = new Parameter(parameter);
 		return p.evaluate(ctx);
 	}
 
-	public static Object visit(MathExpressionContext mathExpression, ShellContext ctx) throws IOException {
+	public static Object visit(MathExpressionContext mathExpression, ShellContext ctx)  {
 		Expression expr = new Expression(mathExpression.expression());
 		return expr.evaluate(ctx);
 		
@@ -168,14 +168,14 @@ argument:
         |VARIABLE (associative_index | array_index)?
 
 	 */
-	public static String visit(VariableContext variable, ShellContext ctx) throws IOException {
+	public static String visit(VariableContext variable, ShellContext ctx)  {
 		Object obj = ctx.getVariable(variable);
 		String ret = ""+obj;
 		return ret;
 	}
 
 	//string : DQ_STRING | SQ_STRING | ESC;
-	public static String visit(StringContext string, ShellContext ctx) throws IOException {
+	public static String visit(StringContext string, ShellContext ctx)  {
 		String ret = ctx.expandString(string);
 		
 		return ret;

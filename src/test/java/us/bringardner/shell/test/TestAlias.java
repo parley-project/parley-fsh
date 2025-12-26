@@ -68,12 +68,12 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String[] expect = 
-				  ("Folder01\n"
-				+ "AbcFileA.js\n"
-				+ "AbcFileC.txt\n"
-				+ "AbcFileB.php\n"
-				+ "AbcFileD.properties"
-				).split("\n");
+				  ("AbcFileA.js\n"
+				  		+ "AbcFileC.txt\n"
+				  		+ "AbcFileB.php\n"
+				  		+ "AbcFileD.properties\n"
+				  		+ "Folder01"
+				).replaceAll("\r", "").split("\n");
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
@@ -84,7 +84,7 @@ public class TestAlias extends AbstractConsoleTest{
 		
 		assertEquals(expect.length, out.length);
 		for (int idx = 0; idx < out.length; idx++) {
-			assertTrue(out[idx].endsWith(expect[idx]));
+			assertTrue(out[idx].endsWith(expect[idx]),"id="+idx);
 		}
 		
 		
@@ -96,14 +96,13 @@ public class TestAlias extends AbstractConsoleTest{
 		String cmd = "lll Folder01\n"
 				;
 		
-		String expect[] = 
-				  (
-				  "Folder01abc.1\n"
-				  + "AbcFile01.txt\n"
-				  + "AbcFile01.properties\n"
-				  + "AbcFile01.php\n"				
-				  + "Folder01def.2"
-				).split("\n");
+		String[] expect = 
+				  ("AbcFile01.txt\n"
+				  		+ "AbcFile01.properties\n"
+				  		+ "AbcFile01.php\n"
+				  		+ "Folder01def.2\n"
+				  		+ "Folder01abc.1"
+				).replaceAll("\r", "").split("\n");
 				;
 		
 		ExecuteResult res = executeCommand(cmd,"", 0);
@@ -113,39 +112,13 @@ public class TestAlias extends AbstractConsoleTest{
 		
 		assertEquals(0, res.exitCode);
 		assertEquals(expect.length, out.length);
-		for (int idx = 0; idx < out.length; idx++) {
-			assertTrue(out[idx].endsWith(expect[idx]));
-		}
-	}
-
-	@Test
-	@Order(5)
-	public void testAlias05() throws Exception{
-		String cmd = "lll Folder01\n"
-				;
-		
-		String expect[] = 
-				  (
-				  "Folder01abc.1\n"
-				  + "AbcFile01.txt\n"
-				  + "AbcFile01.properties\n"
-				  + "AbcFile01.php\n"				
-				  + "Folder01def.2"
-				).split("\n");
-				;
-		ExecuteResult res = executeCommand(cmd,"", 0);
-		String err = res.getStdErr();;
-		assertEquals("", err);
-		
-		assertEquals(0, res.exitCode);
-		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");		
 		assertEquals(expect.length, out.length);
 		for (int idx = 0; idx < out.length; idx++) {
-			assertTrue(out[idx].endsWith(expect[idx]));
+			assertTrue(out[idx].endsWith(expect[idx]),"id="+idx);
 		}
 		
 	}
-	
+
 	@Test
 	@Order(6)
 	public void testAlias06() throws Exception{
@@ -237,11 +210,11 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String expect[] = 
-				  ("Folder01\n"
-				+ "AbcFileA.js\n"
-				+ "AbcFileC.txt\n"
-				+ "AbcFileB.php\n"
-				+ "AbcFileD.properties").split("\n");
+				  ("AbcFileA.js\n"
+				  		+ "AbcFileC.txt\n"
+				  		+ "AbcFileB.php\n"
+				  		+ "AbcFileD.properties\n"
+				  		+ "Folder01").replaceAll("\r", "").split("\n");
 			
 				;
 		
@@ -252,7 +225,7 @@ public class TestAlias extends AbstractConsoleTest{
 		String [] out = res.getStdOut().replaceAll("\r", "").split("\n");		
 		assertEquals(expect.length, out.length);
 		for (int idx = 0; idx < out.length; idx++) {
-			assertTrue(out[idx].endsWith(expect[idx]));
+			assertTrue(out[idx].endsWith(expect[idx]),"idx="+idx);
 		}
 		
 	}

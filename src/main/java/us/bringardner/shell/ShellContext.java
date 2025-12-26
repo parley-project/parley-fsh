@@ -22,6 +22,7 @@ import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Expression;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.signal.FsshException;
 import us.bringardner.shell.antlr.statement.CommandStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
 
@@ -42,7 +43,7 @@ public class ShellContext {
 	private List<String> activeAlias = new ArrayList<>();
 	private Stack<Statement> statementStack = new Stack<>();
 	private AtomicBoolean pause = new AtomicBoolean();
-	private AtomicReference<IOException> exeption = new AtomicReference<>();
+	private AtomicReference<RuntimeException> exeption = new AtomicReference<>();
 
 	public ShellContext() {
 		enterCommand();
@@ -113,7 +114,7 @@ public class ShellContext {
 	}
 
 
-	public String expandString(StringContext context) throws IOException {
+	public String expandString(StringContext context)  {
 		if( context.SQ_STRING() != null ) {
 			String tmp = context.SQ_STRING().getText();
 			return tmp.substring(1, tmp.length()-1);				
@@ -239,7 +240,7 @@ $
 		return ret;
 	}
 
-	public Object getVariable(VariableContext ctx) throws IOException {
+	public Object getVariable(VariableContext ctx)  {
 		String name = ctx.getText();
 
 		if( ctx.idOnly !=null ) {
@@ -463,7 +464,7 @@ $
 			this.function = function;
 			this.args.add(function.getName());
 			this.args.addAll(Arrays.asList(args2));
-						
+
 		}
 
 	}
@@ -481,7 +482,7 @@ $
 			} catch (Exception e) {
 			}
 		}
-		
+
 		functionStack.push(new FunctionInvocation(args,function));		
 	}
 
@@ -501,12 +502,22 @@ $
 		return pause.get();
 	}
 
-	public IOException getException() {
+	public RuntimeException getException() {
 		return exeption.get();
 	}
 
-	public void setExecption(IOException e) {
-		exeption.set(e);
+	public void setExecption(Exception e) {
+		if (e instanceof FsshException) {
+			FsshException rte = (FsshException) e;
+			exeption.set(rte);
+		} else {
+			if (!(e instanceof RuntimeException)) {
+				RuntimeException rte = (RuntimeException) e;
+				exeption.set(rte);
+			} else {
+				exeption.set(new RuntimeException(e));
+			}
+		}
 	}
 
 	public void enterStatement(Statement stmt) throws IOException {
@@ -548,11 +559,11 @@ $
 			}
 		}
 		if(exeption.get() != null) {
-			throw new IOException(exeption.get());
+			throw exeption.get();
 		}
 	}
 
-	public void exitStatement(int ret,Statement stmt) throws IOException {
+	public void exitStatement(int ret,Statement stmt)  {
 		statementStack.pop();		
 		console.debugContext.after(stmt.getContext(), this);
 		if(exeption.get() != null) {

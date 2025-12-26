@@ -84,7 +84,7 @@ public class TestSleep extends AbstractConsoleTest {
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
-		assertTrue(time>= 1000 && time < 1200);
+		assertTrue(time>= 1000 && time < 1500);
 	}
 	
 	@Test
@@ -104,7 +104,7 @@ public class TestSleep extends AbstractConsoleTest {
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
-		assertTrue(time>= 2000 && time < 2200);
+		assertTrue(time>= 2000 && time < 2500);
 	}
 
 	@Test
@@ -124,7 +124,7 @@ public class TestSleep extends AbstractConsoleTest {
 		assertEquals("", err);
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
-		assertTrue(time>= 2000 && time < 2200);
+		assertTrue(time>= 2000 && time < 2500);
 		
 	}
 

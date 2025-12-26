@@ -1,6 +1,7 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -49,10 +50,30 @@ public abstract class AbstractConsoleTest {
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 		File tmp = new File(home).getCanonicalFile();
 		testFilesDir = tmp;
+		
 		System.setProperty("user.home", testFilesDir.getAbsolutePath());
 		console = new Console();
+		if( getOs()==OperatingSystem.Mac) {
+			cleanMacFileSystem(testFilesDir);
+		}
+		
 	}
 
+	private static void cleanMacFileSystem(File file) {
+		if( file.isDirectory()) {
+			File [] kids = file.listFiles();
+			if( kids !=null) {
+				for(File kid: kids) {
+					if( kid.getName().equals(".DS_Store")) {
+						assertTrue(kid.delete(),"Can't delete macos .DS_Store");
+					} else if( file.isDirectory()) {
+						cleanMacFileSystem(kid);
+					}					
+				}
+			}
+		}
+		
+	}
 
 	public static void teardown() {
 
@@ -199,6 +220,12 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 						done = false;
 					}
 				}
+			}
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		String errMsg = new String(ret.bae.toByteArray());

@@ -2126,7 +2126,7 @@ delimiter
 	}
 
 	@Override
-	public void handleSignal(ConsoleSignal signal) throws IOException  {
+	public void handleSignal(ConsoleSignal signal)  {
 		if( state == null) {
 			// non interactive console
 		} else if( state == ConsoleState.ReadLine) {
@@ -2280,8 +2280,9 @@ delimiter
 		} catch(ExitException e) {
 			ret = e.exitCode;
 			handleMetaSignal(ConsoleMetaSignal.Exit);
-			if( e.exitCode!=0) {
-				sc.stderr.println(e);
+			ret = e.exitCode;
+			if(e.message!=null) {
+				sc.stderr.println(e.message);
 			}
 			stop();
 

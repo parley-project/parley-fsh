@@ -402,7 +402,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 		String out = res.getStdOut();
 		String err = res.getStdErr();
 		assertEquals(2, res.exitCode);
-		assertEquals("Exit 2\n", err);
+		assertEquals("", err);
 		assertEquals(expect, out);
 
 	}

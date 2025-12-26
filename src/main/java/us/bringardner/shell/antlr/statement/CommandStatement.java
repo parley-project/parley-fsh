@@ -497,7 +497,8 @@ public class CommandStatement extends Statement{
 			returnStatus = e.exitCode;
 		} catch (ExitException e) {
 			returnStatus = e.exitCode;
-		
+			
+			throw e;
 		} catch (Exception e) {
 			//e.printStackTrace();
 			returnStatus = 1;

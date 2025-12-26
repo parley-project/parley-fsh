@@ -1,7 +1,5 @@
 package us.bringardner.shell.antlr;
 
-import java.io.IOException;
-
 import us.bringardner.filesource.sh.FileSourceShParser.ExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.FactorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.TermContext;
@@ -94,7 +92,7 @@ expression
     | expression op=('+' | '-'| '%') complexTerm=term
        ;
 	 */
-	public Object evaluate(ShellContext ctx2) throws IOException {
+	public Object evaluate(ShellContext ctx2)  {
 		Object ret = null;
 		if( ctx.simpleTerm!=null) {
 			ret = evaluateTerm(ctx.simpleTerm,ctx2);
@@ -209,7 +207,7 @@ factor
 
 	 */
 
-	private Object evaluateTerm(TermContext term,ShellContext ctx2) throws IOException {
+	private Object evaluateTerm(TermContext term,ShellContext ctx2)  {
 		Object ret = null;
 		Object factor = getValue(term.factor(),ctx2);
 		if(term.term() ==null || term.op==null) {
@@ -282,7 +280,7 @@ factor
 		return ret;
 
 	}
-	private Object getValue(FactorContext factor, ShellContext ctx2) throws IOException {
+	private Object getValue(FactorContext factor, ShellContext ctx2)  {
 		Object ret = null;
 		if(factor.NUMBER()!=null) {
 			String str = factor.NUMBER().getText();

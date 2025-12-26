@@ -1,6 +1,5 @@
 package us.bringardner.shell.antlr;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +49,7 @@ ${parameter:-word}
 			);
 	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,})(?<colon>[:])?(?<type>[-=?+])(?<val>.*)");
 
-	public Object evaluate(ShellContext sc) throws IOException {
+	public Object evaluate(ShellContext sc)  {
 		String fullText = ctx1.getText();
 		fullText = fullText.substring(2,fullText.length()-1);
 		fullText = FileSourceShPreProcessorVisitorImpl.processString(fullText, sc);
@@ -320,7 +319,7 @@ ${parameter:-word}
 		return ret;
 	}
 
-	private Object evaluateNoRange(Matcher m, ShellContext sc) throws IOException  {
+	private Object evaluateNoRange(Matcher m, ShellContext sc)  {
 		String name = m.group("name");
 		String type = m.group("type");
 		String val = m.group("val");
@@ -375,7 +374,9 @@ ${parameter:-word}
 			if( ret == null) {
 				if( val == null) {
 					val = ("parameter "+name+" is null");
-				} 
+				} else {
+					val = name+": "+val;
+				}
 				if( !sc.console.isInteractive) {
 					// console will write val to stderr
 					throw new ExitException(sc, 1,val);

@@ -120,7 +120,6 @@ public class TestKill extends AbstractConsoleTest {
 		console.isInteractive=true;
 		ExecuteResult res = executeCommand(code, "");
 		//  give time for signal handling
-		Thread.sleep(50);
 		String val = res.getStdErr();
 		assertEquals("", val);
 		assertEquals(expect, res.getStdOut());

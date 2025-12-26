@@ -21,42 +21,19 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.io.filesource.FileSourceFactory;
-import us.bringardner.shell.Console;
-import us.bringardner.shell.test.AbstractConsoleTest.OperatingSystem;
 
-public class TestLs {
+public class TestLs extends AbstractConsoleTest {
 
 	public static String fileDate;
-	public static Console console;
+	
 
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException, InterruptedException {
-
-		File file = new File("LsTestFiles");
-		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
-			cleanMacFileSystem(file);
-		}
-		System.setProperty("user.home", file.getAbsolutePath());
-		console = new Console();
+		AbstractConsoleTest.setup("LsTestFiles");		
 	}
 
-	private static void cleanMacFileSystem(File file) {
-		if( file.isDirectory()) {
-			File [] kids = file.listFiles();
-			if( kids !=null) {
-				for(File kid: kids) {
-					if( kid.getName().equals(".DS_Store")) {
-						assertTrue(kid.delete(),"Can't delete macos .DS_Store");
-					} else if( file.isDirectory()) {
-						cleanMacFileSystem(kid);
-					}					
-				}
-			}
-		}
-		
-	}
-
+	
 	public static void setAccessDate() throws IOException, InterruptedException {
 		File top = new File("LsTestFiles");
 		Random r = new Random();
@@ -329,11 +306,11 @@ public class TestLs {
 
 
 		String expect[] = 
-				    (  "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
-				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
-				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				    + "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01")	.split("\n")			  
+				    (  "drwxr-xr-x@ 4 tony  staff   238 Dec 26 01:10 Folder01\n"
+				    		+ "-rwxr-xr-x@ 1 tony  staff    20 Jun 20  2025 AbcFileD.properties\n"
+				    		+ "-rwxr-xr-x@ 1 tony  staff  3710 Jun 16  2025 AbcFileB.php\n"
+				    		+ "-rwxr-xr-x@ 1 tony  staff    20 Jun  9  2025 AbcFileC.txt\n"
+				    		+ "-rw-r--r-x@ 1 tony  staff  1547 Jun  4  2025 AbcFileA.js").replaceAll("\r", "").split("\n")			  
 				  ;
 		
 		
@@ -348,11 +325,11 @@ public class TestLs {
 
 
 		String expect[] = (
-				      "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
-				    + "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
-				    + "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
-				    + "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n").split("\n");
+				      "-rw-r--r-x@ 1 tony  staff  1547 Jun  4  2025 AbcFileA.js\n"
+				      + "-rwxr-xr-x@ 1 tony  staff    20 Jun  9  2025 AbcFileC.txt\n"
+				      + "-rwxr-xr-x@ 1 tony  staff  3710 Jun 16  2025 AbcFileB.php\n"
+				      + "-rwxr-xr-x@ 1 tony  staff    20 Jun 20  2025 AbcFileD.properties\n"
+				      + "drwxr-xr-x@ 4 tony  staff   238 Dec 26 01:10 Folder01").split("\n");
 				  
 				  ;
 		
