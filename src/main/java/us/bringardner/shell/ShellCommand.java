@@ -6,6 +6,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -373,6 +375,15 @@ public abstract class ShellCommand {
 			ret = glob(ctx, path);
 		} else {
 			ret.add(ctx.console.createFileSource(path));
+		}
+		if( !ret.isEmpty()) {
+			Collections.sort(ret,new Comparator<FileSource>() {
+
+				@Override
+				public int compare(FileSource o1, FileSource o2) {
+					return o1.getName().compareTo(o2.getName());
+				}
+			});
 		}
 
 		return ret;
