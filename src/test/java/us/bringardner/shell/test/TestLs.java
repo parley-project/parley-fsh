@@ -306,11 +306,11 @@ public class TestLs extends AbstractConsoleTest {
 
 
 		String expect[] = 
-				    (  "drwxr-xr-x@ 4 tony  staff   238 Dec 26 01:10 Folder01\n"
-				    		+ "-rwxr-xr-x@ 1 tony  staff    20 Jun 20  2025 AbcFileD.properties\n"
-				    		+ "-rwxr-xr-x@ 1 tony  staff  3710 Jun 16  2025 AbcFileB.php\n"
-				    		+ "-rwxr-xr-x@ 1 tony  staff    20 Jun  9  2025 AbcFileC.txt\n"
-				    		+ "-rw-r--r-x@ 1 tony  staff  1547 Jun  4  2025 AbcFileA.js").replaceAll("\r", "").split("\n")			  
+				    (  "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties\n"
+				    		+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
+				    		+ "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
+				    		+ "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
+				    		+ "drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01").replaceAll("\r", "").split("\n")			  
 				  ;
 		
 		
@@ -324,12 +324,11 @@ public class TestLs extends AbstractConsoleTest {
 	public void testLs_ltr() throws IOException {
 
 
-		String expect[] = (
-				      "-rw-r--r-x@ 1 tony  staff  1547 Jun  4  2025 AbcFileA.js\n"
-				      + "-rwxr-xr-x@ 1 tony  staff    20 Jun  9  2025 AbcFileC.txt\n"
-				      + "-rwxr-xr-x@ 1 tony  staff  3710 Jun 16  2025 AbcFileB.php\n"
-				      + "-rwxr-xr-x@ 1 tony  staff    20 Jun 20  2025 AbcFileD.properties\n"
-				      + "drwxr-xr-x@ 4 tony  staff   238 Dec 26 01:10 Folder01").split("\n");
+		String expect[] = ("drwxr-xr-x 1 tony  staff   238  Nov 05 2022 Folder01\n"
+				+ "-rw-r--r-- 1 tony  staff  1547  Jun 04 2025 AbcFileA.js\n"
+				+ "-rwxr-xr-x 1 tony  staff    20  Jun 09 2025 AbcFileC.txt\n"
+				+ "-rwxr-xr-x 1 tony  staff  3710  Jun 16 2025 AbcFileB.php\n"
+				+ "-rwxr-xr-x 1 tony  staff    20  Jun 20 2025 AbcFileD.properties").split("\n");
 				  
 				  ;
 		
@@ -349,7 +348,7 @@ public class TestLs extends AbstractConsoleTest {
 				assertTrue(test.trim().endsWith(line.trim()),"idx="+idx);
 			} else {
 				String name = line.substring(pos);
-				assertTrue(actual[idx].trim().endsWith(name),"idx="+idx);
+				assertTrue(actual[idx].trim().endsWith(name.trim()),"idx="+idx);
 			}
 		}
 	
