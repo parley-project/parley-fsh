@@ -222,7 +222,7 @@ public class TestLs extends AbstractConsoleTest {
 		// The result is different than linux... In linux the folder is not listed
 		String expect[] = (
 					"drwxr-xr-x 1 tony  staff   170  May 31 2015 Folder01ghi\n\n"
-					+ "Folder01/Folder01abc.1/Folder01ghi:\n"
+					+ "Folder01ghi:\n"
 				
 					+ "-rwxr-xr-x 1 tony  staff    20  Nov 30 2020 AbcFile.php\n"
 					+ "-rwxr-xr-x 1 tony  staff    20  Jul 03 2018 AbcFile.properties\n"
