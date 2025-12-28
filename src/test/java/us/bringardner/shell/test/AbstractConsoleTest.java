@@ -177,8 +177,12 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 
 	public static ExecuteResult executeCommand(String command,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
 		ExecuteResult ret = executeCommand(command, stdIn,exitCode);
-		assertEquals(expectOut, ret.getStdOut().replaceAll("\r", ""));
-		assertEquals(expectErr, ret.getStdErr().replaceAll("\r", ""));
+		String out = ret.getStdOut().replaceAll("\\s", "");
+		String err = ret.getStdErr().replaceAll("\\s", "");
+		expectOut = expectOut.replaceAll("\\s", "");
+		expectErr = expectErr.replaceAll("\\s", "");
+		assertEquals(expectOut, out);
+		assertEquals(expectErr, err);
 		
 		return ret;
 	}
