@@ -63,18 +63,17 @@ public class TestExternal extends AbstractConsoleTest {
 	@Test
 	public void testExternal03() throws Exception{
 		setup("WcTestFiles");
-		String path = testFilesDir.getAbsolutePath();
-
+		
 		String cmd = "/usr/bin/wc -Lclw *\n";
-		String expectOut = String.format(
+		String expectOut = 
 				""
-						+ "[ ]*45[ ]*168[ ]*1547[ ]*79[ ]*.*/WcTestFiles/AbcFile.js\n"
-						+ "[ ]*156[ ]*537[ ]*3710[ ]*86[ ]*.*/WcTestFiles/AbcFile.php\n"
-						+ "[ ]*45[ ]*314[ ]*2048[ ]*76[ ]*.*/WcTestFiles/AbcFile.properties\n"
-						+ "[ ]*122[ ]*679[ ]*4958[ ]*126[ ]*.*/WcTestFiles/AbcFile.txt\n"
-						+ "[ ]*368[ ]*1698[ ]*12263[ ]*126[ ]*total\n"
+						+ "[ ]*45[ ]*168[ ]*1547[ ]*79[ ]*.*AbcFile.js[ \\r\\n]*"
+						+ "[ ]*156[ ]*537[ ]*3710[ ]*86[ ]*.*AbcFile.php[ \\r\\n]*"
+						+ "[ ]*45[ ]*314[ ]*2048[ ]*76[ ]*.*AbcFile.properties[ \\r\\n]*"
+						+ "[ ]*122[ ]*679[ ]*4958[ ]*126[ ]*.*AbcFile.txt[ \\r\\n]*"
+						+ "[ ]*368[ ]*1698[ ]*12263[ ]*126[ ]*total[ \\r\\n]*"
 						+ ""
-						,path,path,path,path);
+						;
 
 		if( getOs()==OperatingSystem.Windows) {
 			cmd = "wc -Lclw *\n";
