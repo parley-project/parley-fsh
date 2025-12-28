@@ -13,6 +13,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -22,6 +24,7 @@ import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.job.IJob;
+import us.bringardner.shell.test.utilities.ManageTestFiles;
 
 @TestMethodOrder(OrderAnnotation.class)
 public abstract class AbstractConsoleTest {
@@ -47,6 +50,7 @@ public abstract class AbstractConsoleTest {
 
 
 	public static void setup(String home) throws IOException {
+		manageTesTFiles();
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 		File tmp = new File(home).getCanonicalFile();
 		testFilesDir = tmp;
@@ -59,6 +63,25 @@ public abstract class AbstractConsoleTest {
 		
 	}
 
+	private static void manageTesTFiles() throws IOException {
+		File dir = new File("LsTestFiles");
+		File file = new File(dir,"Folder01");
+		//lastModifiedTime=11-05-2022 00:57:07
+		Date date=null;
+		try {
+			date = ManageTestFiles.dateFmt.parse("11-05-2022 00:57:07");
+			long time = date.getTime();
+			if(file.lastModified()!=time) {
+				ManageTestFiles.main(new String[0]);
+				if(file.lastModified()!=time) {
+					throw new IOException("Cannot update test file dates");
+				}
+			}
+		} catch (ParseException e) {
+			throw new IOException(e);
+		
+		}
+	}
 	private static void cleanMacFileSystem(File file) {
 		if( file.isDirectory()) {
 			File [] kids = file.listFiles();
