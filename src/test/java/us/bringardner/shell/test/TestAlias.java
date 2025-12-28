@@ -68,11 +68,11 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String[] expect = 
-				  ("AbcFileA.js\n"
+				  ("Folder01\n"
+				  		+ "AbcFileA.js\n"
 				  		+ "AbcFileC.txt\n"
 				  		+ "AbcFileB.php\n"
-				  		+ "AbcFileD.properties\n"
-				  		+ "Folder01"
+				  		+ "AbcFileD.properties"
 				).replaceAll("\r", "").split("\n");
 				;
 		
@@ -97,11 +97,11 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String[] expect = 
-				  ("AbcFile01.txt\n"
+				  ("Folder01abc.1\n"
+				  		+ "AbcFile01.txt\n"
 				  		+ "AbcFile01.properties\n"
 				  		+ "AbcFile01.php\n"
-				  		+ "Folder01def.2\n"
-				  		+ "Folder01abc.1"
+				  		+ "Folder01def.2"
 				).replaceAll("\r", "").split("\n");
 				;
 		
@@ -210,11 +210,12 @@ public class TestAlias extends AbstractConsoleTest{
 				;
 		
 		String expect[] = 
-				  ("AbcFileA.js\n"
+				  ("Folder01\n"
+				  		+ "AbcFileA.js\n"
 				  		+ "AbcFileC.txt\n"
 				  		+ "AbcFileB.php\n"
-				  		+ "AbcFileD.properties\n"
-				  		+ "Folder01").replaceAll("\r", "").split("\n");
+				  		+ "AbcFileD.properties")
+				  .replaceAll("\r", "").split("\n");
 			
 				;
 		
