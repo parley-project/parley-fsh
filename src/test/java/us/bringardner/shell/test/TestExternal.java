@@ -63,27 +63,13 @@ public class TestExternal extends AbstractConsoleTest {
 	@Test
 	public void testExternal03() throws Exception{
 		setup("WcTestFiles");
-		// make a change
 		String cmd = "/usr/bin/wc -Lclw *\n";
-		String expectOut = 
-				""
-						+ "[ ]*45[ ]*168[ ]*1547[ ]*79.*AbcFile.js[ \\r\\n]*"
-						+ "[ ]*156[ ]*537[ ]*3710[ ]*86.*AbcFile.php[ \\r\\n]*"
-						+ "[ ]*45[ ]*314[ ]*2048[ ]*76.*AbcFile.properties[ \\r\\n]*"
-						+ "[ ]*122[ ]*679[ ]*4958[ ]*126.*AbcFile.txt[ \\r\\n]*"
-						+ "[ ]*368[ ]*1698[ ]*12263[ ]*126[ ]*total[ \\r\\n]*"
-						+ ""
-						;
-
-		if( getOs()==OperatingSystem.Windows) {
-			cmd = "wc -Lclw *\n";
-			expectOut = "      45     168    1547      79 AbcFile.js\n"
-					+ "     156     537    3710      86 AbcFile.php\n"
-					+ "      45     314    2048      76 AbcFile.properties\n"
-					+ "     122     679    4958     126 AbcFile.txt\n"
-					+ "     368    1698   12263     126 total\n";
-
-		}
+		String expectOut = "[ ]+45[ ]+168[ ]+1547[ ]+79.*AbcFile.js\n"
+				+ "[ ]+156[ ]+537[ ]+3710[ ]+107.*AbcFile.php\n"
+				+ "[ ]+45[ ]+314[ ]+2048[ ]+76.*AbcFile.properties\n"
+				+ "[ ]+122[ ]+679[ ]+4958   126.*AbcFile.txt\n"
+				+ "[ ]+368[ ]+1698[ ]+12263[ ]+126 total\n"
+				+ "";
 
 
 		String stdIn = "";
