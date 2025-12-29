@@ -95,8 +95,8 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 						+ "Folder01\n"
 						+ "AbcFile.php\n"
 						+"AbcFile.js\n"
-						+ "SymLink2Folder01"
-						+ "AbcFile.properties\n"
+						+ "SymLink2Folder01\n"
+						+ "AbcFile.properties"
 						).split("\n");
 		}
 		assertEquals(expectFiles.length, kids.length);
