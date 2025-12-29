@@ -76,44 +76,16 @@ public class TestExternal extends AbstractConsoleTest {
 				+ "[ ]+122[ ]+679[ ]+4958[ ]+126.*AbcFile.txt\n"
 				+ "[ ]+368[ ]+1698[ ]+12263[ ]+126[ ]+total\n"
 				+ "";
-
-		FileSource file = console.getCurrentDirectory().getChild("AbcFile.php");
-		try(InputStream in = file.getInputStream()) {
-			byte data[] = in.readAllBytes();
-			String str = new String(data);
-			StringBuilder buf = new StringBuilder();
-			int maxLine = 0;
-			int maxLen = 0;
-			String maxStr = "";
-			int line = 0;
-			for (int idx = 0; idx < data.length; idx++) {
-				char c = (char)data[idx];
-				if( c=='\n' ) {				
-					int sz = buf.length();
-					if( sz > maxLen) {
-						maxLen = sz;
-						maxLine = line;
-						maxStr = buf.toString();
-					}
-					line++;
-					buf.setLength(0); 
-				} else if( c=='\r') {
-					System.out.println("Should not contain cr");
-				} else {
-					buf.append(c);
-				}
-			}
-			int sz = buf.length();
-			if( sz > maxLen) {
-				maxLen = sz;
-				maxStr = buf.toString();
-				maxLine=line+1;
-			}
-			
-			System.out.println("maxLine="+maxLine);
-			System.out.println("maxLen="+maxLen);
-			System.out.println("maxStr=~"+maxStr+"~");
+		if( getOs()==OperatingSystem.Linux) {
+			// linux wc counts tabs as 8 
+			 expectOut = "[ ]+45[ ]+168[ ]+1547[ ]+79.*AbcFile.js\n"
+						+ "[ ]+156[ ]+537[ ]+3710[ ]+107.*AbcFile.php\n"
+						+ "[ ]+45[ ]+314[ ]+2048[ ]+76.*AbcFile.properties\n"
+						+ "[ ]+122[ ]+679[ ]+4958[ ]+126.*AbcFile.txt\n"
+						+ "[ ]+368[ ]+1698[ ]+12263[ ]+126[ ]+total\n"
+						+ "";
 		}
+
 		String stdIn = "";
 		String expectErr = "";
 		int exitCode = 0;
