@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+
+import us.bringardner.io.filesource.FileSource;
 
 
 public class TestExternal extends AbstractConsoleTest {
@@ -65,13 +68,49 @@ public class TestExternal extends AbstractConsoleTest {
 		setup("WcTestFiles");
 		String cmd = "/usr/bin/wc -Lclw *\n";
 		String expectOut = "[ ]+45[ ]+168[ ]+1547[ ]+79.*AbcFile.js\n"
-				+ "[ ]+156[ ]+537[ ]+3710[ ]+107.*AbcFile.php\n"
+				+ "[ ]+156[ ]+537[ ]+3710[ ]+86.*AbcFile.php\n"
 				+ "[ ]+45[ ]+314[ ]+2048[ ]+76.*AbcFile.properties\n"
-				+ "[ ]+122[ ]+679[ ]+4958   126.*AbcFile.txt\n"
-				+ "[ ]+368[ ]+1698[ ]+12263[ ]+126 total\n"
+				+ "[ ]+122[ ]+679[ ]+4958[ ]+126.*AbcFile.txt\n"
+				+ "[ ]+368[ ]+1698[ ]+12263[ ]+126[ ]+total\n"
 				+ "";
 
-
+		FileSource file = console.getCurrentDirectory().getChild("AbcFile.php");
+		try(InputStream in = file.getInputStream()) {
+			byte data[] = in.readAllBytes();
+			String str = new String(data);
+			StringBuilder buf = new StringBuilder();
+			int maxLine = 0;
+			int maxLen = 0;
+			String maxStr = "";
+			int line = 0;
+			for (int idx = 0; idx < data.length; idx++) {
+				char c = (char)data[idx];
+				if( c=='\n' ) {				
+					int sz = buf.length();
+					if( sz > maxLen) {
+						maxLen = sz;
+						maxLine = line;
+						maxStr = buf.toString();
+					}
+					line++;
+					buf.setLength(0); 
+				} else if( c=='\r') {
+					System.out.println("Should not contain cr");
+				} else {
+					buf.append(c);
+				}
+			}
+			int sz = buf.length();
+			if( sz > maxLen) {
+				maxLen = sz;
+				maxStr = buf.toString();
+				maxLine=line+1;
+			}
+			
+			System.out.println("maxLine="+maxLine);
+			System.out.println("maxLen="+maxLen);
+			System.out.println("maxStr=~"+maxStr+"~");
+		}
 		String stdIn = "";
 		String expectErr = "";
 		int exitCode = 0;
@@ -82,10 +121,18 @@ public class TestExternal extends AbstractConsoleTest {
 		if( getOs()==OperatingSystem.Windows) {
 			assertEquals(expectOut, out);
 		} else {
-			Pattern p = Pattern.compile(expectOut);
-			Matcher m = p.matcher(out);
-			boolean ok = m.matches();
-			assertTrue(ok);
+			String expectLines[] =expectOut.split("\n");
+			String outLines[] = out.split("\n");
+			assertEquals(expectLines.length, outLines.length);
+			for (int idx = 0; idx < outLines.length; idx++) {
+				String eline = expectLines[idx];
+				String oline = outLines[idx];
+				Pattern p = Pattern.compile(eline);
+				Matcher m = p.matcher(oline);
+				boolean ok = m.matches();
+				assertTrue(ok,"idx="+idx);	
+			}
+			
 		}
 		String err = ret.getStdErr();
 		assertEquals(expectErr, err);
