@@ -67,6 +67,9 @@ public class TestExternal extends AbstractConsoleTest {
 	public void testExternal03() throws Exception{
 		setup("WcTestFiles");
 		String cmd = "/usr/bin/wc -Lclw *\n";
+		if( getOs()==OperatingSystem.Windows) {
+			cmd = "wc -Lclw *\n";
+		}
 		String expectOut = "[ ]+45[ ]+168[ ]+1547[ ]+79.*AbcFile.js\n"
 				+ "[ ]+156[ ]+537[ ]+3710[ ]+86.*AbcFile.php\n"
 				+ "[ ]+45[ ]+314[ ]+2048[ ]+76.*AbcFile.properties\n"
@@ -118,9 +121,7 @@ public class TestExternal extends AbstractConsoleTest {
 
 		ExecuteResult ret = executeCommand(cmd,stdIn,exitCode);
 		String out = ret.getStdOut();
-		if( getOs()==OperatingSystem.Windows) {
-			assertEquals(expectOut, out);
-		} else {
+	
 			String expectLines[] =expectOut.split("\n");
 			String outLines[] = out.split("\n");
 			assertEquals(expectLines.length, outLines.length);
@@ -131,8 +132,6 @@ public class TestExternal extends AbstractConsoleTest {
 				Matcher m = p.matcher(oline);
 				boolean ok = m.matches();
 				assertTrue(ok,"idx="+idx);	
-			}
-			
 		}
 		String err = ret.getStdErr();
 		assertEquals(expectErr, err);
