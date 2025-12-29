@@ -87,7 +87,18 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 						+ "AbcFile.properties\n"
 						+ "Folder01\n"
 						+ "Hotel California.txt\n"
-						+ "SymLink2Folder01").split("\n");
+						+ "SymLink2Folder01"
+						).split("\n");
+		if( getOs()==OperatingSystem.Linux) {
+			expectFiles = (
+				"Hotel California.txt\n"
+						+ "Folder01\n"
+						+ "AbcFile.php\n"
+						+"AbcFile.js\n"
+						+ "SymLink2Folder01"
+						+ "AbcFile.properties\n"
+						).split("\n");
+		}
 		assertEquals(expectFiles.length, kids.length);
 
 		for (int idx = 0; idx < expectFiles.length; idx++) {
