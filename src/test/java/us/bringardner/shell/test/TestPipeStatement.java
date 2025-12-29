@@ -96,6 +96,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		
 		if( getOs()==OperatingSystem.Windows) {
 			expect = "4      36     322";
+		}else if(getOs()==OperatingSystem.Linux) {
+			expect = "4      36     242";
 		}
 		
 		ExecuteResult res = executeCommand(cmd,"");
@@ -118,6 +120,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		if( getOs()==OperatingSystem.Windows) {
 			expect = "4      36     322";
+		}else if(getOs()==OperatingSystem.Linux) {
+			expect = "4      36     242";
 		}
 		
 		boolean tmp = showError;
@@ -143,6 +147,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 		if( getOs()==OperatingSystem.Windows) {
 			expect = "4      36     322";
+		}else if(getOs()==OperatingSystem.Linux) {
+			expect = "4      36     242";
 		}
 		
 		boolean tmp = showError;
