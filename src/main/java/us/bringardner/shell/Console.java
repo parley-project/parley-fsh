@@ -62,6 +62,7 @@ import us.bringardner.shell.commands.Exec;
 import us.bringardner.shell.commands.Exit;
 import us.bringardner.shell.commands.Export;
 import us.bringardner.shell.commands.Fg;
+import us.bringardner.shell.commands.Find;
 import us.bringardner.shell.commands.Help;
 import us.bringardner.shell.commands.History;
 import us.bringardner.shell.commands.Jobs;
@@ -341,7 +342,8 @@ delimiter
 		registerCommand(new Export());
 
 		registerCommand(new Fg());
-
+		registerCommand(new Find());
+		
 		registerCommand(new Help());
 		registerCommand(new History());
 
@@ -1918,7 +1920,13 @@ delimiter
 
 
 	public FileSource createFileSource(String path) throws IOException {
-
+		if(path.equals(".")) {
+			return getCurrentDirectory();
+		}
+		if( path.equals("..")) {
+			return getCurrentDirectory().getParentFile();			
+		}
+		
 		return mountFactory.createFileSource(path);
 	}
 

@@ -376,7 +376,7 @@ public abstract class ShellCommand {
 		} else {
 			ret.add(ctx.console.createFileSource(path));
 		}
-		if( !ret.isEmpty()) {
+		if( ret.size()>1) {
 			Collections.sort(ret,new Comparator<FileSource>() {
 
 				@Override
