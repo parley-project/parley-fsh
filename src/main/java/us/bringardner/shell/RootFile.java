@@ -222,11 +222,6 @@ public class RootFile implements FileSource {
 		return parent == null?null:parent.getName();
 	}
 
-	@Override
-	public boolean isChildOfMine(FileSource child) throws IOException {
-		boolean ret = child.getAbsolutePath().startsWith(getAbsolutePath());
-		return ret;
-	}
 
 	@Override
 	public boolean isFile() throws IOException {

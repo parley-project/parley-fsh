@@ -100,6 +100,9 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 						).split("\n");
 		}
 		assertEquals(expectFiles.length, kids.length);
+		// the order of a directory listing isn't defined (it differs between file systems)
+		java.util.Arrays.sort(expectFiles);
+		java.util.Arrays.sort(kids, java.util.Comparator.comparing(FileSource::getName));
 
 		for (int idx = 0; idx < expectFiles.length; idx++) {
 			FileSource kid = kids[idx];

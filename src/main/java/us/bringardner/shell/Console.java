@@ -1438,14 +1438,8 @@ delimiter
 					// \W	The basename of $PWD, with $HOME abbreviated with a tilde.
 				case 'w':
 				case 'W':
-					String home = System.getProperty("user.dir");
-
-					String pwd = ""+getVariable(VARIABLE_PWD);
-					if( pwd.startsWith(home)) {
-						pwd = pwd.substring(home.length());
-						pwd = "~"+pwd;
-					}
-					ret.append(pwd);
+					// $HOME (was user.dir, the directory the shell started in)
+					ret.append(abbreviateHome(""+getVariable(VARIABLE_PWD), System.getProperty("user.home")));
 
 					break;
 
@@ -2038,6 +2032,17 @@ delimiter
 
 	public void clearAliases() {
 		alias.clear();		
+	}
+
+	/**
+	 * pwd with the home directory shown as "~", as in a bash prompt. Only whole path
+	 * elements match: /home/tony2 is not under /home/tony.
+	 */
+	public static String abbreviateHome(String pwd, String home) {
+		if( home == null || home.isEmpty() || !FileSourceFactory.isSameOrDescendant(home, pwd)) {
+			return pwd;
+		}
+		return "~"+pwd.substring(home.length());
 	}
 
 	public void setMountFactory(VirtualFileSourceFactory mount) {

@@ -11,6 +11,8 @@ import java.util.Properties;
 
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 public class VirtualFileSourceFactory extends FileSourceFactory {
 	/**
@@ -82,6 +84,42 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 		currentDirectory = dir;
 	}
 
+	/**
+	 * The path with repeated separators and "." removed and ".." taking away the
+	 * element before it, never going above the start ("/", or a Windows drive such
+	 * as "C:\\"). Keeps the path's own separator.
+	 */
+	public static String logicalPath(String path) {
+		char sep = path.indexOf('\\') >= 0 && path.indexOf('/') < 0 ? '\\' : '/';
+		String prefix = "";
+		String rest = path;
+		if( rest.length() > 1 && Character.isLetter(rest.charAt(0)) && rest.charAt(1) == ':') {
+			prefix = rest.substring(0, 2);
+			rest = rest.substring(2);
+		}
+		boolean absolute = rest.startsWith("/") || rest.startsWith("\\");
+		Deque<String> parts = new ArrayDeque<>();
+		for(String part : rest.split("[/\\\\]")) {
+			if( part.isEmpty() || part.equals(".")) {
+				continue;
+			}
+			if( part.equals("..")) {
+				if( !parts.isEmpty() && !parts.peekLast().equals("..")) {
+					parts.pollLast();
+				} else if( !absolute) {
+					parts.addLast(part);
+				}
+			} else {
+				parts.addLast(part);
+			}
+		}
+		String joined = String.join(String.valueOf(sep), parts);
+		if( absolute ) {
+			return prefix+sep+joined;
+		}
+		return prefix+joined;
+	}
+
 	@Override
 	public FileSource createFileSource(String fullPath) throws IOException {
 
@@ -102,16 +140,20 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 			}
 		}
 
+		// "." and ".." are resolved by name, as a shell's cd does (logical paths), so
+		// ".." can't be mistaken for part of a name or run past the start of a mount
+		realPath = logicalPath(realPath);
+
 		FileSource root=null;
 		FileSource ret=null;
 
+		// roots are sorted longest first; a mount at /data must not claim /database
 		for(FileSource tmp: listRoots()) {
 			String rootPath =tmp.getAbsolutePath();
-			if( realPath.startsWith(rootPath)) {
+			if( FileSourceFactory.isSameOrDescendant(rootPath, realPath)) {
 				ret=root = tmp;
 				realPath = realPath.substring(rootPath.length());
-				abs = realPath.startsWith("/");
-				if( abs) {
+				while( realPath.startsWith("/") || realPath.startsWith("\\")) {
 					realPath=realPath.substring(1);
 				}
 
@@ -119,19 +161,6 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 			}
 		}
 
-		
-		while(realPath.contains("..")) {
-			int idx = realPath.indexOf("..");
-			String left = realPath.substring(0,idx-1);
-			String right = realPath.substring(idx+2);
-			FileSource tmp = root.getChild(left);
-			FileSource tmp2 = tmp.getParentFile();
-			left = tmp2.getAbsolutePath();
-			String rootPath = root.getAbsolutePath();
-			left = left.substring(rootPath.length());
-			realPath = left+right;
-		}
-		
 		if(root !=null &&  !realPath.isEmpty()) {
 
 			ret = root.getChild(realPath);

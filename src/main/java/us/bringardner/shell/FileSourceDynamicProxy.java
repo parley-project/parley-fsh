@@ -31,7 +31,10 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 		    Object result = method.invoke(target, args);
 		    String name = method.getName();
 		    
-		    if( name.equals("getAbsolutePath") || name.equals("getCanonicalPath") || name.equals("toString")) {
+		    // The path shown in the shell is the virtual one (under the mount point).
+		    // getCanonicalPath is left alone: like a link, a mount resolves to the real
+		    // file, so the shared isChildOfMine (which compares canonical paths) works (BJL-25).
+		    if( name.equals("getAbsolutePath") || name.equals("toString")) {
 		    	RootFile root = findRoot(parent);
 		    	String tmp2 = root.target.getAbsolutePath();
 		    	String tmp3 = target.getAbsolutePath();
@@ -71,12 +74,9 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 		    		
 		    		
 		    	}
-		    } else if( name.equals("isChildOfMine") && args.length==1) {
-		    	String child = args[0].toString();
-		    	String parent = proxy.toString();
-		    	boolean ret = child.startsWith(parent);
-		    	result = ret;
 		    }
+		    // isChildOfMine: the real file's shared implementation (it used to compare
+		    // the virtual names with startsWith, so /data/x counted as inside /dat)
 		    
 		    
 		    
