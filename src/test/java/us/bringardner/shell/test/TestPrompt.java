@@ -103,10 +103,11 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("\\u", System.getProperty("user.name"));
 		expect.put("\\v", Console.VERSION);
 		expect.put("\\V", Console.VERSION);
+		
+		
 		//PROMPT_DIRTRIM
-	
-		expect.put("\\w",isWin?"~\\TestFiles": "~/TestFiles");
-		expect.put("\\W",isWin?"~\\TestFiles": "~/TestFiles");
+		expect.put("\\w",isWin?"~": "~"); //TOD: mac and linux both use "" NOT "~" so the shell matches
+		expect.put("\\W",isWin?"~": "~");
 		expect.put("\\!", "0");
 		expect.put("\\#", "0");
 		expect.put("\\$", "$");
