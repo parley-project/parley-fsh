@@ -18,6 +18,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Path_segmentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.StringContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
+import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.statement.CommandSubstitutionStatement;
 
@@ -26,8 +27,16 @@ public class Argument {
 	ArgumentContext context;
 	String value;
 
+	/** for a word made by expansion: true if an unquoted * ? or [ in it makes it a glob */
+	private boolean glob;
+
 	public Argument(String value) {
 		this.value = value;
+	}
+
+	public Argument(String value, boolean glob) {
+		this.value = value;
+		this.glob = glob;
 	}
 
 	public Argument(ArgumentContext ctx) {
@@ -98,6 +107,9 @@ argumentPart:
 	 * @return true if the word has an unquoted *, ? or [, so it names files
 	 */
 	public boolean hasUnquotedWildcard() {
+		if( context == null ) {
+			return glob;
+		}
 		if( context != null ) {
 			for(ArgumentPartContext part : context.argumentPart()) {
 				if( part.literal != null ) {
@@ -110,6 +122,172 @@ argumentPart:
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * The words a word becomes when a statement runs: brace expansion, then word splitting of
+	 * its unquoted expansions ($x, ${x}, $(cmd), `cmd`, $((...))) on IFS, as in bash. Literal
+	 * text and quoted strings are not split; they join the neighboring field. An unquoted
+	 * expansion that is empty and has nothing next to it gives no word at all.
+	 * 
+	 * @return the words, or null if the word stays as it is (no braces and no unquoted expansion)
+	 */
+	public static List<Argument> expandWord(ArgumentContext word, ShellContext ctx, boolean split) throws IOException {
+		List<String> braces = expandBraces(word, ctx);
+		if( braces != null ) {
+			List<Argument> ret = new ArrayList<>();
+			for(String b : braces) {
+				ret.add(new Argument(b));
+			}
+			return ret;
+		}
+		if( !split || !hasExpansion(word)) {
+			return null;
+		}
+		return new WordSplitter(ctx).split(word);
+	}
+
+	private static boolean hasExpansion(ArgumentContext word) {
+		for(ArgumentPartContext part : word.argumentPart()) {
+			if( isExpansion(part)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isExpansion(ArgumentPartContext part) {
+		return part.argVariable() != null || part.parameter() != null
+				|| part.arg_command_substitution() != null || part.mathExpression() != null;
+	}
+
+	private static boolean hasWildcard(String text) {
+		return text.indexOf('*') >= 0 || text.indexOf('?') >= 0 || text.indexOf('[') >= 0;
+	}
+
+	/**
+	 * Builds the fields of one word.
+	 */
+	private static class WordSplitter {
+		final ShellContext ctx;
+		final String ifs;
+		final List<Argument> fields = new ArrayList<>();
+		StringBuilder current = new StringBuilder();
+		boolean currentIsField = false;
+		boolean currentGlob = false;
+
+		WordSplitter(ShellContext ctx) {
+			this.ctx = ctx;
+			Object tmp = ctx.getVariable(Console.IFS);
+			// unset IFS splits on space, tab and newline; an empty IFS does not split
+			this.ifs = tmp == null ? " \t\n" : tmp.toString();
+		}
+
+		List<Argument> split(ArgumentContext word) {
+			for(ArgumentPartContext part : word.argumentPart()) {
+				if( isExpansion(part)) {
+					Object val = getValue(part, ctx);
+					String text = val instanceof List<?> ? join((List<?>) val) : ""+val;
+					addSplit(text);
+				} else {
+					String text = ""+getValue(part, ctx);
+					current.append(text);
+					currentIsField = true;
+					if( part.literal != null && hasWildcard(text)) {
+						currentGlob = true;
+					}
+				}
+			}
+			finish();
+			return fields;
+		}
+
+		private static String join(List<?> list) {
+			StringBuilder ret = new StringBuilder();
+			for(Object o : list) {
+				if( ret.length() > 0 ) {
+					ret.append(' ');
+				}
+				ret.append(o);
+			}
+			return ret.toString();
+		}
+
+		private void finish() {
+			if( currentIsField ) {
+				fields.add(new Argument(current.toString(), currentGlob));
+			}
+			current = new StringBuilder();
+			currentIsField = false;
+			currentGlob = false;
+		}
+
+		private void append(String text) {
+			current.append(text);
+			currentIsField = true;
+			if( hasWildcard(text)) {
+				currentGlob = true;
+			}
+		}
+
+		private boolean isIfsSpace(char c) {
+			return ifs.indexOf(c) >= 0 && Character.isWhitespace(c);
+		}
+
+		private boolean isIfsOther(char c) {
+			return ifs.indexOf(c) >= 0 && !Character.isWhitespace(c);
+		}
+
+		/**
+		 * Split expanded text on IFS: runs of IFS whitespace separate fields and are trimmed at
+		 * both ends; each other IFS character ends a field (so a::b has an empty field).
+		 */
+		private void addSplit(String text) {
+			if( ifs.isEmpty()) {
+				if( !text.isEmpty()) {
+					append(text);
+				}
+				return;
+			}
+			int n = text.length();
+			int idx = 0;
+			// leading IFS whitespace ends the field before it
+			while( idx < n && isIfsSpace(text.charAt(idx))) {
+				idx++;
+			}
+			if( idx > 0 ) {
+				finish();
+			}
+			boolean first = true;
+			while( idx < n ) {
+				if( !first ) {
+					finish();
+				}
+				first = false;
+				int start = idx;
+				while( idx < n && ifs.indexOf(text.charAt(idx)) < 0 ) {
+					idx++;
+				}
+				append(text.substring(start, idx));
+				if( idx >= n ) {
+					break;
+				}
+				// the delimiter: IFS whitespace, at most one other IFS character, IFS whitespace
+				while( idx < n && isIfsSpace(text.charAt(idx))) {
+					idx++;
+				}
+				if( idx < n && isIfsOther(text.charAt(idx))) {
+					idx++;
+					while( idx < n && isIfsSpace(text.charAt(idx))) {
+						idx++;
+					}
+				}
+				if( idx >= n ) {
+					// a trailing delimiter ends the field
+					finish();
+				}
+			}
+		}
 	}
 
 	/**

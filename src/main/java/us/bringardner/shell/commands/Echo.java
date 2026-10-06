@@ -1,16 +1,10 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
-import java.util.List;
 
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
-import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Argument;
 
 public class Echo extends ShellCommand{
 	static String name = "echo";
@@ -28,41 +22,23 @@ public class Echo extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-
-
 		int ret = 0;
 		boolean nl = true;
-
-		StringBuilder buf = new StringBuilder();
-		if( context !=null) {
-			ParserRuleContext cc = context;
-			List<ParseTree> kids = cc.children;
-			//  match up args with WS
-			int aidx=0;				
-			for (int idx = 0; idx < kids.size(); idx++) {
-				ParseTree kid = kids.get(idx);
-				if (kid instanceof ArgumentContext	&& aidx<args.length) {
-					//ArgumentContext ac = (ArgumentContext) kid;
-					Argument a = args[aidx];
-					String val =""+a.getValue(ctx);
-
-					if( val.equals("-n") ) {
-						nl = false;
-					} else {
-						buf.append(val);
-					}						
-					aidx++;
-				} else if (aidx<args.length && !buf.isEmpty() && kid instanceof TerminalNode) {
-					String val = kid.getText();
-					buf.append(val);
-				}
-			}
-
-		} else {
-			throw new IOException("No context in Echo");
+		int idx = 0;
+		// -n is an option only before the first word, as in bash
+		while( idx < args.length && "-n".equals(""+args[idx].getValue(ctx))) {
+			nl = false;
+			idx++;
 		}
 
-
+		// the words, separated by one space (the arguments are already split into words)
+		StringBuilder buf = new StringBuilder();
+		for(; idx < args.length; idx++ ) {
+			if( buf.length() > 0 ) {
+				buf.append(' ');
+			}
+			buf.append(""+args[idx].getValue(ctx));
+		}
 
 		String result = buf.toString();
 		if( nl ) {

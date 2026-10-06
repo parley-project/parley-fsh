@@ -37,14 +37,15 @@ public class TestEcho extends AbstractConsoleTest {
 		;
 
 		for (int idx = 0; idx < code.length; idx++) {
-			String expect = code[idx];
-			String cmd = "echo "+expect;
+			// echo prints its words separated by one space, as in bash (it used to copy the spacing)
+			String expect = String.join(" ", code[idx].trim().split("\\s+"));
+			String cmd = "echo "+code[idx];
 
 			ExecuteResult res = executeCommand(cmd, "");
 			assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);
 			assertEquals(expect,res.getStdOut().trim(),"Stdout for cmd="+cmd);
 
-			cmd = "echo -n "+expect;
+			cmd = "echo -n "+code[idx];
 
 			res = executeCommand(cmd, "");
 			assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);

@@ -109,8 +109,9 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 	public void testExpansionsInDoubleQuotes() throws IOException {
 		// spaces are kept (runs of spaces were dropped), `cmd` runs, and $( ) may contain quotes
 		String[][] cases = {
-				{"echo \"$(echo a   b)\"", "a   b\n"},
-				{"echo \"[`echo a   b`]\"", "[a   b]\n"},
+				// (unquoted, echo a   b prints a b; quoted spaces must survive)
+				{"echo \"$(echo 'a   b')\"", "a   b\n"},
+				{"echo \"[`echo 'a   b'`]\"", "[a   b]\n"},
 				{"echo \"${nope:-hello   world}\"", "hello   world\n"},
 				{"echo \"$(echo \"inner\")\"", "inner\n"},
 				{"echo \"$(echo 'a  b')\"", "a  b\n"},

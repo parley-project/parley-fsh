@@ -145,4 +145,24 @@ public class TestWords extends AbstractConsoleTest {
 		expect("cd "+path("")+"; ls [ab]1.txt", "a1.txt\nb1.txt\n");
 		expect("cd "+path("")+"; ls [!ab]1.txt", "c1.txt\n");
 	}
+
+	@Test
+	public void testWordSplitting() throws IOException {
+		// unquoted expansions are split on IFS; quoted ones and literal text are not
+		expect("for w in $(echo one two three); do echo \"[$w]\"; done", "[one]\n[two]\n[three]\n");
+		expect("x=\"1 2 3\"; for i in $x; do echo \"<$i>\"; done", "<1>\n<2>\n<3>\n");
+		expect("f() { echo $#; }; x=\"a b c\"; f $x; f \"$x\"", "3\n1\n");
+		// an empty unquoted expansion is no word at all; quoted, it is an empty word
+		expect("f() { echo $#; }; f a $nope b; f a \"$nope\" b", "2\n3\n");
+		// text next to the expansion joins the first and last fields
+		expect("f() { echo $# $1 $4; }; x=\" b c \"; f a${x}d", "4 a d\n");
+		expect("IFS=:; x=\"a:b::c\"; for p in $x; do echo \"<$p>\"; done", "<a>\n<b>\n<>\n<c>\n");
+		// a field with an unquoted wildcard is a glob; a quoted one is not
+		expect("cd "+path("")+"; touch g1.log g2.log; x=\"*.log\"; for f in $x; do echo $f; done", "g1.log\ng2.log\n");
+		expect("x=\"*.log\"; for f in \"$x\"; do echo $f; done", "*.log\n");
+		// export (and local, declare ...) name=value words are not split
+		expect("y=\"a b\"; export Z=$y; echo \"[$Z]\"", "[a b]\n");
+		// echo joins its words with one space; -n only at the start
+		expect("echo   spaced    out; echo a -n b", "spaced out\na -n b\n");
+	}
 }

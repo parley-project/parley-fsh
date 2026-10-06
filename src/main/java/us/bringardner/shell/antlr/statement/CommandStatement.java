@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.core.BaseThread;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.HereDocumentContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
@@ -372,6 +373,17 @@ public class CommandStatement extends Statement{
 
 	public CommandStatement(ParserRuleContext context) {
 		super(context);
+	}
+
+	/** commands whose name=value arguments are not word-split, as in bash: export X=$y keeps "a b" */
+	private static final java.util.Set<String> DECLARATIONS = java.util.Set.of("export", "local", "declare", "readonly", "typeset", "alias");
+
+	@Override
+	protected boolean splitWords(ArgumentContext word) {
+		if( name != null && DECLARATIONS.contains(name) && word.getText().matches("[a-zA-Z_][a-zA-Z_0-9]*=.*")) {
+			return false;
+		}
+		return true;
 	}
 
 

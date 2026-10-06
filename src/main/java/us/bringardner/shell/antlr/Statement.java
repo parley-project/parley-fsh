@@ -317,11 +317,10 @@ public abstract class Statement {
 		int ret = 0;
 		ctx.waitWhilePaused();
 
-		// brace expansion replaces args (and the matching children, which echo uses to find the
-		// whitespace between arguments) for this run only; the tree is shared by every run of the statement
+		// brace expansion and word splitting replace args for this run only; the tree (and these
+		// args) are shared by every run of the statement
 		Argument [] savedArgs = args;
-		List<ParseTree> savedKids = context.children;
-		expandBraces(ctx);
+		expandWords(ctx);
 
 		ctx.enterStatement(this);
 
@@ -329,85 +328,57 @@ public abstract class Statement {
 			ret = execute(ctx);
 		} finally {
 			args = savedArgs;
-			context.children = savedKids;
 			ctx.exitStatement(ret,this);
 		}
 		return ret;
 	}
 
-	private void expandBraces(ShellContext ctx) throws IOException {
+	/**
+	 * Whether the unquoted expansions in an argument are split into words (see Argument.expandWord).
+	 */
+	protected boolean splitWords(ArgumentContext word) {
+		return true;
+	}
+
+	private void expandWords(ShellContext ctx) throws IOException {
 		List<ParseTree> kids = context.children;
-		if( kids == null || kids.size() <= 1) {
+		if( kids == null ) {
 			return;
 		}
 		List<Argument> newArgs = new ArrayList<Argument>();
-		List<ParseTree> newKids = new ArrayList<ParseTree>();
-		ParseTree ws = kids.get(1);
-		int aidx1=0;
 		boolean changed = false;
+		int aidx=0;
 
-		for (int idx = 0; idx < kids.size(); idx++) {
-			ParseTree kid = kids.get(idx);
-
+		for(ParseTree kid : kids) {
 			if (kid instanceof ListContext) {
 				// for and select lists
 				ListContext lc = (ListContext)kid;
 				if(lc.argument()!=null && !lc.argument().isEmpty()) {
 					changed = true;
 					for(ArgumentContext ac : lc.argument()) {
-						List<String> words = Argument.expandBraces(ac, ctx);
+						List<Argument> words = Argument.expandWord(ac, ctx, true);
 						if( words == null ) {
 							newArgs.add(new Argument(ac));
-							newKids.add(ac);
-							newKids.add(ws);
 						} else {
-							for(String word : words) {
-								newArgs.add(new Argument(word));
-								newKids.add(placeholder(lc));
-								newKids.add(ws);
-							}
+							newArgs.addAll(words);
 						}
 					}
-				} else {
-					newKids.add(kid);
 				}
-			} else if (kid instanceof ArgumentContext && aidx1< args.length) {
-				ArgumentContext ac = (ArgumentContext) kid;
-				Argument a = args[aidx1++];
-				List<String> words = a.context == null ? null : Argument.expandBraces(a.context, ctx);
+			} else if (kid instanceof ArgumentContext && aidx < args.length) {
+				Argument a = args[aidx++];
+				List<Argument> words = a.context == null ? null : Argument.expandWord(a.context, ctx, splitWords(a.context));
 				if( words != null ) {
 					changed = true;
-					for(int w=0; w < words.size(); w++) {
-						if( w > 0 ) {
-							// the whitespace after the last word is already there
-							newKids.add(ws);
-						}
-						newArgs.add(new Argument(words.get(w)));
-						newKids.add(placeholder(ac));
-					}
+					newArgs.addAll(words);
 				} else {
 					newArgs.add(a);
-					newKids.add(kid);
 				}				
-			} else  {
-				newKids.add(kid);
 			}
 		}
 
 		if( changed ) {
 			args = newArgs.toArray(new Argument[newArgs.size()]);
-			context.children = newKids;
 		}
-	}
-
-	/**
-	 * An empty argument node standing for one word of a brace expansion (see Echo).
-	 */
-	private static ArgumentContext placeholder(ParserRuleContext from) {
-		ArgumentContext ret = new ArgumentContext(null, 0);
-		ret.start = from.start;
-		ret.stop = from.stop;
-		return ret;
 	}
 
 	public String toString(ShellContext ctx) {
