@@ -1,4 +1,4 @@
-// Generated from /Volumes/SanDisk1/eclipse-workspace-jmail/BjlShell/Antlr4/ExprParser.g4 by ANTLR 4.13.2
+// Generated from ExprParser.g4 by ANTLR 4.13.2
 package us.bringardner.filesource.sh;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 

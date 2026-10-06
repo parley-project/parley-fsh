@@ -1,4 +1,4 @@
-// Generated from C:/Git/BjlShell/Antlr4/FileSourceShParser.g4 by ANTLR 4.13.2
+// Generated from FileSourceShParser.g4 by ANTLR 4.13.2
 package us.bringardner.filesource.sh;
 
 import org.antlr.v4.runtime.ParserRuleContext;

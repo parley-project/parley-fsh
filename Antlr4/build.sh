@@ -1,6 +1,11 @@
-# run antlr tool
-antlr=/usr/local/lib/antlr-4.13.2-complete.jar
-out=/Volumes/Data/eclipse-workspace-jmail/BjlFileSystemConsole/fssh/us/bringardner/filesource/sh
-src=/Volumes/Data/eclipse-workspace-jmail/BjlFileSystemConsole/Antlr4
-#antlr4 -package us.bringardner.filesource.sh -o $out $src/FileSourceShLexer.g4 $out $src/FileSourceSh.g4 
-java -Xmx500M -cp "$antlr:$CLASSPATH" org.antlr.v4.Tool -visitor -listener -package us.bringardner.filesource.sh -o $out $src/FileSourceSh.g4
+#!/bin/sh
+# Regenerate the ANTLR parsers in ../fssh from the grammars in this directory.
+# Run it from anywhere: sh Antlr4/build.sh
+#
+# FileSourceShPreProcessorBrace* in fssh has no grammar here, so it is not regenerated.
+
+cd "$(dirname "$0")" || exit 1
+
+java -cp ../lib/antlr-4.13.2-complete.jar org.antlr.v4.Tool -visitor -listener \
+	-package us.bringardner.filesource.sh -o ../fssh/us/bringardner/filesource/sh \
+	FileSourceShLexer.g4 FileSourceShParser.g4 ExprParser.g4 FileSourceShPreProcessor.g4
