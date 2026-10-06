@@ -1,6 +1,7 @@
 package us.bringardner.shell.antlr;
 
 import java.awt.Point;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -60,7 +61,35 @@ public abstract class Statement {
 
 	};
 
-	public void configureRedirect(ShellContext ctx, RerdirectImpl redirectStart) throws IOException {
+	/**
+	 * Apply the redirects to ctx.
+	 * 
+	 * @return the streams opened here that the caller must close (with {@link #closeRedirects(List)}) once the
+	 * statement is done. Streams registered as a file descriptor are not included.
+	 */
+	public List<Closeable> configureRedirect(ShellContext ctx, RerdirectImpl redirectStart) throws IOException {
+		List<Closeable> opened = new ArrayList<>();
+		try {
+			configureRedirect(ctx, redirectStart, opened);
+		} catch (IOException | RuntimeException e) {
+			closeRedirects(opened);
+			throw e;
+		}
+		return opened;
+	}
+
+	public static void closeRedirects(List<Closeable> opened) {
+		if( opened != null ) {
+			for(Closeable c : opened) {
+				try {
+					c.close();
+				} catch (IOException e) {
+				}
+			}
+		}
+	}
+
+	private void configureRedirect(ShellContext ctx, RerdirectImpl redirectStart, List<Closeable> opened) throws IOException {
 
 		if(redirectStart!=null) {
 			Integer fid1 = null;
@@ -107,6 +136,8 @@ public abstract class Statement {
 						if( fid1 != null) {
 							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdin,file);
 							ctx.console.setFileDistcriptor(fd);								
+						} else {
+							opened.add(ctx.stdin);
 						}
 						break;
 					case Output:
@@ -118,6 +149,8 @@ public abstract class Statement {
 						if( fid1 != null) {
 							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
 							ctx.console.setFileDistcriptor(fd);								
+						} else {
+							opened.add(ctx.stdout);
 						}
 						break;
 					case Append:
@@ -126,6 +159,8 @@ public abstract class Statement {
 						if( fid1 != null) {
 							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
 							ctx.console.setFileDistcriptor(fd);								
+						} else {
+							opened.add(ctx.stdout);
 						}
 
 						break;
@@ -160,6 +195,8 @@ public abstract class Statement {
 						if( fid1 != null) {
 							FileDiscriptor fd = new FileDiscriptor(fid1, ctx.stdout,file);
 							ctx.console.setFileDistcriptor(fd);								
+						} else {
+							opened.add(ctx.stdout);
 						}
 
 						break;

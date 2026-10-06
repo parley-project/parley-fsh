@@ -1,14 +1,29 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InterruptedIOException;
+import java.io.PrintStream;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+
+import us.bringardner.shell.Console;
+import us.bringardner.shell.InteractiveInput;
+import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
+import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.signal.ExitException;
 
 
 public class TestExternal extends AbstractConsoleTest {
@@ -335,4 +350,105 @@ public class TestExternal extends AbstractConsoleTest {
 
 	}
 
+	/**
+	 * Typed input that never ends, like the GUI console's keyboard.
+	 */
+	static class TypedInput extends InputStream implements InteractiveInput {
+		final LinkedBlockingQueue<Integer> data = new LinkedBlockingQueue<>();
+
+		void type(String text) {
+			for(byte b : text.getBytes()) {
+				data.add(b & 0xff);
+			}
+		}
+
+		@Override
+		public int read() throws IOException {
+			try {
+				return data.take();
+			} catch (InterruptedException e) {
+				throw new InterruptedIOException();
+			}
+		}
+
+		@Override
+		public int available() {
+			return data.size();
+		}
+	}
+
+	@Test
+	public void testExternalOutputKeepsCallerStdout() throws Exception{
+		assumeFalse(getOs()==OperatingSystem.Windows);
+		setup("ExternalTestFiles");
+		ExecuteResult res = executeCommand("x=$(seq 1 3; echo b); echo \"[$x]\"","");
+		assertEquals("[1\n2\n3\nb]\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
+
+	@Test
+	public void testExternalLargeOutputIsComplete() throws Exception{
+		assumeFalse(getOs()==OperatingSystem.Windows);
+		setup("ExternalTestFiles");
+		ExecuteResult res = executeCommand("seq 1 200000","");
+		assertEquals(0, res.exitCode);
+		assertEquals(200000, res.getStdOut().split("\n").length);
+		assertTrue(res.getStdOut().endsWith("\n200000\n"));
+	}
+
+	@Test
+	public void testExternalDoesNotTakeInteractiveInput() throws Exception{
+		assumeFalse(getOs()==OperatingSystem.Windows);
+		setup("ExternalTestFiles");
+		Console c = new Console();
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		c.setStdOut(new PrintStream(out, true));
+		c.setStdErr(new PrintStream(out, true));
+		ShellContext sc = new ShellContext(c);
+		TypedInput typed = new TypedInput();
+		sc.stdin = typed;
+
+		assertEquals(0, c.executeUsingAntlr(sc, "/bin/echo hi"));
+		assertEquals("hi\n", out.toString());
+
+		// the next line belongs to the shell, not to the finished command
+		typed.type("next\n");
+		Thread.sleep(300);
+		assertEquals(5, typed.available());
+	}
+
+	@Test
+	public void testExternalProcessEndsWhenJobStops() throws Exception{
+		assumeFalse(getOs()==OperatingSystem.Windows);
+		setup("ExternalTestFiles");
+		Console c = new Console();
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		c.setStdOut(new PrintStream(out, true));
+		c.setStdErr(new PrintStream(out, true));
+		ShellContext sc = new ShellContext(c);
+		sc.stdin = new ByteArrayInputStream(new byte[0]);
+
+		Statement sleep = FileSourceShVisitorImpl.parse("/bin/sleep 47").get(0);
+		// run the statement directly: Console.exit would call System.exit off the JUnit thread
+		Thread job = new Thread(() -> {
+			try {
+				sleep.process(sc);
+			} catch (Exception e) {
+				// ExitException is expected
+			}
+		});
+		job.setDaemon(true);
+		long start = System.currentTimeMillis();
+		job.start();
+		Thread.sleep(1000);
+		// what a job does when it is interrupted or killed
+		sc.setExecption(new ExitException(sc, 1));
+		job.join(10000);
+
+		assertFalse(job.isAlive());
+		assertTrue(System.currentTimeMillis()-start < 10000);
+		Process pgrep = new ProcessBuilder("pgrep","-f","/bin/sleep 47").start();
+		pgrep.waitFor();
+		assertEquals("", new String(pgrep.getInputStream().readAllBytes()).trim());
+	}
 }

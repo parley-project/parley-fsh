@@ -2,6 +2,7 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -505,6 +506,27 @@ exec 3>&- #close fd 3.
 			executeCommand("echo one > "+file+"; echo two > "+file+"; wc -l < "+file,"",0,"       1\n","");
 			ExecuteResult res = executeCommand("set -C; echo three > "+file,"",1);
 			assertTrue(res.getStdErr().contains("no clobber"));
+		} finally {
+			executeCommand("rm -f "+file,"");
+		}
+	}
+
+	@Test
+	public void testRedirectClosesFiles() throws Exception{
+		File fds = new File("/dev/fd");
+		assumeTrue(fds.isDirectory());
+		String file = "fd_leak_test.txt";
+		StringBuilder cmd = new StringBuilder("for i in");
+		for(int i=0; i < 200; i++) {
+			cmd.append(' ').append(i);
+		}
+		cmd.append("; do echo $i > ").append(file).append("; done");
+		try {
+			executeCommand("echo warm > "+file,"",0);
+			int before = fds.list().length;
+			executeCommand(cmd.toString(),"",0);
+			int after = fds.list().length;
+			assertTrue(after-before < 20, "open files before="+before+" after="+after);
 		} finally {
 			executeCommand("rm -f "+file,"");
 		}

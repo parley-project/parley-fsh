@@ -90,7 +90,7 @@ public class ConsolePanel extends JPanel implements KeyboardReader {
 		}
 	}
 
-	private class QueueInputStream extends InputStream  {
+	private class QueueInputStream extends InputStream implements InteractiveInput {
 		private ArrayBlockingQueue<Integer> data = new ArrayBlockingQueue<>(1024, true);
 		private long timeout = 500;
 		private AtomicBoolean closed = new AtomicBoolean();
@@ -106,6 +106,11 @@ public class ConsolePanel extends JPanel implements KeyboardReader {
 			}
 
 			return ret==null?-1:ret.intValue();
+		}
+
+		@Override
+		public int available() throws IOException {
+			return data.size();
 		}
 
 		@Override

@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
@@ -43,6 +45,7 @@ public class PipeStatement extends Statement{
 		// the first command runs on the caller's context, so its streams must be restored afterward
 		PrintStream callerOut = ctx.stdout;
 		PrintStream callerErr = ctx.stderr;
+		List<PipedInputStream> pipes = new ArrayList<>();
 		try {
 		
 			//  Create the threads
@@ -56,6 +59,7 @@ public class PipeStatement extends Statement{
 				CommandThread t = threads[idx];
 				CommandThread t2 = threads[idx+1];			
 				PipedInputStream  in = new PipedInputStream();
+				pipes.add(in);
 				PipedOutputStream out = new PipedOutputStream(in);
 				t.ctx.stdout = new PrintStream(out);
 				t2.ctx.stdin = in;
@@ -117,6 +121,12 @@ public class PipeStatement extends Statement{
 		} finally {
 			ctx.stdout = callerOut;
 			ctx.stderr = callerErr;
+			for(PipedInputStream in : pipes) {
+				try {
+					in.close();
+				} catch (IOException e) {
+				}
+			}
 		}
 		return ret;
 	}

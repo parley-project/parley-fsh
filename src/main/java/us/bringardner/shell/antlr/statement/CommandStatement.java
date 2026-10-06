@@ -1,6 +1,7 @@
 package us.bringardner.shell.antlr.statement;
 
 import java.io.ByteArrayInputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,6 +23,7 @@ import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.Console.Option;
+import us.bringardner.shell.InteractiveInput;
 import us.bringardner.shell.NativeKeyboard;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -41,20 +43,25 @@ public class CommandStatement extends Statement{
 		OutputStream out;
 		Throwable error;
 		byte [] buffer = new byte[1024*10];
-		StringBuilder debug = new StringBuilder();
-		boolean isStdin = false;
-		boolean isNative= false;
 		ShellContext ctx;
+		private final boolean closeIn;
+		private final boolean closeOut;
 
 		public StreamCopier(ShellContext ctx, InputStream in, OutputStream out,String name) {
+			this(ctx, in, out, name, in != Console.System_in, true);
+		}
+
+		/**
+		 * @param closeIn close the input when done. False when the input belongs to the shell.
+		 * @param closeOut close the output when done (it is only flushed otherwise). False when the output belongs to the shell.
+		 */
+		public StreamCopier(ShellContext ctx, InputStream in, OutputStream out,String name, boolean closeIn, boolean closeOut) {
 			this.ctx = ctx;
 			this.in = in;
 			this.out = out;
+			this.closeIn = closeIn;
+			this.closeOut = closeOut;
 			setName(name);
-			isStdin = in == Console.System_in;
-			if (in instanceof NativeKeyboard) {
-				isNative = true;				
-			}
 		}
 
 		@Override
@@ -62,52 +69,50 @@ public class CommandStatement extends Statement{
 			started = running = true;
 			try {
 				int cnt = 0;
-				while(running && !stopping && (cnt = in.read(buffer))>=0) {
-					if( cnt > 0 ) {
-						debug.append(new String(buffer,0,cnt));
-						out.write(buffer, 0, cnt);						
+				if (in instanceof InteractiveInput) {
+					// never block on typed input, so nothing is taken after the consumer is gone
+					while(!stopping) {
+						int avail = in.available();
+						if( avail > 0 ) {
+							cnt = in.read(buffer, 0, Math.min(avail, buffer.length));
+							if( cnt < 0 ) {
+								break;
+							}
+							out.write(buffer, 0, cnt);
+							out.flush();
+						} else {
+							Thread.sleep(10);
+						}
+					}
+				} else {
+					while(!stopping && (cnt = in.read(buffer))>=0) {
+						if( cnt > 0 ) {
+							out.write(buffer, 0, cnt);
+							out.flush();
+						}
 					}
 				}
+			} catch (InterruptedException e) {
+				// stopped
 			} catch (Throwable e) {
 				error = e;
-				stop();
 			} finally {
-				try {
-					if( in == Console.System_in) {
-						//Console.debugFrame.append("Can't close stdin. "+getName()+"\n");
-					} else {
-						//Console.debugFrame.append("Closing 01 in."+getName()+"\n");
+				if( closeIn ) {
+					try {
 						in.close();
-						//Console.debugFrame.append("Closing 02 in."+getName()+"\n");
-						//thread.interrupt();
-						//Console.debugFrame.append("Closing 03 in."+getName()+"\n");
+					} catch (Exception e2) {}
+				}
+				try {
+					if( closeOut ) {
+						out.close();
+					} else {
+						out.flush();
 					}
 				} catch (Exception e2) {}
-				try {
-					Console.close(ctx.console,out);
-				} catch (Exception e2) {}
-
 			}
 
 			running = false;
-
 		}
-
-		@Override
-		public void stop() {
-			super.stop();
-			try {
-				//boolean isStdin = in == Console.System_in;
-				//thread.interrupt();
-
-				//Console.debugFrame.append("Stop closed stdin. "+getName()+"\n");
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-
-
 	}
 
 	public static class NativeStreamCopier extends BaseThread{
@@ -115,7 +120,6 @@ public class CommandStatement extends Statement{
 		OutputStream out;
 		Throwable error;
 		byte [] buffer = new byte[1024*10];
-		StringBuilder debug = new StringBuilder();
 		private boolean echo;
 		ShellContext ctx;
 
@@ -136,7 +140,6 @@ public class CommandStatement extends Statement{
 				while(running && !stopping ) {
 					int key = in.read();
 					if( key > 0 ) {
-						debug.append((char)key);
 						out.write(key);
 						out.flush();
 						// echo key to stdout
@@ -217,48 +220,36 @@ public class CommandStatement extends Statement{
 					builder.directory(cwd.getTarget());
 				}
 
-				//builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
-				//builder.redirectOutput(ProcessBuilder.Redirect.PIPE);
-				//builder.redirectError(ProcessBuilder.Redirect.PIPE);
 				Process p = builder.start();
 				if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
 					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
 				} else {
-					sc1 = new StreamCopier(ctx,ctx.stdin,p.getOutputStream(),name+" stdin");
-
+					// stdin belongs to the shell (or to the redirect / pipe that opened it); only the process side is closed
+					sc1 = new StreamCopier(ctx,ctx.stdin,p.getOutputStream(),name+" stdin",false,true);
 				}
 
-				sc2 = new StreamCopier(ctx,p.getInputStream(),ctx.stdout,name+" stdout");
-				sc3 = new StreamCopier(ctx,p.getErrorStream(),ctx.stderr,name+" stderr");
+				// stdout and stderr belong to the shell; the copiers only flush them
+				sc2 = new StreamCopier(ctx,p.getInputStream(),ctx.stdout,name+" stdout",true,false);
+				sc3 = new StreamCopier(ctx,p.getErrorStream(),ctx.stderr,name+" stderr",true,false);
 
 				sc1.start();
 				sc2.start();
 				sc3.start();
 
-				@SuppressWarnings("unused")
-				int time = 0;
-				while(p.isAlive()) {
-					try {
-						p.waitFor(1000, TimeUnit.MILLISECONDS);
-						if( ++time > 3) { 
-							//Console.System_out.println("ExternalProcess Waiting for "+(time*1000));
-						}
-					} catch (InterruptedException e) {
+				boolean killed = false;
+				while(!waitFor(p, 100)) {
+					if( !killed && ctx.getException() != null) {
+						// the job was interrupted, terminated or killed
+						killed = true;
+						terminate(p);
 					}
 				}
 				exitCode = p.exitValue();
 
-				/*
-				Map<String, Object> env1 = ctx.getEnvironmentVariable();
-				Map<String, String> env = builder.environment();
-				env.clear();
-				for(String name: env1.keySet()) {
-					env.put(name, ""+env1.get(name));
-				}
-				 */
-
-
+				// the process has exited, wait for the rest of its output
+				drain(sc2);
+				drain(sc3);
 
 			} catch (Throwable e) {
 				exitCode = 1;
@@ -273,7 +264,35 @@ public class CommandStatement extends Statement{
 
 		}
 
+		private static boolean waitFor(Process p, long millis) {
+			try {
+				return p.waitFor(millis, TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				// requests to stop arrive through the ShellContext
+				return !p.isAlive();
+			}
+		}
 
+		private static void terminate(Process p) {
+			p.descendants().forEach(ProcessHandle::destroy);
+			p.destroy();
+			if( !waitFor(p, 2000)) {
+				p.descendants().forEach(ProcessHandle::destroyForcibly);
+				p.destroyForcibly();
+			}
+		}
+
+		/**
+		 * Wait until a copier reaches the end of the process output, unless the job is being stopped.
+		 */
+		private void drain(StreamCopier copier) {
+			while(copier.isAlive() && ctx.getException() == null) {
+				try {
+					copier.join(100);
+				} catch (InterruptedException e) {
+				}
+			}
+		}
 
 	}
 
@@ -391,9 +410,10 @@ public class CommandStatement extends Statement{
 		InputStream in = ctx.stdin;
 		PrintStream out = ctx.stdout;
 		PrintStream err = ctx.stderr;
+		List<Closeable> redirected = null;
 
 		try {
-			configureRedirect(ctx,redirect);				
+			redirected = configureRedirect(ctx,redirect);				
 		
 			if( hereId !=null ) {
 				Object obj = ctx.getValue(hereId);
@@ -523,6 +543,7 @@ public class CommandStatement extends Statement{
 				ctx.stdin = in;
 				ctx.stdout = out;
 				ctx.stderr = err;
+				closeRedirects(redirected);
 			}
 			//ctx.exitCommand();
 			if( returnStatus ==null ) {
@@ -572,18 +593,13 @@ public class CommandStatement extends Statement{
 			ep.setName(cmd.get(0));
 			ep.start();
 
-			while(!ep.hasStarted()) {
+			// ExternalProcess ends the process itself when the job is stopped, so always wait for it
+			while(ep.isAlive()) {
 				try {
-					Thread.sleep(10);
+					ep.join(100);
 				} catch (InterruptedException e) {
 				}
-			};
-			while(ep.isRunning()) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-			};
+			}
 
 			ret =  ep.exitCode;
 			if( ret !=0) {

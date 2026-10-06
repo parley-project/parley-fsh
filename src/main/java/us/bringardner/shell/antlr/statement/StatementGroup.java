@@ -1,8 +1,10 @@
 package us.bringardner.shell.antlr.statement;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.List;
 
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_groupContext;
 import us.bringardner.shell.ShellContext;
@@ -38,12 +40,15 @@ public class StatementGroup extends Statement{
 		PrintStream err = sc.stderr;
 		
 		
-		configureRedirect(sc, redirect);
-		ret = g1.execute(sc);
-		
-		sc.stdin = in;
-		sc.stdout = out;
-		sc.stderr = err;
+		List<Closeable> redirected = configureRedirect(sc, redirect);
+		try {
+			ret = g1.execute(sc);
+		} finally {
+			sc.stdin = in;
+			sc.stdout = out;
+			sc.stderr = err;
+			closeRedirects(redirected);
+		}
 		
 		return ret;
 	}
