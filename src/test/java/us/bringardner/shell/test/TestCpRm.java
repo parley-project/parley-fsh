@@ -238,4 +238,16 @@ public class TestCpRm extends AbstractConsoleTest{
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
+
+	@Test
+	@Order(100)
+	public void testRmMissingFile() throws IOException {
+		ExecuteResult res = executeCommand("rm no_such_file_here.txt","");
+		assertEquals(1, res.exitCode);
+		assertTrue(res.getStdErr().contains("does not exist"));
+
+		res = executeCommand("rm -f no_such_file_here.txt","");
+		assertEquals("", res.getStdErr());
+		assertEquals(0, res.exitCode);
+	}
 }

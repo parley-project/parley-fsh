@@ -8,6 +8,7 @@ import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.DebugContext.RunState;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.signal.ReturnException;
 
 public class FunctionDefStatement extends Statement{
 
@@ -70,6 +71,8 @@ public class FunctionDefStatement extends Statement{
 			for(Statement s : stmts) {				
 				ret=s.process(ctx);
 			}
+		} catch (ReturnException e) {
+			ret = e.exitCode;
 		} finally {
 			ctx.exitFunction(this);
 		}

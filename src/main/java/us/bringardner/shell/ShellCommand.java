@@ -301,16 +301,7 @@ public abstract class ShellCommand {
 
 	
 	private static String replaceAll(String path, String posix, String java) {
-		String ret = path;
-		int idx = ret.indexOf(posix);
-		while( idx >=0 ) {
-			String left = path.substring(0, idx);
-			String right = path.substring(idx+posix.length());
-			ret = left+java+right;
-			idx = ret.indexOf(posix);
-		}
-
-		return ret;
+		return path.replace(posix, java);
 	}
 
 	public static final char wildcards[] = {'*','?','[','~'};

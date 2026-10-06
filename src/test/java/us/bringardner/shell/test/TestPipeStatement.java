@@ -322,6 +322,19 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		console.isInteractive=lastInteractive;
 	}
 
+	@Test
+	public void testPipeKeepsCallerStdout() throws Exception{
+		ExecuteResult res = executeCommand("echo a | wc -l; echo AFTER","");
+		assertEquals("", res.getStdErr());
+		assertEquals("       1\nAFTER\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
 
-		
+	@Test
+	public void testPipeInsideCommandSubstitution() throws Exception{
+		ExecuteResult res = executeCommand("x=$(echo a | wc -l; echo b); echo \"[$x]\"","");
+		assertEquals("", res.getStdErr());
+		assertEquals("[       1\nb]\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
 }

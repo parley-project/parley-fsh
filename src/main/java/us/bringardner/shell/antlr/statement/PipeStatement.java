@@ -40,67 +40,83 @@ public class PipeStatement extends Statement{
 
 		CommandThread [] threads = new CommandThread[cmds.length];
 		threads[0] = new CommandThread(ctx,cmds[0]);
+		// the first command runs on the caller's context, so its streams must be restored afterward
+		PrintStream callerOut = ctx.stdout;
+		PrintStream callerErr = ctx.stderr;
+		try {
 		
-		//  Create the threads
-		for (int idx = 1; idx < cmds.length; idx++) {
-			ShellContext ctx2 = ctx.subShell();
-			threads[idx] = new CommandThread(ctx2,cmds[idx]);			
-		}
-		// set up pipes
-		long startTime = System.currentTimeMillis();
-		for (int idx = 0; idx < cmds.length-1; idx++) {
-			CommandThread t = threads[idx];
-			CommandThread t2 = threads[idx+1];			
-			PipedInputStream  in = new PipedInputStream();
-			PipedOutputStream out = new PipedOutputStream(in);
-			t.ctx.stdout = new PrintStream(out);
-			t2.ctx.stdin = in;
-			if(ops[idx].equals("|&")) {
-				t.ctx.stderr = t.ctx.stdout; 
+			//  Create the threads
+			for (int idx = 1; idx < cmds.length; idx++) {
+				ShellContext ctx2 = ctx.subShell();
+				threads[idx] = new CommandThread(ctx2,cmds[idx]);			
 			}
-		}
-
-		//start threads
-		for(CommandThread t : threads) {
-			t.start();
-		}
-		boolean done = false;
-		while(!done) {
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-			}
-			int cnt = 0;
-			for(CommandThread t : threads) {
-				if(t.hasStarted() && !t.isRunning()) {
-					cnt++;
-				} else {
-					break;
+			// set up pipes
+			long startTime = System.currentTimeMillis();
+			for (int idx = 0; idx < cmds.length-1; idx++) {
+				CommandThread t = threads[idx];
+				CommandThread t2 = threads[idx+1];			
+				PipedInputStream  in = new PipedInputStream();
+				PipedOutputStream out = new PipedOutputStream(in);
+				t.ctx.stdout = new PrintStream(out);
+				t2.ctx.stdin = in;
+				if(ops[idx].equals("|&")) {
+					t.ctx.stderr = t.ctx.stdout; 
 				}
 			}
-			done = cnt == cmds.length;
-		}
-		ret = threads[cmds.length-1].exitCode;
-		PipeStatementContext pctx = (PipeStatementContext)getContext();
-		if( pctx.NOT()!=null) {
-			ret = ret==0?1:0;
-		}
+			// CommandThread closes its stdout when done; don't let the last stage close the caller's stream
+			CommandThread last = threads[cmds.length-1];
+			last.ctx.stdout = new PrintStream(last.ctx.stdout, true) {
+				@Override
+				public void close() {
+					flush();
+				}
+			};
 
-		if( doTime) {
-			long time = System.currentTimeMillis()-startTime;
+			//start threads
+			for(CommandThread t : threads) {
+				t.start();
+			}
+			boolean done = false;
+			while(!done) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+				}
+				int cnt = 0;
+				for(CommandThread t : threads) {
+					if(t.hasStarted() && !t.isRunning()) {
+						cnt++;
+					} else {
+						break;
+					}
+				}
+				done = cnt == cmds.length;
+			}
+			ret = threads[cmds.length-1].exitCode;
+			PipeStatementContext pctx = (PipeStatementContext)getContext();
+			if( pctx.NOT()!=null) {
+				ret = ret==0?1:0;
+			}
+
+			if( doTime) {
+				long time = System.currentTimeMillis()-startTime;
 			
 
-			if( pctx.parg !=null ) {
-				// use POSIX time format
-				threads[cmds.length-1].ctx.stderr.println("posix real "+time);
-			} else {
-				//0m0.001s
-				threads[cmds.length-1].ctx.stderr.println("real "+time);
+				if( pctx.parg !=null ) {
+					// use POSIX time format
+					threads[cmds.length-1].ctx.stderr.println("posix real "+time);
+				} else {
+					//0m0.001s
+					threads[cmds.length-1].ctx.stderr.println("real "+time);
+				}
 			}
-		}
 		
-		for(CommandThread t : threads) {
-			t.handleSignal(ConsoleSignal.ChildStopped);
+			for(CommandThread t : threads) {
+				t.handleSignal(ConsoleSignal.ChildStopped);
+			}
+		} finally {
+			ctx.stdout = callerOut;
+			ctx.stderr = callerErr;
 		}
 		return ret;
 	}

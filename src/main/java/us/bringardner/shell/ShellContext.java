@@ -490,6 +490,10 @@ $
 		functionStack.pop();		
 	}
 
+	public boolean isInFunction() {
+		return !functionStack.isEmpty();
+	}
+
 	public boolean removeFunction(String name) {
 		return console.removeFunction(name);		
 	}

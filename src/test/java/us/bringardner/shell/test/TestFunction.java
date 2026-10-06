@@ -211,5 +211,30 @@ public class TestFunction extends AbstractConsoleTest{
 		assertEquals(expect, out);
 		assertEquals(0, res.exitCode);
 	}
-	
+
+	@Test
+	public void testFunctionReturnZeroEndsFunction() throws Exception{
+		String cmd = "f() { echo one; return 0; echo two; }\n"
+				+ "f\n"
+				+ "echo rc=$?\n"
+				;
+
+		ExecuteResult res = executeCommand(cmd,"");
+		assertEquals("", res.getStdErr());
+		assertEquals("one\nrc=0\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
+
+	@Test
+	public void testFunctionReturnFromLoop() throws Exception{
+		String cmd = "g() { for i in 1 2 3; do if [ $i == 2 ]; then return 5; fi; echo i=$i; done; echo notreached; }\n"
+				+ "g\n"
+				+ "echo rc=$?\n"
+				;
+
+		ExecuteResult res = executeCommand(cmd,"");
+		assertEquals("", res.getStdErr());
+		assertEquals("i=1\nrc=5\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
 }

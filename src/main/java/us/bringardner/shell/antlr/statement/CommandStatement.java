@@ -495,6 +495,10 @@ public class CommandStatement extends Statement{
 			}
 		} catch (ReturnException e) {
 			returnStatus = e.exitCode;
+			if( ctx.isInFunction()) {
+				// let FunctionDefStatement.invoke end the function
+				throw e;
+			}
 		} catch (ExitException e) {
 			returnStatus = e.exitCode;
 			

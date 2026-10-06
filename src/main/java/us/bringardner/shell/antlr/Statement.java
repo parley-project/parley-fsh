@@ -111,7 +111,7 @@ public abstract class Statement {
 						break;
 					case Output:
 						file = ctx.getFileSource(pathText);
-						if(file.exists() && !ctx.console.options.contains(Option.NoClobberRedirect)) {
+						if(file.exists() && ctx.console.options.contains(Option.NoClobberRedirect)) {
 							throw new IOException(file.getAbsolutePath()+" exists and no clobber is set");
 						}
 						ctx.stdout = new PrintStream( file.getOutputStream());

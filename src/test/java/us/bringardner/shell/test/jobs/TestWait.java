@@ -1,8 +1,10 @@
 package us.bringardner.shell.test.jobs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.io.IOException;
+import java.time.Duration;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -135,4 +137,11 @@ public class TestWait extends AbstractConsoleTest {
 		assertEquals("300000", val);
 	}
 
+	@Test
+	public void testWaitWithNoJobs() {
+		ExecuteResult res = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> executeCommand("wait; echo waited", ""));
+		assertEquals("", res.getStdErr());
+		assertEquals("waited\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
 }

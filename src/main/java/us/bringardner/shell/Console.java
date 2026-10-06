@@ -2207,17 +2207,10 @@ delimiter
 				Statement	stmt = stmts.get(idx);
 				handleMetaSignal(ConsoleMetaSignal.Debug);
 				ret = stmt.process(sc);
-				sc.stderr.println("idx="+idx);
-				if( ret !=0) {
+				// the caller (Console.run) handles the ERR trap and exit for -e
+				if( ret !=0 && options.contains(Option.ExitImediately)) {
 					return ret;
 				}
-			}		
-			if( ret!=0) {
-				handleMetaSignal(ConsoleMetaSignal.Err);
-				if(isInteractive && options.contains(Option.ExitImediately)) {
-					Console.exit(sc.console,ret);
-				}
-				return ret;
 			}
 
 		} catch(ExitException e) {

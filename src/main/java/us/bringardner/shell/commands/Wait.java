@@ -69,7 +69,7 @@ public class Wait extends ShellCommand{
 					case 'f':f=true;break;
 					case 'n':n=true;break;
 					case 'p':
-						if( idx >= args.length) {
+						if( idx+1 >= args.length) {
 							ctx.stderr.println("-p: option requires an argument");
 							return 1;
 						}
@@ -103,11 +103,17 @@ public class Wait extends ShellCommand{
 
 		if( n && jobs.isEmpty()) {
 			ret = 127;
+		} else if( jobs.isEmpty()) {
+			// nothing to wait for
+			ret = 0;
 		} else {
 			boolean done = false;			
 			List<Integer> complete = new ArrayList<Integer>();
 
 			while( !done ) {
+				if( ctx.getException()!=null) {
+					throw ctx.getException();
+				}
 				for(IJob job : jobs) {
 					if( !complete.contains(job.getPid())) {
 						if(job.hasStarted() && !job.isRunning()) {

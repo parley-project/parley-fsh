@@ -498,5 +498,15 @@ exec 3>&- #close fd 3.
 		
 	}
 
-	
+	@Test
+	public void testRedirectOverwriteAndNoClobber() throws Exception{
+		String file = "noclobber_test.txt";
+		try {
+			executeCommand("echo one > "+file+"; echo two > "+file+"; wc -l < "+file,"",0,"       1\n","");
+			ExecuteResult res = executeCommand("set -C; echo three > "+file,"",1);
+			assertTrue(res.getStdErr().contains("no clobber"));
+		} finally {
+			executeCommand("rm -f "+file,"");
+		}
+	}
 }

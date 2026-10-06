@@ -2,9 +2,11 @@ package us.bringardner.shell.test;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterAll;
@@ -113,5 +115,11 @@ public class TestGlob extends ShellCommand {
 	public int process(ShellContext ctx) throws IOException {
 		// This does nothing
 		return 0;
+	}
+
+	@Test
+	public void testRepeatedPosixClasses() {
+		String ret = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> posixToJava("[!a][!b][:digit:][:digit:]"));
+		assertEquals("[^a][^b]\\p{Digit}\\p{Digit}", ret);
 	}
 }

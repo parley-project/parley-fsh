@@ -105,8 +105,8 @@ public class Rm extends ShellCommand{
 
 	private void remove(ShellContext ctx, List<Arguments> options, FileSource file) throws IOException {
 		if( !file.exists()) {
-			if(!options.contains(Arguments.f)) {
-				return; 
+			if(options.contains(Arguments.f)) {
+				return;
 			} else {
 				throw new IOException(""+file+" does not exist");
 			}
