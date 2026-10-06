@@ -103,4 +103,22 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 		res = executeCommand("x=$(echo \"a  b\"); echo \"[$x]\"", "");
 		assertEquals("[a  b]\n", res.getStdOut());
 	}
+
+	@Test
+	public void testExpansionsInDoubleQuotes() throws IOException {
+		// spaces are kept (runs of spaces were dropped), `cmd` runs, and $( ) may contain quotes
+		String[][] cases = {
+				{"echo \"$(echo a   b)\"", "a   b\n"},
+				{"echo \"[`echo a   b`]\"", "[a   b]\n"},
+				{"echo \"${nope:-hello   world}\"", "hello   world\n"},
+				{"echo \"$(echo \"inner\")\"", "inner\n"},
+				{"echo \"$(echo 'a  b')\"", "a  b\n"},
+				{"echo \"a)b (x)\"", "a)b (x)\n"},
+		};
+		for(String[] c : cases) {
+			ExecuteResult res = executeCommand(c[0], "");
+			assertEquals(c[1], res.getStdOut(), c[0]);
+			assertEquals(0, res.exitCode, c[0]);
+		}
+	}
 }

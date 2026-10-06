@@ -89,8 +89,17 @@ INTEGER
 DECIMAL
     : INTEGER DOT INTEGER  EXPONENT?;
 
+// $( ) inside a double-quoted string may contain quotes and parentheses: "$(echo "x")"
 DQ_STRING
-    : '"' ( ~["\\] | '\\' . )* '"'
+    : '"' DQ_PART* '"'
+    ;
+
+fragment DQ_PART
+    : ~["\\$] | '\\' . | '$(' CMD_PART* ')' | '$'
+    ;
+
+fragment CMD_PART
+    : ~["'()\\] | '\\' . | '(' CMD_PART* ')' | '"' DQ_PART* '"' | '\'' ~['\\]* '\''
     ;
 
 SQ_STRING

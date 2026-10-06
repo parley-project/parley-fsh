@@ -157,7 +157,8 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 */
 	
 	public static String processString(String code1, ShellContext sc)  {
-		if( !code1.contains("$")) {
+		if( !code1.contains("$") && !code1.contains("`")) {
+			// (a string with only `cmd` was returned without running it)
 			return code1;
 		}
 
@@ -176,7 +177,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 			if (rule instanceof PpcommandContext) {
 				items.add(rule);
 				PpcommandContext v = (PpcommandContext) rule;
-				String cmd = rule.getText();
+				String cmd = originalText(code1, rule);
 				if(v.pp_backtick_command()!=null) {
 					cmd = cmd.substring(1,cmd.length()-1);
 				} else if(v.pp_dollar_command()!=null) {
@@ -202,7 +203,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 			} else if (rule instanceof PpexprContext) {
 				items.add(rule);
 				PpexprContext v = (PpexprContext) rule;
-				String expStr = v.getText();
+				String expStr = originalText(code1, v);
 				expStr = expStr.replaceAll("[/]", ":^:");
 				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(expStr));
 				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
@@ -223,7 +224,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				chunks.add(sc.expand(sc.getVariable(name), v.getText()));				
 			}  else if (rule instanceof Pp_parameterContext) {
 				items.add(rule);
-				String str = rule.getText();
+				String str = originalText(code1, rule);
 				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(str));
 				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
 				Parameter p = new Parameter(FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::parameter));
@@ -240,6 +241,14 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 		String ret = merge(code1, items, chunks);
 
 		return ret;
+	}
+
+	/**
+	 * The text of a rule as written. getText() joins the tokens, and this lexer skips runs of
+	 * whitespace, so "$(echo a   b)" ran echo ab.
+	 */
+	private static String originalText(String code, ParserRuleContext rule) {
+		return code.substring(rule.start.getStartIndex(), rule.stop.getStopIndex()+1);
 	}
 
 	private static String merge(String code1,List<ParserRuleContext> items,List<String> chunks) {
