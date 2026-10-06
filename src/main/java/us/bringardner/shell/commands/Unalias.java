@@ -2,7 +2,6 @@ package us.bringardner.shell.commands;
 
 import java.io.IOException;
 
-import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
@@ -22,18 +21,16 @@ public class Unalias extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		for(Argument arg : args) {
-			ArgumentContext actx = arg.getContext();
-			if( actx.ARG_ID() != null) {
-				if(actx.ARG_ID().getText().trim().equals("-a")) {
+			String text = ""+arg.getValue(ctx);
+			if( text.startsWith("-")) {
+				if(text.equals("-a")) {
 					ctx.console.clearAliases();
 				} else {
 					// invalid??
-					throw new IOException("Don't know what to do for '"+actx.getText()+"'");
+					throw new IOException("Don't know what to do for '"+text+"'");
 				}
 			} else  {
-				String name = actx.getText(); 
-				ctx.console.removeAlias(name);
-			
+				ctx.console.removeAlias(text);
 			}  
 		}
 		

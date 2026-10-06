@@ -31,13 +31,14 @@ public class TestSource extends AbstractConsoleTest {
 	}
 	
 	public void testSource01(String name) throws IOException {
+		// pos="$*" is one word, so echo prints it without the quotes (as bash does)
 		String expect = "init pos=one two\n"
-				+ "enter test pos=\"one two\"\n"
-				+ "enter s1 pos=\"ones1\"\n"
-				+ "enter s2 pos=\"s1one s1two s1three\"\n"
-				+ "exit s2 pos=\"s1one s1two s1three\"\n"
-				+ "exit s1 pos=\"ones1\"\n"
-				+ "exit test pos=\"one two\"\n"
+				+ "enter test pos=one two\n"
+				+ "enter s1 pos=ones1\n"
+				+ "enter s2 pos=s1one s1two s1three\n"
+				+ "exit s2 pos=s1one s1two s1three\n"
+				+ "exit s1 pos=ones1\n"
+				+ "exit test pos=one two\n"
 				;
 		
 		String code = "echo init pos=$*\n"

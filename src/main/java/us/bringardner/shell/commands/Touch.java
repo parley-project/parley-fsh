@@ -134,28 +134,24 @@ public class Touch extends ShellCommand{
 	}
 
 	public  class Action_d implements ArgumentProcessor {
-		//     idx +1  +2  +3 +4+5 +6 +7
-		//[-d YYYY-MM-DDThh : mm : SS[tz]]
+		//[-d YYYY-MM-DDThh:mm:SS[tz]]
 		
 		@Override
 		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			//  the date parses as a series of signed numbers
-			//   Z ( time zone)?? parses as path
-			// idx should be 1
+			// the date is one word (2020-07-23T06:30:10Z) or two (2020-07-23 06:30:10Z);
+			// the last argument is the file
 			StringBuilder tmp = new StringBuilder();
 			int idx2 = idx+1;
-			for(;idx2<=3; idx2++) {
-				tmp.append(args[idx2].getValue(ctx).toString());
-			}
-			tmp.append(' ');
 			for(;idx2<args.length-1; idx2++) {
-				String val = args[idx2].getValue(ctx).toString();				
-				tmp.append(val);
+				if( tmp.length() > 0 ) {
+					tmp.append(' ');
+				}
+				tmp.append(args[idx2].getValue(ctx).toString());
 			}
 			
 			String tm2 = tmp.toString();
 			
-			String val = tm2.replace("T","");
+			String val = tm2.replace("T"," ");
 			
 			boolean gmt = false;
 			if( val.endsWith("Z")) {

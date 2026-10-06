@@ -5,14 +5,15 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignmentContext;
 import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Expression;
-import us.bringardner.shell.antlr.Parameter;
 import us.bringardner.shell.antlr.Statement;
 
 public class AssignStatement extends Statement{
@@ -63,28 +64,7 @@ assignStatement
 		
 		Object val = null;
 		
-		if(actx.id2 !=null) {
-			String vname = actx.id2.getText();
-			// TODO:  is this id a variable name or value.  go with value for now.
-			val = vname;
-		} else if( actx.string()!=null) {
-			val =  ctx.expandString(actx.string());		
-		} else if( actx.variable()!=null) {
-			val =  ctx.getVariable(actx.variable());			
-		} else if( actx.expression()!=null) {
-			Expression e = new Expression(actx.expression());
-			val = e.evaluate(ctx);
-		} else if( actx.mathExpression()!=null) {
-			Expression e = new Expression(actx.mathExpression().expression());
-			val = e.evaluate(ctx);
-		} else if( actx.boolean_()!=null) {
-			val = actx.boolean_().TRUE() !=null;
-		} else if( actx.path()!=null) {
-			val = Argument.visit(actx.path(), ctx);
-		} else if( actx.parameter()!=null) {
-			Parameter p = new Parameter(actx.parameter());
-			val= p.evaluate(ctx);
-		} else if( actx.arrayInitializer()!=null) {
+		if( actx.arrayInitializer()!=null) {
 			List<Object> list = new FsshList();
 			for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
 				Argument arg = new Argument(ac);
@@ -92,28 +72,49 @@ assignStatement
 				list.add(v);
 			}
 			val = list;
-		/*
-		} else if( actx.list()!=null) {
-			List<Object> list = new FsshList();
-			for(ArgumentContext ac : actx.list().argument()) {
-				Argument arg = new Argument(ac);
-				Object v = arg.getValue(ctx);
-				list.add(v);
-			}
-			val = list;
-			*/
-		} else if( actx.command_substitution()!=null) {
-			CommandSubstitutionStatement cs = new CommandSubstitutionStatement(actx.command_substitution());
-			if( cs.process(ctx)==0) {
-				val = cs.getStdout();
-			} else {
-				val = cs.getStderr();
-			}
+		} else if( actx.value == null ) {
+			// x=
+			val = "";
 		} else {
-			throw new RuntimeException("No assignment made "+actx.getText());
+			List<ArgumentPartContext> parts = actx.value.argumentPart();
+			if( parts.size() == 1 ) {
+				val = typedValue(parts.get(0), ctx);
+			} else {
+				// several parts make text, as in bash
+				val = new Argument(actx.value).getValue(ctx);
+			}
 		}
 
 		return val;
+	}
+
+	/**
+	 * A value with one part keeps its type, so x=1 is a number and y=$x is whatever x holds.
+	 */
+	private static Object typedValue(ArgumentPartContext part, ShellContext ctx) {
+		if( part.literal != null ) {
+			String text = part.literal.getText();
+			switch (part.literal.getType()) {
+			case FileSourceShParser.NUMBER:
+				Number number = parseNumber(text);
+				return number == null ? text : number;
+			case FileSourceShParser.TRUE: return true;
+			case FileSourceShParser.FALSE: return false;
+			default: return text;
+			}
+		} else if( part.argVariable() != null ) {
+			return ctx.getVariable(part.argVariable());
+		}
+		return Argument.getValue(part, ctx);
+	}
+
+	// the same types Expression uses
+	private static Number parseNumber(String text) {
+		try {
+			return text.indexOf('.') >= 0 ? (Number)Double.parseDouble(text) : (Number)Integer.parseInt(text);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 }

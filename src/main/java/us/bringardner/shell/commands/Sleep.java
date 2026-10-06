@@ -46,17 +46,22 @@ public class Sleep extends ShellCommand{
 			Integer ival = null;
 			Long multiplyer=null;
 
-			/**
-			 * an argument in the form of 1s is parsed as two args. a number and a path segment
-			 */
-			
 			for(Argument a :args) {
 				String val = (""+a.getValue(ctx)).trim();
 				if(val.isEmpty()) {
 					continue;
 				}
 				if( Character.isDigit(val.charAt(0))) {
-					ival = Integer.parseInt(val);
+					// a number with an optional unit: 10, 1d, 2M
+					int end = 0;
+					while( end < val.length() && Character.isDigit(val.charAt(end))) {
+						end++;
+					}
+					ival = Integer.parseInt(val.substring(0, end));
+					val = val.substring(end);
+				}
+				if( val.isEmpty()) {
+					// the number had no unit
 				} else if( val.equals("s")) {
 					multiplyer = Second;
 				} else if( val.equals("m")) {

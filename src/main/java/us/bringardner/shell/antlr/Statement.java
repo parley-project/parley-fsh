@@ -9,18 +9,10 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import us.bringardner.filesource.sh.FileSourceShLexer;
-import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
-import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
-import us.bringardner.filesource.sh.FileSourceShParser.BraceArgListContext;
-import us.bringardner.filesource.sh.FileSourceShParser.BraceExpansionContext;
-import us.bringardner.filesource.sh.FileSourceShParser.BraceRangeContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ListContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
 import us.bringardner.io.filesource.FileSource;
@@ -325,219 +317,96 @@ public abstract class Statement {
 		int ret = 0;
 		ctx.waitWhilePaused();
 
-		/*
-		if( context!=null) {
-			// combine any arguments with no WS between them. mainly path each / is an arg:-(
-			List<ParseTree> kids = context.children;
+		// brace expansion replaces args (and the matching children, which echo uses to find the
+		// whitespace between arguments) for this run only; the tree is shared by every run of the statement
+		Argument [] savedArgs = args;
+		List<ParseTree> savedKids = context.children;
+		expandBraces(ctx);
 
-			int cnt = 0;
-			List<List<Integer>> merge = new ArrayList<List<Integer>>(); 
-			List<Integer> list = new ArrayList<Integer>();
-			for (int idx = 0; idx < kids.size(); idx++) {
-				ParseTree kid = kids.get(idx);
-				if (kid instanceof ArgumentContext) {
-					list.add(cnt++);					
-				} else if (kid instanceof TerminalNode) {
-					int sym = ((TerminalNode)kid).getSymbol().getType();
-					if( sym == FileSourceShParser.WS) {
-						if( list.size()>1) {
-							merge.add(list);
-						}
-						list = new ArrayList<Integer>();
-					}
-				} else {
-					list = new ArrayList<Integer>();
-				}
-			}
-			if( list.size()>1) {
-				merge.add(list);
-			}
-			if( !merge.isEmpty()) {
-				System.out.println("final merger "+merge);
-			}
-		}
-		 */
-
-		List<ParseTree> kids = context.children;
-
-		if( kids.size()>1) {
-			// do brace expansion
-			List<Argument> newArgs = new ArrayList<Argument>();
-			List<ParseTree> newKids = new ArrayList<ParseTree>();
-
-			ParseTree ws = kids.get(1);
-
-			int aidx1=0;
-			//int aidx=0;
-			boolean changed = false;
-/*
-list: 
-	  (argument white*)+
-    | white* LSQUARE white* argument white* RSQUARE white*
-    ;
- */
-
-			for (int idx = 0; idx < kids.size(); idx++) {
-				ParseTree kid = kids.get(idx);
-				
-				if (kid instanceof ListContext	) {
-					ListContext lc = (ListContext)kid;
-					if(lc.argument()!=null) {
-						List<Argument> tmp = visit(lc.argument(),ctx);
-						changed = true;
-						for(int idx2=0,sz=tmp.size(); idx2 < sz; idx2++) {
-							Argument arg = tmp.get(idx2);
-							newArgs.add(arg);
-							String val = ""+arg.getValue(ctx);
-							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(val));
-							FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-							ArgumentContext na = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::argument);
-							na.start = lc.start;
-							na.stop = lc.stop;
-							
-							newKids.add(na);
-							newKids.add(ws);
-						
-						}
-					} else {
-						newKids.add(kid);
-					}
-				} else 
-				
-				if (kid instanceof ArgumentContext	&& aidx1< args.length) {
-					ArgumentContext ac = (ArgumentContext) kid;
-					
-					Argument a = args[aidx1++];
-					if(ac.braceExpansion()!=null) {
-						changed = true;
-						List<Argument> tmp = visit(a.context.braceExpansion(),ctx);
-						for(int idx2=0,sz=tmp.size(); idx2 < sz; idx2++) {
-							Argument arg = tmp.get(idx2);
-							newArgs.add(arg);
-							String val = ""+arg.getValue(ctx);
-							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(val));
-							FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-							ArgumentContext na = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::argument);
-							na.start = ac.start;
-							na.stop = ac.stop;
-							
-							newKids.add(na);
-							newKids.add(ws);
-						}
-					} else {
-						newArgs.add(a);
-						newKids.add(kid);
-					}				
-				} else  {
-					newKids.add(kid);
-				}
-			}
-
-
-
-			if( changed ) {
-				args = newArgs.toArray(new Argument[newArgs.size()]);
-				context.children = newKids;
-
-			}
-		}
 		ctx.enterStatement(this);
 
 		try {
 			ret = execute(ctx);
 		} finally {
-
+			args = savedArgs;
+			context.children = savedKids;
 			ctx.exitStatement(ret,this);
 		}
 		return ret;
 	}
 
-	private List<Argument> visit(List<ArgumentContext> args, ShellContext ctx) throws IOException {
-		List<Argument>  ret = new ArrayList<Argument>();
-		for(ArgumentContext ac: args) {
-			if(ac.braceExpansion()!=null) {
-				ret.addAll(visit(ac.braceExpansion(), ctx));
-			} else {
-				ret.add(new Argument(ac));
-			}
+	private void expandBraces(ShellContext ctx) throws IOException {
+		List<ParseTree> kids = context.children;
+		if( kids == null || kids.size() <= 1) {
+			return;
 		}
-		return ret;
-	}
+		List<Argument> newArgs = new ArrayList<Argument>();
+		List<ParseTree> newKids = new ArrayList<ParseTree>();
+		ParseTree ws = kids.get(1);
+		int aidx1=0;
+		boolean changed = false;
 
-	//	braceExpansion: white* prefix=associativeArrayValue? LCURLY (braceRange|braceArgList) RCURLY suffix=associativeArrayValue?			
-	private List<Argument> visit(BraceExpansionContext exp, ShellContext ctx) throws IOException {
+		for (int idx = 0; idx < kids.size(); idx++) {
+			ParseTree kid = kids.get(idx);
 
-		List<Argument> ret = new ArrayList<>();
-		List<String> newArgs=null;
-		String prefix = "";
-		String suffix = "";
-		if( exp.prefix!=null) {
-			prefix = Argument.visit(exp.prefix, ctx);
-		}
-		if( exp.suffix!=null) {
-			suffix = Argument.visit(exp.suffix, ctx);
-		}
-
-		if( exp.braceRange()!=null) {
-			newArgs = visit(exp.braceRange(),ctx);
-		} else if(exp.braceArgList()!=null) {
-			newArgs = visit(exp.braceArgList(),ctx);
-		} else {
-			throw new IOException("Invalid brace expantion "+exp);
-		}
-		for(String val : newArgs) {
-			ret.add(new Argument(prefix+val+suffix));
-		}
-		return ret;
-	}
-
-
-	//	braceArgList:associativeArrayValue (COMMA associativeArrayValue)*;
-	private List<String> visit(BraceArgListContext args, ShellContext ctx) throws IOException {
-		List<String> ret = new ArrayList<>();
-		for(AssociativeArrayValueContext arg : args.associativeArrayValue()) {
-			ret.add(Argument.visit(arg, ctx));
-		}
-
-		return ret;
-	}
-
-	//	braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue);
-	private List<String> visit(BraceRangeContext range, ShellContext ctx) throws IOException {
-		List<String>  ret = new ArrayList<>();
-		String startStr = Argument.visit(range.start, ctx);
-		String endStr   = Argument.visit(range.end, ctx);
-		boolean isChar = Character.isLetter(startStr.charAt(0));
-		int start = isChar?startStr.charAt(0): Integer.parseInt( startStr);
-		int end = isChar?endStr.charAt(0): Integer.parseInt( endStr);
-
-		int inc = 1;
-		if( !isChar ) {
-			if( range.incr !=null) {
-				String tmp = Argument.visit(range.incr, ctx);
-				inc = Math.abs(Integer.parseInt(tmp));
-			}
-		}
-
-
-		if(start < end) {
-			for(int idx=start; idx <=end; idx += inc) {
-				if( isChar) {
-					ret.add(""+((char)idx));
+			if (kid instanceof ListContext) {
+				// for and select lists
+				ListContext lc = (ListContext)kid;
+				if(lc.argument()!=null && !lc.argument().isEmpty()) {
+					changed = true;
+					for(ArgumentContext ac : lc.argument()) {
+						List<String> words = Argument.expandBraces(ac, ctx);
+						if( words == null ) {
+							newArgs.add(new Argument(ac));
+							newKids.add(ac);
+							newKids.add(ws);
+						} else {
+							for(String word : words) {
+								newArgs.add(new Argument(word));
+								newKids.add(placeholder(lc));
+								newKids.add(ws);
+							}
+						}
+					}
 				} else {
-					ret.add(""+idx);
+					newKids.add(kid);
 				}
-			}
-		} else {
-			for(int idx=start; idx >=end; idx -= inc) {
-				if( isChar) {
-					ret.add(""+((char)idx));
+			} else if (kid instanceof ArgumentContext && aidx1< args.length) {
+				ArgumentContext ac = (ArgumentContext) kid;
+				Argument a = args[aidx1++];
+				List<String> words = a.context == null ? null : Argument.expandBraces(a.context, ctx);
+				if( words != null ) {
+					changed = true;
+					for(int w=0; w < words.size(); w++) {
+						if( w > 0 ) {
+							// the whitespace after the last word is already there
+							newKids.add(ws);
+						}
+						newArgs.add(new Argument(words.get(w)));
+						newKids.add(placeholder(ac));
+					}
 				} else {
-					ret.add(""+idx);
-				}
+					newArgs.add(a);
+					newKids.add(kid);
+				}				
+			} else  {
+				newKids.add(kid);
 			}
 		}
 
+		if( changed ) {
+			args = newArgs.toArray(new Argument[newArgs.size()]);
+			context.children = newKids;
+		}
+	}
+
+	/**
+	 * An empty argument node standing for one word of a brace expansion (see Echo).
+	 */
+	private static ArgumentContext placeholder(ParserRuleContext from) {
+		ArgumentContext ret = new ArgumentContext(null, 0);
+		ret.start = from.start;
+		ret.stop = from.stop;
 		return ret;
 	}
 

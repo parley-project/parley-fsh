@@ -14,6 +14,9 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import us.bringardner.filesource.sh.FileSourceShParser.ArgVariableContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Array_indexContext;
+import us.bringardner.filesource.sh.FileSourceShParser.Associative_indexContext;
 import us.bringardner.filesource.sh.FileSourceShParser.StringContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
 import us.bringardner.io.filesource.FileSource;
@@ -257,15 +260,24 @@ $
 				name = ctx.ID().getText();
 			} 
 
-		Object ret = getVariable(name);
+		return index(getVariable(name), ctx.associative_index(), ctx.array_index());
+	}
 
-		if( ctx.associative_index()!=null) {
+	/**
+	 * A variable that is part of a word ($name, $1, $? ... with an optional index).
+	 */
+	public Object getVariable(ArgVariableContext ctx)  {
+		return index(getVariable(ctx.VARIABLE().getText()), ctx.associative_index(), ctx.array_index());
+	}
+
+	private Object index(Object ret, Associative_indexContext associativeIndex, Array_indexContext arrayIndex) {
+		if( associativeIndex!=null) {
 			// associative arrays should be in a parameter ${s[s]} so this should not happen.
 			throw new RuntimeException("Handle associative array");
 		}
 
-		if( ctx.array_index()!=null) {
-			Expression expr = new Expression(ctx.array_index().expression());
+		if( arrayIndex!=null) {
+			Expression expr = new Expression(arrayIndex.expression());
 			Object idx = expr.evaluate(this);
 			if (idx instanceof Number) {
 				int ii = ((Number) idx).intValue();

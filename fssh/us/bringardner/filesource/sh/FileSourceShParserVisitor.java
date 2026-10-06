@@ -35,12 +35,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitStatement1(FileSourceShParser.Statement1Context ctx);
 	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#backgroundCommand}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitBackgroundCommand(FileSourceShParser.BackgroundCommandContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#loop_controll_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -100,6 +94,18 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitArgument(FileSourceShParser.ArgumentContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#argumentPart}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitArgumentPart(FileSourceShParser.ArgumentPartContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#argVariable}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitArgVariable(FileSourceShParser.ArgVariableContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#signed_number}.
 	 * @param ctx the parse tree

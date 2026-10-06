@@ -21,6 +21,19 @@ lexer grammar FileSourceShLexer;
 	    return false;
 	  }
 	  
+	// an option like -la only starts a word: at the start of input or after whitespace,
+	// so x-y in $((x-y)) stays x MINUS y
+	boolean atWordStart() {
+		int prev = _input.LA(-1);
+		return prev == ' ' || prev == '\t' || prev == '\n' || prev == '\r' || prev == org.antlr.v4.runtime.IntStream.EOF;
+	}
+
+	// a keyword stands alone: done-now and if.txt are words
+	boolean atKeywordEnd() {
+		int next = _input.LA(1);
+		return next == org.antlr.v4.runtime.IntStream.EOF || " \t\r\n;|&()<>{}[]".indexOf(next) >= 0;
+	}
+
   	boolean exprEndAhead() {
 		 char nx =  (char)_input.LA(1);
 		 if( nx == ';' || nx == '\n'|| nx == EOF) {
@@ -100,8 +113,8 @@ WS: [ \t\r]+ ;
 
 
 
-TRUE: 'true';
-FALSE: 'false';
+TRUE: 'true' {atKeywordEnd()}?;
+FALSE: 'false' {atKeywordEnd()}?;
 COMMENT: '/*' .*? '*/' -> skip;
 
 
@@ -110,34 +123,34 @@ LINE_COMMENT: '#'  ~[\r\n]* (EOF | NL) -> skip;
 
 
 SHEBANG: '#!' ~[\r\n]* [\r\n];
-LOCAL:'local';
+LOCAL: 'local' {atKeywordEnd()}?;
 LCURLY:'{';
 RCURLY:'}';
-FUNCTION:'function';
+FUNCTION: 'function' {atKeywordEnd()}?;
 CRETURN:'\r';
 SPACE:' ';
 TAB:'\t';
 
 QUOTE:'\'';
 BACKQUOTE:'`';
-CONTINUE:'continue';
-BREAK:'break';
-FOR:'for';
-SELECT: 'select';
-IN:'in';
-WHILE:'while';
-DONE:'done';
+CONTINUE: 'continue' {atKeywordEnd()}?;
+BREAK: 'break' {atKeywordEnd()}?;
+FOR: 'for' {atKeywordEnd()}?;
+SELECT: 'select' {atKeywordEnd()}?;
+IN: 'in' {atKeywordEnd()}?;
+WHILE: 'while' {atKeywordEnd()}?;
+DONE: 'done' {atKeywordEnd()}?;
 
-UNTIL:'until';
-IF:'if';
-FI:'fi';
-THEN:'then';
-ELSE:'else';
-ELIF:'elif';
+UNTIL: 'until' {atKeywordEnd()}?;
+IF: 'if' {atKeywordEnd()}?;
+FI: 'fi' {atKeywordEnd()}?;
+THEN: 'then' {atKeywordEnd()}?;
+ELSE: 'else' {atKeywordEnd()}?;
+ELIF: 'elif' {atKeywordEnd()}?;
 SLASH:'/';
 BACKSLASH:'\\';
-CASE:'case';
-ESAC:'esac';
+CASE: 'case' {atKeywordEnd()}?;
+ESAC: 'esac' {atKeywordEnd()}?;
 
 DOLLAR:'$';
 PLUS_PLUS:'++';
@@ -150,7 +163,7 @@ PERC:'%';
 PLUS:'+';
 STAR:'*';
 POW:'**';
-DO:'do';
+DO: 'do' {atKeywordEnd()}?;
 EQ:'=';
 EQUALITY:'=='|'-eq';
 RX_EQUALITY:'=~';
@@ -161,7 +174,7 @@ PIPE:'|';
 AMP:'&';
 TILDE:'~';
 QUESTION:'?';
-TIME:'time';
+TIME: 'time' {atKeywordEnd()}?;
 LPAREN:'(';
 RPAREN:')';
 LSQUARE:'[';
@@ -190,8 +203,9 @@ PERC_MINUS:'%-';
 PERC_PLUS:'%+';
 PERC_QUESTION:'%?';
 
-ARG_ID  :~[a-zA-Z0-9]('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
-//ARG_ID  :('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
+// was ~[a-zA-Z0-9]('-'|'+')+..., which took the character before the dash into the token
+// (" -la", "/-Volumes"), so a path with "/-" could not be parsed
+ARG_ID  : {atWordStart()}? ('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
 LETTER_OR_DIGIT:[a-zA-Z_0-9];
 COLON: ':';

@@ -21,13 +21,12 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgVariableContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
-import us.bringardner.filesource.sh.FileSourceShParser.PathContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
-import us.bringardner.filesource.sh.FileSourceShParser.Signed_numberContext;
-import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
@@ -124,38 +123,34 @@ public class TestVisitor {
 		string = "'the quick brown fox jumpped over the lazy dog.'";
 		a = parseAurgument(string);
 
-		TerminalNode ctx = a.getContext().string().SQ_STRING();
+		TerminalNode ctx = onlyPart(a).string().SQ_STRING();
 		assertNotNull(ctx, "string");
 		assertEquals(string, ctx.getText());
 
 		a = parseAurgument("name");
+		assertNotNull(onlyPart(a).literal, "ID");
+		assertEquals(FileSourceShParser.ID, onlyPart(a).literal.getType());
+		assertEquals("name", a.getContext().getText());
 
-		PathContext xxx = a.getContext().path();
-		assertNotNull(xxx, "ID");
-		assertEquals("name", xxx.getText());
-		// arguments can not start at the begging of int=put
-		a = parseAurgument(" -name");
-		assertNotNull(a.getContext().ARG_ID(), "argId");
-
-		ctx = a.getContext().ARG_ID();
-		assertNotNull(ctx, "ARG_ID from -name");
-		assertEquals("-name", ctx.getText().trim());
+		// an option starts a word
+		a = parseAurgument("-name");
+		assertEquals(FileSourceShParser.ARG_ID, onlyPart(a).literal.getType(), "ARG_ID from -name");
+		assertEquals("-name", onlyPart(a).getText());
 
 		a = parseAurgument("$v");
-		VariableContext ctx2 = a.getContext().variable();
+		ArgVariableContext ctx2 = onlyPart(a).argVariable();
 		assertNotNull(ctx2, "variable");
 		assertEquals("$v", ctx2.getText());
 
+		// a path is one word made of several parts
 		string = "~/test/../\"test\"/'test'/?/*/2334/dd";
 		a = parseAurgument(string);
-		PathContext ctx3 = a.getContext().path();	
-		assertNotNull(ctx3, "variable");
-		assertEquals(string, ctx3.getText());
+		assertTrue(a.getContext().argumentPart().size() > 1, "parts");
+		assertEquals(string, a.getContext().getText());
 
 		a = parseAurgument("1234");
-		Signed_numberContext ctx1 = a.getContext().signed_number();
-		assertNotNull(ctx1, "number");
-		assertEquals("1234", ctx1.getText());
+		assertEquals(FileSourceShParser.NUMBER, onlyPart(a).literal.getType(), "number");
+		assertEquals("1234", onlyPart(a).getText());
 
 		/*
 mathExpression
@@ -167,16 +162,21 @@ $((12+32))
 
 		string = "$((12+32))";
 		a = parseAurgument(string);
-		MathExpressionContext ctx4 = a.getContext().mathExpression();
+		MathExpressionContext ctx4 = onlyPart(a).mathExpression();
 		assertNotNull(ctx4, "math exp1");
 		assertEquals(string, ctx4.getText());
 
 		string = "((12+32))";
 		a = parseAurgument(string);
-		ctx4 = a.getContext().mathExpression();
+		ctx4 = onlyPart(a).mathExpression();
 		assertNotNull(ctx4, "math exp2");
 		assertEquals(string, ctx4.getText());
 
+	}
+
+	private static ArgumentPartContext onlyPart(Argument a) {
+		assertEquals(1, a.getContext().argumentPart().size(), "parts of "+a.getContext().getText());
+		return a.getContext().argumentPart(0);
 	}
 
 

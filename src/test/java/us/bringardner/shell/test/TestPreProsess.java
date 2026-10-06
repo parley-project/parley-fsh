@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BraceExpansionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BraceRangeContext;
 import us.bringardner.shell.Console;
@@ -363,16 +365,17 @@ public class TestPreProsess {
 				list = objects;
 			}
 			
-			public int compare(BraceExpansionContext result) {
+			// the text before and after the braces is part of the word
+			public int compare(String prefix, BraceExpansionContext result, String suffix) {
 				int ret = 0;
 				String tmp1 = ""+pre;
-				String tmp2 = ""+(result.prefix==null?null:result.prefix.getText());
+				String tmp2 = ""+prefix;
 				if(!tmp1.equals(tmp2)) {
 					return 1;
 				}
 		
 				tmp1 = ""+post;
-				tmp2 = ""+""+(result.suffix==null?null:result.suffix.getText());
+				tmp2 = ""+suffix;
 				if(!tmp1.equals(tmp2)) {
 					return 2;
 				}
@@ -460,8 +463,20 @@ public class TestPreProsess {
 		for (int idx = 0; idx < expect.length; idx++) {
 			FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code[idx]));
 			FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-			BraceExpansionContext result = parser.braceExpansion();
-			int ok = expect[idx].compare(result);
+			ArgumentContext word = parser.argument();
+			String prefix = null;
+			String suffix = null;
+			BraceExpansionContext result = null;
+			for(ArgumentPartContext part : word.argumentPart()) {
+				if( part.braceExpansion() != null ) {
+					result = part.braceExpansion();
+				} else if( result == null ) {
+					prefix = (prefix == null ? "" : prefix)+part.getText();
+				} else {
+					suffix = (suffix == null ? "" : suffix)+part.getText();
+				}
+			}
+			int ok = expect[idx].compare(prefix, result, suffix);
 			assertEquals(0, ok,"idx="+idx+" "+code[idx]);
 		}
 		

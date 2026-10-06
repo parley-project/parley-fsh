@@ -15,16 +15,16 @@ conditionalStatement:
 	;
 	
 		
+// a trailing & runs the statement in the background. (A separate rule that repeated the whole
+// command before the & made the fast SLL parse fail on every command.)
 statement:
-	  white* statement1 WS* (NL|SEMI|EOF)
+	  white* statement1 (WS* bg=AMP)? WS* (NL|SEMI|EOF)
 	| conditionalStatement  (NL|SEMI|EOF)
 	;
 	
 statement1:
-      backgroundCommand
-    | ifStatement
+      ifStatement
     | mathStatement
-    | pipeStatement
     | whileStatement
     | forStatement
     | selectStatement
@@ -33,23 +33,17 @@ statement1:
     | functionDefinition
     | until_statement
     | doStatement
-    | commandStatement
+    // after assignments and function definitions, which also start with a name (where commandStatement was)
+    | pipeStatement
     | loop_controll_statement
     | declareAssociativeArrayStatement
     | boolean_statement
     | compareStatement
-    | statement_group // Includes parenthesized groups
     | command_substitution
     | exprStatement
     | job_control_statement
     
     ;
-
-backgroundCommand:
-				statement_group WS* AMP
-				| pipeStatement WS* AMP
-				| commandStatement WS* AMP
-				;
 
 loop_controll_statement: 
 			  BREAK WS* NUMBER?
@@ -59,17 +53,10 @@ loop_controll_statement:
 assignStatement: assignment WS*
 		;
 		
+// the value is a word, like a command argument: x=sub-dir and y=$x$x are text, x=$((1+2)) is a number
 assignment:		
       (LOCAL WS)? WS* id1=ID WS* EQ WS* arrayInitializer // Specific rule for array init
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* command_substitution
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* boolean
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* string    
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* variable
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* expression
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* mathExpression
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* parameter
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* id2=ID
-    | (LOCAL WS)? WS* id1=(ID|ARG_ID) (WS* (associative_index | array_index))? WS* EQ WS* path
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* value=argument?
     ;
 
 boolean: TRUE | FALSE;
@@ -100,28 +87,28 @@ path:
     | SLASH        
     ;
 
-argument_list: (argument WS*)*
+argument_list: WS* (argument (WS+ argument)* WS*)?
 	;
 
 
 	
-argument:
-      ARG_ID 
-    | arg_command_substitution
-    | signed_number
-    | NUMBER    
-   	| braceExpansion
-   	| TEXT
-    | string         
-    | assignStatement            
-    | mathExpression
+// A word: one or more parts with no whitespace between them, such as a$x, "$HOME"/x-y.txt or -la.
+// Words are separated by whitespace, so the parser never has to guess where one argument ends.
+argument: argumentPart+ ;
+
+argumentPart:
+      literal=(ID | NUMBER | ARG_ID | TEXT | SLASH | TILDE | AT | DOT | DOT_DOT | STAR | QUESTION
+             | MINUS | MINUS_MINUS | PLUS | PERC | COLON | COMMA | EQ | LOCAL | TRUE | FALSE)
+    | string
+    | argVariable
     | parameter
-	| path	
-	| ID
-	| variable
-	| PERC
-	
+    | mathExpression
+    | arg_command_substitution
+    | braceExpansion
     ;
+
+// $name, $1, $? ... (a bare name is a literal part of the word)
+argVariable: VARIABLE (associative_index | array_index)? ;
     
 signed_number: (MINUS|PLUS|PERC)? NUMBER;    
 
@@ -129,7 +116,7 @@ signed_number: (MINUS|PLUS|PERC)? NUMBER;
 // one alternative: with two that differ only at the end, the parser had to read the whole
 // command before it could choose (seconds for a long path)
 commandStatement:
-      WS*	redirect1=redirect? WS* command WS* (argument WS*)* (hereDocument WS*)? redirect2=redirect?
+      WS*	redirect1=redirect? WS* command (WS+ argument)* WS* (hereDocument WS*)? redirect2=redirect?
     ;
     
     
@@ -155,13 +142,15 @@ command: path
 		;
 
 
+// also a single command or group: an alternative that repeated the command before the first |
+// made the fast SLL parse fail on every command
 pipeStatement:
-     white* (TIME white*)? parg=ARG_ID? white* (NOT white*)? pipeableStatement (pipeOp pipeableStatement)+ 
+     white* (TIME white*)? parg=ARG_ID? white* (NOT white*)? pipeableStatement (pipeOp pipeableStatement)* 
     ;
     
 pipeableStatement:
 		commandStatement
-		| statement_group
+		| statement_group WS*  // a command takes the spaces before | itself; a group did not, so "{ ...; } | x" failed
 		;
 		    
 pipeOp:
@@ -208,7 +197,7 @@ compare_prime:
     | commandStatement
     ;
 
-file_test: WS* op=argument WS* target=argument WS*;
+file_test: WS* op=argument WS+ target=argument WS*;
 
 associative_index:
 		(LSQUARE ID RSQUARE)
@@ -396,7 +385,7 @@ arrayInitializer:
     ;
 
 list: 
-	  (argument white*)+
+	  argument (white+ argument)* white*
     | white* LSQUARE white* argument white* RSQUARE white*
     ;
 
@@ -471,7 +460,8 @@ associativeArrayInitializer:
     ;
 
 
-braceExpansion: white* prefix=associativeArrayValue? LCURLY (braceRange|braceArgList) RCURLY suffix=associativeArrayValue?
+// text before and after the braces is part of the word (see Argument)
+braceExpansion: LCURLY (braceRange|braceArgList) RCURLY
 	;
 	
 braceArgList:associativeArrayValue (COMMA associativeArrayValue)*;
@@ -490,6 +480,6 @@ associativeArrayValue:
     | parameter
     ;
 
-job_control_statement: cmd=ID WS* (argument WS*)* (jobspec WS*)*;
+job_control_statement: cmd=ID (WS+ argument)* (WS+ jobspec)* WS*;
 jobspec:(signed_number|PERC_PERC|PERC_PLUS|PERC_MINUS|PERC_QUESTION ID?);
 

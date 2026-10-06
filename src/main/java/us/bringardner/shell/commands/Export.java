@@ -3,11 +3,8 @@ package us.bringardner.shell.commands;
 import java.io.IOException;
 import java.util.Map;
 
-import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Argument;
-import us.bringardner.shell.antlr.statement.AssignStatement;
 
 public class Export extends ShellCommand{
 	enum Arguments {f,n,p};
@@ -78,20 +75,12 @@ public class Export extends ShellCommand{
 				// with no args all we can do is set a value for export
 				for (int idx = 0; idx < args.length; idx++) {
 					String val = args[idx].getValue(ctx).toString();
-					if( val.indexOf('=')>0) {
-						// assign statement should be in antlr args
-						Argument arg =  this.args[idx];
-						ArgumentContext actx = arg.getContext();
-						if(actx.assignStatement()!=null) {
-							AssignStatement as = new AssignStatement(actx.assignStatement());
-							if((ret= as.process(ctx)) !=0) {
-								return ret;
-							};
-							String name = as.getName();
-							Object value = ctx.getVariable(name);
-							ctx.unSetVariable(name);
-							ctx.setEnvironmentVariable(name, value);					
-						}
+					int eq = val.indexOf('=');
+					if( eq > 0) {
+						// name=value (the value is already expanded)
+						String name = val.substring(0, eq);
+						ctx.unSetVariable(name);
+						ctx.setEnvironmentVariable(name, val.substring(eq+1));					
 					}
 				}
 			}

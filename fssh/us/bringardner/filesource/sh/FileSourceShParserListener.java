@@ -48,16 +48,6 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitStatement1(FileSourceShParser.Statement1Context ctx);
 	/**
-	 * Enter a parse tree produced by {@link FileSourceShParser#backgroundCommand}.
-	 * @param ctx the parse tree
-	 */
-	void enterBackgroundCommand(FileSourceShParser.BackgroundCommandContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link FileSourceShParser#backgroundCommand}.
-	 * @param ctx the parse tree
-	 */
-	void exitBackgroundCommand(FileSourceShParser.BackgroundCommandContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#loop_controll_statement}.
 	 * @param ctx the parse tree
 	 */
@@ -157,6 +147,26 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitArgument(FileSourceShParser.ArgumentContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#argumentPart}.
+	 * @param ctx the parse tree
+	 */
+	void enterArgumentPart(FileSourceShParser.ArgumentPartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#argumentPart}.
+	 * @param ctx the parse tree
+	 */
+	void exitArgumentPart(FileSourceShParser.ArgumentPartContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#argVariable}.
+	 * @param ctx the parse tree
+	 */
+	void enterArgVariable(FileSourceShParser.ArgVariableContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#argVariable}.
+	 * @param ctx the parse tree
+	 */
+	void exitArgVariable(FileSourceShParser.ArgVariableContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#signed_number}.
 	 * @param ctx the parse tree

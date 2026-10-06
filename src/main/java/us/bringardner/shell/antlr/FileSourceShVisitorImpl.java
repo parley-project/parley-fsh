@@ -25,7 +25,6 @@ import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Argument_listContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
-import us.bringardner.filesource.sh.FileSourceShParser.BackgroundCommandContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CaseClauseContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CaseStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CommandContext;
@@ -133,6 +132,9 @@ statement
 		Statement ret = null;
 		if( ctx.statement1()!=null ) {
 			ret = visitStatement1(ctx.statement1());
+			if( ctx.bg != null ) {
+				ret = new BackgroundStatement(ctx, ret);
+			}
 		} else if( ctx.conditionalStatement()!=null) {
 			ret = visitConditionalStatement(ctx.conditionalStatement());
 		}
@@ -161,9 +163,7 @@ statement
 	public Statement visitStatement1(Statement1Context ctx) {
 		Statement ret = null;
 		//String txt = ctx.getText();
-		if(ctx.commandStatement()!=null ) {
-			ret = visitCommandStatement(ctx.commandStatement());
-		} else if(ctx.pipeStatement()!=null ) {
+		if(ctx.pipeStatement()!=null ) {
 			ret = visitPipeStatement(ctx.pipeStatement());
 		} else if(ctx.mathStatement()!=null ) {
 			ret = visitMathStatement(ctx.mathStatement());
@@ -193,14 +193,10 @@ statement
 			ret = new LogicStatement(ctx,ctx.boolean_statement());
 		} else if (ctx.caseStatement()!=null) {
 			ret = visitCaseStatement(ctx.caseStatement());
-		} else if (ctx.statement_group()!=null) {
-			ret = visitStatement_group(ctx.statement_group());
 		} else if (ctx.command_substitution()!=null) {
 			ret = new CommandSubstitutionStatement(ctx.command_substitution());
 		} else if (ctx.compareStatement()!=null) {			
 			ret = visitCompareStatement(ctx.compareStatement());
-		} else if (ctx.backgroundCommand()!=null) {
-			ret = visitBackgroundCommand(ctx.backgroundCommand());
 		}else if(ctx.selectStatement()!=null ) {
 			ret = visitSelectStatement(ctx.selectStatement());
 		} else if(ctx.job_control_statement() !=null) {
@@ -211,30 +207,6 @@ statement
 
 		return ret;
 	}
-	/*
-
-backgroundCommand:
-				statement_group AMP
-				| pipeStatement AMP
-				| commandStatement AMP
-				;
-	 */
-	@Override
-	public BackgroundStatement visitBackgroundCommand(BackgroundCommandContext ctx) {
-		Statement stmt = null;
-		if( ctx.statement_group()!=null) {
-			stmt = visitStatement_group(ctx.statement_group());
-		} else if( ctx.pipeStatement()!=null) {
-			stmt = visitPipeStatement(ctx.pipeStatement());
-		} else if( ctx.commandStatement() !=null) {
-			stmt = visitCommandStatement(ctx.commandStatement());
-		} else {
-			throw new RuntimeException("No known background statement ");
-		}
-
-		return new BackgroundStatement(ctx,stmt);
-	}
-
 	//compareStatement:  LSQUARE simpleCompare=compare RSQUARE statement?;
 	@Override
 	public Statement visitCompareStatement(CompareStatementContext ctx) {
@@ -404,7 +376,7 @@ pipeOp:
 		}
 
 
-		Statement[] stmts = new CommandStatement[ctx.pipeableStatement().size()];
+		Statement[] stmts = new Statement[ctx.pipeableStatement().size()];
 		for (int idx = 0; idx < stmts.length; idx++) {
 			stmts[idx] = visitPipeableStatement(ctx.pipeableStatement(idx));
 		}
@@ -413,6 +385,10 @@ pipeOp:
 			throw new RuntimeException("Invaid pipstatement. wrong numebr of ops="+ops.length+" should be "+(stmts.length-1));
 		}
 
+		if( stmts.length == 1 && !doTime && ctx.NOT() == null ) {
+			// a plain command or group
+			return stmts[0];
+		}
 		return new PipeStatement(ctx,doTime,stmts,ops);
 	}
 

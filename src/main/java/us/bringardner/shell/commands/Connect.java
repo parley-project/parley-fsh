@@ -36,7 +36,11 @@ public class Connect extends ShellCommand{
 			for(int idx=0; idx<this.args.length; idx++) {
 				String arg = ""+this.args[idx].getValue(ctx);
 				if( arg.equals("-f")) {
-					arg = "-f="+this.args[++idx].getValue(ctx); 
+					// -f file (the property file was dropped here before)
+					args.add("-f="+this.args[++idx].getValue(ctx)); 
+				} else if( arg.startsWith("-f") && !arg.startsWith("-f=")) {
+					// -ffile
+					args.add("-f="+arg.substring(2)); 
 				} else if(arg.equals("-")) {
 					readStdin=true;
 				} else {

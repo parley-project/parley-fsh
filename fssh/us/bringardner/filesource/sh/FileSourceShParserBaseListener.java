@@ -65,18 +65,6 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterBackgroundCommand(FileSourceShParser.BackgroundCommandContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitBackgroundCommand(FileSourceShParser.BackgroundCommandContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterLoop_controll_statement(FileSourceShParser.Loop_controll_statementContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -192,6 +180,30 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitArgument(FileSourceShParser.ArgumentContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterArgumentPart(FileSourceShParser.ArgumentPartContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitArgumentPart(FileSourceShParser.ArgumentPartContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterArgVariable(FileSourceShParser.ArgVariableContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitArgVariable(FileSourceShParser.ArgVariableContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

@@ -6,7 +6,6 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
-import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -86,9 +85,8 @@ public class ForStatement extends LoopStatement{
 			Argument a = args[idx];
 			String val = ""+a.getValue(ctx);
 
-			ArgumentContext actx = a.getContext();
-			//TODO: probably need a more comprehensive way to generate file lists
-			if( actx !=null && actx.path() !=null) {
+			// an unquoted * or ? names files
+			if( a.hasUnquotedWildcard()) {
 				List<FileSource> list = ShellCommand.getFiles(ctx, val);
 				if( list.size()>0) {
 					for(FileSource file : list) {

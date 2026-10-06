@@ -2,11 +2,9 @@ package us.bringardner.shell.commands;
 
 import java.io.IOException;
 
-import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
-import us.bringardner.shell.antlr.statement.AssignStatement;
 
 public class Alias extends ShellCommand{
 	static String name = "alias";
@@ -27,33 +25,30 @@ public class Alias extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		for(Argument arg : args) {
-			ArgumentContext actx = arg.getContext();
-			if( actx.ID() != null) {
-				String name = actx.ID().getText(); 
-				Object val = ctx.console.getAlias(name);
-				if( val == null ) {
-					//alias: llll: not found
-					ctx.stdout.println("alias: "+name+": not found");
-				} else {
-					printAlias(ctx,name,val);
-				}
-			} else if( actx.ARG_ID() != null) {
-				if(actx.ARG_ID().getText().trim().equals("-p")) {
+			String text = ""+arg.getValue(ctx);
+			if( text.startsWith("-")) {
+				if(text.equals("-p")) {
 					for(String name : ctx.console.getAliases().keySet()) {
 						printAlias(ctx,name, ctx.console.getAlias(name));
 					}
 				} else {
 					// invalid??
-					throw new IOException("Don't know what to do for '"+actx.getText()+"'");
+					throw new IOException("Don't know what to do for '"+text+"'");
 				}
-			} else if( actx.assignStatement() != null) {
-				AssignStatement as = new AssignStatement(actx.assignStatement());
-				String name = actx.assignStatement().assignment().id1.getText();				
-				String val = ""+as.getValue(ctx);
-				ctx.console.setAlias(name, val);
-				
 			} else {
-				throw new IOException("Don't know what to do for '"+actx.getText()+"'");
+				int eq = text.indexOf('=');
+				if( eq > 0 ) {
+					// name=value
+					ctx.console.setAlias(text.substring(0, eq), text.substring(eq+1));
+				} else {
+					Object val = ctx.console.getAlias(text);
+					if( val == null ) {
+						//alias: llll: not found
+						ctx.stdout.println("alias: "+text+": not found");
+					} else {
+						printAlias(ctx,text,val);
+					}
+				}
 			}
 		}
 		
