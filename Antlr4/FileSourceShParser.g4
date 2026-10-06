@@ -410,13 +410,23 @@ compoundCommand:
         ;
 
 command_substitution:
-			'$(' ~')'* ')'
+			DOLLAR_PAREM cmd_part* RPAREN
+			| DOLLAR_PAREM cmd_part* (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN_RPAREN
 			| '`' ~'`'* '`'
 			;
 
+// parentheses nest: $(echo $(date)). The lexer reads )) as one token, so it may close two levels.
 arg_command_substitution:
-			'$(' ~')'* ')'
+			DOLLAR_PAREM cmd_part* RPAREN
+			| DOLLAR_PAREM cmd_part* (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN_RPAREN
 			| '`' ~'`'* '`'
+			;
+
+cmd_part:
+			~(DOLLAR_PAREM | LPAREN | RPAREN | DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN | RPAREN_RPAREN)
+			| (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN
+			| (DOLLAR_PAREM | LPAREN) cmd_part* (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN_RPAREN
+			| (DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN) cmd_part* RPAREN_RPAREN
 			;
 
 

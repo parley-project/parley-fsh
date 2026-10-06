@@ -184,4 +184,33 @@ public class TestWords extends AbstractConsoleTest {
 		expect("set -- a; set --; echo $#", "0\n");
 		expect("set -- \"p q\" r; for a in \"$@\"; do echo \"<$a>\"; done", "<p q>\n<r>\n");
 	}
+
+	@Test
+	public void testNestedCommandSubstitution() throws IOException {
+		expect("echo $(echo $(echo deep)); x=$(echo $(echo $(echo $(echo four)))); echo $x", "deep\nfour\n");
+		expect("echo \"<$(echo \"$(echo \"$(echo in)\")\")>\" \"<$(echo $(echo in))>\"", "<in> <in>\n");
+		// a ) in quotes does not end it
+		expect("echo \"[$(echo \"a)b\")]\" \"[$(echo 'a)b')]\"", "[a)b] [a)b]\n");
+		expect("echo $(echo $((2+3))) \"x$(echo $((1+1)))y\" \"$(( (1+2)*3 ))\"", "5 x2y 9\n");
+		expect("echo \"a) b ( c 'q'\"", "a) b ( c 'q'\n");
+	}
+
+	@Test
+	public void testFunctionStateInSubshell() throws IOException {
+		// $( ) inside a function sees its parameters and local variables, and its changes stay inside
+		expect("f() { echo \"$(echo \"$@\")\" $(echo $1); }; f a b", "a b a\n");
+		expect("f() { local v=lv; echo $(echo $v); }; f", "lv\n");
+		expect("for i in a b; do echo $(echo $i); done", "a\nb\n");
+		expect("f() { echo $(set -- z; echo $1) $1; }; f a", "z a\n");
+		expect("f() { local v=1; echo $(v=2; echo $v) $v; }; f", "2 1\n");
+	}
+
+	@Test
+	public void testFunctionParametersAndLocals() throws IOException {
+		expect("f() { set -- z; echo $1; }; f a", "z\n");
+		expect("f() { shift; echo $1; }; f a b", "b\n");
+		// shifting more than $# changes nothing and fails
+		expect("f() { shift 3; echo $? $1; }; f a b", "1 a\n");
+		expect("f() { local v=1; v=2; echo $v; }; f; echo :$v:", "2\n::\n");
+	}
 }

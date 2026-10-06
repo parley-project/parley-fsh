@@ -748,6 +748,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitArg_command_substitution(FileSourceShParser.Arg_command_substitutionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#cmd_part}.
+	 * @param ctx the parse tree
+	 */
+	void enterCmd_part(FileSourceShParser.Cmd_partContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#cmd_part}.
+	 * @param ctx the parse tree
+	 */
+	void exitCmd_part(FileSourceShParser.Cmd_partContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#parameter}.
 	 * @param ctx the parse tree
 	 */

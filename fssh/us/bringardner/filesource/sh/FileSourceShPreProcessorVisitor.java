@@ -47,6 +47,18 @@ public interface FileSourceShPreProcessorVisitor<T> extends ParseTreeVisitor<T> 
 	 */
 	T visitPp_dollar_command(FileSourceShPreProcessorParser.Pp_dollar_commandContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_nested}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPp_nested(FileSourceShPreProcessorParser.Pp_nestedContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_dq}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPp_dq(FileSourceShPreProcessorParser.Pp_dqContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_parameter}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

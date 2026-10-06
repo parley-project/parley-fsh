@@ -89,6 +89,30 @@ public class FileSourceShPreProcessorBaseListener implements FileSourceShPreProc
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterPp_nested(FileSourceShPreProcessorParser.Pp_nestedContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPp_nested(FileSourceShPreProcessorParser.Pp_nestedContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPp_dq(FileSourceShPreProcessorParser.Pp_dqContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPp_dq(FileSourceShPreProcessorParser.Pp_dqContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPp_parameter(FileSourceShPreProcessorParser.Pp_parameterContext ctx) { }
 	/**
 	 * {@inheritDoc}

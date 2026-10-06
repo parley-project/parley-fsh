@@ -68,6 +68,26 @@ public interface FileSourceShPreProcessorListener extends ParseTreeListener {
 	 */
 	void exitPp_dollar_command(FileSourceShPreProcessorParser.Pp_dollar_commandContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#pp_nested}.
+	 * @param ctx the parse tree
+	 */
+	void enterPp_nested(FileSourceShPreProcessorParser.Pp_nestedContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_nested}.
+	 * @param ctx the parse tree
+	 */
+	void exitPp_nested(FileSourceShPreProcessorParser.Pp_nestedContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#pp_dq}.
+	 * @param ctx the parse tree
+	 */
+	void enterPp_dq(FileSourceShPreProcessorParser.Pp_dqContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_dq}.
+	 * @param ctx the parse tree
+	 */
+	void exitPp_dq(FileSourceShPreProcessorParser.Pp_dqContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#pp_parameter}.
 	 * @param ctx the parse tree
 	 */

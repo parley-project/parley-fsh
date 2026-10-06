@@ -1,6 +1,7 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.shell.ShellCommand;
@@ -33,12 +34,13 @@ public class Shift extends ShellCommand{
 		if( args.length>0) {
 			n = Integer.parseInt(""+args[0].getValue(ctx));
 		}
+		List<Object> tmp = ctx.getPositionalParameterValues();
+		if( n > tmp.size()) {
+			// as in bash, nothing is shifted and the status is 1
+			return 1;
+		}
 		if( n > 0 ) {
-			List<Object> tmp = ctx.getAllPositionalParameters();
-			while(n-->0 && tmp.size()>1) {
-				tmp.remove(1);				
-			}
-			ctx.console.setPositionalParameters(true, tmp);
+			ctx.setPositionalParameterValues(new ArrayList<>(tmp.subList(n, tmp.size())));
 		}
 		return ret;
 	}

@@ -455,6 +455,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitArg_command_substitution(FileSourceShParser.Arg_command_substitutionContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#cmd_part}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCmd_part(FileSourceShParser.Cmd_partContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#parameter}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

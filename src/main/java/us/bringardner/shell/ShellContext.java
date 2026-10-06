@@ -350,7 +350,12 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
-		console.setVariable(name, value);
+		if( !functionStack.isEmpty() && functionStack.peek().local.containsKey(name)) {
+			// name=value sets the function's local variable
+			functionStack.peek().local.put(name, value);
+		} else {
+			console.setVariable(name, value);
+		}
 	}
 
 	public boolean unSetVariable(String name) {
@@ -464,11 +469,26 @@ $
 		return console.createFileSource(path);
 	}
 
+	/**
+	 * A context for $( ), a pipe stage or a background job. It starts with copies of the running
+	 * functions ($1, $@, local variables) and of the local variables (such as for loop variables),
+	 * so changes made in it are not seen here, as in bash.
+	 */
+	@SuppressWarnings("unchecked")
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
 		ret.stdout = stdout;
 		ret.stdin = stdin;
 		ret.stderr = stderr;
+		for(FunctionInvocation inv : functionStack) {
+			ret.functionStack.push(inv.copy());
+		}
+		if( !commandStack.isEmpty()) {
+			Map<String,Object> l = (Map<String, Object>) commandStack.peek().get(LOCAL_VARIABLES);
+			if( l != null ) {
+				((Map<String, Object>) ret.commandStack.peek().get(LOCAL_VARIABLES)).putAll(l);
+			}
+		}
 		return ret;
 	}
 
@@ -494,6 +514,16 @@ $
 			this.args.add(function.getName());
 			this.args.addAll(Arrays.asList(args2));
 
+		}
+
+		private FunctionInvocation(FunctionInvocation other) {
+			function = other.function;
+			args.addAll(other.args);
+			local.putAll(other.local);
+		}
+
+		FunctionInvocation copy() {
+			return new FunctionInvocation(this);
 		}
 
 	}
@@ -703,6 +733,21 @@ $
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * Set $1, $2 ... of the running function, or of the script outside a function ($0 is kept).
+	 */
+	public void setPositionalParameterValues(List<Object> values) {
+		if( functionStack.isEmpty()) {
+			console.setPositionalParameters(false, values);
+		} else {
+			List<Object> args = functionStack.peek().args;
+			Object zero = args.get(0);
+			args.clear();
+			args.add(zero);
+			args.addAll(values);
+		}
 	}
 
 	public List<Object>  getAllPositionalParameters() {

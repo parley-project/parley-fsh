@@ -129,12 +129,20 @@ public class Set extends ShellCommand{
 				Object val2 = args[idx].getValue(ctx);
 				pp.add(val2);
 			}			
-			ctx.console.setPositionalParameters(isMain,pp);
+			setPositionalParameters(ctx, isMain, pp);
 		} else if( val.equals("--")) {
-			ctx.console.setPositionalParameters(isMain,new FsshList());
+			setPositionalParameters(ctx, isMain, new FsshList());
 		}
 
 		return ret;
 	}
 
+	private static void setPositionalParameters(ShellContext ctx, boolean isMain, FsshList pp) {
+		if( isMain ) {
+			ctx.console.setPositionalParameters(true, pp);
+		} else {
+			// in a function this sets the function's parameters
+			ctx.setPositionalParameterValues(pp);
+		}
+	}
 }

@@ -7,8 +7,6 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
@@ -51,12 +49,11 @@ public class CommandSubstitutionStatement extends Statement{
 		exitCode = 0;
 		
 		// the text between $( and ) as written: joining the tokens with spaces split words
-		// (ls *.txt ran as ls * . txt)
+		// (ls *.txt ran as ls * . txt). The last token may be )) when it also closes a nested $( ).
 		String code = "";
-		int count = context.getChildCount();
-		if( count > 2 ) {
-			int start = startIndex(context.getChild(1));
-			int stop = stopIndex(context.getChild(count-2));
+		int start = context.getStart().getStopIndex()+1;
+		int stop = context.getStop().getStopIndex()-1;
+		if( stop >= start ) {
 			code = context.getStart().getInputStream().getText(Interval.of(start, stop)).trim();
 		}
 		exitCode =execute(code,primary);
@@ -97,14 +94,5 @@ public class CommandSubstitutionStatement extends Statement{
 		}
 	
 		return exitCode;
-	}
-	
-	
-	private static int startIndex(ParseTree tree) {
-		return tree instanceof TerminalNode ? ((TerminalNode)tree).getSymbol().getStartIndex() : ((ParserRuleContext)tree).getStart().getStartIndex();
-	}
-
-	private static int stopIndex(ParseTree tree) {
-		return tree instanceof TerminalNode ? ((TerminalNode)tree).getSymbol().getStopIndex() : ((ParserRuleContext)tree).getStop().getStopIndex();
 	}
 }
