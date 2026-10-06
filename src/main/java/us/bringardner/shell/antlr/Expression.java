@@ -1,6 +1,16 @@
 package us.bringardner.shell.antlr;
 
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Token;
+
+import us.bringardner.filesource.sh.FileSourceShLexer;
+import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ExpressionContext;
+import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.FactorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.TermContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
@@ -70,6 +80,9 @@ factor
 
 
 	public Operator getOperator(String val) {
+		if( val.equals("/")) {
+			return Operator.Divide;
+		}
 		for(Operator op : Operator.values()) {
 			if(op.label.equals(val)) {
 				return op;
@@ -99,8 +112,8 @@ expression
 		} else if( ctx.complexTerm!=null) {
 			//| expression op=('+' | '-'| '%') term
 			Expression e = new Expression(ctx.expression());
-			Object v1 = e.evaluate(ctx2);
-			Object v2 = evaluateTerm(ctx.complexTerm, ctx2);
+			Object v1 = toNumber(e.evaluate(ctx2), ctx2);
+			Object v2 = toNumber(evaluateTerm(ctx.complexTerm, ctx2), ctx2);
 			Operator op = getOperator(ctx.op.getText());
 			switch (op) {
 			case Add: ret = add(v1,v2);break;
@@ -113,7 +126,7 @@ expression
 			//| variable postOp=('++'|'--')
 		    //| preOp=('++'|'--') variable
 			String name = ctx.variable().getText();
-			Object val1 = ctx2.getVariable(name);
+			Object val1 = toNumber(ctx2.getVariable(name), ctx2);
 			Object val2 = null;
 			String opStr = ctx.preOp!=null?ctx.preOp.getText():ctx.postOp.getText();
 			Operator op = getOperator(opStr);
@@ -141,10 +154,10 @@ expression
  */
 			VariableContext ve = ctx.variable();
 			//String name = ""+ctx2.getVariable(ve);
-			Object v1 = ctx2.getVariable(ve);
+			Object v1 = toNumber(ctx2.getVariable(ve), ctx2);
 			 
 			Expression e = new Expression(ctx.expression());
-			Object v2 = e.evaluate(ctx2);
+			Object v2 = toNumber(e.evaluate(ctx2), ctx2);
 			Operator op = getOperator(ctx.op.getText());
 			
 			switch (op) {
@@ -163,6 +176,62 @@ expression
 		}
 		
 		return ret;
+	}
+
+	/**
+	 * Evaluate text as $((text)) would (used by let).
+	 * 
+	 * @return a number
+	 */
+	public static Object evaluate(String text, ShellContext sc) {
+		// the lexer's divide operator is :^: (/ is a path separator), as in FileSourceShPreProcessorVisitorImpl
+		String code = "$(("+text.replace("/", ":^:")+"))";
+		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code));
+		FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
+		parser.removeErrorListeners();
+		parser.addErrorListener(new BaseErrorListener() {
+			@Override
+			public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+				throw new RuntimeException(text+": syntax error in expression");
+			}
+		});
+		MathExpressionContext me = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::mathExpression);
+		if( parser.getCurrentToken().getType() != Token.EOF ) {
+			throw new RuntimeException(text+": syntax error in expression");
+		}
+		return toNumber(new Expression(me.expression()).evaluate(sc), sc);
+	}
+
+	/**
+	 * An operand of arithmetic, as bash reads it: unset or empty is 0, numeric text is a number,
+	 * and a name is that variable's value (so $((x+1)) works when x is unset or was read as text).
+	 */
+	public static Object toNumber(Object v, ShellContext ctx) {
+		return toNumber(v, ctx, 0);
+	}
+
+	private static Object toNumber(Object v, ShellContext ctx, int depth) {
+		if( v == null ) {
+			return 0;
+		}
+		if( v instanceof Number ) {
+			return v;
+		}
+		if( v instanceof Boolean ) {
+			return ((Boolean) v) ? 1 : 0;
+		}
+		String text = v.toString().trim();
+		if( text.isEmpty()) {
+			return 0;
+		}
+		try {
+			return text.indexOf('.') >= 0 ? (Object)Double.parseDouble(text) : (Object)Integer.parseInt(text);
+		} catch (NumberFormatException e) {
+		}
+		if( depth < 10 && text.matches("[a-zA-Z_][a-zA-Z_0-9]*")) {
+			return toNumber(ctx.getVariable(text), ctx, depth+1);
+		}
+		throw new RuntimeException(text+": syntax error: operand expected");
 	}
 
 	private Object add(Object v1, Object v2) {
@@ -213,7 +282,8 @@ factor
 		if(term.term() ==null || term.op==null) {
 			return factor;
 		}
-		Object term2 = evaluateTerm(term.term(), ctx2);
+		Object term2 = toNumber(evaluateTerm(term.term(), ctx2), ctx2);
+		factor = toNumber(factor, ctx2);
 		Operator op = getOperator(term.op.getText());
 		switch (op) {
 		case Power:ret = power(term2,factor); break;
@@ -282,7 +352,13 @@ factor
 	}
 	private Object getValue(FactorContext factor, ShellContext ctx2)  {
 		Object ret = null;
-		if(factor.NUMBER()!=null) {
+		if( factor.sign != null ) {
+			// -factor or +factor
+			ret = toNumber(getValue(factor.factor(), ctx2), ctx2);
+			if( factor.sign.getType() == FileSourceShParser.MINUS ) {
+				ret = ret instanceof Double ? (Object)(-(Double)ret) : (Object)(-((Number)ret).intValue());
+			}
+		} else if(factor.NUMBER()!=null) {
 			String str = factor.NUMBER().getText();
 			if( str.indexOf('.')>=0) {
 				ret = Double.parseDouble(str);	

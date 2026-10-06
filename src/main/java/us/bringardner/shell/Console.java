@@ -66,12 +66,14 @@ import us.bringardner.shell.commands.Eval;
 import us.bringardner.shell.commands.Exec;
 import us.bringardner.shell.commands.Exit;
 import us.bringardner.shell.commands.Export;
+import us.bringardner.shell.commands.Expr;
 import us.bringardner.shell.commands.Fg;
 import us.bringardner.shell.commands.Find;
 import us.bringardner.shell.commands.Help;
 import us.bringardner.shell.commands.History;
 import us.bringardner.shell.commands.Jobs;
 import us.bringardner.shell.commands.Kill;
+import us.bringardner.shell.commands.Let;
 import us.bringardner.shell.commands.Ln;
 import us.bringardner.shell.commands.Ls;
 import us.bringardner.shell.commands.Mkdir;
@@ -346,6 +348,7 @@ delimiter
 		registerCommand(new Exec());
 		registerCommand(new Echo());
 		registerCommand(new Export());
+		registerCommand(new Expr());
 
 		registerCommand(new Fg());
 		registerCommand(new Find());
@@ -356,6 +359,7 @@ delimiter
 		registerCommand(new Jobs());
 		registerCommand(new Kill());
 
+		registerCommand(new Let());
 		registerCommand(new Ln());
 		registerCommand(new Ls());
 

@@ -40,7 +40,6 @@ statement1:
     | boolean_statement
     | compareStatement
     | command_substitution
-    | exprStatement
     | job_control_statement
     
     ;
@@ -102,7 +101,9 @@ argumentPart:
              // keywords and [ ] ! are text in a word (echo done, echo [$w], ls [!a]*.txt);
              // they can't start a command, so loops, tests and ! pipelines are unaffected
              | IF | FI | THEN | ELSE | ELIF | FOR | SELECT | IN | WHILE | DONE | UNTIL | CASE | ESAC
-             | DO | TIME | FUNCTION | CONTINUE | BREAK | LSQUARE | RSQUARE | NOT)
+             | DO | TIME | FUNCTION | CONTINUE | BREAK | LSQUARE | RSQUARE | NOT
+             // arithmetic operators, for let x++ and let x+=2
+             | PLUS_PLUS | PLUS_EQ | MINUS_ASSIGN | STAR_ASSIGN | MOD_ASSIGN | POW | EQUALITY | NOT_EQ)
     | string
     | argVariable
     | parameter
@@ -169,9 +170,10 @@ mathStatement:
     
     ;
 
+// spaces are allowed around operators: $(( x * 2 ))
 mathExpression:
-      DOLLAR_LPAREN_LPAREN expression RPAREN_RPAREN
-    | LPAREN_LPAREN expression RPAREN_RPAREN
+      DOLLAR_LPAREN_LPAREN WS* expression WS* RPAREN_RPAREN
+    | LPAREN_LPAREN WS* expression WS* RPAREN_RPAREN
     ;
 
 boolean_statement: boolean;
@@ -214,20 +216,20 @@ regular_expression:	rx_pattern+ ;
 
 expression:
       simpleTerm=term
-    | variable postOp=(PLUS_PLUS|MINUS_MINUS)
-    | preOp=(PLUS_PLUS|MINUS_MINUS) variable
-    | variable op=PLUS_EQ expression
-    | variable op=MINUS_ASSIGN expression
-    | variable op=STAR_ASSIGN expression
-    | variable op=DIV_ASSIGN expression
-    | variable op=MOD_ASSIGN expression
-    | expression op=(PLUS | MINUS| PERC) complexTerm=term
+    | variable WS* postOp=(PLUS_PLUS|MINUS_MINUS)
+    | preOp=(PLUS_PLUS|MINUS_MINUS) WS* variable
+    | variable WS* op=PLUS_EQ WS* expression
+    | variable WS* op=MINUS_ASSIGN WS* expression
+    | variable WS* op=STAR_ASSIGN WS* expression
+    | variable WS* op=DIV_ASSIGN WS* expression
+    | variable WS* op=MOD_ASSIGN WS* expression
+    | expression WS* op=(PLUS | MINUS| PERC) WS* complexTerm=term
        ;
 
 
 term:
       factor
-    | term op=(STAR | DIVIDE | PERC | POW) factor
+    | term WS* op=(STAR | DIVIDE | SLASH | PERC | POW) WS* factor   // / divides (DIVIDE is :^:, from the preprocessor)
     ;
 
 
@@ -292,8 +294,9 @@ factor:
     | string
     | variable
     | parameter
-    | LPAREN expression RPAREN
+    | LPAREN WS* expression WS* RPAREN
     | boolean
+    | sign=(MINUS | PLUS) WS* factor   // -1, -x
     ;
 
 //2>&1
@@ -416,9 +419,6 @@ arg_command_substitution:
 			| '`' ~'`'* '`'
 			;
 
-exprStatement: expr;
-
-expr: EXPR_START EXPR_BODY (EXPR_END|EOF);
 
 parameter: PARAMETER_START PARAMETER_BODY PARAMETER_END;
 		

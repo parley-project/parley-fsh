@@ -17,27 +17,26 @@ public class ExprParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		PARAMETER_START=1, EXPR_START=2, HERE_START=3, HERE_START_RM_TABS=4, SEMI=5, 
-		SEMI_SEMI=6, SEMI_AMP=7, SEMI_SEMI_AMP=8, DOLLAR_PAREM=9, HASH=10, NL=11, 
-		LT=12, LT_EQ=13, GT=14, GT_EQ=15, NOT=16, AND=17, OR=18, ESC_AND=19, ESC_OR=20, 
-		NUMBER=21, VARIABLE=22, INTEGER=23, DECIMAL=24, DQ_STRING=25, SQ_STRING=26, 
-		ESC=27, WS=28, TRUE=29, FALSE=30, COMMENT=31, LINE_COMMENT=32, SHEBANG=33, 
-		LOCAL=34, LCURLY=35, RCURLY=36, FUNCTION=37, CRETURN=38, SPACE=39, TAB=40, 
-		QUOTE=41, BACKQUOTE=42, CONTINUE=43, BREAK=44, FOR=45, SELECT=46, IN=47, 
-		WHILE=48, DONE=49, UNTIL=50, IF=51, FI=52, THEN=53, ELSE=54, ELIF=55, 
-		SLASH=56, BACKSLASH=57, CASE=58, ESAC=59, DOLLAR=60, PLUS_PLUS=61, MINUS_MINUS=62, 
-		PLUS_EQ=63, DOT=64, DOT_DOT=65, PERC=66, PLUS=67, STAR=68, POW=69, DO=70, 
-		EQ=71, EQUALITY=72, RX_EQUALITY=73, NOT_EQ=74, MINUS=75, PIPE=76, AMP=77, 
-		TILDE=78, QUESTION=79, TIME=80, LPAREN=81, RPAREN=82, LSQUARE=83, RSQUARE=84, 
-		REDIRECT_APPEND_OUT_2=85, REDIRECT_APPEND_OUT=86, REDIRECT_READ_WRITE=87, 
-		REDIRECT_BOTH=88, REDIRECT_BOTH_2=89, REDIRECT_INPUT_FROM_FID=90, COMMA=91, 
-		MINUS_ASSIGN=92, STAR_ASSIGN=93, DIV_ASSIGN=94, MOD_ASSIGN=95, DIGIT=96, 
-		SPECIAL_UNIX=97, SPECIAL_WINDOWS=98, POS=99, PERC_PERC=100, PERC_MINUS=101, 
-		PERC_PLUS=102, PERC_QUESTION=103, ARG_ID=104, ID=105, LETTER_OR_DIGIT=106, 
-		COLON=107, AT=108, TEXT=109, DOLLAR_LPAREN_LPAREN=110, RPAREN_RPAREN=111, 
-		LPAREN_LPAREN=112, NOT_CURLY=113, DECLARE_A=114, DIVIDE=115, RX_CHAR=116, 
-		POSIX_CHAR_CLASS=117, CHAR_CLASS=118, PARAMETER_BODY=119, PARAMETER_END=120, 
-		EXPR_BODY=121, EXPR_END=122;
+		PARAMETER_START=1, HERE_START=2, HERE_START_RM_TABS=3, SEMI=4, SEMI_SEMI=5, 
+		SEMI_AMP=6, SEMI_SEMI_AMP=7, DOLLAR_PAREM=8, HASH=9, NL=10, LT=11, LT_EQ=12, 
+		GT=13, GT_EQ=14, NOT=15, AND=16, OR=17, ESC_AND=18, ESC_OR=19, NUMBER=20, 
+		VARIABLE=21, INTEGER=22, DECIMAL=23, DQ_STRING=24, SQ_STRING=25, ESC=26, 
+		WS=27, TRUE=28, FALSE=29, COMMENT=30, LINE_COMMENT=31, SHEBANG=32, LOCAL=33, 
+		LCURLY=34, RCURLY=35, FUNCTION=36, CRETURN=37, SPACE=38, TAB=39, QUOTE=40, 
+		BACKQUOTE=41, CONTINUE=42, BREAK=43, FOR=44, SELECT=45, IN=46, WHILE=47, 
+		DONE=48, UNTIL=49, IF=50, FI=51, THEN=52, ELSE=53, ELIF=54, SLASH=55, 
+		BACKSLASH=56, CASE=57, ESAC=58, DOLLAR=59, PLUS_PLUS=60, MINUS_MINUS=61, 
+		PLUS_EQ=62, DOT=63, DOT_DOT=64, PERC=65, PLUS=66, STAR=67, POW=68, DO=69, 
+		EQ=70, EQUALITY=71, RX_EQUALITY=72, NOT_EQ=73, MINUS=74, PIPE=75, AMP=76, 
+		TILDE=77, QUESTION=78, TIME=79, LPAREN=80, RPAREN=81, LSQUARE=82, RSQUARE=83, 
+		REDIRECT_APPEND_OUT_2=84, REDIRECT_APPEND_OUT=85, REDIRECT_READ_WRITE=86, 
+		REDIRECT_BOTH=87, REDIRECT_BOTH_2=88, REDIRECT_INPUT_FROM_FID=89, COMMA=90, 
+		MINUS_ASSIGN=91, STAR_ASSIGN=92, DIV_ASSIGN=93, MOD_ASSIGN=94, DIGIT=95, 
+		SPECIAL_UNIX=96, SPECIAL_WINDOWS=97, POS=98, PERC_PERC=99, PERC_MINUS=100, 
+		PERC_PLUS=101, PERC_QUESTION=102, ARG_ID=103, ID=104, LETTER_OR_DIGIT=105, 
+		COLON=106, AT=107, TEXT=108, DOLLAR_LPAREN_LPAREN=109, RPAREN_RPAREN=110, 
+		LPAREN_LPAREN=111, NOT_CURLY=112, DECLARE_A=113, DIVIDE=114, RX_CHAR=115, 
+		POSIX_CHAR_CLASS=116, CHAR_CLASS=117, PARAMETER_BODY=118, PARAMETER_END=119;
 	public static final int
 		RULE_expr = 0, RULE_array_element = 1, RULE_constant = 2, RULE_function_call = 3, 
 		RULE_arguments = 4;
@@ -50,27 +49,27 @@ public class ExprParser extends Parser {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
-			null, "'${'", "'expr'", "'<<'", "'<<-'", "';'", "';;'", "';&'", "';;&'", 
-			"'$('", "'#'", "'\\n'", "'<'", "'<='", "'>'", "'>='", "'!'", "'&&'", 
-			"'||'", "'\\&&'", "'\\||'", null, null, null, null, null, null, null, 
-			null, "'true'", "'false'", null, null, null, "'local'", "'{'", "'}'", 
-			"'function'", "'\\r'", "' '", "'\\t'", "'''", "'`'", "'continue'", "'break'", 
-			"'for'", "'select'", "'in'", "'while'", "'done'", "'until'", "'if'", 
-			"'fi'", "'then'", "'else'", "'elif'", "'/'", "'\\'", "'case'", "'esac'", 
-			"'$'", "'++'", "'--'", "'+='", "'.'", "'..'", "'%'", "'+'", "'*'", "'**'", 
-			"'do'", "'='", null, "'=~'", null, "'-'", "'|'", "'&'", "'~'", "'?'", 
-			"'time'", "'('", "')'", "'['", "']'", "'&>>'", "'>>'", "'<>'", "'>&'", 
-			"'&>'", "'<&'", "','", "'-='", "'*='", "':^:='", "'%='", null, null, 
-			null, "'^'", "'%%'", "'%-'", "'%+'", "'%?'", null, null, null, "':'", 
-			"'@'", null, "'$(('", "'))'", "'(('", null, null, "':^:'"
+			null, "'${'", "'<<'", "'<<-'", "';'", "';;'", "';&'", "';;&'", "'$('", 
+			"'#'", "'\\n'", "'<'", "'<='", "'>'", "'>='", "'!'", "'&&'", "'||'", 
+			"'\\&&'", "'\\||'", null, null, null, null, null, null, null, null, "'true'", 
+			"'false'", null, null, null, "'local'", "'{'", "'}'", "'function'", "'\\r'", 
+			"' '", "'\\t'", "'''", "'`'", "'continue'", "'break'", "'for'", "'select'", 
+			"'in'", "'while'", "'done'", "'until'", "'if'", "'fi'", "'then'", "'else'", 
+			"'elif'", "'/'", "'\\'", "'case'", "'esac'", "'$'", "'++'", "'--'", "'+='", 
+			"'.'", "'..'", "'%'", "'+'", "'*'", "'**'", "'do'", "'='", null, "'=~'", 
+			null, "'-'", "'|'", "'&'", "'~'", "'?'", "'time'", "'('", "')'", "'['", 
+			"']'", "'&>>'", "'>>'", "'<>'", "'>&'", "'&>'", "'<&'", "','", "'-='", 
+			"'*='", "':^:='", "'%='", null, null, null, "'^'", "'%%'", "'%-'", "'%+'", 
+			"'%?'", null, null, null, "':'", "'@'", null, "'$(('", "'))'", "'(('", 
+			null, null, "':^:'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
-			null, "PARAMETER_START", "EXPR_START", "HERE_START", "HERE_START_RM_TABS", 
-			"SEMI", "SEMI_SEMI", "SEMI_AMP", "SEMI_SEMI_AMP", "DOLLAR_PAREM", "HASH", 
-			"NL", "LT", "LT_EQ", "GT", "GT_EQ", "NOT", "AND", "OR", "ESC_AND", "ESC_OR", 
+			null, "PARAMETER_START", "HERE_START", "HERE_START_RM_TABS", "SEMI", 
+			"SEMI_SEMI", "SEMI_AMP", "SEMI_SEMI_AMP", "DOLLAR_PAREM", "HASH", "NL", 
+			"LT", "LT_EQ", "GT", "GT_EQ", "NOT", "AND", "OR", "ESC_AND", "ESC_OR", 
 			"NUMBER", "VARIABLE", "INTEGER", "DECIMAL", "DQ_STRING", "SQ_STRING", 
 			"ESC", "WS", "TRUE", "FALSE", "COMMENT", "LINE_COMMENT", "SHEBANG", "LOCAL", 
 			"LCURLY", "RCURLY", "FUNCTION", "CRETURN", "SPACE", "TAB", "QUOTE", "BACKQUOTE", 
@@ -86,7 +85,7 @@ public class ExprParser extends Parser {
 			"PERC_PLUS", "PERC_QUESTION", "ARG_ID", "ID", "LETTER_OR_DIGIT", "COLON", 
 			"AT", "TEXT", "DOLLAR_LPAREN_LPAREN", "RPAREN_RPAREN", "LPAREN_LPAREN", 
 			"NOT_CURLY", "DECLARE_A", "DIVIDE", "RX_CHAR", "POSIX_CHAR_CLASS", "CHAR_CLASS", 
-			"PARAMETER_BODY", "PARAMETER_END", "EXPR_BODY", "EXPR_END"
+			"PARAMETER_BODY", "PARAMETER_END"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -404,7 +403,7 @@ public class ExprParser extends Parser {
 						setState(40);
 						((ExprContext)_localctx).op = _input.LT(1);
 						_la = _input.LA(1);
-						if ( !(((((_la - 13)) & ~0x3f) == 0 && ((1L << (_la - 13)) & 2305843009213693957L) != 0)) ) {
+						if ( !(((((_la - 12)) & ~0x3f) == 0 && ((1L << (_la - 12)) & 2305843009213693957L) != 0)) ) {
 							((ExprContext)_localctx).op = (Token)_errHandler.recoverInline(this);
 						}
 						else {
@@ -810,7 +809,7 @@ public class ExprParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001zh\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002\u0002"+
+		"\u0004\u0001wh\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002\u0002"+
 		"\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0001\u0000"+
 		"\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000"+
 		"\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000"+
@@ -827,18 +826,18 @@ public class ExprParser extends Parser {
 		"\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0003\u0001[\b\u0001\u0001"+
 		"\u0002\u0001\u0002\u0001\u0003\u0001\u0003\u0001\u0003\u0001\u0003\u0001"+
 		"\u0003\u0001\u0004\u0001\u0004\u0001\u0004\u0001\u0004\u0001\u0004\u0000"+
-		"\u0001\u0000\u0005\u0000\u0002\u0004\u0006\b\u0000\u0006\u0002\u00008"+
-		"8DD\u0002\u0000CCKK\u0002\u0000\f\f\u000e\u000e\u0002\u0000BBEE\u0003"+
-		"\u0000\r\r\u000f\u000fJJ\u0001\u0000\u0011\u0012u\u0000\u0019\u0001\u0000"+
+		"\u0001\u0000\u0005\u0000\u0002\u0004\u0006\b\u0000\u0006\u0002\u00007"+
+		"7CC\u0002\u0000BBJJ\u0002\u0000\u000b\u000b\r\r\u0002\u0000AADD\u0003"+
+		"\u0000\f\f\u000e\u000eII\u0001\u0000\u0010\u0011u\u0000\u0019\u0001\u0000"+
 		"\u0000\u0000\u0002Z\u0001\u0000\u0000\u0000\u0004\\\u0001\u0000\u0000"+
 		"\u0000\u0006^\u0001\u0000\u0000\u0000\bc\u0001\u0000\u0000\u0000\n\u000b"+
 		"\u0006\u0000\uffff\uffff\u0000\u000b\u001a\u0003\u0006\u0003\u0000\f\u001a"+
-		"\u0003\u0002\u0001\u0000\r\u000e\u0005K\u0000\u0000\u000e\u001a\u0003"+
-		"\u0000\u0000\u000e\u000f\u0010\u0005C\u0000\u0000\u0010\u001a\u0003\u0000"+
-		"\u0000\r\u0011\u0012\u0005\u0010\u0000\u0000\u0012\u001a\u0003\u0000\u0000"+
-		"\f\u0013\u0014\u0005Q\u0000\u0000\u0014\u0015\u0003\u0000\u0000\u0000"+
-		"\u0015\u0016\u0005R\u0000\u0000\u0016\u001a\u0001\u0000\u0000\u0000\u0017"+
-		"\u001a\u0005i\u0000\u0000\u0018\u001a\u0003\u0004\u0002\u0000\u0019\n"+
+		"\u0003\u0002\u0001\u0000\r\u000e\u0005J\u0000\u0000\u000e\u001a\u0003"+
+		"\u0000\u0000\u000e\u000f\u0010\u0005B\u0000\u0000\u0010\u001a\u0003\u0000"+
+		"\u0000\r\u0011\u0012\u0005\u000f\u0000\u0000\u0012\u001a\u0003\u0000\u0000"+
+		"\f\u0013\u0014\u0005P\u0000\u0000\u0014\u0015\u0003\u0000\u0000\u0000"+
+		"\u0015\u0016\u0005Q\u0000\u0000\u0016\u001a\u0001\u0000\u0000\u0000\u0017"+
+		"\u001a\u0005h\u0000\u0000\u0018\u001a\u0003\u0004\u0002\u0000\u0019\n"+
 		"\u0001\u0000\u0000\u0000\u0019\f\u0001\u0000\u0000\u0000\u0019\r\u0001"+
 		"\u0000\u0000\u0000\u0019\u000f\u0001\u0000\u0000\u0000\u0019\u0011\u0001"+
 		"\u0000\u0000\u0000\u0019\u0013\u0001\u0000\u0000\u0000\u0019\u0017\u0001"+
@@ -848,13 +847,13 @@ public class ExprParser extends Parser {
 		"\u0001\u0000\u0000 D\u0003\u0000\u0000\u000b!\"\n\t\u0000\u0000\"#\u0007"+
 		"\u0002\u0000\u0000#D\u0003\u0000\u0000\n$%\n\b\u0000\u0000%&\u0007\u0003"+
 		"\u0000\u0000&D\u0003\u0000\u0000\t\'(\n\u0007\u0000\u0000()\u0007\u0004"+
-		"\u0000\u0000)D\u0003\u0000\u0000\b*+\n\u0006\u0000\u0000+,\u0005H\u0000"+
+		"\u0000\u0000)D\u0003\u0000\u0000\b*+\n\u0006\u0000\u0000+,\u0005G\u0000"+
 		"\u0000,D\u0003\u0000\u0000\u0007-.\n\u0005\u0000\u0000./\u0007\u0005\u0000"+
-		"\u0000/D\u0003\u0000\u0000\u000601\n\u0004\u0000\u000012\u0005O\u0000"+
-		"\u000023\u0003\u0000\u0000\u000034\u0005\u0011\u0000\u000045\u0003\u0000"+
-		"\u0000\u00055D\u0001\u0000\u0000\u000067\n\u000f\u0000\u000078\u0005S"+
-		"\u0000\u000089\u0003\u0000\u0000\u00009@\u0005T\u0000\u0000:;\u0005S\u0000"+
-		"\u0000;<\u0003\u0000\u0000\u0000<=\u0005T\u0000\u0000=?\u0001\u0000\u0000"+
+		"\u0000/D\u0003\u0000\u0000\u000601\n\u0004\u0000\u000012\u0005N\u0000"+
+		"\u000023\u0003\u0000\u0000\u000034\u0005\u0010\u0000\u000045\u0003\u0000"+
+		"\u0000\u00055D\u0001\u0000\u0000\u000067\n\u000f\u0000\u000078\u0005R"+
+		"\u0000\u000089\u0003\u0000\u0000\u00009@\u0005S\u0000\u0000:;\u0005R\u0000"+
+		"\u0000;<\u0003\u0000\u0000\u0000<=\u0005S\u0000\u0000=?\u0001\u0000\u0000"+
 		"\u0000>:\u0001\u0000\u0000\u0000?B\u0001\u0000\u0000\u0000@>\u0001\u0000"+
 		"\u0000\u0000@A\u0001\u0000\u0000\u0000AD\u0001\u0000\u0000\u0000B@\u0001"+
 		"\u0000\u0000\u0000C\u001b\u0001\u0000\u0000\u0000C\u001e\u0001\u0000\u0000"+
@@ -862,17 +861,17 @@ public class ExprParser extends Parser {
 		"\u0000\u0000C*\u0001\u0000\u0000\u0000C-\u0001\u0000\u0000\u0000C0\u0001"+
 		"\u0000\u0000\u0000C6\u0001\u0000\u0000\u0000DG\u0001\u0000\u0000\u0000"+
 		"EC\u0001\u0000\u0000\u0000EF\u0001\u0000\u0000\u0000F\u0001\u0001\u0000"+
-		"\u0000\u0000GE\u0001\u0000\u0000\u0000HI\u0005i\u0000\u0000IJ\u0005S\u0000"+
-		"\u0000JK\u0003\u0000\u0000\u0000KR\u0005T\u0000\u0000LM\u0005S\u0000\u0000"+
-		"MN\u0003\u0000\u0000\u0000NO\u0005T\u0000\u0000OQ\u0001\u0000\u0000\u0000"+
+		"\u0000\u0000GE\u0001\u0000\u0000\u0000HI\u0005h\u0000\u0000IJ\u0005R\u0000"+
+		"\u0000JK\u0003\u0000\u0000\u0000KR\u0005S\u0000\u0000LM\u0005R\u0000\u0000"+
+		"MN\u0003\u0000\u0000\u0000NO\u0005S\u0000\u0000OQ\u0001\u0000\u0000\u0000"+
 		"PL\u0001\u0000\u0000\u0000QT\u0001\u0000\u0000\u0000RP\u0001\u0000\u0000"+
 		"\u0000RS\u0001\u0000\u0000\u0000S[\u0001\u0000\u0000\u0000TR\u0001\u0000"+
-		"\u0000\u0000UV\u0005i\u0000\u0000VW\u0005S\u0000\u0000WX\u0003\u0000\u0000"+
-		"\u0000XY\u0005T\u0000\u0000Y[\u0001\u0000\u0000\u0000ZH\u0001\u0000\u0000"+
+		"\u0000\u0000UV\u0005h\u0000\u0000VW\u0005R\u0000\u0000WX\u0003\u0000\u0000"+
+		"\u0000XY\u0005S\u0000\u0000Y[\u0001\u0000\u0000\u0000ZH\u0001\u0000\u0000"+
 		"\u0000ZU\u0001\u0000\u0000\u0000[\u0003\u0001\u0000\u0000\u0000\\]\u0005"+
-		"\u0015\u0000\u0000]\u0005\u0001\u0000\u0000\u0000^_\u0005i\u0000\u0000"+
-		"_`\u0005Q\u0000\u0000`a\u0003\b\u0004\u0000ab\u0005R\u0000\u0000b\u0007"+
-		"\u0001\u0000\u0000\u0000cd\u0003\u0000\u0000\u0000de\u0005[\u0000\u0000"+
+		"\u0014\u0000\u0000]\u0005\u0001\u0000\u0000\u0000^_\u0005h\u0000\u0000"+
+		"_`\u0005P\u0000\u0000`a\u0003\b\u0004\u0000ab\u0005Q\u0000\u0000b\u0007"+
+		"\u0001\u0000\u0000\u0000cd\u0003\u0000\u0000\u0000de\u0005Z\u0000\u0000"+
 		"ef\u0003\u0000\u0000\u0000f\t\u0001\u0000\u0000\u0000\u0006\u0019@CER"+
 		"Z";
 	public static final ATN _ATN =

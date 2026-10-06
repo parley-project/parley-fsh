@@ -14,6 +14,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.Associative_indexContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Parameter1Context;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PbodyContext;
+import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.signal.ExitException;
@@ -167,11 +168,19 @@ ${parameter:-word}
 					List<?> list = (List<?>) ret;
 					int idx = 0;
 					try {
-						idx = Integer.parseInt(""+index);
+						idx = ((Number)Expression.toNumber(index, sc)).intValue();
 					} catch (Exception e) {
 					}
-					if( idx < list.size()) {
-						ret = list.get(idx);
+					// as in bash: a negative index counts from the end, and an index with no
+					// element gives nothing (it gave the whole array)
+					if( idx < 0 ) {
+						idx += length(list);
+					}
+					if( list instanceof FsshList ) {
+						// may have gaps; get gives null for an index with no element
+						ret = idx >= 0 ? list.get(idx) : null;
+					} else {
+						ret = idx >= 0 && idx < list.size() ? list.get(idx) : null;
 					}
 				}
 			} else if (ret instanceof Map<?,?>) {
@@ -183,7 +192,9 @@ ${parameter:-word}
 		}
 
 		if( ctx.PIPE()!=null ) {
-			if (ret instanceof List) {
+			if( ret == null ) {
+				return 0;
+			} else if (ret instanceof List) {
 				List<?> list = (List<?>) ret;
 				return list.size();
 			} else {
@@ -618,4 +629,15 @@ ${parameter##word}
 
 
 
+
+	/**
+	 * @return one more than the highest index (an FsshList may have gaps)
+	 */
+	private static int length(List<?> list) {
+		if( list instanceof FsshList ) {
+			List<Integer> indexes = ((FsshList) list).getIndexes();
+			return indexes.isEmpty() ? 0 : indexes.get(indexes.size()-1)+1;
+		}
+		return list.size();
+	}
 }

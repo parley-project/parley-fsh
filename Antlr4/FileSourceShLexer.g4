@@ -34,21 +34,12 @@ lexer grammar FileSourceShLexer;
 		return next == org.antlr.v4.runtime.IntStream.EOF || " \t\r\n;|&()<>{}[]".indexOf(next) >= 0;
 	}
 
-  	boolean exprEndAhead() {
-		 char nx =  (char)_input.LA(1);
-		 if( nx == ';' || nx == '\n'|| nx == EOF) {
-			 return true;
-		 }		 
-	    return false;
-	 }
 	
 }
 
 
 
 PARAMETER_START: '${' ->pushMode(ParameterMode);
-
-EXPR_START: 'expr' ->pushMode(ExprMode);
 
 HERE_START:'<<';
 HERE_START_RM_TABS:'<<-';
@@ -238,11 +229,3 @@ PARAMETER_BODY
 PARAMETER_END
  : {parameterEndAhead()}? '}' -> popMode
  ;
-
-mode ExprMode;
-EXPR_BODY: ({!exprEndAhead()}? . )+ ;
- 
-EXPR_END: {exprEndAhead()}? (';'|'\n'|EOF) -> popMode;
- 
-
-
