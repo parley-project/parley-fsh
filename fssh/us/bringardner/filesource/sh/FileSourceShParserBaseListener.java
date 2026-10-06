@@ -281,6 +281,30 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterCommandWord(FileSourceShParser.CommandWordContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCommandWord(FileSourceShParser.CommandWordContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterCommandWordStart(FileSourceShParser.CommandWordStartContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCommandWordStart(FileSourceShParser.CommandWordStartContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPipeStatement(FileSourceShParser.PipeStatementContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -876,18 +900,6 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitCompoundCommand(FileSourceShParser.CompoundCommandContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterCommand_substitution(FileSourceShParser.Command_substitutionContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitCommand_substitution(FileSourceShParser.Command_substitutionContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

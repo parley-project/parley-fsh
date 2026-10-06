@@ -208,15 +208,9 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				}
 				
 				CommandSubstitutionStatement cs = new CommandSubstitutionStatement(rule);
-				String val = null;
-				if( cs.execute(cmd, sc)!=0) {
-					val = "Expansion error "+cmd+" exitCode="+cs.getExitCode();
-					if( !cs.getStderr().isBlank()) {
-						val += "\n"+cs.getStderr();
-					}
-				} else {
-					val = cs.getStdout();
-				}
+				// the output, even if the command failed (its errors went to stderr)
+				cs.execute(cmd, sc);
+				String val = cs.getStdout();
 				
 				chunks.add(val);
 				

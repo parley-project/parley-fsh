@@ -11,6 +11,7 @@ import org.antlr.v4.runtime.misc.Interval;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.signal.ExitException;
 
 public class CommandSubstitutionStatement extends Statement{
 	
@@ -19,18 +20,12 @@ public class CommandSubstitutionStatement extends Statement{
 	}
 	
 	private String stdout ;
-	private String stderr ;
 	private int exitCode ;
 	private Exception error;
 	
 	
 	public String getStdout() {
 		return stdout;
-	}
-
-
-	public String getStderr() {
-		return stderr;
 	}
 
 
@@ -62,24 +57,29 @@ public class CommandSubstitutionStatement extends Statement{
 	}
 
 
+	/**
+	 * Run code in a subshell and capture its standard output. As in bash, every command runs (a
+	 * failure does not stop the rest, exit does), the status is that of the last one, and
+	 * standard error is not captured: it goes where the caller's goes.
+	 */
 	public int execute(String code, ShellContext primary) {
 		ShellContext ctx = primary.subShell();
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ByteArrayOutputStream bae = new ByteArrayOutputStream();		
 		
 		ctx.stdout = new PrintStream(bao);
-		ctx.stderr = new PrintStream(bae);
 	
 		try {
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(code);
 			for(Statement s : stmts) {
-				if((exitCode = s.process(ctx)) !=0) {
-					break;
-				}
+				exitCode = s.process(ctx);
 			}
+		} catch (ExitException e) {
+			exitCode = e.exitCode;
 		} catch (Exception e) {
 			error = e;
 			exitCode = 1;
+			String msg = e.getMessage();
+			primary.stderr.println(msg != null ? msg : e.toString());
 		} finally {
 			stdout = new String(bao.toByteArray());
 			//Bash performs command substitution by executing command in a subshell environment and replacing the command substitution with the standard output of the command, 
@@ -87,10 +87,8 @@ public class CommandSubstitutionStatement extends Statement{
 			while(stdout.endsWith("\n")) {
 				stdout = stdout.substring(0, stdout.length()-1);
 			}
-			stderr = new String(bae.toByteArray());
-			if( error !=null) {
-				stderr += error.toString();
-			}	
+			// $? after x=$(cmd) is the status of cmd
+			primary.console.setLastExitCode(exitCode);
 		}
 	
 		return exitCode;

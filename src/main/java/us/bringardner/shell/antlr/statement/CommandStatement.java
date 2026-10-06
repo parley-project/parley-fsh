@@ -305,6 +305,8 @@ public class CommandStatement extends Statement{
 	}
 
 	String name ;
+	/** the command name as a word to expand when it runs ($cmd, "$(...)"), or null if name is fixed */
+	ArgumentContext commandWord;
 	RerdirectImpl redirect;
 	String hereId;
 
@@ -389,7 +391,7 @@ public class CommandStatement extends Statement{
 
 	@Override
 	public String toString() {
-		StringBuilder ret = new StringBuilder(name);
+		StringBuilder ret = new StringBuilder(name != null ? name : commandWord.getText());
 		for(Object a : args) {
 			ret.append(' ');
 			ret.append(a.toString());
@@ -410,6 +412,10 @@ public class CommandStatement extends Statement{
 		this.name = name;
 	}
 
+	public void setCommandWord(ArgumentContext commandWord) {
+		this.commandWord = commandWord;
+	}
+
 
 
 	public RerdirectImpl getRedirect() {
@@ -423,6 +429,37 @@ public class CommandStatement extends Statement{
 
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
+		if( commandWord == null ) {
+			return runCommand(ctx);
+		}
+		// as in bash, the first field of the expanded word is the command and the others are its
+		// first arguments: c="ls -l"; $c dir runs ls -l dir
+		List<Argument> words = Argument.expandWord(commandWord, ctx, true);
+		if( words == null ) {
+			words = List.of(new Argument(""+new Argument(commandWord).getValue(ctx)));
+		}
+		if( words.isEmpty()) {
+			// an empty expansion and no arguments: nothing to run
+			if( args.length == 0 ) {
+				ctx.console.setLastExitCode(0);
+				return 0;
+			}
+			words = new ArrayList<>(List.of(args));
+			args = new Argument[0];
+		}
+		List<Argument> all = new ArrayList<>(words.subList(1, words.size()));
+		all.addAll(List.of(args));
+		args = all.toArray(new Argument[all.size()]);
+		try {
+			setName(""+words.get(0).getValue(ctx));
+			return runCommand(ctx);
+		} finally {
+			// the statement is run again (in a loop) with a new expansion
+			name = null;
+		}
+	}
+
+	private int runCommand(ShellContext ctx) throws IOException {
 		int ret = 0;
 		//ctx.enterCommand(this);
 		Integer returnStatus = null;
@@ -589,10 +626,9 @@ public class CommandStatement extends Statement{
 
 		try {
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(tmp.toString());
+			// as in bash, a failed command does not stop the rest (alias x='false; echo hi')
 			for(Statement s : stmts) {
-				if( (ret=s.process(ctx)) != 0) {
-					break;
-				}
+				ret = s.process(ctx);
 			}			
 		} catch (Exception e) {
 			if (e instanceof IOException) {
@@ -621,11 +657,9 @@ public class CommandStatement extends Statement{
 			}
 
 			ret =  ep.exitCode;
-			if( ret !=0) {
-				ctx.stderr.print("external command failed. cmd="+cmd+" exit="+ret+"\n");
-				if( ep.error!=null) {
-					ctx.stderr.print("\tstderr="+ep.error.getMessage());
-				}				
+			// a command that ran and failed has said why itself; one that could not run has not
+			if( ep.error!=null) {
+				ctx.stderr.println(cmd.get(0)+": "+ep.error.getMessage());
 			}
 		} 
 

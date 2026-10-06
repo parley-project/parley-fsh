@@ -39,7 +39,6 @@ statement1:
     | declareAssociativeArrayStatement
     | boolean_statement
     | compareStatement
-    | command_substitution
     | job_control_statement
     
     ;
@@ -142,9 +141,16 @@ file_address:
 
 
 
-command: path
+// a word with quotes or expansions is expanded when the command runs, and its first field is the
+// command name ($cmd args, $(echo ls) -l). Plain text is never one, so done, fi ... stay keywords.
+command: cmdWord=commandWord
+		| path
 		| ID
 		;
+
+commandWord: commandWordStart argumentPart* ;
+
+commandWordStart: string | argVariable | parameter | arg_command_substitution ;
 
 
 // also a single command or group: an alternative that repeated the command before the first |
@@ -156,6 +162,12 @@ pipeStatement:
 pipeableStatement:
 		commandStatement
 		| statement_group WS*  // a command takes the spaces before | itself; a group did not, so "{ ...; } | x" failed
+		// loops and other compound commands: ... | while read x; do ...; done
+		| whileStatement WS*
+		| until_statement WS*
+		| forStatement WS*
+		| ifStatement
+		| caseStatement WS*
 		;
 		    
 pipeOp:
@@ -408,12 +420,6 @@ compoundCommand:
         | redirect1=redirect? LPAREN white* statement* white* RPAREN redirect1=redirect?
         
         ;
-
-command_substitution:
-			DOLLAR_PAREM cmd_part* RPAREN
-			| DOLLAR_PAREM cmd_part* (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN_RPAREN
-			| '`' ~'`'* '`'
-			;
 
 // parentheses nest: $(echo $(date)). The lexer reads )) as one token, so it may close two levels.
 arg_command_substitution:

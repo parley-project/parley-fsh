@@ -228,6 +228,26 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitCommand(FileSourceShParser.CommandContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#commandWord}.
+	 * @param ctx the parse tree
+	 */
+	void enterCommandWord(FileSourceShParser.CommandWordContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#commandWord}.
+	 * @param ctx the parse tree
+	 */
+	void exitCommandWord(FileSourceShParser.CommandWordContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#commandWordStart}.
+	 * @param ctx the parse tree
+	 */
+	void enterCommandWordStart(FileSourceShParser.CommandWordStartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#commandWordStart}.
+	 * @param ctx the parse tree
+	 */
+	void exitCommandWordStart(FileSourceShParser.CommandWordStartContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#pipeStatement}.
 	 * @param ctx the parse tree
 	 */
@@ -727,16 +747,6 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCompoundCommand(FileSourceShParser.CompoundCommandContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link FileSourceShParser#command_substitution}.
-	 * @param ctx the parse tree
-	 */
-	void enterCommand_substitution(FileSourceShParser.Command_substitutionContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link FileSourceShParser#command_substitution}.
-	 * @param ctx the parse tree
-	 */
-	void exitCommand_substitution(FileSourceShParser.Command_substitutionContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#arg_command_substitution}.
 	 * @param ctx the parse tree

@@ -473,19 +473,14 @@ argumentPart:
 	}
 
 	public static Object visit(Arg_command_substitutionContext arg_command_substitution, ShellContext ctx)  {
-		Object ret  = null;
 		CommandSubstitutionStatement cs = new CommandSubstitutionStatement(arg_command_substitution);
 		try {
-			if( cs.process(ctx)==0) {
-				ret = cs.getStdout();
-			} else {
-				ret = cs.getStderr();
-			}				
+			cs.process(ctx);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			ctx.stderr.println(e.getMessage());
 		}
-		return ret;
+		// the output, even if the command failed (its errors went to stderr)
+		return cs.getStdout() == null ? "" : cs.getStdout();
 	}
 
 	public static Object visit(ParameterContext parameter, ShellContext ctx)  {

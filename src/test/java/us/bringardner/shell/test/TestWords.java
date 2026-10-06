@@ -1,6 +1,7 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -156,7 +157,8 @@ public class TestWords extends AbstractConsoleTest {
 		expect("f() { echo $#; }; f a $nope b; f a \"$nope\" b", "2\n3\n");
 		// text next to the expansion joins the first and last fields
 		expect("f() { echo $# $1 $4; }; x=\" b c \"; f a${x}d", "4 a d\n");
-		expect("IFS=:; x=\"a:b::c\"; for p in $x; do echo \"<$p>\"; done", "<a>\n<b>\n<>\n<c>\n");
+		// (IFS is local: the tests share one shell)
+		expect("f() { local IFS=:; x=\"a:b::c\"; for p in $x; do echo \"<$p>\"; done; }; f", "<a>\n<b>\n<>\n<c>\n");
 		// a field with an unquoted wildcard is a glob; a quoted one is not
 		expect("cd "+path("")+"; touch g1.log g2.log; x=\"*.log\"; for f in $x; do echo $f; done", "g1.log\ng2.log\n");
 		expect("x=\"*.log\"; for f in \"$x\"; do echo $f; done", "*.log\n");
@@ -211,6 +213,39 @@ public class TestWords extends AbstractConsoleTest {
 		expect("f() { shift; echo $1; }; f a b", "b\n");
 		// shifting more than $# changes nothing and fails
 		expect("f() { shift 3; echo $? $1; }; f a b", "1 a\n");
-		expect("f() { local v=1; v=2; echo $v; }; f; echo :$v:", "2\n::\n");
+		expect("f() { local lv21=1; lv21=2; echo $lv21; }; f; echo :$lv21:", "2\n::\n");
+	}
+
+	@Test
+	public void testCompoundCommandInPipe() throws IOException {
+		expect("echo a b | while read x; do echo \"<$x>\"; done", "<a b>\n");
+		expect("printf 'b\\na\\n' | sort | while read l; do echo \"<$l>\"; done | cat", "<a>\n<b>\n");
+		expect("printf 'x\\ny\\n' | for i in 1 2; do read v; echo $i$v; done", "1x\n2y\n");
+		expect("echo z | if read v; then echo got $v; fi", "got z\n");
+		expect("echo k | case k in k) cat;; esac", "k\n");
+	}
+
+	@Test
+	public void testCommandNameFromExpansion() throws IOException {
+		expect("c=echo; $c hi; c=\"echo hi\"; $c there", "hi\nhi there\n");
+		expect("$(echo echo stmt); $(echo echo) a b; `echo echo` bt", "stmt\na b\nbt\n");
+		expect("\"echo\" q; \"$(echo echo)\" quoted; \\echo esc", "q\nquoted\nesc\n");
+		expect("f() { echo \"f:$*\"; }; g=f; $g 1 2", "f:1 2\n");
+		// an empty name: the next word is the command, or nothing runs
+		expect("$nope echo shifted; $nope", "shifted\n");
+		expect("for c in echo printf; do $c x; done", "x\nx");
+	}
+
+	@Test
+	public void testCommandSubstitutionStatus() throws IOException {
+		// every command runs; the value is the output and the status is the last command's
+		expect("x=$(ls nope 2>/dev/null; echo done); echo \"[$x]\"", "[done]\n");
+		expect("x=$(false); echo \"[$x] $?\"; x=\"$(false)\"; echo $?", "[] 1\n1\n");
+		expect("x=\"$(echo a; exit 4; echo b)\"; echo \"[$x] $?\"", "[a] 4\n");
+		expect("alias t='false; echo after'; t", "after\n");
+		// standard error is not captured
+		ExecuteResult res = executeCommand("x=$(echo out; ls /no-such-dir; exit 3); echo \"[$x] $?\"", "");
+		assertEquals("[out] 3\n", res.getStdOut());
+		assertTrue(res.getStdErr().contains("no-such-dir"), res.getStdErr());
 	}
 }

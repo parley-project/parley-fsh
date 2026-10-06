@@ -23,6 +23,7 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 	
 	@Test
 	public void testCommandSubstitue01() throws Exception{
+		// the output is run as a command: test with no arguments is false
 		String cmd = "$(echo -n test)"
 				;
 
@@ -35,7 +36,7 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 		String err = res.getStdErr();
 		assertEquals("", err);
 		assertEquals(expect, out);
-		assertEquals(0, res.exitCode);
+		assertEquals(1, res.exitCode);
 		
 		
 	}

@@ -22,14 +22,16 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
+import org.antlr.v4.runtime.ParserRuleContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.CommandWordContext;
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Argument_listContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CaseClauseContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CaseStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CommandContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CommandStatementContext;
-import us.bringardner.filesource.sh.FileSourceShParser.Command_substitutionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CompareContext;
 import us.bringardner.filesource.sh.FileSourceShParser.CompareStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Compare_primeContext;
@@ -72,7 +74,6 @@ import us.bringardner.shell.antlr.statement.BackgroundStatement;
 import us.bringardner.shell.antlr.statement.BreakStatement;
 import us.bringardner.shell.antlr.statement.CaseStatement;
 import us.bringardner.shell.antlr.statement.CommandStatement;
-import us.bringardner.shell.antlr.statement.CommandSubstitutionStatement;
 import us.bringardner.shell.antlr.statement.ContinueStatement;
 import us.bringardner.shell.antlr.statement.DeclareAssociateArrayStatement;
 import us.bringardner.shell.antlr.statement.ForStatement;
@@ -193,8 +194,6 @@ statement
 			ret = new LogicStatement(ctx,ctx.boolean_statement());
 		} else if (ctx.caseStatement()!=null) {
 			ret = visitCaseStatement(ctx.caseStatement());
-		} else if (ctx.command_substitution()!=null) {
-			ret = new CommandSubstitutionStatement(ctx.command_substitution());
 		} else if (ctx.compareStatement()!=null) {			
 			ret = visitCompareStatement(ctx.compareStatement());
 		}else if(ctx.selectStatement()!=null ) {
@@ -225,18 +224,21 @@ statement
 
 
 	@Override
-	public CommandSubstitutionStatement visitCommand_substitution(Command_substitutionContext ctx) {
-		CommandSubstitutionStatement ret = new CommandSubstitutionStatement(ctx);
-
-		return ret;
-	}
-
-	@Override
 	public Statement visitPipeableStatement(PipeableStatementContext ctx) {
 		if( ctx.commandStatement() !=null ) {
 			return visitCommandStatement(ctx.commandStatement());
 		} else if( ctx.statement_group() !=null ) {
 			return visitStatement_group(ctx.statement_group());
+		} else if( ctx.whileStatement() !=null ) {
+			return visitWhileStatement(ctx.whileStatement());
+		} else if( ctx.until_statement() !=null ) {
+			return visitUntil_statement(ctx.until_statement());
+		} else if( ctx.forStatement() !=null ) {
+			return visitForStatement(ctx.forStatement());
+		} else if( ctx.ifStatement() !=null ) {
+			return visitIfStatement(ctx.ifStatement());
+		} else if( ctx.caseStatement() !=null ) {
+			return visitCaseStatement(ctx.caseStatement());
 		} else {
 			throw new RuntimeException("No option in pipable");
 		}		
@@ -281,8 +283,12 @@ commandStatement
 		 */
 		CommandStatement ret = new CommandStatement(ctx);	
 
-		String name = visitCommand(ctx.command());
-		ret.setName(name);
+		if( ctx.command().cmdWord != null ) {
+			// the name comes from expanding the word when the command runs
+			ret.setCommandWord(toArgument(ctx.command().cmdWord));
+		} else {
+			ret.setName(visitCommand(ctx.command()));
+		}
 		Argument[] args = null;
 		if( ctx.argument()!=null) {
 			
@@ -304,6 +310,26 @@ commandStatement
 		}
 		ret.setRedirect(redirect);
 
+		return ret;
+	}
+
+	/**
+	 * A command word as an argument (a word), so it is expanded like one. The grammar has its own
+	 * rule because a plain word there would also take keywords such as done and fi.
+	 */
+	private static ArgumentContext toArgument(CommandWordContext word) {
+		ArgumentContext ret = new ArgumentContext(word, word.invokingState);
+		ArgumentPartContext first = new ArgumentPartContext(ret, word.invokingState);
+		ParserRuleContext start = (ParserRuleContext) word.commandWordStart().getChild(0);
+		first.addChild(start);
+		first.start = start.start;
+		first.stop = start.stop;
+		ret.addChild(first);
+		for(ArgumentPartContext part : word.argumentPart()) {
+			ret.addChild(part);
+		}
+		ret.start = word.start;
+		ret.stop = word.stop;
 		return ret;
 	}
 

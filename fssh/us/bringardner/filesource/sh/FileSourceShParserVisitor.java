@@ -143,6 +143,18 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCommand(FileSourceShParser.CommandContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#commandWord}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCommandWord(FileSourceShParser.CommandWordContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#commandWordStart}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCommandWordStart(FileSourceShParser.CommandWordStartContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#pipeStatement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -442,12 +454,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCompoundCommand(FileSourceShParser.CompoundCommandContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#command_substitution}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitCommand_substitution(FileSourceShParser.Command_substitutionContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#arg_command_substitution}.
 	 * @param ctx the parse tree
