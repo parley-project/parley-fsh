@@ -24,6 +24,7 @@ import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Expression;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
+import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl.Quoting;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.FsshException;
 import us.bringardner.shell.antlr.statement.CommandStatement;
@@ -124,7 +125,7 @@ public class ShellContext {
 		} else if( context.DQ_STRING() !=null) {
 
 			String tmp = context.DQ_STRING().getText();
-			String ret = FileSourceShPreProcessorVisitorImpl.processString(tmp.substring(1,tmp.length()-1), this);
+			String ret = FileSourceShPreProcessorVisitorImpl.processString(tmp.substring(1,tmp.length()-1), this, Quoting.DOUBLE_QUOTED);
 			return ret;
 		} else if( context.ESC()!=null) {
 			String tmp = context.ESC().getText().substring(1);

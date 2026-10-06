@@ -60,7 +60,7 @@ compare
 			if( ctx.string().SQ_STRING()!=null) {
 				ret = stringVal;
 			} else if( ctx.string().DQ_STRING()!=null) {
-				ret = FileSourceShPreProcessorVisitorImpl.processString(stringVal, sc);
+				ret = FileSourceShPreProcessorVisitorImpl.processString(stringVal, sc, FileSourceShPreProcessorVisitorImpl.Quoting.DOUBLE_QUOTED);
 			}else {
 				throw new RuntimeException("Invalide string ="+ctx.string());
 			}			
@@ -150,7 +150,7 @@ rx_pattern
 			if( p.string().SQ_STRING()!=null) {
 				ret.append(stringVal);
 			} else if( p.string().DQ_STRING()!=null) {
-				ret.append(FileSourceShPreProcessorVisitorImpl.processString(stringVal, sc));
+				ret.append(FileSourceShPreProcessorVisitorImpl.processString(stringVal, sc, FileSourceShPreProcessorVisitorImpl.Quoting.DOUBLE_QUOTED));
 			}
 		} else if( p.char_class_list()!=null ) {
 			for(Char_classContext p2 : p.char_class_list().char_class()) {

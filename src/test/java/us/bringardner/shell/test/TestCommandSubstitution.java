@@ -1,6 +1,7 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
@@ -119,6 +120,40 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 			ExecuteResult res = executeCommand(c[0], "");
 			assertEquals(c[1], res.getStdOut(), c[0]);
 			assertEquals(0, res.exitCode, c[0]);
+		}
+	}
+
+	@Test
+	public void testDollarAndEscapesInDoubleQuotes() throws IOException {
+		String[][] cases = {
+				// a $ with no name is just a $
+				{"echo \"price: $5 and $\"", "price:  and $\n"},
+				{"echo \"a $ b\"", "a $ b\n"},
+				// \" \$ \\ \` give the character; other escapes stay; backslash-newline is removed
+				{"echo \"a\\\"b\"", "a\"b\n"},
+				{"echo \"\\$HOME\"", "$HOME\n"},
+				{"echo \"a\\\\b\"", "a\\b\n"},
+				{"echo \"\\`echo no\\`\"", "`echo no`\n"},
+				{"echo \"a\\nb\"", "a\\nb\n"},
+				{"echo \"a\\\nb\"", "ab\n"},
+				// in a here-document \" keeps its backslash
+				{"x=5; cat <<EOF\na\\\"b \\$x $x\nEOF", "a\\\"b $x 5\n"},
+		};
+		for(String[] c : cases) {
+			ExecuteResult res = executeCommand(c[0], "");
+			assertEquals("", res.getStdErr(), c[0]);
+			assertEquals(c[1], res.getStdOut(), c[0]);
+			assertEquals(0, res.exitCode, c[0]);
+		}
+	}
+
+	@Test
+	public void testUnclosedExpansionInDoubleQuotes() throws IOException {
+		for(String code : new String[] {"echo \"cost $( x\"", "echo \"`echo hi\"", "echo \"${x\"", "echo \"$((1+2\""}) {
+			ExecuteResult res = executeCommand(code, "");
+			assertEquals("", res.getStdOut(), code);
+			assertEquals(1, res.exitCode, code);
+			assertTrue(res.getStdErr().contains("syntax error: no matching"), code+" -> "+res.getStdErr());
 		}
 	}
 }

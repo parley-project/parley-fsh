@@ -17,6 +17,12 @@ public interface FileSourceShPreProcessorVisitor<T> extends ParseTreeVisitor<T> 
 	 */
 	T visitPpcode(FileSourceShPreProcessorParser.PpcodeContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#ppescape}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPpescape(FileSourceShPreProcessorParser.PpescapeContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#ppexpr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

@@ -18,6 +18,16 @@ public interface FileSourceShPreProcessorListener extends ParseTreeListener {
 	 */
 	void exitPpcode(FileSourceShPreProcessorParser.PpcodeContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#ppescape}.
+	 * @param ctx the parse tree
+	 */
+	void enterPpescape(FileSourceShPreProcessorParser.PpescapeContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShPreProcessorParser#ppescape}.
+	 * @param ctx the parse tree
+	 */
+	void exitPpescape(FileSourceShPreProcessorParser.PpescapeContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#ppexpr}.
 	 * @param ctx the parse tree
 	 */

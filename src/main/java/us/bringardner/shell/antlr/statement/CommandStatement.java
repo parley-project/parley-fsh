@@ -425,7 +425,7 @@ public class CommandStatement extends Statement{
 			if( hereId !=null ) {
 				Object obj = ctx.getValue(hereId);
 				String val = (""+obj);
-				String val2 = FileSourceShPreProcessorVisitorImpl.processString(val, ctx);
+				String val2 = FileSourceShPreProcessorVisitorImpl.processString(val, ctx, FileSourceShPreProcessorVisitorImpl.Quoting.HERE_DOC);
 				ctx.stdin = new ByteArrayInputStream(val2.getBytes());				
 			}
 

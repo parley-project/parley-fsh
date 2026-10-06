@@ -25,6 +25,13 @@ public class FileSourceShPreProcessorBaseVisitor<T> extends AbstractParseTreeVis
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+	@Override public T visitPpescape(FileSourceShPreProcessorParser.PpescapeContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
 	@Override public T visitPpexpr(FileSourceShPreProcessorParser.PpexprContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}

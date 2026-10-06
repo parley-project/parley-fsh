@@ -22,6 +22,7 @@ import us.bringardner.filesource.sh.FileSourceShPreProcessorParser;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser.Pp_parameterContext;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser.PpcodeContext;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser.PpcommandContext;
+import us.bringardner.filesource.sh.FileSourceShPreProcessorParser.PpescapeContext;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser.PpexprContext;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser.PpvariableContext;
 import us.bringardner.shell.ShellContext;
@@ -80,6 +81,9 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 			ret.add(item);			
 		}
 		for(Pp_parameterContext item : ctx.pp_parameter()) {
+			ret.add(item);
+		}
+		for(PpescapeContext item : ctx.ppescape()) {
 			ret.add(item);
 		}
 
@@ -156,8 +160,24 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 	}
 */
 	
+	/**
+	 * How the text was quoted, which decides what a backslash escapes.
+	 */
+	public enum Quoting {
+		/** raw text: escapes are left as written (but \$ is not an expansion) */
+		NONE,
+		/** "...": \$ \` \" \\ give the character and backslash-newline is removed, as in bash */
+		DOUBLE_QUOTED,
+		/** a here-document: as in double quotes, except \" keeps its backslash */
+		HERE_DOC
+	}
+
 	public static String processString(String code1, ShellContext sc)  {
-		if( !code1.contains("$") && !code1.contains("`")) {
+		return processString(code1, sc, Quoting.NONE);
+	}
+
+	public static String processString(String code1, ShellContext sc, Quoting quoting)  {
+		if( !code1.contains("$") && !code1.contains("`") && (quoting == Quoting.NONE || !code1.contains("\\"))) {
 			// (a string with only `cmd` was returned without running it)
 			return code1;
 		}
@@ -172,6 +192,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 		List<ParserRuleContext> items = new ArrayList<>();
 		for(int idx=0,sz=result.items.size(); idx < sz; idx++) {
 			ParserRuleContext rule = result.items.get(idx);
+			checkClosed(code1, rule);
 
 			//code: (command|expr|variable|text|ID)* EOF;
 			if (rule instanceof PpcommandContext) {
@@ -213,6 +234,8 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 
 				Object val = exprCtx.evaluate(sc);
 				chunks.add(""+val);
+			} else if (rule instanceof PpvariableContext && rule.getChildCount() < 2) {
+				// a $ with no name after it ("costs $ 5", "ends in $") is just a $
 			} else if (rule instanceof PpvariableContext) {
 				items.add(rule);
 				PpvariableContext v = (PpvariableContext) rule;
@@ -222,6 +245,9 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				}
 
 				chunks.add(sc.expand(sc.getVariable(name), v.getText()));				
+			} else if (rule instanceof PpescapeContext) {
+				items.add(rule);
+				chunks.add(unescape(originalText(code1, rule), quoting));
 			}  else if (rule instanceof Pp_parameterContext) {
 				items.add(rule);
 				String str = originalText(code1, rule);
@@ -248,7 +274,50 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 	 * whitespace, so "$(echo a   b)" ran echo ab.
 	 */
 	private static String originalText(String code, ParserRuleContext rule) {
-		return code.substring(rule.start.getStartIndex(), rule.stop.getStopIndex()+1);
+		int start = rule.start.getStartIndex();
+		// after a syntax error the parser may end a rule on a token it made up
+		int stop = rule.stop == null || rule.stop.getStopIndex() < start ? code.length()-1 : rule.stop.getStopIndex();
+		return code.substring(start, stop+1);
+	}
+
+	/**
+	 * An unclosed $( ` ${ or $(( is a syntax error, as in bash (it gave garbled output).
+	 */
+	private static void checkClosed(String code, ParserRuleContext rule) {
+		String text = originalText(code, rule);
+		String open = null;
+		String close = null;
+		if( rule instanceof PpcommandContext ) {
+			boolean backtick = ((PpcommandContext) rule).pp_backtick_command() != null;
+			open = backtick ? "`" : "$(";
+			close = backtick ? "`" : ")";
+		} else if( rule instanceof PpexprContext ) {
+			open = "$((";
+			close = "))";
+		} else if( rule instanceof Pp_parameterContext ) {
+			open = "${";
+			close = "}";
+		}
+		if( open != null && (text.length() < open.length()+close.length() || !text.endsWith(close))) {
+			throw new RuntimeException("syntax error: no matching '"+close+"' for '"+open+"' in \""+code+"\"");
+		}
+	}
+
+	/**
+	 * A backslash escape, by the quoting rules (see Quoting).
+	 */
+	private static String unescape(String escape, Quoting quoting) {
+		char c = escape.charAt(1);
+		if( quoting == Quoting.NONE ) {
+			return escape;
+		}
+		if( c == '\n') {
+			return "";
+		}
+		if( c == '$' || c == '`' || c == '\\' || (c == '"' && quoting == Quoting.DOUBLE_QUOTED)) {
+			return ""+c;
+		}
+		return escape;
 	}
 
 	private static String merge(String code1,List<ParserRuleContext> items,List<String> chunks) {

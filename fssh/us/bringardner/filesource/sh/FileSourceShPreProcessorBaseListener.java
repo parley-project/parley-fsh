@@ -29,6 +29,18 @@ public class FileSourceShPreProcessorBaseListener implements FileSourceShPreProc
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterPpescape(FileSourceShPreProcessorParser.PpescapeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPpescape(FileSourceShPreProcessorParser.PpescapeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPpexpr(FileSourceShPreProcessorParser.PpexprContext ctx) { }
 	/**
 	 * {@inheritDoc}
