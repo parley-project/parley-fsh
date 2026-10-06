@@ -35,12 +35,27 @@ public class PipeStatement extends Statement{
 	public CommandThread [] getCommandThreads() {
 		return threads;
 	}
+
+	private static void forwardControl(ShellContext ctx, CommandThread [] threads) {
+		RuntimeException stop = ctx.getException();
+		boolean paused = ctx.isPaused();
+		for (int idx = 1; idx < threads.length; idx++) {
+			ShellContext stage = threads[idx].ctx;
+			if( stop != null && stage.getException() == null ) {
+				stage.setExecption(stop);
+			}
+			if( stage.isPaused() != paused ) {
+				stage.setPause(paused);
+			}
+		}
+	}
 	
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
 		int ret = 0;
 
 		CommandThread [] threads = new CommandThread[cmds.length];
+		this.threads = threads;
 		threads[0] = new CommandThread(ctx,cmds[0]);
 		// the first command runs on the caller's context, so its streams must be restored afterward
 		PrintStream callerOut = ctx.stdout;
@@ -80,21 +95,15 @@ public class PipeStatement extends Statement{
 			for(CommandThread t : threads) {
 				t.start();
 			}
-			boolean done = false;
-			while(!done) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-				int cnt = 0;
-				for(CommandThread t : threads) {
-					if(t.hasStarted() && !t.isRunning()) {
-						cnt++;
-					} else {
-						break;
+			for(CommandThread t : threads) {
+				while(t.isAlive()) {
+					// the first stage runs on ctx, the others on their own context: pass on a stop or suspend
+					forwardControl(ctx, threads);
+					try {
+						t.join(50);
+					} catch (InterruptedException e) {
 					}
 				}
-				done = cnt == cmds.length;
 			}
 			ret = threads[cmds.length-1].exitCode;
 			PipeStatementContext pctx = (PipeStatementContext)getContext();

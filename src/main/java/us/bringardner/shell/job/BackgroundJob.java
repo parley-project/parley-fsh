@@ -80,17 +80,12 @@ public class BackgroundJob extends AbstractJob{
 			} catch (Exception e) {
 			}
 		}
-		while(!child.isRunning()) {
-			try {
-				Thread.sleep(10);
-			} catch (Exception e) {
-			}
-		}
 		setState(JobState.Running);
-		while(child.isRunning()) {
+		// waiting for isRunning() to become true hung when the command finished first
+		while(child.isAlive()) {
 			try {
-				Thread.sleep(10);
-			} catch (Exception e) {
+				child.join(0);
+			} catch (InterruptedException e) {
 			}
 		}
 		

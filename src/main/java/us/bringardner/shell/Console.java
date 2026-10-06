@@ -21,6 +21,11 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Stack;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -298,23 +303,24 @@ delimiter
 	public List<HistoryEntry> history = new ArrayList<>();
 	private int lastExitCode;
 	private String adminMessage;
-	private Map<String,List<PropertyChangeListener>> listners = new TreeMap<>();
+	// read and written by the console thread, background jobs, signal handlers and the IDE
+	private Map<String,List<PropertyChangeListener>> listners = new ConcurrentHashMap<>();
 
 	public static Map<String,Constructor<? extends ShellCommand>> commands;
 
 
 	boolean eof = false;
-	Map<String,Object> alias = new TreeMap<>();
+	Map<String,Object> alias = new ConcurrentSkipListMap<>();
 
 	private VirtualFileSourceFactory mountFactory;
 	public boolean forceHeadless=true;
 	public boolean isInteractive=false;	
-	private Map<String,FunctionDefStatement> functions = new TreeMap<>();
+	private Map<String,FunctionDefStatement> functions = new ConcurrentSkipListMap<>();
 
-	Map<String,Object> variables = new TreeMap<>();
+	Map<String,Object> variables = new ConcurrentSkipListMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
 	public List<Option> options = new ArrayList<>();
-	private Map<String,Object> environmentVariables = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+	private Map<String,Object> environmentVariables = new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER);
 	DebugContext debugContext = new DebugContext();
 	private int lastPid = 0;
 	public JobManager jobManager = new JobManager();
@@ -619,16 +625,9 @@ delimiter
 				c.setName("Console");
 				c.setDaemon(false);
 				c.start();
-				while(!c.hasStarted()) {
+				while(c.isAlive()) {
 					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-					}
-				}
-
-				while(c.isRunning()) {
-					try {
-						Thread.sleep(10);
+						c.join(0);
 					} catch (InterruptedException e) {
 					}
 				}
@@ -684,12 +683,7 @@ delimiter
 	}
 
 	public void addChangeListner(String name,PropertyChangeListener listner) {		
-		List<PropertyChangeListener> tmp = listners.get(name);
-		if( tmp == null) {
-			tmp = new ArrayList<>();
-			listners.put(name,tmp);
-		}
-		tmp.add(listner);		
+		listners.computeIfAbsent(name, n -> new CopyOnWriteArrayList<>()).add(listner);		
 	}
 
 	public void removePropertyChangeListener(PropertyChangeListener l) {
@@ -928,10 +922,13 @@ delimiter
 				currentJob.set(job);
 
 
-				while( job.getState() == lastState && lastState!=JobState.Termnated) {
-					try {
-						Thread.sleep(10);
-					} catch (Exception e) {
+				synchronized (jobStateLock) {
+					// woken by the listener added in readLineToJob; the timeout is only a safety net
+					while( job.getState() == lastState && lastState!=JobState.Termnated) {
+						try {
+							jobStateLock.wait(500);
+						} catch (InterruptedException e) {
+						}
 					}
 				}
 
@@ -976,6 +973,8 @@ delimiter
 		}
 
 	}
+
+	private final Object jobStateLock = new Object();
 
 	private IJob readLineToJob(KeyboardReader kb) {
 		IJob ret = null;
@@ -1031,6 +1030,11 @@ delimiter
 					}
 
 					ret = new ForgroundJob(sc,code);					
+					ret.addJobStateChangeListner((job,from,to)->{
+						synchronized (jobStateLock) {
+							jobStateLock.notifyAll();
+						}
+					});
 					ret.start();
 				}
 
@@ -1195,8 +1199,12 @@ delimiter
 		String ret = "";
 		Object val = getVariable(prompt.name);
 		if( val !=null ) {
-			ret = expandPrompt(""+val,new Date());
-
+			try {
+				ret = expandPrompt(""+val,new Date());
+			} catch (RuntimeException e) {
+				// a bad prompt must not stop the shell (it used to loop forever printing the error)
+				ret = ""+val;
+			}
 		}
 		return ret;
 	}
@@ -1210,6 +1218,10 @@ delimiter
 		for (int idx = 0; idx < chars.length; idx++) {
 			char c = chars[idx];
 			if( c == '%') {
+				if( idx == chars.length-1) {
+					ret.append("'%'");
+					continue;
+				}
 				c = chars[++idx];
 				switch (c) {
 				// %a	Abbreviated weekday name	Sun
@@ -1299,7 +1311,8 @@ delimiter
 				break;
 
 				default:
-					throw new IllegalArgumentException("Unexpected value: " + c);
+					// not supported: keep it as text
+					ret.append("'%"+c+"'");
 				}
 			} else {
 				ret.append(c);
@@ -1307,6 +1320,29 @@ delimiter
 		}
 
 		return ret.toString();
+	}
+
+	private static boolean isOctal(char c) {
+		return c >= '0' && c <= '7';
+	}
+
+	private static volatile String localHostName;
+
+	/**
+	 * The host name is looked up once: the lookup can take seconds when the name doesn't resolve,
+	 * and the prompt is drawn for every command.
+	 */
+	private static String getLocalHostName() {
+		String ret = localHostName;
+		if( ret == null ) {
+			try {
+				ret = InetAddress.getLocalHost().getHostName();
+			} catch (UnknownHostException e) {
+				ret = "localhost";
+			}
+			localHostName = ret;
+		}
+		return ret;
 	}
 
 	public String expandPrompt(String val,Date date) {
@@ -1336,7 +1372,8 @@ delimiter
 					break;
 					// \D{format} The format is passed to strftime(3) and the result is inserted into the prompt string; an empty format results in a locale-specific time representation. The braces are required.
 				case 'D': 
-					if( chars[++idx] == '{') {
+					if( idx+1 < chars.length && chars[idx+1] == '{') {
+						idx++;
 						StringBuilder tmp = new StringBuilder();
 						for(idx++; idx < chars.length && chars[idx] != '}';idx++) {
 							tmp.append(chars[idx]);
@@ -1344,6 +1381,9 @@ delimiter
 						String fmt = strftimeToJava(tmp.toString());
 						SimpleDateFormat df = new SimpleDateFormat(fmt);
 						ret.append(df.format(date));
+					} else {
+						// the braces are required
+						ret.append("\\D");
 					}
 					break;
 
@@ -1352,23 +1392,13 @@ delimiter
 
 				// \h 	The host name, up to the first ‘.’.
 				case 'h':
-					try {
-						String name = InetAddress.getLocalHost().getHostName();
-						int ii = name.indexOf('.');
-						if( ii > 0 ) {
-							//TODO: Why name = name.substring(0,ii);
-						}
-						ret.append(name);
-					} catch (UnknownHostException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					ret.append(getLocalHostName());
 
 					break;
 					// \H 	The host name.
 				case 'H': 
 					try {
-						String host = InetAddress.getLocalHost().getHostName();
+						String host = getLocalHostName();
 						FileSource cwd = getCurrentDirectory();
 						if (!(cwd instanceof FileProxy)) {
 							Properties prop = cwd.getFileSourceFactory().getConnectProperties();
@@ -1472,24 +1502,19 @@ delimiter
 					// \]End a sequence of non-printing characters.
 
 				case '[':
-					char tc = chars[++idx];
-					while(tc != ']') {
-						ret.append(tc);
-						tc = chars[++idx];
+					for(idx++; idx < chars.length && chars[idx] != ']'; idx++) {
+						ret.append(chars[idx]);
 					}
 					break;
 
 				default:
-					if(Character.isDigit(next) ) {
-						if(idx < chars.length-2) {
-							String tmp = ""+chars[idx]+chars[++idx]+chars[++idx];
-							int ascii = Integer.parseInt(tmp, 8);
-							char c2 = (char)ascii;
-							ret.append(c2);
-							continue;
-						}
+					if(isOctal(next) && idx+2 < chars.length && isOctal(chars[idx+1]) && isOctal(chars[idx+2])) {
+						String tmp = ""+chars[idx]+chars[++idx]+chars[++idx];
+						ret.append((char)Integer.parseInt(tmp, 8));
+					} else {
+						// unknown escape: show it as typed, like bash
+						ret.append('\\').append(next);
 					}
-					throw new IllegalArgumentException("Unexpected value: " + next);
 				}
 
 			} else {
@@ -1915,17 +1940,26 @@ delimiter
 
 
 
+	/**
+	 * Listeners are called on this thread, one event at a time and in order.
+	 */
+	private static final ExecutorService propertyEvents = Executors.newSingleThreadExecutor(r -> {
+		Thread t = new Thread(r, "Console property events");
+		t.setDaemon(true);
+		return t;
+	});
+
 	public void setVariable(String name, Object value) {
-		Object old = variables.get(name);
-		variables.put(name, value);		
+		// a null value unsets the variable (the map does not hold nulls)
+		Object old = value == null ? variables.remove(name) : variables.put(name, value);		
 		List<PropertyChangeListener> tmp = listners.get(name);
 		if( tmp !=null) {
-			new Thread(()->{
-				PropertyChangeEvent event = new PropertyChangeEvent(Console.this, name, old, value);
+			PropertyChangeEvent event = new PropertyChangeEvent(Console.this, name, old, value);
+			propertyEvents.execute(()->{
 				for(PropertyChangeListener l : tmp) {
 					l.propertyChange(event);
 				}
-			}).start();
+			});
 		}
 	}
 
@@ -2060,7 +2094,11 @@ delimiter
 	}
 
 	public void setAlias(String name, Object val) {
-		alias.put(name, val);		
+		if( val == null ) {
+			alias.remove(name);
+		} else {
+			alias.put(name, val);		
+		}
 	}
 
 	public void removeAlias(String name) {
@@ -2086,26 +2124,16 @@ delimiter
 		mountFactory = mount;		
 	}
 
-	private Map<ConsoleMetaSignal,List<String>> signalHandlers = new TreeMap<>();
+	private Map<ConsoleMetaSignal,List<String>> signalHandlers = new ConcurrentSkipListMap<>();
 	public void registerHandler(ConsoleMetaSignal signal, String action) {
-		List<String> actions = signalHandlers.get(signal);
-		if( actions == null) {
-			actions = new ArrayList<>();
-			signalHandlers.put(signal, actions);
-		}
-		actions.add(action);		
+		signalHandlers.computeIfAbsent(signal, k -> new CopyOnWriteArrayList<>()).add(action);		
 	}
 
-	private  Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new TreeMap<>();
+	private  Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new ConcurrentSkipListMap<>();
 
 	public void registerHandler(ShellContext ctx,final Signal signal, String action) {
 		ConsoleSignalHandler handler = new ConsoleSignalHandler(ctx,action);
-		List<ConsoleSignalHandler> actions = osSignalHandlers.get(signal.getNumber());
-		if( actions == null) {
-			actions = new ArrayList<>();
-			osSignalHandlers.put(signal.getNumber(), actions);
-		}
-		actions.add(handler);
+		osSignalHandlers.computeIfAbsent(signal.getNumber(), k -> new CopyOnWriteArrayList<>()).add(handler);
 	}
 
 	public void addFunction(FunctionDefStatement function) {

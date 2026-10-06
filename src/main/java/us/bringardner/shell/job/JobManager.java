@@ -9,7 +9,8 @@ public class JobManager {
 
 
 
-	private List<IJob> terminated= new ArrayList<>();
+	// jobs are added by the thread running a command and read by the console thread and by kill, wait and jobs;
+	// every method that touches the list is synchronized
 	private List<IJob> jobs= new ArrayList<>();
 	//The upper limit for a PID on Linux is 32768
 	private static int nextPid = 100000;
@@ -31,7 +32,7 @@ public class JobManager {
 	 * @param job
 	 * @return the PID assigned to this job (a.k.a. last PID
 	 */
-	public int addJob(final IJob job) {
+	public synchronized int addJob(final IJob job) {
 
 		if( job.getPid()>=0) {
 			throw new RuntimeException("Logic error pid alread set = "+job.getPid());
@@ -58,7 +59,7 @@ public class JobManager {
 		return ret;
 	}
 
-	public IJob getJob(int pid_or_job_number) {
+	public synchronized IJob getJob(int pid_or_job_number) {
 		for(IJob j : jobs) {
 			if( j.getPid()==pid_or_job_number || j.getJobNumber()==pid_or_job_number) {
 				return j;
@@ -72,12 +73,12 @@ public class JobManager {
 		return jobs.size();
 	}
 	 */
-	public List<IJob> getJobs(){
+	public synchronized List<IJob> getJobs(){
 		List<IJob> ret = new ArrayList<IJob>();
 		for(int idx=0,sz=jobs.size(); idx<sz;idx++ ) {
 			IJob job = jobs.get(idx);
 			if( job.getState()==JobState.Notified) {
-				terminated.add(0,job);
+				// reported as done, drop it
 			} else {
 				job.setJobNumber(ret.size());
 				ret.add(job);
@@ -85,10 +86,10 @@ public class JobManager {
 		}
 
 		jobs = ret;
-		return ret;
+		return new ArrayList<>(ret);
 	}
 
-	public void clear() {
+	public synchronized void clear() {
 		for(IJob job : jobs) {
 			if(job.isRunning()) {
 				job.handleSignal(ConsoleSignal.Terminate);
@@ -98,14 +99,14 @@ public class JobManager {
 
 	}
 
-	public IJob getGetCurrentJob() {
+	public synchronized IJob getGetCurrentJob() {
 		if( jobs.size()>0) {
 			return jobs.getLast();
 		}
 		return null;
 	}
 
-	public void remove(IJob job) {
+	public synchronized void remove(IJob job) {
 		jobs.remove(job);		
 	}
 

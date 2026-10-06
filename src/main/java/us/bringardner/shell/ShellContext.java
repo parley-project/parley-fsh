@@ -498,8 +498,49 @@ $
 		return console.removeFunction(name);		
 	}
 
+	private final Object pauseLock = new Object();
+
 	public void setPause(boolean b) {
 		pause.set(b);
+		synchronized (pauseLock) {
+			pauseLock.notifyAll();
+		}
+	}
+
+	/**
+	 * Wait while this context is paused (the job is suspended). Returns early when the context
+	 * is stopped (see {@link #setExecption(Exception)}) so a suspended job can still be killed.
+	 */
+	public void waitWhilePaused() {
+		synchronized (pauseLock) {
+			while(pause.get() && exeption.get() == null) {
+				try {
+					pauseLock.wait();
+				} catch (InterruptedException e) {
+					// stop requests arrive through setExecption
+				}
+			}
+		}
+	}
+
+	/**
+	 * Sleep for up to millis, waking early when this context is stopped or paused.
+	 */
+	public void sleep(long millis) {
+		long end = System.currentTimeMillis()+millis;
+		synchronized (pauseLock) {
+			while(exeption.get() == null && !pause.get()) {
+				long left = end-System.currentTimeMillis();
+				if( left <= 0 ) {
+					break;
+				}
+				try {
+					pauseLock.wait(left);
+				} catch (InterruptedException e) {
+					// stop requests arrive through setExecption
+				}
+			}
+		}
 	}
 
 	public boolean isPaused() {
@@ -511,13 +552,19 @@ $
 	}
 
 	public void setExecption(Exception e) {
+		setExecption0(e);
+		synchronized (pauseLock) {
+			pauseLock.notifyAll();
+		}
+	}
+
+	private void setExecption0(Exception e) {
 		if (e instanceof FsshException) {
 			FsshException rte = (FsshException) e;
 			exeption.set(rte);
 		} else {
-			if (!(e instanceof RuntimeException)) {
-				RuntimeException rte = (RuntimeException) e;
-				exeption.set(rte);
+			if (e instanceof RuntimeException) {
+				exeption.set((RuntimeException) e);
 			} else {
 				exeption.set(new RuntimeException(e));
 			}
@@ -556,12 +603,7 @@ $
 			}
 		}
 
-		while(pause.get()) {
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-			}
-		}
+		waitWhilePaused();
 		if(exeption.get() != null) {
 			throw exeption.get();
 		}

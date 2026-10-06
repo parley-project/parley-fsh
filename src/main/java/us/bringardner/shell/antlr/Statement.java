@@ -323,12 +323,7 @@ public abstract class Statement {
 
 	public final int process(ShellContext ctx) throws IOException{
 		int ret = 0;
-		while(ctx.isPaused()) {
-			try {
-				Thread.sleep(10);
-			} catch (Exception e) {
-			}
-		}
+		ctx.waitWhilePaused();
 
 		/*
 		if( context!=null) {

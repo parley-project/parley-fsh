@@ -270,4 +270,18 @@ public class TestPrompt extends AbstractConsoleTest {
 		assertEquals(codes, actual);
 		
 	}
+
+	@Test
+	@Order(5)
+	public void testBadEscapesDontThrow() throws IOException {
+		Date date = new Date();
+		assertEquals("\\q", console.expandPrompt("\\q", date));
+		assertEquals("a\\D", console.expandPrompt("a\\D", date));
+		assertEquals("\\Dx", console.expandPrompt("\\Dx", date));
+		assertEquals("abc", console.expandPrompt("\\[abc", date));
+		assertEquals("\\9", console.expandPrompt("\\9", date));
+		assertEquals("A", console.expandPrompt("\\101", date));
+		assertEquals("%Q", console.expandPrompt("\\D{%Q}", date));
+		assertEquals("%", console.expandPrompt("\\D{%", date));
+	}
 }

@@ -31,7 +31,7 @@ public class BackgroundStatement extends Statement{
 
 			ShellContext ctx = sc.subShell();
 			ctx.stdin = new ByteArrayInputStream("".getBytes());
-			CommandThread thread = new CommandThread(ctx,stmt);	
+			thread = new CommandThread(ctx,stmt);	
 			BackgroundJob job = new BackgroundJob(thread);
 			sc.console.addJob(job);
 			job.start();

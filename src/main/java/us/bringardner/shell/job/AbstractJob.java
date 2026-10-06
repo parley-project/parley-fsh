@@ -1,7 +1,7 @@
 package us.bringardner.shell.job;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellContext;
@@ -10,16 +10,16 @@ import us.bringardner.shell.antlr.signal.ExitException;
 
 public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	
-	public int pid=-1;
-	public int exitCode;
-	public Exception error;
-	public JobState state=JobState.Idel;
-	public int jobNumber=-1;
-	private List<Integer> removedListners = new ArrayList<Integer>();
-	private List<JobStateChangeListner> listners = new ArrayList<JobStateChangeListner>();
+	// set by the job's thread and read by the console thread, kill, wait and jobs
+	public volatile int pid=-1;
+	public volatile int exitCode;
+	public volatile Exception error;
+	public volatile JobState state=JobState.Idel;
+	public volatile int jobNumber=-1;
+	private List<JobStateChangeListner> listners = new CopyOnWriteArrayList<JobStateChangeListner>();
 	private ShellContext ctx;
-	private List<ConsoleSignal> ignoreSignals = new ArrayList<ConsoleSignal>();
-	private boolean disowned = false;
+	private List<ConsoleSignal> ignoreSignals = new CopyOnWriteArrayList<ConsoleSignal>();
+	private volatile boolean disowned = false;
 	
 	public AbstractJob(ShellContext ctx) {
 		this.ctx = ctx;
@@ -127,9 +127,9 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + state);
 		}
-		for(int idx=0,sz=listners.size(); idx < sz; idx++ ) {
-			if( !removedListners.contains(idx)) {
-				listners.get(idx).JobStateChanged(this, lastState,state);
+		for(JobStateChangeListner l : listners) {
+			if( l != null ) {
+				l.JobStateChanged(this, lastState,state);
 			}
 		}		
 	}
@@ -157,7 +157,8 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	
 	@Override
 	public void removeJobStateChangeListner(int idx) {
-		removedListners.add(idx);		
+		// keep the other listeners' ids (their index) valid
+		listners.set(idx, null);		
 	}
 	
 		

@@ -89,26 +89,11 @@ public class Sleep extends ShellCommand{
 					throw  ctx.getException();
 				}
 				if(ctx.isPaused()) {
-					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-					}
+					// time spent suspended doesn't count
+					ctx.waitWhilePaused();
 				} else {
 					long start = System.currentTimeMillis();
-					try {
-						Thread.sleep(timeToSleep);
-					} catch (InterruptedException e) {
-						// reset flag interrupted 
-						Thread.currentThread().isInterrupted();
-						if( debug) {
-							//System.out.println("Interupted sleep time="+timeToSleep);
-						}
-						// give time for exceptions to be set
-						try {
-							Thread.sleep(10);
-						} catch (InterruptedException e1) {
-						}
-					}
+					ctx.sleep(timeToSleep);
 					long end = System.currentTimeMillis();
 					timeToSleep -= (end-start);
 				}

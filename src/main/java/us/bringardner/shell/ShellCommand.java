@@ -74,12 +74,7 @@ public abstract class ShellCommand {
 			if(sc.getException() !=null) {
 				throw new IOException(sc.getException());
 			}
-			while(sc.isPaused()) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-			}
+			sc.waitWhilePaused();
 		}
 	}
 
