@@ -25,6 +25,9 @@ public class TestWords extends AbstractConsoleTest {
 		Files.createDirectories(dir.resolve("sub-dir"));
 		Files.createDirectories(dir.resolve("-dash"));
 		Files.writeString(dir.resolve("-dash").resolve("y.txt"), "");
+		// only for testDoubleDashEndsOptions (another test writes into -dash)
+		Files.createDirectories(dir.resolve("-opt"));
+		Files.writeString(dir.resolve("-opt").resolve("z.txt"), "");
 	}
 
 	private static String path(String name) throws IOException {
@@ -99,5 +102,28 @@ public class TestWords extends AbstractConsoleTest {
 		ExecuteResult res = executeCommand("time echo t", "");
 		assertEquals("t\n", res.getStdOut());
 		assertEquals(0, res.exitCode);
+	}
+
+	@Test
+	public void testUnsetVariableIsEmpty() throws IOException {
+		expect("echo :$nope:", "::\n");
+		expect("echo a$nope", "a\n");
+		expect("echo \":$nope:${nope}:\"", ":::\n");
+		expect("y=$nope; echo :$y:", "::\n");
+		expect("f() { echo :$1:$2:; }; f one", ":one::\n");
+		expect("if [ \"$nope\" == \"\" ]; then echo empty; fi", "empty\n");
+	}
+
+	@Test
+	public void testUnsetVariableWithSetU() throws IOException {
+		ExecuteResult res = executeCommand("set -u; echo :$nope:", "");
+		assertEquals("", res.getStdOut());
+		assertEquals("nope: unbound variable", res.getStdErr().trim());
+		assertEquals(1, res.exitCode);
+	}
+
+	@Test
+	public void testDoubleDashEndsOptions() throws IOException {
+		expect("cd "+path("")+"; ls -- -opt", "z.txt\n");
 	}
 }

@@ -13,13 +13,19 @@ import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 
 public class Ls extends ShellCommand {
-	private enum LsArgument {a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X};
+	private enum LsArgument {a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X,ONE;
+		// -1 (an enum name can't be a digit); parseArgs uses find when there is one
+		static LsArgument find(String name) {
+			return name.equals("1") ? ONE : valueOf(name);
+		}
+	};
 
 
 	static String name = "ls";
-	static String help = "ls [a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X].. [path].."
+	static String help = "ls [-1aCdgGhlLQrRStuxX].. [--] [path].."
 			+ "List information about the FILEs (the current directory by default).  Sort entries alphabetically if none of -ctuSUX is specified.\n"
 			+ "\n"
+			+ "       -1	list one entry per line\n"
 			+ "       -a	do not ignore entries starting with .\n"
 			+ "       -C	list entries by columns\n"
 			+ "       -d	list directories themselves, not their contents\n"
@@ -35,6 +41,7 @@ public class Ls extends ShellCommand {
 			+ "       -t	sort by time, newest first\n"
 			+ "       -x	list entries by lines instead of by columns\n"
 			+ "       -X	sort alphabetically by entry extension\n"
+			+ "       --	the arguments after this are paths, even if they start with -\n"
 			;
 
 
@@ -104,7 +111,8 @@ public class Ls extends ShellCommand {
 		}
 		if( !output.isEmpty()) {
 			// Column 
-			if(ctx.console.isInteractive && !options.contains(LsArgument.l) && !options.contains(LsArgument.g))  {
+			if(ctx.console.isInteractive && !options.contains(LsArgument.l) && !options.contains(LsArgument.g)
+					&& !options.contains(LsArgument.ONE))  {
 				if( options.contains(LsArgument.R)) {
 					formatRecursive(ctx,output);
 				} else {

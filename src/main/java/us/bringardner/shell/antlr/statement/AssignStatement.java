@@ -103,7 +103,9 @@ assignStatement
 			default: return text;
 			}
 		} else if( part.argVariable() != null ) {
-			return ctx.getVariable(part.argVariable());
+			// y=$x keeps x's value (and type); y is empty if x is unset
+			Object val = ctx.getVariable(part.argVariable());
+			return val == null ? ctx.expand(null, part.argVariable().getText()) : val;
 		}
 		return Argument.getValue(part, ctx);
 	}

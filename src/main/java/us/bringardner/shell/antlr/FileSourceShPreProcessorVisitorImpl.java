@@ -220,8 +220,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 					name = v.PPID().getText();
 				}
 
-				String val = ""+sc.getVariable(name);
-				chunks.add(val);				
+				chunks.add(sc.expand(sc.getVariable(name), v.getText()));				
 			}  else if (rule instanceof Pp_parameterContext) {
 				items.add(rule);
 				String str = rule.getText();
@@ -230,7 +229,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				Parameter p = new Parameter(FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::parameter));
 
 				Object val = p.evaluate(sc);
-				chunks.add(""+val);
+				chunks.add(sc.expand(val, str));
 
 			}
 				

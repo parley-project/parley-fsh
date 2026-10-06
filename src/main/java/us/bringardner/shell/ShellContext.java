@@ -264,6 +264,22 @@ $
 	}
 
 	/**
+	 * The text a variable expands to: an unset variable (null) is empty, as in bash, or an error
+	 * after set -u. Without this, unset variables printed as "null".
+	 * 
+	 * @param name the variable as written, for the error message ($x, ${x} ...)
+	 */
+	public String expand(Object value, String name) {
+		if( value == null ) {
+			if( console != null && console.isOptionEnabled(Option.NullParameterIsError)) {
+				throw new RuntimeException(name.replaceAll("^\\$\\{?|\\}$", "")+": unbound variable");
+			}
+			return "";
+		}
+		return value.toString();
+	}
+
+	/**
 	 * A variable that is part of a word ($name, $1, $? ... with an optional index).
 	 */
 	public Object getVariable(ArgVariableContext ctx)  {

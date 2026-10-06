@@ -76,11 +76,12 @@ argumentPart:
 		if( part.literal != null) {
 			ret = part.literal.getText();
 		} else if( part.argVariable()!= null) {			
-			ret = ""+ctx.getVariable(part.argVariable()); 
+			ret = ctx.expand(ctx.getVariable(part.argVariable()), part.argVariable().getText()); 
 		} else if(part.string()!=null) {
 			ret = ctx.expandString(part.string());			
 		} else if(part.parameter()!=null) {
-			ret = visit(part.parameter(),ctx);
+			Object val = visit(part.parameter(),ctx);
+			ret = val == null ? ctx.expand(null, part.parameter().getText()) : val;
 		} else if( part.mathExpression()!= null ) {
 			ret = visit(part.mathExpression(),ctx);
 		} else if(part.arg_command_substitution()!=null) {

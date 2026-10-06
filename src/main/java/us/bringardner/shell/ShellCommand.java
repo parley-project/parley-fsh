@@ -95,9 +95,13 @@ public abstract class ShellCommand {
 				} catch (Throwable e) {
 				}
 				m.setAccessible(true);
+				boolean optionsEnded = false;
 				for(int idx=0; idx < args.length; idx++ ) {
 					String arg = (""+args[idx].getValue(ctx)).trim();
-					if( arg.startsWith("-")) {
+					if( !optionsEnded && arg.equals("--")) {
+						// everything after -- is a path, even if it starts with - (ls -- -dir)
+						optionsEnded = true;
+					} else if( !optionsEnded && arg.startsWith("-")) {
 						arg = arg.substring(1);
 						for(char c : arg.toCharArray()) {
 							try {

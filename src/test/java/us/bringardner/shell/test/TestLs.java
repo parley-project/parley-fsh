@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.shell.Console;
 
 public class TestLs extends AbstractConsoleTest {
 
@@ -420,4 +421,15 @@ public class TestLs extends AbstractConsoleTest {
 		
 	}
 
+	@Test
+	public void testLsOnePerLine() throws IOException {
+		// columns are only used interactively, and -1 turns them off
+		Console c = new Console();
+		c.isInteractive = true;
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		c.setStdOut(new PrintStream(out, true));
+		c.setStdErr(new PrintStream(out, true));
+		assertEquals(0, c.executeUsingAntlr("ls -1"));
+		assertEquals("AbcFileA.js\nAbcFileB.php\nAbcFileC.txt\nAbcFileD.properties\nFolder01\n", out.toString());
+	}
 }

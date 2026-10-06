@@ -9,6 +9,7 @@ import us.bringardner.shell.Console.CommandThread;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.job.BackgroundJob;
+import us.bringardner.shell.job.JobState;
 
 public class BackgroundStatement extends Statement{
 
@@ -36,7 +37,9 @@ public class BackgroundStatement extends Statement{
 			sc.console.addJob(job);
 			job.start();
 
-			while(!job.hasStarted()) {
+			// until the job is marked running (or has already finished), so a jobs command that
+			// follows lists it; the job only starts out idle
+			while(job.getState() == JobState.Idel) {
 				try {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
