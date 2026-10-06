@@ -165,4 +165,23 @@ public class TestWords extends AbstractConsoleTest {
 		// echo joins its words with one space; -n only at the start
 		expect("echo   spaced    out; echo a -n b", "spaced out\na -n b\n");
 	}
+
+	@Test
+	public void testQuotedAt() throws IOException {
+		// "$@" is one word per positional parameter, each kept whole
+		expect("f() { for a in \"$@\"; do echo \"[$a]\"; done; }; f \"a b\" c", "[a b]\n[c]\n");
+		expect("g() { echo $#; }; f() { g \"$@\"; }; f \"a b\" \"\" c; f", "3\n0\n");
+		expect("g() { echo $#; }; f() { g \"${@}\" \"$*\"; }; f a b c", "4\n");
+		// text before and after joins the first and last parameter
+		expect("g() { echo \"$#:$1|$2|$3\"; }; f() { g \"x$@y\"; }; f 1 2 3; f", "3:x1|2|3y\n1:xy||\n");
+		expect("f() { echo \"\\$@ $1\"; }; f a b", "$@ a\n");
+	}
+
+	@Test
+	public void testSetDoubleDash() throws IOException {
+		expect("set -- x y z; echo $# $1", "3 x\n");
+		expect("set -- -a b; echo $# $1", "2 -a\n");
+		expect("set -- a; set --; echo $#", "0\n");
+		expect("set -- \"p q\" r; for a in \"$@\"; do echo \"<$a>\"; done", "<p q>\n<r>\n");
+	}
 }

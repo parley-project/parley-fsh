@@ -62,8 +62,12 @@ public class Set extends ShellCommand{
 			} else if( val.equals("-")) {
 				ctx.console.setOption(Option.PrintLinesAsRead, false);
 				ctx.console.setOption(Option.PrintCommandTrace, false);
+				// the words after - are the positional parameters
+				idx++;
 				break;
 			} else if(val.equals("--")) {
+				// the words after -- are the positional parameters, even if they start with -
+				idx++;
 				break;
 			} else if(val.startsWith("-") || val.startsWith("+")) {
 				boolean set = val.startsWith("-");

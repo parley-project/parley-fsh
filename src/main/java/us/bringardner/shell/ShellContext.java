@@ -691,6 +691,20 @@ $
 		return ret;
 	}
 
+	/**
+	 * @return $1, $2 ... of the running function, or of the script outside a function
+	 */
+	public List<Object> getPositionalParameterValues() {
+		List<Object> all = functionStack.isEmpty() ? console.positionalParameters : functionStack.peek().args;
+		List<Object> ret = new ArrayList<>();
+		if( all != null ) {
+			for(int idx=1, sz=all.size(); idx < sz; idx++) {
+				ret.add(all.get(idx));
+			}
+		}
+		return ret;
+	}
+
 	public List<Object>  getAllPositionalParameters() {
 		List<Object> ret = new ArrayList<>();
 		ret.addAll(console.positionalParameters);

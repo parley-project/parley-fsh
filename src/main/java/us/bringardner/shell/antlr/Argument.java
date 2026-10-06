@@ -20,6 +20,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.StringContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl.Quoting;
 import us.bringardner.shell.antlr.statement.CommandSubstitutionStatement;
 
 public class Argument {
@@ -128,7 +129,8 @@ argumentPart:
 	 * The words a word becomes when a statement runs: brace expansion, then word splitting of
 	 * its unquoted expansions ($x, ${x}, $(cmd), `cmd`, $((...))) on IFS, as in bash. Literal
 	 * text and quoted strings are not split; they join the neighboring field. An unquoted
-	 * expansion that is empty and has nothing next to it gives no word at all.
+	 * expansion that is empty and has nothing next to it gives no word at all. "$@" gives one
+	 * word per positional parameter.
 	 * 
 	 * @return the words, or null if the word stays as it is (no braces and no unquoted expansion)
 	 */
@@ -149,11 +151,58 @@ argumentPart:
 
 	private static boolean hasExpansion(ArgumentContext word) {
 		for(ArgumentPartContext part : word.argumentPart()) {
-			if( isExpansion(part)) {
+			if( isExpansion(part) || quotedAt(part) != null) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * @return the start and end of $@ or ${@} in the text inside a double-quoted string part (not
+	 * inside $( ) or ` `), or null if there is none
+	 */
+	private static int[] quotedAt(ArgumentPartContext part) {
+		if( part.string() == null || part.string().DQ_STRING() == null ) {
+			return null;
+		}
+		String text = part.string().DQ_STRING().getText();
+		return findAt(text.substring(1, text.length()-1));
+	}
+
+	static int[] findAt(String body) {
+		int n = body.length();
+		for (int idx = 0; idx < n; idx++) {
+			char c = body.charAt(idx);
+			if( c == '\\' ) {
+				idx++;
+			} else if( c == '`' ) {
+				idx++;
+				while( idx < n && body.charAt(idx) != '`' ) {
+					if( body.charAt(idx) == '\\' ) {
+						idx++;
+					}
+					idx++;
+				}
+			} else if( c == '$' && body.startsWith("(", idx+1)) {
+				int depth = 0;
+				for (idx++; idx < n; idx++) {
+					char d = body.charAt(idx);
+					if( d == '\\' ) {
+						idx++;
+					} else if( d == '(' ) {
+						depth++;
+					} else if( d == ')' && --depth == 0 ) {
+						break;
+					}
+				}
+			} else if( c == '$' && body.startsWith("@", idx+1)) {
+				return new int[] {idx, idx+2};
+			} else if( c == '$' && body.startsWith("{@}", idx+1)) {
+				return new int[] {idx, idx+4};
+			}
+		}
+		return null;
 	}
 
 	private static boolean isExpansion(ArgumentPartContext part) {
@@ -189,6 +238,8 @@ argumentPart:
 					Object val = getValue(part, ctx);
 					String text = val instanceof List<?> ? join((List<?>) val) : ""+val;
 					addSplit(text);
+				} else if( quotedAt(part) != null ) {
+					addQuotedAt(part);
 				} else {
 					String text = ""+getValue(part, ctx);
 					current.append(text);
@@ -211,6 +262,37 @@ argumentPart:
 				ret.append(o);
 			}
 			return ret.toString();
+		}
+
+		/**
+		 * "pre$@post": the text before $@ joins the first parameter, the text after joins the
+		 * last, and each parameter is its own field. No parameters give no field (unless there is
+		 * text before or after).
+		 */
+		private void addQuotedAt(ArgumentPartContext part) {
+			int [] at = quotedAt(part);
+			String text = part.string().DQ_STRING().getText();
+			String body = text.substring(1, text.length()-1);
+			String prefix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(0, at[0]), ctx, Quoting.DOUBLE_QUOTED);
+			String suffix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(at[1]), ctx, Quoting.DOUBLE_QUOTED);
+			List<Object> params = ctx.getPositionalParameterValues();
+			if( params.isEmpty()) {
+				if( !prefix.isEmpty() || !suffix.isEmpty()) {
+					appendQuoted(prefix+suffix);
+				}
+				return;
+			}
+			for (int idx = 0, sz = params.size(); idx < sz; idx++) {
+				if( idx > 0 ) {
+					finish();
+				}
+				appendQuoted((idx == 0 ? prefix : "")+params.get(idx)+(idx == sz-1 ? suffix : ""));
+			}
+		}
+
+		private void appendQuoted(String text) {
+			current.append(text);
+			currentIsField = true;
 		}
 
 		private void finish() {
