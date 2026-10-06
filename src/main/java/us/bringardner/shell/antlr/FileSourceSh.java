@@ -48,7 +48,7 @@ public class FileSourceSh {
 		});
 
 		FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-		List<Statement> stmts = visitor.visitScript(parser.script());
+		List<Statement> stmts = visitor.visitScript(FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::script));
 		Exception e = error.get();
 		if( e != null ) {
 			throw e;

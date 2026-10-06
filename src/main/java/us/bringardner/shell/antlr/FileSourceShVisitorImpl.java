@@ -4,12 +4,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
+import org.antlr.v4.runtime.ANTLRErrorListener;
+import org.antlr.v4.runtime.ANTLRErrorStrategy;
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.atn.PredictionMode;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -758,11 +765,37 @@ argument
 		throw new RuntimeException("Not implemented");
 	}
 
+	/**
+	 * Run a parser rule with ANTLR's fast SLL prediction first. Only when that fails (a syntax error,
+	 * or input that needs full context) is the input parsed again with full LL prediction, which
+	 * reports errors as before. Full LL on every parse made a single command take seconds.
+	 * 
+	 * @param parser a new parser; its error listeners are used for the LL pass
+	 * @param rule the rule to run, for example FileSourceShParser::script
+	 * @return the parse tree
+	 */
+	public static <P extends Parser,T> T parseFast(P parser, Function<P,T> rule) {
+		List<? extends ANTLRErrorListener> listeners = new ArrayList<>(parser.getErrorListeners());
+		ANTLRErrorStrategy handler = parser.getErrorHandler();
+		parser.removeErrorListeners();
+		parser.setErrorHandler(new BailErrorStrategy());
+		parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
+		try {
+			return rule.apply(parser);
+		} catch (ParseCancellationException e) {
+			parser.reset();
+			listeners.forEach(parser::addErrorListener);
+			parser.setErrorHandler(handler);
+			parser.getInterpreter().setPredictionMode(PredictionMode.LL);
+			return rule.apply(parser);
+		}
+	}
+
 	public static Argument parseAurgument(String code) {
 		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code));
 		FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
 		FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-		ArgumentContext a = parser.argument();
+		ArgumentContext a = parseFast(parser, FileSourceShParser::argument);
 		Argument ret = visitor.visitArgument(a);
 
 		return ret;
@@ -771,7 +804,7 @@ argument
 	public static Parameter1Context parseParameter1(String code) {
 		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code));
 		FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-		Parameter1Context ret = parser.parameter1();
+		Parameter1Context ret = parseFast(parser, FileSourceShParser::parameter1);
 
 		return ret;
 	}
@@ -780,7 +813,7 @@ argument
 		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code));
 		FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
 		FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-		CompareContext a = parser.compare();
+		CompareContext a = parseFast(parser, FileSourceShParser::compare);
 		Compare ret = visitor.visitCompare(a);
 
 		return ret;
@@ -810,7 +843,7 @@ argument
 		});
 
 		FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-		List<Statement> stmts = visitor.visitScript(parser.script());
+		List<Statement> stmts = visitor.visitScript(parseFast(parser, FileSourceShParser::script));
 		Exception e = error.get();
 		if( e != null ) {
 			throw e;

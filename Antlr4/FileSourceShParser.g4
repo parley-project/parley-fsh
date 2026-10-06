@@ -126,16 +126,19 @@ argument:
 signed_number: (MINUS|PLUS|PERC)? NUMBER;    
 
 
+// one alternative: with two that differ only at the end, the parser had to read the whole
+// command before it could choose (seconds for a long path)
 commandStatement:
-      WS*	redirect1=redirect? WS* command WS* (argument WS*)* hereDocument WS* redirect2=redirect? 
-    | WS*	redirect1=redirect? WS* command WS* (argument WS*)* redirect2=redirect?
+      WS*	redirect1=redirect? WS* command WS* (argument WS*)* (hereDocument WS*)? redirect2=redirect?
     ;
     
     
 redirect: (redirect_one WS*)+;
  
+ // the file descriptor in "2>file" is the argument before the operator (see FileSourceShVisitorImpl.parseRedirect);
+ // an optional argument here made the parser read to the end of every command
  redirect_one: 
- 		  fid=argument? redirectionOperator white* (args=argument WS*)?
+ 		  redirectionOperator white* (args=argument WS*)?
 		| file_address
 		| redirectionOperator white* (args=argument WS*)? white* file_address
 		;    

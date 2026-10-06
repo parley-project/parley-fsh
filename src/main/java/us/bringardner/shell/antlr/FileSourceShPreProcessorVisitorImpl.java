@@ -59,7 +59,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 		});
 		PreprocessResult ret = new PreprocessResult();
 		FileSourceShPreProcessorVisitorImpl visitor = new FileSourceShPreProcessorVisitorImpl();
-		ret.items = visitor.visitPpcode(parser.ppcode());
+		ret.items = visitor.visitPpcode(FileSourceShVisitorImpl.parseFast(parser, FileSourceShPreProcessorParser::ppcode));
 		ret.error = error.get(); 
 
 		return ret;
@@ -207,7 +207,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(expStr));
 				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
 				FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-				MathExpressionContext me = parser.mathExpression();
+				MathExpressionContext me = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::mathExpression);
 				Expression exprCtx = visitor.visitMathExpression(me);
 
 				Object val = exprCtx.evaluate(sc);
@@ -227,7 +227,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				String str = rule.getText();
 				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(str));
 				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-				Parameter p = new Parameter(parser.parameter());
+				Parameter p = new Parameter(FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::parameter));
 
 				Object val = p.evaluate(sc);
 				chunks.add(""+val);

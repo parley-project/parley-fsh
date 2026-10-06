@@ -343,9 +343,7 @@ $((12+32))
 						assertEquals(expect.rdop, op);
 						String path = null;
 						// the getText here wo
-						if( redirect.fid !=null) {
-							path = redirect.fid.getText();
-						} else if( redirect.args !=null) {
+						if( redirect.args !=null) {
 							ArgumentContext args2 = redirect.args;
 							path = args2.getText();
 						} else {

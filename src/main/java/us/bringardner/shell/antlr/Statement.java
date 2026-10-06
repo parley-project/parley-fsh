@@ -396,7 +396,7 @@ list:
 							String val = ""+arg.getValue(ctx);
 							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(val));
 							FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-							ArgumentContext na = parser.argument();
+							ArgumentContext na = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::argument);
 							na.start = lc.start;
 							na.stop = lc.stop;
 							
@@ -422,7 +422,7 @@ list:
 							String val = ""+arg.getValue(ctx);
 							FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(val));
 							FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-							ArgumentContext na = parser.argument();
+							ArgumentContext na = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::argument);
 							na.start = ac.start;
 							na.stop = ac.stop;
 							

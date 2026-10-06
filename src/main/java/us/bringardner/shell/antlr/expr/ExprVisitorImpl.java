@@ -12,6 +12,7 @@ import us.bringardner.filesource.sh.ExprParser;
 import us.bringardner.filesource.sh.ExprParser.ExprContext;
 import us.bringardner.filesource.sh.ExprParserBaseVisitor;
 import us.bringardner.filesource.sh.FileSourceShLexer;
+import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 
 public class ExprVisitorImpl extends ExprParserBaseVisitor<Object>  {
 
@@ -42,7 +43,7 @@ public class ExprVisitorImpl extends ExprParserBaseVisitor<Object>  {
 		});
 		
 		ExprVisitorImpl visitor = new ExprVisitorImpl();
-		Expr ret = visitor.visitExpr(parser.expr());
+		Expr ret = visitor.visitExpr(FileSourceShVisitorImpl.parseFast(parser, ExprParser::expr));
 		
 		return ret;
 	}
