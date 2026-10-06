@@ -94,4 +94,13 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 		
 		
 	}
+
+	@Test
+	public void testCommandTextIsKept() throws IOException {
+		// the command inside $( ) is run as written (its tokens were joined with spaces)
+		ExecuteResult res = executeCommand("x=$(echo a-b.txt); echo \"[$x]\"", "");
+		assertEquals("[a-b.txt]\n", res.getStdOut());
+		res = executeCommand("x=$(echo \"a  b\"); echo \"[$x]\"", "");
+		assertEquals("[a  b]\n", res.getStdOut());
+	}
 }

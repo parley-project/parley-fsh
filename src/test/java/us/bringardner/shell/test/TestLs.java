@@ -432,4 +432,40 @@ public class TestLs extends AbstractConsoleTest {
 		assertEquals(0, c.executeUsingAntlr("ls -1"));
 		assertEquals("AbcFileA.js\nAbcFileB.php\nAbcFileC.txt\nAbcFileD.properties\nFolder01\n", out.toString());
 	}
+
+	@Test
+	public void testLsSeveralPaths() throws IOException {
+		// files first, named as given; then each directory under a heading
+		String expect = "AbcFileA.js\n"
+				+ "\n"
+				+ "Folder01/Folder01def.2:\n"
+				+ "AbcFile.php\n"
+				+ "AbcFile.properties\n"
+				+ "AbcFile01def2.txt";
+		assertEquals(expect, executeLsCommand(false, "ls Folder01/Folder01def.2 AbcFileA.js"));
+
+		// interactive: columns within each block
+		expect = "Folder01/Folder01abc.1:\n"
+				+ "AbcFile.php         AbcFile.properties  AbcFile.txt         Folder01ghi         Folder01jkl\n"
+				+ "\n"
+				+ "Folder01/Folder01def.2:\n"
+				+ "AbcFile.php         AbcFile.properties  AbcFile01def2.txt";
+		assertEquals(expect, executeLsCommand(true, "ls Folder01/Folder01def.2 Folder01/Folder01abc.1"));
+
+		// -d lists the directories themselves
+		assertEquals("Folder01/Folder01abc.1\nFolder01/Folder01def.2",
+				executeLsCommand(false, "ls -d Folder01/Folder01def.2 Folder01/Folder01abc.1"));
+	}
+
+	@Test
+	public void testLsPathAsGivenAndMissing() throws IOException {
+		assertEquals("Folder01/AbcFile01.txt", executeLsCommand(false, "ls Folder01/AbcFile01.txt"));
+		// a named hidden file is shown
+		assertEquals(".Hidden01.txt", executeLsCommand(false, "ls .Hidden01.txt"));
+		// a missing path is reported, and the others are still listed
+		ExecuteResult res = executeCommand("ls nope.txt AbcFileA.js", "");
+		assertEquals("AbcFileA.js\n", res.getStdOut());
+		assertEquals("ls: nope.txt: no such file or directory", res.getStdErr().trim());
+		assertEquals(1, res.exitCode);
+	}
 }

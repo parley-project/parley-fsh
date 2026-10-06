@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
@@ -86,7 +88,7 @@ public class Ls extends ShellCommand {
 					}
 				}
 			}
-		} else {
+		} else if( options.contains(LsArgument.R) && !options.contains(LsArgument.d)) {
 
 			List<FileSource> list = new ArrayList<FileSource>();
 
@@ -98,16 +100,10 @@ public class Ls extends ShellCommand {
 			}
 
 			if( list.size()>0) {
-				FileSource[] files= list.toArray(new FileSource[list.size()]);
-				if( !options.contains(LsArgument.d) && options.contains(LsArgument.R) ) {
-					listRecursive(ctx,output, options, files);				
-				} else {
-					if( files.length==1 && files[0].isDirectory()) {
-						files = files[0].listFiles();
-					}
-					list(ctx,output, options, files);					
-				}
+				listRecursive(ctx,output, options, list.toArray(new FileSource[list.size()]));				
 			}
+		} else {
+			return listOperands(ctx, options, paths);
 		}
 		if( !output.isEmpty()) {
 			// Column 
@@ -128,6 +124,133 @@ public class Ls extends ShellCommand {
 		return ret;
 	}
 
+
+	/**
+	 * ls with paths, as bash does it: the files first (named as given), then each directory's
+	 * contents under a "name:" heading. With a single path there is no heading. A missing path
+	 * is reported and the others are still listed.
+	 */
+	private int listOperands(ShellContext ctx, List<LsArgument> options, List<String> paths) throws IOException {
+		int ret = 0;
+		int operands = 0;
+		Map<FileSource,String> labels = new IdentityHashMap<>();
+		List<FileSource> files = new ArrayList<>();
+		List<FileSource> dirs = new ArrayList<>();
+		for(String arg : paths) {
+			arg = arg.trim();
+			if( arg.isEmpty()) {
+				continue;
+			}
+			// only * ? [ make a glob; a leading ~ is the home directory (getFiles treats ~ as a
+			// glob and returned the contents of ~/dir)
+			List<FileSource> found;
+			if( isGlob(arg)) {
+				found = getFiles(ctx, arg);
+			} else {
+				arg = expandTilde(ctx, arg);
+				found = new ArrayList<>();
+				found.add(ctx.console.createFileSource(arg));
+			}
+			if( found.isEmpty()) {
+				operands++;
+				ctx.stderr.println("ls: "+arg+": no such file or directory");
+				ret = 1;
+			}
+			for(FileSource file : found) {
+				operands++;
+				String label = isGlob(arg) ? globLabel(ctx, arg, file) : arg;
+				if( !file.exists()) {
+					ctx.stderr.println("ls: "+label+": no such file or directory");
+					ret = 1;
+				} else {
+					labels.put(file, label);
+					if( file.isDirectory() && !options.contains(LsArgument.d)) {
+						dirs.add(file);
+					} else {
+						files.add(file);
+					}
+				}
+			}
+		}
+
+		boolean columns = useColumns(ctx, options);
+		boolean first = true;
+		if( !files.isEmpty()) {
+			FileSource[] list = files.toArray(new FileSource[files.size()]);
+			sort(options, list);
+			List<String> out = new ArrayList<>();
+			for(FileSource file : list) {
+				print(ctx, out, options, file, labels.get(file));
+			}
+			printBlock(ctx, null, out, columns);
+			first = false;
+		}
+		FileSource[] dirList = dirs.toArray(new FileSource[dirs.size()]);
+		sort(options, dirList);
+		for(FileSource dir : dirList) {
+			if( !first ) {
+				ctx.stdout.println();
+			}
+			FileSource[] kids = dir.listFiles();
+			List<String> out = new ArrayList<>();
+			if( kids != null ) {
+				sort(options, kids);
+				for(FileSource kid : kids) {
+					print(ctx, out, options, kid, null);
+				}
+			}
+			printBlock(ctx, operands > 1 ? labels.get(dir) : null, out, columns);
+			first = false;
+		}
+		return ret;
+	}
+
+	/**
+	 * How to show a file a glob found: the directory part of the pattern (if it has no
+	 * wildcard) and the file's name; otherwise the path relative to the current directory
+	 * for a relative pattern, or the full path.
+	 */
+	private static String globLabel(ShellContext ctx, String pattern, FileSource file) throws IOException {
+		int slash = Math.max(pattern.lastIndexOf('/'), pattern.lastIndexOf('\\'));
+		String dir = slash >= 0 ? pattern.substring(0, slash+1) : "";
+		if( !isGlob(dir)) {
+			return expandTilde(ctx, dir)+file.getName();
+		}
+		String path = file.getAbsolutePath();
+		if( isRelative(pattern)) {
+			String cwd = ctx.console.getCurrentDirectory().getAbsolutePath();
+			char sep = file.getFileSourceFactory().getSeperatorChar();
+			if( path.startsWith(cwd+sep)) {
+				return path.substring(cwd.length()+1);
+			}
+		}
+		return path;
+	}
+
+	private static boolean isGlob(String arg) {
+		return arg.indexOf('*') >= 0 || arg.indexOf('?') >= 0 || arg.indexOf('[') >= 0;
+	}
+
+	private boolean useColumns(ShellContext ctx, List<LsArgument> options) {
+		return ctx.console.isInteractive && !options.contains(LsArgument.l) && !options.contains(LsArgument.g)
+				&& !options.contains(LsArgument.ONE);
+	}
+
+	private void printBlock(ShellContext ctx, String heading, List<String> lines, boolean columns) {
+		if( heading != null ) {
+			ctx.stdout.println(heading+":");
+		}
+		if( lines.isEmpty()) {
+			return;
+		}
+		if( columns ) {
+			ctx.stdout.println(toColumns(ctx, lines).trim());
+		} else {
+			for(String line : lines) {
+				ctx.stdout.println(line);
+			}
+		}
+	}
 
 	private void formatRecursive(ShellContext ctx, List<String> output) {
 		StringBuilder buf = new StringBuilder();
@@ -285,6 +408,13 @@ public class Ls extends ShellCommand {
 	//prmStr linkStr   usrStr  crpStr    sizeStr  |dateStr     | nameStr
 	//-rw-rw-r--    1     ec2-user ec2-user    2186     Feb  2 08:41 build.txt
 	private  void print(ShellContext ctx, List<String> out,List<LsArgument> args, FileSource file) throws IOException {
+		print(ctx, out, args, file, null);
+	}
+
+	/**
+	 * @param label the name to show (a path as the user gave it), or null for the file's name
+	 */
+	private  void print(ShellContext ctx, List<String> out,List<LsArgument> args, FileSource file, String label) throws IOException {
 		if( !file.exists()) {
 			throw new IOException("ls: "+file+": no such file or directory");
 			
@@ -295,11 +425,12 @@ public class Ls extends ShellCommand {
 				file = link;
 			}
 		}
-		if(isHidden(file) && !args.contains(LsArgument.a)) {
+		// a hidden file is shown when it is named
+		if(label == null && isHidden(file) && !args.contains(LsArgument.a)) {
 			return;
 		}
 		if(!args.contains(LsArgument.l) && !args.contains(LsArgument.g)) {
-			out.add(file.getName());
+			out.add(label != null ? label : file.getName());
 		} else {
 			String permStr = (file.isDirectory()?"d":"-")+formatPermission(file);
 			String linkStr = formatLink(args,file);
@@ -307,7 +438,7 @@ public class Ls extends ShellCommand {
 			String groupStr = formatGroup(args,file);
 			String sizeStr = formatSize(args,file);
 			String timeStr = formatTime(args,file);
-			String nameStr = formatName(args,file);
+			String nameStr = label == null ? formatName(args,file) : args.contains(LsArgument.Q) ? "\""+label+"\"" : label;
 
 
 			out.add(String.format("%s %s %s  %s %s  %s %s",permStr,linkStr,
@@ -320,7 +451,8 @@ public class Ls extends ShellCommand {
 	private String formatName(List<LsArgument> args, FileSource file) {
 		String ret = file.getName();
 		if( args.contains(LsArgument.Q)) {
-			ret = "\""+name+"\"";
+			// (this quoted the command's name, so every entry showed as "ls")
+			ret = "\""+ret+"\"";
 		}
 		return ret;
 	}
