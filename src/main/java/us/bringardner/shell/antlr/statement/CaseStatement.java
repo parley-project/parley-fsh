@@ -9,7 +9,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.CaseStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.PatternContext;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Expression;
+import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Statement;
 
 public class CaseStatement extends Statement{
@@ -44,18 +44,13 @@ commandList: commandStatement+ ;
 patternList
     :   pattern (PIPE pattern)*
     ;
-pattern
-    :   ID
-    | expression
-    |  '*'
-    ;
+pattern: argument ;
 	 */
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		int ret = 0;
 		CaseStatementContext ctx = (CaseStatementContext) getContext();
-		Expression expr = new Expression(ctx.expression());
-		String val = ""+expr.evaluate(sc);
+		String val = ""+new Argument(ctx.subject).getValue(sc);
 
 		for(int idx=0,sz=clouses.size(); idx < sz; idx++ ) {
 			CaseClause cc = clouses.get(idx);
@@ -110,18 +105,11 @@ pattern
 
 	/*
 
-pattern
-    :   ID
-    | expression
-    |  '*'
-    ;
+pattern: argument ;
 	 */
 	private boolean matches(String val,PatternContext p, ShellContext sc) throws IOException {
-		String pat = p.getText();
-		if( p.expression()!=null) {
-			Expression e = new Expression(p.expression());
-			pat = ""+e.evaluate(sc);
-		}
+		// the pattern is a word: variables are expanded, then it is matched as a glob
+		String pat = ""+new Argument(p.argument()).getValue(sc);
 		String preped = ShellCommand.prepWildCards(pat,false);
 		Pattern rx = Pattern.compile(preped);
 		Matcher m = rx.matcher(val);

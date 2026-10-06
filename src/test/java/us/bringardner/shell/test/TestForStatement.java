@@ -259,4 +259,25 @@ public class TestForStatement extends AbstractConsoleTest {
 		
 		assertEquals("", err);
 	}
+
+	private static void expectOut(String code, String out) throws IOException {
+		ExecuteResult res = executeCommand(code, "");
+		assertEquals("", res.getStdErr(), code);
+		assertEquals(out, res.getStdOut(), code);
+		assertEquals(0, res.exitCode, code);
+	}
+
+	@Test
+	public void testCStyleForWithSemicolon() throws IOException {
+		expectOut("for ((i=0; i<3; i++)); do echo $i; done", "0\n1\n2\n");
+		expectOut("for ((i=10; i>7; i--)); do echo $i; done", "10\n9\n8\n");
+		expectOut("for ((i=0; i<6; i+=2)); do echo $i; done", "0\n2\n4\n");
+	}
+
+	@Test
+	public void testListEndsAtNewline() throws IOException {
+		// in the list, do is a word; on the next line it starts the loop body
+		expectOut("for x in a do b; do echo $x; done", "a\ndo\nb\n");
+		expectOut("for x in a b\ndo\necho $x\ndone", "a\nb\n");
+	}
 }

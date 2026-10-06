@@ -541,7 +541,8 @@ caseClause
 			CaseStatement.CaseClause clouse = new CaseStatement.CaseClause();
 			clouse.stmts = visitStatement_block(cc.statement_block());
 			clouse.pattarns = cc.patternList().pattern() ;
-			String op = cc.op.getText();;
+			// the last clause may leave out ;;
+			String op = cc.op == null ? ";;" : cc.op.getText();
 			if( op.equals(";;")) {
 				clouse.op = CaseStatement.Operator.Stop;
 			} else if( op.equals(";&")) {

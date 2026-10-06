@@ -95,14 +95,15 @@ argumentPart:
 	}
 
 	/**
-	 * @return true if the word has an unquoted * or ?, so it names files
+	 * @return true if the word has an unquoted *, ? or [, so it names files
 	 */
 	public boolean hasUnquotedWildcard() {
 		if( context != null ) {
 			for(ArgumentPartContext part : context.argumentPart()) {
 				if( part.literal != null ) {
 					int type = part.literal.getType();
-					if( type == FileSourceShParser.STAR || type == FileSourceShParser.QUESTION) {
+					if( type == FileSourceShParser.STAR || type == FileSourceShParser.QUESTION
+							|| type == FileSourceShParser.LSQUARE) {
 						return true;
 					}
 				}

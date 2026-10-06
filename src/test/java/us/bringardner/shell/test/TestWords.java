@@ -126,4 +126,23 @@ public class TestWords extends AbstractConsoleTest {
 	public void testDoubleDashEndsOptions() throws IOException {
 		expect("cd "+path("")+"; ls -- -opt", "z.txt\n");
 	}
+
+	@Test
+	public void testKeywordsAndBracketsAreText() throws IOException {
+		expect("echo done", "done\n");
+		expect("echo if then else fi for in do", "if then else fi for in do\n");
+		expect("echo git commit -m done", "git commit -m done\n");
+		expect("w=x; echo [$w] a[1]b ]", "[x] a[1]b ]\n");
+		// [ at the start of a statement is still a test
+		expect("x=3; if [ $x == 3 ]; then echo yes; fi; [ 3 == 3 ] && echo eq", "yes\neq\n");
+	}
+
+	@Test
+	public void testCharacterClassGlob() throws IOException {
+		Files.writeString(dir.resolve("a1.txt"), "");
+		Files.writeString(dir.resolve("b1.txt"), "");
+		Files.writeString(dir.resolve("c1.txt"), "");
+		expect("cd "+path("")+"; ls [ab]1.txt", "a1.txt\nb1.txt\n");
+		expect("cd "+path("")+"; ls [!ab]1.txt", "c1.txt\n");
+	}
 }

@@ -98,7 +98,11 @@ argument: argumentPart+ ;
 
 argumentPart:
       literal=(ID | NUMBER | ARG_ID | TEXT | SLASH | TILDE | AT | DOT | DOT_DOT | STAR | QUESTION
-             | MINUS | MINUS_MINUS | PLUS | PERC | COLON | COMMA | EQ | LOCAL | TRUE | FALSE)
+             | MINUS | MINUS_MINUS | PLUS | PERC | COLON | COMMA | EQ | LOCAL | TRUE | FALSE
+             // keywords and [ ] ! are text in a word (echo done, echo [$w], ls [!a]*.txt);
+             // they can't start a command, so loops, tests and ! pipelines are unaffected
+             | IF | FI | THEN | ELSE | ELIF | FOR | SELECT | IN | WHILE | DONE | UNTIL | CASE | ESAC
+             | DO | TIME | FUNCTION | CONTINUE | BREAK | LSQUARE | RSQUARE | NOT)
     | string
     | argVariable
     | parameter
@@ -107,7 +111,7 @@ argumentPart:
     | braceExpansion
     ;
 
-// $name, $1, $? ... (a bare name is a literal part of the word)
+// $name, $1, $? ... (a bare name is a literal part of the word); $name[index] indexes an array
 argVariable: VARIABLE (associative_index | array_index)? ;
     
 signed_number: (MINUS|PLUS|PERC)? NUMBER;    
@@ -197,7 +201,8 @@ compare_prime:
     | commandStatement
     ;
 
-file_test: WS* op=argument WS+ target=argument WS*;
+// -f file, -d dir ... (the operator is an option, so [ and ] are not taken for one)
+file_test: WS* op=ARG_ID WS+ target=argument WS*;
 
 associative_index:
 		(LSQUARE ID RSQUARE)
@@ -226,21 +231,21 @@ term:
     ;
 
 
+// case word in [(]pattern [| pattern]...) commands ;; ... esac  (on one line or several)
 caseStatement:
-       CASE WS* expression WS* IN NL caseClause+ ESAC
-    
+       CASE WS+ subject=argument white+ IN white+ (caseClause white*)* ESAC
     ;
 
 
 
+// the last clause may leave out ;;
 caseClause:
-        patternList white* RPAREN white* statement_block white* op=(SEMI_SEMI|SEMI_AMP|SEMI_SEMI_AMP) white
-
+        (LPAREN WS*)? patternList WS* RPAREN white* statement_block white* op=(SEMI_SEMI|SEMI_AMP|SEMI_SEMI_AMP)?
     ;
 
 
 patternList:
-       WS* pattern (white* PIPE white* pattern)*
+       pattern (WS* PIPE WS* pattern)*
     ;
 
 	
@@ -263,14 +268,8 @@ rx_pattern:
     | '(' rx_pattern+ ')'
     ;
 
-pattern:
-      ID
-    | regex    
-    | STAR 
-    | QUESTION
-    | char_class_list
-    | expression
-    ;
+// a glob, written as a word
+pattern: argument ;
 
 char_class_list: char_class+;
 
@@ -345,7 +344,7 @@ doStatement:
 
 forStatement:
      white* FOR white* ID white* IN white* list white* SEMI? doStatement
-    | white* FOR white* for_loop_control doStatement
+    | white* FOR white* for_loop_control white* SEMI? doStatement
     ;
 
 selectStatement:
@@ -384,9 +383,9 @@ arrayInitializer:
      LPAREN argument_list RPAREN
     ;
 
+// ends at a newline or ;, as in bash
 list: 
-	  argument (white+ argument)* white*
-    | white* LSQUARE white* argument white* RSQUARE white*
+	  argument (WS+ argument)* WS*
     ;
 
 statement_or_statement1: (statement|statement1);

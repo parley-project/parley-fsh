@@ -196,4 +196,25 @@ public class TestCaseStatement extends AbstractConsoleTest {
 		assertEquals(0, res.exitCode);		
 		
 	}
+
+	private static void expectOut(String code, String out) throws IOException {
+		ExecuteResult res = executeCommand(code, "");
+		assertEquals("", res.getStdErr(), code);
+		assertEquals(out, res.getStdOut(), code);
+		assertEquals(0, res.exitCode, code);
+	}
+
+	@Test
+	public void testCaseForms() throws IOException {
+		// one line, | alternatives, (pattern), quoted patterns, several commands, no ;; on the last clause
+		expectOut("case abc in a*) echo match;; *) echo no;; esac", "match\n");
+		expectOut("x=b; case $x in a) echo A;; b|c) echo BC;; esac", "BC\n");
+		expectOut("case zz in (a) echo A;; (*) echo other;; esac", "other\n");
+		expectOut("case \"x y\" in \"x y\") echo quoted;; esac", "quoted\n");
+		expectOut("case abc in a*) echo m1; echo m2;; esac", "m1\nm2\n");
+		expectOut("case q in a) echo A;; esac; echo after", "after\n");
+		expectOut("case abc in\n  a*)\n    echo multi\n    ;;\nesac", "multi\n");
+		expectOut("case b in a) echo A;; b) echo B\nesac", "B\n");
+		expectOut("case c3 in [ab]*) echo ab;; [!ab]?) echo other;; esac", "other\n");
+	}
 }
