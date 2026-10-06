@@ -47,6 +47,9 @@ public interface KeyboardReader {
 		return null;
 	}
 	
+	/**
+	 * @return the line typed, without the line terminator, or null at the end of input
+	 */
 	public  String readLine(Console console) throws IOException;	
 	public void setPrompt(String prompt);
 	public void setEditLineText(String text);

@@ -138,14 +138,21 @@ public class CommandStatement extends Statement{
 				boolean isSystemOut = (out == Console.System_out) ;
 
 				while(running && !stopping ) {
+					// only read what was already typed, so nothing is taken after the process ends
+					if( in.available() <= 0 ) {
+						Thread.sleep(10);
+						continue;
+					}
 					int key = in.read();
-					if( key > 0 ) {
-						out.write(key);
-						out.flush();
-						// echo key to stdout
-						if(!isSystemOut && echo ) {
-							System.out.print((char)key);
-						}
+					if( key < 0 || key == 4 ) {
+						// end of input or Ctrl-D: the finally block closes the process's stdin
+						break;
+					}
+					out.write(key);
+					out.flush();
+					// echo key to stdout
+					if(!isSystemOut && echo ) {
+						System.out.print((char)key);
 					}
 				}
 			} catch (Throwable e) {

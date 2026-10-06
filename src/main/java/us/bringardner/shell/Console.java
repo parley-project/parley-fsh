@@ -1000,7 +1000,12 @@ delimiter
 			kb.setPrompt(prompt);
 			String code;
 			try {
-				code = kb.readLine(this).trim();
+				code = kb.readLine(this);
+				if( code == null ) {
+					// end of input (Ctrl-D): leave like bash does
+					code = "exit";
+				}
+				code = code.trim();
 				if( !code.isEmpty()) {
 					state = ConsoleState.Executing;
 					addHistory(code) ;

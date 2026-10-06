@@ -178,7 +178,11 @@ public class Read extends ShellCommand{
 		kb.setTimeout(timeout);
 		kb.setPrompt(prompt);
 		
-		return kb.readLine(ctx.console);
+		String ret = kb.readLine(ctx.console);
+		if( ret == null ) {
+			throw new EOFException();
+		}
+		return ret;
 	}
 
 	private String readLineConsole(ShellContext ctx,String prompt, char lineDelim, int timeout, String editLineText,int n,int N, List<Options> options) throws IOException {

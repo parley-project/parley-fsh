@@ -2,13 +2,30 @@ package us.bringardner.shell;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.PrintStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NativeKeyboard extends InputStream implements KeyboardReader 	{
+public class NativeKeyboard extends InputStream implements KeyboardReader, InteractiveInput 	{
+	/**
+	 * @return the next byte (0-255), a special key (UP ...), KEY_NONE if nothing was typed within a second, or KEY_EOF.
+	 */
 	private native int getChar();
+	/**
+	 * @return the number of bytes that can be read without blocking.
+	 */
 	private native int ready();
+
+	/** getChar() result at the end of input */
+	public static final int KEY_EOF = -1;
+	/** getChar() result when nothing was typed (yet) */
+	public static final int KEY_NONE = -2;
+	private static final int CTRL_D = 4;
+
+	/** bytes of a special key's escape sequence still to be returned by read() */
+	private final ArrayDeque<Integer> pending = new ArrayDeque<>();
 
 
 	// https://espterm.github.io/docs/VT100%20escape%20codes.html
@@ -21,11 +38,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 
 		System.out.print(prompt);
 		System.out.flush();
-		Integer line = console.history.size();
+		int line = console.history.size();
 		List<String> lines = new ArrayList<>();
 		StringBuilder buf = new StringBuilder();
-		@SuppressWarnings("unused")
-		String debug = "";
 		long start = System.currentTimeMillis();
 		boolean escaped = false;
 
@@ -39,6 +54,15 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 
 		while(true) {
 			
+				if( key == KEY_EOF || (key == CTRL_D && buf.length()==0 && lines.isEmpty())) {
+					// end of input: null if nothing was typed
+					if( buf.length()==0 && lines.isEmpty()) {
+						print('\n');
+						return null;
+					}
+					return join(lines, buf);
+				}
+
 				if(key>=0 && maxBytes_N<0 && (!escaped && key == lineTerminator)) {
 					StringBuilder tmp = new StringBuilder();
 					for(String l : lines) {
@@ -51,7 +75,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 				} 
 				escaped = false;
 				switch (key) {
-				case -1: break;
+				case KEY_NONE: break;
 				case 0: break;
 
 				case PAGE_UP:break;
@@ -112,10 +136,10 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 					}
 					break;
 				case DELETE:
-					if( pos > 0 && 
-							pos < buf.length()-1) {
+					if( pos < buf.length()) {
 						buf.deleteCharAt(pos);
 						print(CLEAR_LINE);
+						print(prompt);
 						print(buf.toString());
 						for(int i = buf.length(); i > pos; i-- ) {
 							print(CURSOR_LEFT);
@@ -134,7 +158,10 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 					if( honorEscape) {
 						escaped = true;
 						print(((char)key));
-						key = getChar();
+						key = nextKey();
+						if( key == KEY_EOF) {
+							return join(lines, buf);
+						}
 
 						if( key == lineTerminator) {
 							print(CLEAR_LINE);
@@ -155,7 +182,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 						buf.insert(pos++, (char)key);
 					}
 					print(((char)key));
-					line=null;
+					// typing starts a new line, history browsing starts again from the end
+					line = console.history.size();
 					for(int idx=pos; idx < buf.length(); idx++) {
 						print(buf.charAt(idx));
 					}
@@ -170,9 +198,6 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 				} else {
 
 					key = getChar();
-					if( key >=0) {
-						debug = ""+key;
-					}
 				}
 			}
 		
@@ -198,6 +223,26 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 
 	}
 
+
+	private static String join(List<String> lines, StringBuilder buf) {
+		StringBuilder tmp = new StringBuilder();
+		for(String l : lines) {
+			tmp.append(l);
+		}
+		tmp.append(buf);
+		return tmp.toString();
+	}
+
+	/**
+	 * @return the next key, waiting until one is typed (or KEY_EOF)
+	 */
+	private int nextKey() {
+		int key = getChar();
+		while( key == KEY_NONE ) {
+			key = getChar();
+		}
+		return key;
+	}
 
 	private static Boolean availible=false;
 
@@ -317,7 +362,12 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 
 		StringBuffer ret = new StringBuffer();
 		boolean done = false;
-		int i = console.getStdIn().read();
+		InputStream in = console.getStdIn();
+		int i = in.read();
+		if( i < 0 ) {
+			// end of input
+			return null;
+		}
 		boolean escape=false;
 		boolean eof = false;
 		if( !eof) {
@@ -344,7 +394,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 					}
 				}
 				if( !done) {
-					i = System.in.read();
+					i = in.read();
 				}
 			}
 			if( i == -1) {
@@ -356,9 +406,57 @@ public class NativeKeyboard extends InputStream implements KeyboardReader 	{
 
 	@Override
 	public int read() throws IOException {
-		int ret = getChar();
-		return ret;
+		if( !pending.isEmpty()) {
+			return pending.poll();
+		}
+		if( !availible ) {
+			return System.in.read();
+		}
+		while(true) {
+			int key = getChar();
+			if( key == KEY_NONE ) {
+				if( Thread.currentThread().isInterrupted()) {
+					throw new InterruptedIOException();
+				}
+			} else if( key == KEY_EOF ) {
+				return -1;
+			} else if( key > 255 ) {
+				// give the program the escape sequence the terminal sent
+				byte [] seq = escapeSequence(key);
+				for(int idx=1; idx < seq.length; idx++ ) {
+					pending.add(seq[idx] & 0xff);
+				}
+				return seq[0];
+			} else {
+				return key;
+			}
+		}
 	}	
+
+	@Override
+	public int available() throws IOException {
+		if( !availible ) {
+			return pending.size()+System.in.available();
+		}
+		return pending.size()+ready();
+	}
+
+	private static byte [] escapeSequence(int key) {
+		String seq;
+		switch (key) {
+		case UP: seq = "\033[A"; break;
+		case DN: seq = "\033[B"; break;
+		case RT: seq = "\033[C"; break;
+		case LF: seq = "\033[D"; break;
+		case HOME: seq = "\033[H"; break;
+		case END: seq = "\033[F"; break;
+		case DELETE: seq = "\033[3~"; break;
+		case PAGE_UP: seq = "\033[5~"; break;
+		case PAGE_DOWN: seq = "\033[6~"; break;
+		default: seq = ""+((char)(key & 0xff));
+		}
+		return seq.getBytes();
+	}
 
 	@Override
 	public void close() throws IOException {
