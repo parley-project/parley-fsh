@@ -2,6 +2,8 @@ package us.bringardner.shell.commands;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -177,6 +179,8 @@ public class Find extends ShellCommand{
 				}
 				FileSource[] kids = file.listFiles();
 				if( kids !=null) {
+					// name order, so the output does not depend on the file system's listing order
+					Arrays.sort(kids, Comparator.comparing(FileSource::getName));
 					for(FileSource kid : kids) {
 						find(kid);
 					}

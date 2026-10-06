@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
@@ -36,6 +37,9 @@ public class TestGlob extends ShellCommand {
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
+		// the real file system, whatever test class ran before
+		factory = new FileProxyFactory();
+		FileSourceFactory.setDefaultFactory(factory);
 		File file = new File(testDirPath).getCanonicalFile();
 		testDir = factory.createFileSource(file.getAbsolutePath());
 		factory.setCurrentDirectory(testDir);

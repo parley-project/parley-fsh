@@ -25,6 +25,7 @@ public class TestExport extends AbstractConsoleTest {
 		return ret;
 	}
 	
+	// a variable may have an empty value (NAME=), so the value part is .* not .+
 	@Test
 	public void testExport01() throws Exception{
 		String cmd = "export\n"
@@ -42,7 +43,7 @@ public class TestExport extends AbstractConsoleTest {
 			System.out.println(cmd);
 			System.out.println(err);
 		}
-		Pattern expect = Pattern.compile("(.+[=].+)");
+		Pattern expect = Pattern.compile("(.+[=].*)");
 		for(String line : out.split("\n")) {
 			Matcher m = expect.matcher(line);
 			assertTrue(m.matches(),"Line="+line);
@@ -67,7 +68,7 @@ public class TestExport extends AbstractConsoleTest {
 			System.out.println(cmd);
 			System.out.println(err);
 		}
-		Pattern expect = Pattern.compile("declare -x (.+[=].+)");
+		Pattern expect = Pattern.compile("declare -x (.+[=].*)");
 		for(String line : out.split("\n")) {
 			Matcher m = expect.matcher(line);
 			assertTrue(m.matches(),"Line="+line);
@@ -92,7 +93,7 @@ public class TestExport extends AbstractConsoleTest {
 			System.out.println(cmd);
 			System.out.println(err);
 		}
-		Pattern expect = Pattern.compile("export (.+[=].+)");
+		Pattern expect = Pattern.compile("export (.+[=].*)");
 		for(String line : out.split("\n")) {
 			Matcher m = expect.matcher(line);
 			assertTrue(m.matches(),"Line="+line);

@@ -3,6 +3,7 @@ package us.bringardner.shell.test;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -103,7 +104,8 @@ public class TestCd extends AbstractConsoleTest{
 		actual = executeCommand("cd ../../..").trim();		
 		assertEquals("",actual);
 		actual = executeCommand("pwd").trim();
-		assertTrue(actual.endsWith("BjlShell"));
+		// the project directory, whatever the checkout is called
+		assertTrue(actual, actual.endsWith(new File(".").getCanonicalFile().getName()));
 		
 	}
 }

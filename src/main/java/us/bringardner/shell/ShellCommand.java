@@ -363,11 +363,13 @@ public abstract class ShellCommand {
 			ret.add(ctx.console.createFileSource(path));
 		}
 		if( ret.size()>1) {
+			// by path, as bash sorts a glob (files with the same name in different directories were
+			// in the file system's listing order)
 			Collections.sort(ret,new Comparator<FileSource>() {
 
 				@Override
 				public int compare(FileSource o1, FileSource o2) {
-					return o1.getName().compareTo(o2.getName());
+					return o1.getAbsolutePath().compareTo(o2.getAbsolutePath());
 				}
 			});
 		}

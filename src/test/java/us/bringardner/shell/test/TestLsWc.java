@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
 import us.bringardner.shell.Console;
 import us.bringardner.shell.commands.Ls;
@@ -52,7 +53,8 @@ public class TestLsWc extends AbstractConsoleTest{
 
 	@AfterAll
 	public static void afterAll() {
-		
+		// the memory file system must not stay the default for the test classes that run next
+		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 	}
 	
 	@Test
