@@ -659,7 +659,14 @@ public class CommandStatement extends Statement{
 			ret =  ep.exitCode;
 			// a command that ran and failed has said why itself; one that could not run has not
 			if( ep.error!=null) {
-				ctx.stderr.println(cmd.get(0)+": "+ep.error.getMessage());
+				String msg = ""+ep.error.getMessage();
+				if( msg.contains("error=2,") || msg.contains("error: 2 ")) {
+					// as in bash
+					ctx.stderr.println(cmd.get(0)+": command not found");
+					ret = 127;
+				} else {
+					ctx.stderr.println(cmd.get(0)+": "+msg);
+				}
 			}
 		} 
 

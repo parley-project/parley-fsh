@@ -358,12 +358,14 @@ $
 		}
 	}
 
+	/** a function's local variable after unset: it stays unset (the global is not seen) until the function returns */
+	private static final Object UNSET_LOCAL = new Object();
+
 	public boolean unSetVariable(String name) {
 		if( !functionStack.isEmpty()) {
 			FunctionInvocation inv = functionStack.peek();
-			Object tmp = inv.local.get(name);
-			if( tmp !=null) {
-				inv.local.remove(name);
+			if( inv.local.containsKey(name)) {
+				inv.local.put(name, UNSET_LOCAL);
 				return true;
 			}
 		}
@@ -409,6 +411,9 @@ $
 			}
 		}
 
+		if( !functionStack.isEmpty() && functionStack.peek().local.get(name) == UNSET_LOCAL ) {
+			return null;
+		}
 		Object ret = getLocalVariable(name);
 		if( ret == null ) {
 			ret = console.getVariable(name);
@@ -442,6 +447,9 @@ $
 		if( !functionStack.isEmpty()) {
 			FunctionInvocation inv = functionStack.peek();
 			Object tmp = inv.local.get(name);
+			if( tmp == UNSET_LOCAL ) {
+				return null;
+			}
 			if( tmp !=null) {
 				return tmp;
 			}

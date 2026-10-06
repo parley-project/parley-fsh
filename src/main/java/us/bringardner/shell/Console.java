@@ -91,6 +91,7 @@ import us.bringardner.shell.commands.Source;
 import us.bringardner.shell.commands.Touch;
 import us.bringardner.shell.commands.Trap;
 import us.bringardner.shell.commands.Unalias;
+import us.bringardner.shell.commands.Unset;
 import us.bringardner.shell.commands.Unmount;
 import us.bringardner.shell.commands.Wait;
 import us.bringardner.shell.commands.Wc;
@@ -286,8 +287,6 @@ public class Console extends SignalEnabledThread {
 	public static final String VARIABLE_HISTTIMEFORMAT = "HISTTIMEFORMAT";
 	private static final String VARIABLE_HISTCHARS = "histchars";
 	public static final String VERSION = "0.01";
-	private static String bashOps [] = {"-eq", "-ne", "-lt", "-le", "-gt", "-ge"};
-	private static String fsshOps [] = {"==" , "!=" , "<"  , "<=" , ">"  , ">="};
 	/*
 [n]<<[-]word
         here-document
@@ -386,6 +385,7 @@ delimiter
 
 		registerCommand(new Unalias());
 		registerCommand(new Unmount());
+		registerCommand(new Unset());
 
 		registerCommand(new Wait());
 		registerCommand(new Wc());
@@ -1727,8 +1727,9 @@ delimiter
 	 */
 	public String preProcess(String code,ShellContext ctx) {
 
-		String ret0 = convertMathSymbols(code);
-		String ret00 = convertHash(ret0);
+		// (-eq -ne -lt ... were rewritten as == != < ... everywhere, so echo -ne printed != and
+		// ls -lt dir read from dir; the grammar reads them in tests)
+		String ret00 = convertHash(code);
 		String ret1 = ret00;//expandBrace(ret00,ctx);
 		int start = code.indexOf("<<");
 		List<String> ids = new ArrayList<>();
@@ -1784,45 +1785,6 @@ delimiter
 
 
 
-
-	public String convertMathSymbols(String code) {
-		boolean inQuote = false;
-		StringBuilder ret = new StringBuilder();
-		byte [] data = code.getBytes();
-		int max = data.length-4;
-		for (int idx = 0; idx < data.length; idx++) {
-			char c = (char)data[idx];
-			switch (c) {
-			case '-':
-				if(!inQuote && idx < max) {
-					boolean matchFound = false;
-					String tmp = new String(data, idx, 3);
-					for (int idx2 = 0; idx2 < bashOps.length; idx2++) {
-						if( bashOps[idx2].equals(tmp)) {
-							if(Character.isWhitespace(data[idx-1]) && Character.isWhitespace(data[idx+3])) {
-								ret.append(fsshOps[idx2]);
-								idx+=2;
-								matchFound=true;
-								break;
-							}
-						}
-					}
-
-					if( !matchFound) {
-						ret.append(c);
-					}
-				} else {
-					ret.append(c);
-				}
-				break;
-			case '"':
-			case '\'':inQuote = !inQuote;
-			default:
-				ret.append(c);
-			}
-		}
-		return ret.toString();
-	}
 
 	public static final Pattern convertHashRx = Pattern.compile("\\$\\{"
 			+ "[^\\}]*"

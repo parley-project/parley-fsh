@@ -248,4 +248,42 @@ public class TestWords extends AbstractConsoleTest {
 		assertEquals("[out] 3\n", res.getStdOut());
 		assertTrue(res.getStdErr().contains("no-such-dir"), res.getStdErr());
 	}
+
+	@Test
+	public void testEchoEscapes() throws IOException {
+		expect("echo -e \"a\\tb\\nc\"", "a\tb\nc\n");
+		expect("echo -E \"a\\tb\"; echo \"a\\tb\"", "a\\tb\na\\tb\n");
+		expect("echo -ne \"x\\ty\"", "x\ty");
+		expect("echo -en \"1\\c2\"; echo", "1\n");
+		expect("echo -e \"\\x41\\x4a\\0101\\u00e9|\\q|\\\\|end\"", "AJA\u00e9|\\q|\\|end\n");
+		// options only before the first word, and -E after -e turns it off
+		expect("echo -e a -n b; echo -x a; echo -e -E \"a\\nb\"", "a -n b\n-x a\na\\nb\n");
+		expect("echo \"h\u00e9llo\"", "h\u00e9llo\n");
+	}
+
+	@Test
+	public void testTestOperatorsAreOnlyInTests() throws IOException {
+		// -eq -ne -lt ... were rewritten everywhere (echo -ne printed !=, ls -lt read a file)
+		expect("echo -eq -ne -lt -le -gt -ge", "-eq -ne -lt -le -gt -ge\n");
+		expect("x=2; if [ $x -lt 3 ] && [ $x -le 2 ] && [ $x -gt 1 ] && [ $x -ge 2 ] && [ $x -eq 2 ] && [ $x -ne 5 ]; then echo all; fi", "all\n");
+		expect("i=0; while [ $i -lt 3 ]; do i=$((i+1)); done; echo $i", "3\n");
+	}
+
+	@Test
+	public void testUnset() throws IOException {
+		expect("x=1; unset x; echo \":$x:\"; y=2; unset -v y; echo \":$y:\"", "::\n::\n");
+		expect("a=1; b=2; unset a b; echo \":$a$b:\"; export E1=v; unset E1; echo \":$E1:\"", "::\n::\n");
+		expect("unset nothing; echo $?", "0\n");
+		// a local variable stays unset until the function returns; the global is not seen
+		expect("h() { local z=in; unset z; echo \":$z:\"; }; z=out; h; echo \":$z:\"", "::\n:out:\n");
+		ExecuteResult res = executeCommand("f() { echo f; }; unset -f f; f", "");
+		assertEquals("", res.getStdOut());
+		assertEquals("f: command not found", res.getStdErr().trim());
+		assertEquals(127, res.exitCode);
+		res = executeCommand("g() { echo g; }; unset g; g", "");
+		assertEquals(127, res.exitCode);
+		res = executeCommand("unset -q a", "");
+		assertEquals(2, res.exitCode);
+		assertTrue(res.getStdErr().contains("-q: invalid option"), res.getStdErr());
+	}
 }

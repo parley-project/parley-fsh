@@ -86,20 +86,11 @@ public class TestPreProsess {
 
 	@Test
 	public void testMathSymbols() {
+		// -lt -gt ... are left as written: the grammar reads them in tests (rewriting them as < > ...
+		// everywhere turned echo -ne into echo != and ls -lt dir into ls < dir)
 		Console console = new Console();
 		ShellContext ctx = new ShellContext(console);
 		ctx.enterCommand();
-		String expect = 
-				"str=\" test -gt -lt\"\n"
-				+ "str=' test -gt -lt'\n"
-				+ "until [ $counter < 5 ]\n"
-				+ "until [ $counter > 5 ]\n"
-				+ "until [ $counter >= 5 ]\n"
-				+ "until [ $counter <= 5 ]\n"
-				+ "until [ $counter == 5 ]\n"
-				+ "until [ $counter != 5 ]\n"
-				+ "do";
-		
 		String code = 
 				"str=\" test -gt -lt\"\n"
 				+ "str=' test -gt -lt'\n"
@@ -109,9 +100,10 @@ public class TestPreProsess {
 				+ "until [ $counter -le 5 ]\n"
 				+ "until [ $counter -eq 5 ]\n"
 				+ "until [ $counter -ne 5 ]\n"
+				+ "ls -lt\n"
 				+ "do";
 		String actual = console.preProcess(code, ctx);
-		assertEquals(expect, actual);
+		assertEquals(code, actual);
 		ctx.exitCommand();
 	}
 	//Outer loop: $i

@@ -102,7 +102,8 @@ argumentPart:
              | IF | FI | THEN | ELSE | ELIF | FOR | SELECT | IN | WHILE | DONE | UNTIL | CASE | ESAC
              | DO | TIME | FUNCTION | CONTINUE | BREAK | LSQUARE | RSQUARE | NOT
              // arithmetic operators, for let x++ and let x+=2
-             | PLUS_PLUS | PLUS_EQ | MINUS_ASSIGN | STAR_ASSIGN | MOD_ASSIGN | POW | EQUALITY | NOT_EQ)
+             | PLUS_PLUS | PLUS_EQ | MINUS_ASSIGN | STAR_ASSIGN | MOD_ASSIGN | POW | EQUALITY | NOT_EQ
+             | TEST_OP)
     | string
     | argVariable
     | parameter
@@ -210,6 +211,9 @@ compare_prime:
     | left=compare_prime WS* GT_EQ WS* right=compare_prime
     | left=compare_prime WS* LT WS* right=compare_prime
     | left=compare_prime WS* GT WS* right=compare_prime
+    // -lt -le -gt -ge (-eq and -ne are EQUALITY and NOT_EQ). They are read only here: elsewhere
+    // they are ordinary words (ls -lt, echo -ne)
+    | left=compare_prime WS* TEST_OP WS* right=compare_prime
     | left=compare_prime WS* RX_EQUALITY WS* regular_expression    
     | expression
     | commandStatement

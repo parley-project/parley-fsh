@@ -95,7 +95,8 @@ public class TestEval  extends AbstractConsoleTest{
 				;
 
 		String stdIn = "";
-		int exitCode = 1;
+		// the first word of the date is no command
+		int exitCode = 127;
 		String expect = "";
 		boolean tmp = showError;
 		showError=false;

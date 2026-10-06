@@ -82,6 +82,16 @@ compare
 				ret = isLt(left,right);
 			} else if( ctx.GT()!=null) {
 				ret = isGt(left,right);
+			} else if( ctx.TEST_OP()!=null) {
+				String op = ctx.TEST_OP().getText();
+				switch (op) {
+				case "-lt": ret = isLt(left,right); break;
+				case "-le": ret = isLtEq(left,right); break;
+				case "-gt": ret = isGt(left,right); break;
+				case "-ge": ret = isGtEq(left,right); break;
+				default:
+					throw new RuntimeException(op+": binary operator expected");
+				}
 			} else {
 				throw new RuntimeException("Invlid compare, no op ="+ctx);
 			}

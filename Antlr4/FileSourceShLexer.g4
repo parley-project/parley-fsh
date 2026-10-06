@@ -169,6 +169,8 @@ EQUALITY:'=='|'-eq';
 RX_EQUALITY:'=~';
 
 NOT_EQ:'!='|'-ne';
+// read as comparisons only in tests; elsewhere they are words (ls -lt). Before ARG_ID, which is as long.
+TEST_OP:'-lt'|'-le'|'-gt'|'-ge';
 MINUS:'-';
 PIPE:'|';
 AMP:'&';
