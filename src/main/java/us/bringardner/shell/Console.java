@@ -1001,14 +1001,17 @@ delimiter
 			String code;
 			try {
 				code = kb.readLine(this);
-				if( code == null ) {
+				boolean endOfInput = code == null;
+				if( endOfInput ) {
 					// end of input (Ctrl-D): leave like bash does
 					code = "exit";
 				}
 				code = code.trim();
 				if( !code.isEmpty()) {
 					state = ConsoleState.Executing;
-					addHistory(code) ;
+					if( !endOfInput ) {
+						addHistory(code) ;
+					}
 
 					prompt = getPrompt(Prompt.BeforeExecute);
 					if( prompt !=null && !prompt.isEmpty()) {
@@ -1579,7 +1582,7 @@ delimiter
 	 */
 	public void readHistory(String fileName) {
 		try {
-			FileSource file = createFileSource(fileName);
+			FileSource file = createFileSource(expandHome(fileName));
 			if( file.exists()) {
 				char hist_comment = '#';
 				Object xxx = getVariable(VARIABLE_HISTCHARS);
@@ -1596,19 +1599,25 @@ delimiter
 					String [] lines = new String(in.readAllBytes()).split("\n");
 					for (int lineNum = 0; lineNum < lines.length; lineNum++) {
 						String line = lines[lineNum].trim();						
-						if( !line.isEmpty()) {
-							long time = loadTime;
-							if( line.length()>2 && line.charAt(0) == hist_comment && Character.isDigit(line.charAt(1))) {
-								time = Long.parseLong(line.substring(1));
-								if( (lineNum+1) < lines.length) {
-									line = lines[++lineNum].trim();
-								}
-
-							} 
-							if( line.charAt(0)!=hist_comment) {
-								tmp.add(new HistoryEntry(time, true, line));
-							}
+						if( line.isEmpty()) {
+							continue;
 						}
+						long time = loadTime;
+						if( line.charAt(0) == hist_comment) {
+							// "#<time>" is the time of the command on the next line; other comments are skipped
+							Long stamp = parseHistoryTime(line.substring(1));
+							if( stamp == null || lineNum+1 >= lines.length) {
+								continue;
+							}
+							String next = lines[lineNum+1].trim();
+							if( next.isEmpty() || next.charAt(0) == hist_comment) {
+								continue;
+							}
+							time = stamp;
+							line = next;
+							lineNum++;
+						}
+						tmp.add(new HistoryEntry(time, true, line));
 					}
 					history = tmp;
 				}
@@ -1617,6 +1626,28 @@ delimiter
 		} catch (IOException e) {
 			logError("read history", e);
 		}
+	}
+
+	private static Long parseHistoryTime(String text) {
+		try {
+			return Long.parseLong(text.trim());
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * @return fileName with a leading ~ replaced by $HOME
+	 */
+	private String expandHome(String fileName) {
+		if( fileName.equals("~") || fileName.startsWith("~/") || fileName.startsWith("~\\")) {
+			Object home = environmentVariables.get("HOME");
+			if( home == null ) {
+				home = System.getProperty("user.home");
+			}
+			return home+fileName.substring(1);
+		}
+		return fileName;
 	}
 
 	/**
@@ -1633,9 +1664,10 @@ delimiter
 	public void saveHistory(String fileName) {
 		try {
 			truncateHistory();
-			FileSource file = createFileSource(fileName);
+			FileSource file = createFileSource(expandHome(fileName));
 
-			try(OutputStream out = file.getOutputStream(true)) {
+			// the in-memory history includes what was read at startup, so replace the file
+			try(OutputStream out = file.getOutputStream(false)) {
 				char hist_comment = '#';
 				Object xxx = getVariable(VARIABLE_HISTCHARS);
 				if( xxx !=null) {
