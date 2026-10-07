@@ -113,14 +113,16 @@ argumentPart:
 		if( context == null ) {
 			return glob;
 		}
-		if( context != null ) {
-			for(ArgumentPartContext part : context.argumentPart()) {
-				if( part.literal != null ) {
-					int type = part.literal.getType();
-					if( type == FileSourceShParser.STAR || type == FileSourceShParser.QUESTION
-							|| type == FileSourceShParser.LSQUARE) {
-						return true;
-					}
+		return hasUnquotedWildcard(context);
+	}
+
+	private static boolean hasUnquotedWildcard(ArgumentContext word) {
+		for(ArgumentPartContext part : word.argumentPart()) {
+			if( part.literal != null ) {
+				int type = part.literal.getType();
+				if( type == FileSourceShParser.STAR || type == FileSourceShParser.QUESTION
+						|| type == FileSourceShParser.LSQUARE) {
+					return true;
 				}
 			}
 		}
@@ -140,8 +142,10 @@ argumentPart:
 		List<String> braces = expandBraces(word, ctx);
 		if( braces != null ) {
 			List<Argument> ret = new ArrayList<>();
+			// {a,b}*.txt: each word is still a pattern
+			boolean wildcard = hasUnquotedWildcard(word);
 			for(String b : braces) {
-				ret.add(new Argument(b));
+				ret.add(new Argument(b, wildcard));
 			}
 			return ret;
 		}

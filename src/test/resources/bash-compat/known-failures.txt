@@ -56,10 +56,6 @@ funcname
 getopts
 
 # glob
-glob-class
-glob-in-var
-glob-question
-glob-star
 
 # heredoc
 

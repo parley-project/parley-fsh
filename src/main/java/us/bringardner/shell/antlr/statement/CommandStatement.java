@@ -322,37 +322,12 @@ public class CommandStatement extends Statement{
 
 
 	private void argsToString(List<String> cmd, ShellContext ctx) throws IOException {
-		for (int idx = 0; idx < args.length; idx++) {
-
-			Argument a = args[idx];
-			String val = ""+a.getValue(ctx);
-
-			//TODO: probably need a more comprehensive way to generate file lists
-			if(val.contains("*")  ) {
-
-				List<FileSource> list = ShellCommand.getFiles(ctx, val);
-				if( list.size()>0) {
-					for(FileSource file : list) {
-						if( file.exists()) {
-							if (!(file instanceof FileProxy)) {
-								// download to temp
-								throw new RuntimeException("download to temp Not implemented");
-							} else {
-								cmd.add(file.getAbsolutePath());
-								continue;
-							}
-						}
-					}		
-				} else {
-					cmd.add(val);
-				}
-			} else {
-				cmd.add(val);
-			}
+		// the words are already expanded (*.txt was matched before the command ran)
+		for(Argument a : args) {
+			cmd.add(""+a.getValue(ctx));
 		}
-
-
 	}
+
 
 	@Override
 	public boolean equals(Object obj) {
@@ -817,4 +792,8 @@ public class CommandStatement extends Statement{
 	}
 
 
+	@Override
+	protected boolean globWords() {
+		return true;
+	}
 }

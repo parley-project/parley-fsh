@@ -20,6 +20,7 @@ import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.IRandomAccessStream;
 import us.bringardner.shell.Console.FileDiscriptor;
 import us.bringardner.shell.Console.Option;
+import us.bringardner.shell.Glob;
 import us.bringardner.shell.ShellContext;
 
 public abstract class Statement {
@@ -356,6 +357,14 @@ public abstract class Statement {
 		return true;
 	}
 
+	/**
+	 * Whether this statement's words are pathname-expanded (*.txt): a command's arguments and a for or
+	 * select list, not a case word or an assignment.
+	 */
+	protected boolean globWords() {
+		return false;
+	}
+
 	private void expandWords(ShellContext ctx) throws IOException {
 		List<ParseTree> kids = context.children;
 		if( kids == null ) {
@@ -373,22 +382,14 @@ public abstract class Statement {
 					changed = true;
 					for(ArgumentContext ac : lc.argument()) {
 						List<Argument> words = Argument.expandWord(ac, ctx, true);
-						if( words == null ) {
-							newArgs.add(new Argument(ac));
-						} else {
-							newArgs.addAll(words);
-						}
+						glob(newArgs, words == null ? List.of(new Argument(ac)) : words, true, ctx);
 					}
 				}
 			} else if (kid instanceof ArgumentContext && aidx < args.length) {
 				Argument a = args[aidx++];
-				List<Argument> words = a.context == null ? null : Argument.expandWord(a.context, ctx, splitWords(a.context));
-				if( words != null ) {
-					changed = true;
-					newArgs.addAll(words);
-				} else {
-					newArgs.add(a);
-				}				
+				boolean split = a.context == null || splitWords(a.context);
+				List<Argument> words = a.context == null ? null : Argument.expandWord(a.context, ctx, split);
+				changed |= glob(newArgs, words == null ? List.of(a) : words, split, ctx) || words != null;
 			}
 		}
 
@@ -396,6 +397,31 @@ public abstract class Statement {
 			args = newArgs.toArray(new Argument[newArgs.size()]);
 		}
 	}
+
+	/**
+	 * Add words to out, each pattern replaced by the paths it matches (a pattern that matches
+	 * nothing stays as it is, as in bash).
+	 * @return true if a pattern was expanded
+	 */
+	private boolean glob(List<Argument> out, List<Argument> words, boolean allowed, ShellContext ctx) throws IOException {
+		boolean ret = false;
+		for(Argument w : words) {
+			if( allowed && globWords() && w.hasUnquotedWildcard()) {
+				String pattern = ""+w.getValue(ctx);
+				List<String> matches = Glob.expand(pattern, ctx);
+				if( !matches.isEmpty()) {
+					for(String m : matches) {
+						out.add(new Argument(m));
+					}
+					ret = true;
+					continue;
+				}
+			}
+			out.add(w);
+		}
+		return ret;
+	}
+
 
 	public String toString(ShellContext ctx) {
 		StringBuilder ret = new StringBuilder();

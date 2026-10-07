@@ -121,7 +121,8 @@ public class TestFind extends AbstractConsoleTest {
 	
 	@Test
 	public void testFind03() throws IOException {
-		String cmd = "find . -name Abc*";
+		// quoted, as in bash: unquoted, Abc* would be expanded before find runs
+		String cmd = "find . -name 'Abc*'";
 		String expect = "/Volumes/Data/eclipse-git/BjlShell/TestFiles/AbcFile.js\n"
 				+ "/Volumes/Data/eclipse-git/BjlShell/TestFiles/AbcFile.php\n"
 				+ "/Volumes/Data/eclipse-git/BjlShell/TestFiles/AbcFile.properties\n"
@@ -144,7 +145,7 @@ public class TestFind extends AbstractConsoleTest {
 
 	@Test
 	public void testFind04() throws IOException {
-		String cmd = "find Folder01 -name Abc*";
+		String cmd = "find Folder01 -name 'Abc*'";
 		String expect = 
 				 "/Volumes/Data/eclipse-git/BjlShell/TestFiles/Folder01/AbcFile.php\n"
 				+ "/Volumes/Data/eclipse-git/BjlShell/TestFiles/Folder01/AbcFile.properties\n"

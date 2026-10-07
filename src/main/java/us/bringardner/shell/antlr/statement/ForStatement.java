@@ -6,10 +6,7 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
-import us.bringardner.io.filesource.FileSource;
-import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Arithmetic;
 import us.bringardner.shell.antlr.Statement;
 
@@ -71,22 +68,8 @@ public class ForStatement extends LoopStatement{
 
 		for (int idx = 0; idx < args.length; idx++) {
 
-			Argument a = args[idx];
-			String val = ""+a.getValue(ctx);
-
-			// an unquoted * or ? names files
-			if( a.hasUnquotedWildcard()) {
-				List<FileSource> list = ShellCommand.getFiles(ctx, val);
-				if( list.size()>0) {
-					for(FileSource file : list) {
-						//String name = val.replaceAll("\\*", file.getName());
-						String name = file.getName();
-						ret.add(name);						
-					}		
-				} 				
-			} else {
-				ret.add(val);
-			}
+			// the words are already expanded (braces, splitting, *.txt)
+			ret.add(""+args[idx].getValue(ctx));
 		}
 		return ret;
 
@@ -160,5 +143,9 @@ public class ForStatement extends LoopStatement{
 		}
 
 		return ret;
+	}
+	@Override
+	protected boolean globWords() {
+		return true;
 	}
 }

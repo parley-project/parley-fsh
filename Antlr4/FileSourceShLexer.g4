@@ -150,7 +150,7 @@ WS: [ \t\r]+ ;
 
 TRUE: 'true' {atKeywordEnd()}?;
 FALSE: 'false' {atKeywordEnd()}?;
-COMMENT: '/*' .*? '*/' -> skip;
+// (there are no /* */ comments, as in bash: ls /*/bin and d/*.txt are patterns)
 
 
 // # starts a comment only at the start of a word (a#b and $# are not comments); the newline after

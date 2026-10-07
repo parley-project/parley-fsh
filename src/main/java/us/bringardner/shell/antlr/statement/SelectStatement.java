@@ -233,4 +233,8 @@ public class SelectStatement extends LoopStatement{
 		}
 		return cols;
 	}
+	@Override
+	protected boolean globWords() {
+		return true;
+	}
 }

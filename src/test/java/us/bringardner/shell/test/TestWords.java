@@ -162,7 +162,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("f() { local IFS=:; x=\"a:b::c\"; for p in $x; do echo \"<$p>\"; done; }; f", "<a>\n<b>\n<>\n<c>\n");
 		// a field with an unquoted wildcard is a glob; a quoted one is not
 		expect("cd "+path("")+"; touch g1.log g2.log; x=\"*.log\"; for f in $x; do echo $f; done", "g1.log\ng2.log\n");
-		expect("x=\"*.log\"; for f in \"$x\"; do echo $f; done", "*.log\n");
+		expect("x=\"*.log\"; for f in \"$x\"; do echo \"$f\"; done", "*.log\n");
 		// export (and local, declare ...) name=value words are not split
 		expect("y=\"a b\"; export Z=$y; echo \"[$Z]\"", "[a b]\n");
 		// echo joins its words with one space; -n only at the start
