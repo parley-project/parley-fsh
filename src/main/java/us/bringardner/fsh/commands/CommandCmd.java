@@ -47,13 +47,13 @@ public class CommandCmd extends ShellCommand{
 		String n = ""+args[idx].getValue(ctx);
 		if( mode != null ) {
 			// what n is, as type says it (-V), or briefly (-v)
-			FileSource file = Console.commands.containsKey(n) || ctx.getFunction(n) != null || ctx.console.getAlias(n) != null ? null : CommandStatement.which(n, ctx);
+			FileSource file = ctx.console.builtin(n) != null || ctx.getFunction(n) != null || ctx.console.getAlias(n) != null ? null : CommandStatement.which(n, ctx);
 			String out = null;
 			if( ctx.console.getAlias(n) != null ) {
 				out = mode.equals("-v") ? "alias "+n+"='"+ctx.console.getAlias(n)+"'" : n+" is aliased to `"+ctx.console.getAlias(n)+"'";
 			} else if( ctx.getFunction(n) != null ) {
 				out = mode.equals("-v") ? n : n+" is a function";
-			} else if( Console.commands.containsKey(n)) {
+			} else if( ctx.console.builtin(n) != null) {
 				out = mode.equals("-v") ? n : n+" is a shell builtin";
 			} else if( file != null ) {
 				out = mode.equals("-v") ? file.getAbsolutePath() : n+" is "+file.getAbsolutePath();
@@ -67,7 +67,7 @@ public class CommandCmd extends ShellCommand{
 			ctx.stdout.println(out);
 			return 0;
 		}
-		Constructor<? extends ShellCommand> con = Console.commands.get(n);
+		Constructor<? extends ShellCommand> con = ctx.console.builtin(n);
 		if( con != null ) {
 			return Builtin.run(con, Arrays.copyOfRange(args, idx+1, args.length), ctx);
 		}

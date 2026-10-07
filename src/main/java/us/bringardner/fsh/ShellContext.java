@@ -512,6 +512,11 @@ $
 			scope.local.put(name, value);
 		} else {
 			setGlobalVariable(name, value);
+			if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
+					&& console.isOptionEnabled(Console.Option.MarkAllForExport) && Character.isLetter(name.charAt(0)) ) {
+				// set -a: every variable that is set is exported
+				console.setEnvironmentVariable(name, ""+value);
+			}
 		}
 	}
 
@@ -577,7 +582,14 @@ $
 	}
 
 	public boolean unSetVariable(String name) {
-		name = resolveName(name);
+		return unSetVariable(name, true);
+	}
+
+	/** @param follow false for unset -n: a nameref itself, not the variable it names */
+	public boolean unSetVariable(String name, boolean follow) {
+		if( follow ) {
+			name = resolveName(name);
+		}
 		if( console.isReadonly(name)) {
 			throw new ReadonlyException(name);
 		}
@@ -853,6 +865,8 @@ $
 		ret.stdin = stdin;
 		ret.stderr = stderr;
 		ret.errTrapBlocked = errTrapBlocked + (console.isOptionEnabled(Console.Option.ErrTrace) ? 0 : 1);
+		// in a condition (if ( false; ... )) set -e stays off in the subshell too
+		ret.conditionDepth = conditionDepth;
 		for(FunctionInvocation inv : functionStack) {
 			ret.functionStack.push(inv.copy());
 		}

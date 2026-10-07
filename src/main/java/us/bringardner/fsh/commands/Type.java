@@ -48,8 +48,8 @@ public class Type extends ShellCommand{
 				text = n+" is a shell keyword";
 			} else if( !path && function != null ) {
 				kind = "function";
-				text = n+" is a function\n"+function.getContext().getText();
-			} else if( !path && Console.commands.containsKey(n) && !n.startsWith("__")) {
+				text = n+" is a function\n"+function.declaration();
+			} else if( !path && ctx.console.builtin(n) != null && !n.startsWith("__")) {
 				kind = "builtin";
 				text = n+" is a shell builtin";
 			} else {

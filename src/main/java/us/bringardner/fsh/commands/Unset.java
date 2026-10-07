@@ -25,6 +25,8 @@ public class Unset extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		boolean functions = false;
 		boolean variables = false;
+		// unset -n ref: the reference, not what it names
+		boolean reference = false;
 		int idx = 0;
 		for(; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
@@ -40,6 +42,7 @@ public class Unset extends ShellCommand{
 					functions = true;
 				} else if( c == 'v' || c == 'n') {
 					variables = true;
+					reference |= c == 'n';
 				} else {
 					ctx.stderr.println("unset: -"+c+": invalid option");
 					ctx.stderr.println("unset: usage: unset [-f] [-v] [name ...]");
@@ -80,7 +83,7 @@ public class Unset extends ShellCommand{
 				}
 			} else if( functions ) {
 				ctx.removeFunction(text);
-			} else if( !ctx.unSetVariable(text) && !variables ) {
+			} else if( !ctx.unSetVariable(text, !reference) && !variables ) {
 				// as in bash, a name that is no variable may be a function
 				ctx.removeFunction(text);
 			}

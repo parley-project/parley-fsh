@@ -281,6 +281,10 @@ PERC_QUESTION:'%?';
 
 // was ~[a-zA-Z0-9]('-'|'+')+..., which took the character before the dash into the token
 // (" -la", "/-Volumes"), so a path with "/-" could not be parsed
+// (before ARG_ID and ID: plain declare is as long as an ID, and the first rule wins)
+// declare -l x, declare +l x (+ takes the attribute away), declare x=1 (no options)
+DECLARE_A : 'declare' ([ \t]* [-+] DECLARE_OP+)? {atKeywordEnd()}?;
+fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 ARG_ID  : {atWordStart()}? ('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;
 LETTER_OR_DIGIT:[a-zA-Z_0-9];
@@ -307,9 +311,6 @@ DOLLAR_LPAREN_LPAREN: '$((';
 LPAREN_LPAREN: '((';
 
 NOT_CURLY: [ \t]|~[}];
-// declare -l x, declare +l x (+ takes the attribute away)
-DECLARE_A : 'declare' WS* [-+] DECLARE_OP+;
-fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
 RX_CHAR:[!@#$%^&*()_+~];
 POSIX_CHAR_CLASS: 

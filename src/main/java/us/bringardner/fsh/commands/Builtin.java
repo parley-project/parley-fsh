@@ -27,7 +27,7 @@ public class Builtin extends ShellCommand{
 			return 0;
 		}
 		String n = ""+args[0].getValue(ctx);
-		Constructor<? extends ShellCommand> con = Console.commands.get(n);
+		Constructor<? extends ShellCommand> con = ctx.console.builtin(n);
 		if( con == null ) {
 			ctx.stderr.println("builtin: "+n+": not a shell builtin");
 			return 1;

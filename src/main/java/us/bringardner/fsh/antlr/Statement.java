@@ -250,7 +250,13 @@ public abstract class Statement {
 
 	private static void close(ShellContext ctx, int n) {
 		if( n == 0 ) {
-			ctx.stdin = InputStream.nullInputStream();
+			// <&-: reading is an error (cat <&- fails), as in bash
+			ctx.stdin = new InputStream() {
+				@Override
+				public int read() throws IOException {
+					throw new IOException("Bad file descriptor");
+				}
+			};
 		} else if( n == 1 ) {
 			ctx.stdout.flush();
 			ctx.stdout = new ClosedStream();
@@ -388,6 +394,10 @@ public abstract class Statement {
 	public final int process(ShellContext ctx) throws IOException{
 		int ret = 0;
 		ctx.waitWhilePaused();
+		if( ctx.console.isOptionEnabled(Option.NoExec) && !ctx.console.isInteractive ) {
+			// set -n: nothing runs any more (not even set +n), as in bash
+			return 0;
+		}
 
 		// brace expansion and word splitting replace args for this run only; the tree (and these
 		// args) are shared by every run of the statement

@@ -47,8 +47,11 @@ public class Kill extends ShellCommand{
 		int ret = 0;
 		Integer signum = null;
 		List<IJob> jobs = new ArrayList<>();
+		// process ids that are not jobs: the shell itself ($$) or another process
+		List<Long> processes = new ArrayList<>();
 		boolean list = false;
 		Integer exitStatus= null;
+		String listName = null;
 		JobManager jm = ctx.console.jobManager;
 
 		// parse all the args
@@ -63,12 +66,15 @@ public class Kill extends ShellCommand{
 				list = true;
 				if( idx < args.length-1) {
 					String tmp = ""+args[++idx].getValue(ctx);
-					exitStatus = parseSigNum(tmp);
+					exitStatus = Character.isDigit(tmp.charAt(0)) ? Integer.valueOf(tmp) : -1;
+					listName = tmp;
 				}
 			} else if( val.equals("-s") || val.equals("-n")) {
 				signum = parseSigNum(""+args[++idx].getValue(ctx));								
 			} else if( val.startsWith("-")) {				
 				signum = parseSigNum(val.substring(1));				
+			} else if( val.matches("\\d+") && jm.getJob(Integer.parseInt(val)) == null ) {
+				processes.add(Long.parseLong(val));
 			} else {
 				
 				int id = JobControlStatement.parseJobSpec(jm, val);
@@ -84,8 +90,16 @@ public class Kill extends ShellCommand{
 
 		if( list ) {
 
-			if( exitStatus!=null) {
-				String name = signals.get(exitStatus);
+			if( exitStatus!=null && exitStatus < 0 && listName != null ) {
+				// kill -l TERM: the number
+				int number = signalNumber(listName);
+				if( number < 0 ) {
+					ctx.stderr.println("kill: "+listName+": invalid signal specification");
+					return 1;
+				}
+				ctx.stdout.println(""+number);
+			} else if( exitStatus!=null) {
+				String name = signals.get(exitStatus > 128 ? exitStatus-128 : exitStatus);
 				if(name == null) {
 					ctx.stderr.println("kill: ("+exitStatus+") - No such signal");
 				} else {
@@ -103,6 +117,12 @@ public class Kill extends ShellCommand{
 			ConsoleSignal signal = ConsoleSignal.Terminate;
 			if( signum != null ) {
 				signal = ConsoleSignal.find(signum);
+			}
+			for(long pid : processes) {
+				ret |= signalProcess(ctx, pid, signum == null ? 15 : signum);
+			}
+			if( jobs.size()==0 && !processes.isEmpty()) {
+				return ret;
 			}
 			if( jobs.size()==0) {
 				ctx.stderr.println("kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]");
@@ -135,15 +155,65 @@ public class Kill extends ShellCommand{
 		if(Character.isDigit(val.charAt(0))) {
 			ret = Integer.parseInt(val);					
 		} else {
-			val = val.toUpperCase();
-			if( val.startsWith("SIG") ) {
-				val = val.substring(3);
-			}			
-			ConsoleSignal tmp = ConsoleSignal.find(val);
-			ret = tmp.value;
+			ret = signalNumber(val);
+			if( ret < 0 ) {
+				ConsoleSignal tmp = ConsoleSignal.find(val.toUpperCase().replaceFirst("^SIG", ""));
+				ret = tmp.value;
+			}
 		}
 
 		return ret;
+	}
+
+	/** TERM, SIGUSR1, usr1 ...: the system's number for the signal, or -1 */
+	private static int signalNumber(String name) {
+		String n = name.toUpperCase();
+		if( n.startsWith("SIG")) {
+			n = n.substring(3);
+		}
+		for(Entry<Integer, String> e : Trap.getLocalSignals().entrySet()) {
+			if( e.getValue().equalsIgnoreCase(n)) {
+				return e.getKey();
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * kill pid for a process that is not a job. The shell's own pid ($$) runs its trap for the
+	 * signal, or ends the script (128+signal) if there is none, as in bash; another process
+	 * gets the signal.
+	 */
+	private static int signalProcess(ShellContext ctx, long pid, int signum) {
+		if( pid == ProcessHandle.current().pid()) {
+			if( signum == 0 || ctx.console.runOsTrap(signum, ctx)) {
+				return 0;
+			}
+			String name = Trap.getLocalSignals().get(signum);
+			if( name != null && (name.equals("CHLD") || name.equals("CONT") || name.equals("WINCH") || name.equals("URG"))) {
+				// ignored by default
+				return 0;
+			}
+			throw new us.bringardner.fsh.antlr.signal.ExitException(ctx, 128+signum);
+		}
+		java.util.Optional<ProcessHandle> p = ProcessHandle.of(pid);
+		if( p.isEmpty() || !p.get().isAlive()) {
+			ctx.stderr.println("kill: ("+pid+") - No such process");
+			return 1;
+		}
+		if( signum == 0 ) {
+			return 0;
+		}
+		if( signum == 15 && p.get().destroy() || signum == 9 && p.get().destroyForcibly()) {
+			return 0;
+		}
+		// another signal: the system's kill
+		try {
+			return new ProcessBuilder("kill", "-"+signum, ""+pid).inheritIO().start().waitFor() == 0 ? 0 : 1;
+		} catch (Exception e) {
+			ctx.stderr.println("kill: "+e.getMessage());
+			return 1;
+		}
 	}
 
 }

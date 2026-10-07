@@ -86,6 +86,12 @@ assignStatement
 			}
 		}
 		ret = ctx.console.substitutionCount() != before ? ctx.console.getLastExitCode() : 0;
+		for(AssignmentContext a : actx.assignment()) {
+			if( a.LOCAL() != null ) {
+				// local x=$(false) is 0: local's own status hides the substitution's (as in bash)
+				ret = 0;
+			}
+		}
 		return ret;
 	}
 

@@ -41,7 +41,26 @@ public class Source extends ShellCommand{
 		try {
 			String path = ""+args[0].getValue(ctx);
 			path = expandTilde(ctx, path);
-			FileSource file = ctx.getFileSource(path);
+			FileSource file = null;
+			if( path.indexOf('/') < 0 && us.bringardner.fsh.Glob.option(ctx, "sourcepath")) {
+				// a name with no / is looked for on $PATH first (shopt sourcepath), as in bash
+				Object dirs = ctx.getVariable("PATH");
+				if( dirs != null ) {
+					for(String dir : dirs.toString().split(":")) {
+						if( dir.isEmpty()) {
+							continue;
+						}
+						FileSource f = ctx.getFileSource(dir+"/"+path);
+						if( f.exists() && f.isFile()) {
+							file = f;
+							break;
+						}
+					}
+				}
+			}
+			if( file == null ) {
+				file = ctx.getFileSource(path);
+			}
 			
 			if( !file.exists()) {
 				ctx.stderr.println("source: "+path+"  not found");

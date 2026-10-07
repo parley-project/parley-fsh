@@ -101,8 +101,31 @@ associativeArrayElement
 			opts = ctx.DECLARE_A().getText();
 			// declare +l x: take attributes away
 			int sign = Math.max(opts.indexOf('-'), opts.indexOf('+'));
-			remove = opts.charAt(sign) == '+';
-			opts = opts.substring(sign+1);
+			remove = sign >= 0 && opts.charAt(sign) == '+';
+			opts = sign < 0 ? "" : opts.substring(sign+1);
+		}
+		if( opts.indexOf('f') >= 0 || opts.indexOf('F') >= 0 ) {
+			// declare -f [name ...]: functions as code; -F: their names
+			boolean names = opts.indexOf('F') >= 0;
+			java.util.List<String> wanted = new java.util.ArrayList<>();
+			for(DeclareItemContext item : ctx.declareItem()) {
+				wanted.add(item.id1.getText());
+			}
+			if( wanted.isEmpty()) {
+				wanted.addAll(new java.util.TreeSet<>(sc.console.getFunctions().keySet()));
+			}
+			int ret = 0;
+			for(String name : wanted) {
+				us.bringardner.fsh.antlr.statement.FunctionDefStatement f = sc.console.getFunctions().get(name);
+				if( f == null ) {
+					ret = 1;
+				} else if( names ) {
+					sc.stdout.println(ctx.declareItem().isEmpty() ? "declare -f "+name : name);
+				} else {
+					sc.stdout.println(f.declaration());
+				}
+			}
+			return ret;
 		}
 		if( opts.indexOf('p') >= 0 ) {
 			// declare -p name ...: as declarations the shell can read back

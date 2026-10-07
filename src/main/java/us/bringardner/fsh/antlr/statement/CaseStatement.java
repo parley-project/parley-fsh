@@ -53,27 +53,18 @@ pattern: argument ;
 		CaseStatementContext ctx = (CaseStatementContext) getContext();
 		String val = ""+new Argument(ctx.subject).getValue(sc);
 
+		// ;; ends the case, ;& runs the next clause's commands as well, ;;& goes on testing the
+		// next patterns; the status is that of the last commands run
+		boolean fallInto = false;
 		for(int idx=0,sz=clouses.size(); idx < sz; idx++ ) {
 			CaseClause cc = clouses.get(idx);
-
-			if( matches(val,cc.pattarns,sc)) {
-				int ev = execute(cc.stmts,sc);
-				if(ev !=0 || cc.op == Operator.Stop) {
-					return ev;
+			if( fallInto || matches(val,cc.pattarns,sc)) {
+				ret = execute(cc.stmts,sc);
+				if( cc.op == null || cc.op == Operator.Stop ) {
+					return ret;
 				}
-				if( cc.op == Operator.FallThrough) {
-					if( idx < (sz-1)) {
-						CaseClause cc2 = clouses.get(idx+1);
-						int ev2 = execute(cc2.stmts,sc);
-						if( ev2 !=0 ) {
-							return ev2;
-						}
-					}
-					return 0;
-				} else {
-					//  continue and test next
-				}
-			}			
+				fallInto = cc.op == Operator.FallThrough;
+			}
 		}
 
 		return ret;

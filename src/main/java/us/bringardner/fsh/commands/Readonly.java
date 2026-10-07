@@ -21,9 +21,25 @@ public class Readonly extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		boolean any = false;
+		// readonly -f name: a function that may not be redefined or unset
+		boolean functions = false;
 		for(int idx = 0; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
 			if( text.equals("-p") || text.equals("--")) {
+				continue;
+			}
+			if( text.equals("-f")) {
+				functions = true;
+				continue;
+			}
+			if( functions ) {
+				any = true;
+				if( !ctx.console.getFunctions().containsKey(text)) {
+					ctx.stderr.println("readonly: "+text+": not a function");
+					ret = 1;
+				} else {
+					ctx.console.setReadonlyFunction(text);
+				}
 				continue;
 			}
 			any = true;

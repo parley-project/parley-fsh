@@ -222,7 +222,8 @@ public class CommandStatement extends Statement{
 
 			try {
 				String name = cmd.get(0);
-				ProcessBuilder builder = new ProcessBuilder(cmd);
+				// with umask or ulimit set, through sh so the program gets them
+				ProcessBuilder builder = new ProcessBuilder(us.bringardner.fsh.commands.ProcessSettings.wrap(ctx, cmd));
 				// the shell's exported variables, not the JVM's (export X=1 and X=1 cmd reach the program)
 				Map<String,String> env = builder.environment();
 				env.clear();
@@ -541,7 +542,7 @@ public class CommandStatement extends Statement{
 					 * 2) If the name does not match a function, the shell searches for it in the list of shell built-ins. 
 					 * If a match is found, that built-in is invoked.
 					 */
-					Constructor<? extends ShellCommand> con = Console.commands.get(name);
+					Constructor<? extends ShellCommand> con = ctx.console.builtin(name);
 					if( con != null ) {
 
 						ShellCommand cmd;

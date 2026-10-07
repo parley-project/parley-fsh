@@ -80,12 +80,14 @@ public class TestKill extends AbstractConsoleTest {
 				;
 
 		res = executeCommand(code, "");
-		assertEquals(0, res.exitCode);
+		// as in bash, a name gives its number
 		if(getOs()==OperatingSystem.Windows) {
+			assertEquals(1, res.exitCode);
 			assertEquals("", res.getStdOut());
-			assertEquals("kill: (1) - No such signal", res.getStdErr().trim());
+			assertEquals("kill: HUP: invalid signal specification", res.getStdErr().trim());
 		} else {
-			assertEquals("HUP\n", res.getStdOut());
+			assertEquals(0, res.exitCode);
+			assertEquals("1\n", res.getStdOut());
 			assertEquals("", res.getStdErr());
 		}
 		showError = showErrTmp;

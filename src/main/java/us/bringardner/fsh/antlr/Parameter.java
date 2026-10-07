@@ -215,7 +215,52 @@ ${parameter:-word}
 		return ret.toString();
 	}
 
+	/** ${!name...}, ${!1...}, ${!#}: indirection, with an operation after it (${!v:-x}, ${!v#pat}) */
+	private static final Pattern INDIRECT_OP = Pattern.compile("!([a-zA-Z_][a-zA-Z_0-9]*|[0-9]+|[#|])([-:=+?#|%/^,@].*)?", Pattern.DOTALL);
+
+	/**
+	 * ${!n}, ${!#} (the last parameter), ${!v:+x}, ${!v%pat}: the parameter named by the value of
+	 * the first, then the operation on it. null if text is not one of these (${!a[@]}, ${!pre*}).
+	 */
+	static Object indirect(String text, ShellContext sc) {
+		Matcher m = INDIRECT_OP.matcher(text);
+		if( !m.matches() || "@".equals(m.group(2))) {
+			return null;
+		}
+		String name = m.group(1);
+		Object ref;
+		if( name.equals("#") || name.equals("|")) {
+			// (Console.convertHash writes # in ${ } as |)
+			ref = sc.getPositionalParameterValues().size();
+		} else if( Character.isDigit(name.charAt(0))) {
+			int n = Integer.parseInt(name);
+			List<Object> pos = sc.getPositionalParameterValues();
+			ref = n == 0 ? sc.getVariable("$0") : n <= pos.size() ? pos.get(n-1) : null;
+		} else {
+			ref = ShellContext.firstElement(sc.getVariable(name));
+		}
+		String rest = m.group(2) == null ? "" : m.group(2);
+		String target = ref == null ? "" : ref.toString();
+		if( target.isEmpty()) {
+			if( rest.isEmpty()) {
+				return "";
+			}
+			// ${!unset-dflt}: the operation on an unset parameter
+			target = "__bjlshell_unset_indirect";
+		}
+		if( !target.matches("[a-zA-Z_][a-zA-Z_0-9]*(\\[.*\\])?|[0-9]+")) {
+			throw new RuntimeException(target+": invalid indirect expansion");
+		}
+		return FileSourceShPreProcessorVisitorImpl.processString("${"+target+rest+"}", sc);
+	}
+
 	static Object arrayForms(String text, ShellContext sc) {
+		if( text.startsWith("!")) {
+			Object ind = indirect(text, sc);
+			if( ind != null ) {
+				return ind;
+			}
+		}
 		if( (text.startsWith("@") || text.startsWith("*")) && text.length() > 1 && text.charAt(1) != '}' ) {
 			// ${@:2} ${*@Q} ${@/a/b}: the elements, joined
 			List<Object> items = elements(text, sc);

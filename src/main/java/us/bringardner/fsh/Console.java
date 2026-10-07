@@ -102,6 +102,17 @@ import us.bringardner.fsh.job.JobState;
 
 public class Console extends SignalEnabledThread {
 
+	/** umask and ulimit settings, as the commands that made them (see commands.ProcessSettings) */
+	public final List<String> processSettings = new CopyOnWriteArrayList<>();
+
+	/** builtins turned off with enable -n: the name runs a program (or nothing) instead */
+	public final java.util.Set<String> disabledBuiltins = ConcurrentHashMap.newKeySet();
+
+	/** the builtin named name, or null (none, or enable -n turned it off) */
+	public Constructor<? extends ShellCommand> builtin(String name) {
+		return disabledBuiltins.contains(name) ? null : commands.get(name);
+	}
+
 	/** $_: the last argument of the last simple command */
 	public volatile String lastArgument = "";
 
@@ -224,6 +235,8 @@ public class Console extends SignalEnabledThread {
 		, PipeFail ("\u0000pipefail", "pipefail")
 		// set -E: functions, ( ) and pipe stages inherit the ERR trap
 		, ErrTrace ("E", "errtrace")
+		// set -n: read commands without running them (a script's syntax check)
+		, NoExec ("n", "noexec")
 		// set -T: functions inherit the DEBUG and RETURN traps
 		, FuncTrace ("T", "functrace")
 		, KeyboardEcho ("kbecho")
@@ -431,6 +444,9 @@ delimiter
 		registerCommand(new Wait());
 		registerCommand(new us.bringardner.fsh.commands.Compgen());
 		registerCommand(new us.bringardner.fsh.commands.Times());
+		registerCommand(new us.bringardner.fsh.commands.Enable());
+		registerCommand(new us.bringardner.fsh.commands.Umask());
+		registerCommand(new us.bringardner.fsh.commands.Ulimit());
 		registerCommand(new Wc());
 
 		registerSignals();
@@ -2346,6 +2362,17 @@ delimiter
 	/** readonly variables: they cannot be set or unset */
 	private final java.util.Set<String> readonlyVariables = ConcurrentHashMap.newKeySet();
 
+	private final java.util.Set<String> readonlyFunctions = ConcurrentHashMap.newKeySet();
+
+	/** readonly -f name */
+	public boolean isReadonlyFunction(String name) {
+		return readonlyFunctions.contains(name);
+	}
+
+	public void setReadonlyFunction(String name) {
+		readonlyFunctions.add(name);
+	}
+
 	public boolean isReadonly(String name) {
 		return readonlyVariables.contains(name);
 	}
@@ -2468,6 +2495,31 @@ delimiter
 			list.add(new ConsoleSignalHandler(ctx, action));
 			osSignalHandlers.put(signal.getNumber(), list);
 		}
+	}
+
+	/**
+	 * kill -SIG $$: run the trap for the signal in ctx (as if the shell got it).
+	 * @return false if there is no trap for it ('' ignores it: true)
+	 */
+	public boolean runOsTrap(int signum, ShellContext ctx) {
+		List<ConsoleSignalHandler> handlers = osSignalHandlers.get(signum);
+		if( handlers == null || handlers.isEmpty()) {
+			return false;
+		}
+		String action = handlers.get(handlers.size()-1).action;
+		int saved = getLastExitCode();
+		try {
+			for(Statement s : FileSourceShVisitorImpl.parse(action)) {
+				s.process(ctx);
+			}
+		} catch (us.bringardner.fsh.antlr.signal.FshException e) {
+			throw e;
+		} catch (Exception e) {
+			ctx.stderr.println(e.getMessage());
+		} finally {
+			setLastExitCode(saved);
+		}
+		return true;
 	}
 
 	/** the traps, as trap -p prints them: {name, action}, EXIT first, then by signal number */
@@ -2599,6 +2651,10 @@ delimiter
 	}
 
 	public boolean removeFunction(String name) {
+		if( readonlyFunctions.contains(name)) {
+			// readonly -f: it stays
+			return false;
+		}
 		return functions.remove(name) !=null;
 	}
 

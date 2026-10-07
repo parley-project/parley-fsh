@@ -1,0 +1,17 @@
+f () 
+{ 
+    echo hi;
+    local x=1
+}
+declare -f f
+declare -f g
+f is a function
+f () 
+{ 
+    echo hi;
+    local x=1
+}
+g () 
+{ 
+    :
+}

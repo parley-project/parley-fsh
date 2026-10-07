@@ -299,7 +299,9 @@ public class Printf extends ShellCommand{
 		} catch (NumberFormatException e) {
 			ctx.stderr.println("printf: "+arg+": invalid number");
 			failed = true;
-			return 0;
+			// as in bash, the number it starts with (3.7 is 3)
+			java.util.regex.Matcher m = java.util.regex.Pattern.compile("^[-+]?\\d+").matcher(s);
+			return m.find() ? Long.parseLong(m.group().replace("+", "")) : 0;
 		}
 	}
 

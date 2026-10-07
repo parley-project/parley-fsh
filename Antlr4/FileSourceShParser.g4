@@ -214,7 +214,9 @@ mathExpression: ARITH_EXPANSION | DOLLAR_BRACKET ;
 boolean_statement: boolean;
 
 compare : 
-		  WS* LSQUARE testWords RSQUARE (';' WS*)?   // if [ -e f -a -d d ]
+		  // if ( cmds ); then, while { cmds; }: the group's status
+		  WS* group=statement_group1 (';' WS*)?
+		| WS* LSQUARE testWords RSQUARE (';' WS*)?   // if [ -e f -a -d d ]
 		| WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
 		| WS* DBL_TEST (';' WS*)?        // if [[ $x == a* ]]
 		| WS* compare_prime (';' WS*)?
