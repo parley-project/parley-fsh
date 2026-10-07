@@ -28,6 +28,17 @@ lexer grammar FileSourceShLexer;
 		return prev == ' ' || prev == '\t' || prev == '\n' || prev == '\r' || prev == org.antlr.v4.runtime.IntStream.EOF;
 	}
 
+	// the file descriptor of a redirect starts a word ((( is not one: $((3>2)))
+	boolean atRedirectStart() {
+		int prev = _input.LA(-1);
+		return prev == org.antlr.v4.runtime.IntStream.EOF || " \t\r\n;|&{".indexOf(prev) >= 0;
+	}
+
+	boolean redirectAhead() {
+		int next = _input.LA(1);
+		return next == '<' || next == '>';
+	}
+
 	// a keyword stands alone: done-now and if.txt are words
 	boolean atKeywordEnd() {
 		int next = _input.LA(1);
@@ -66,6 +77,10 @@ ESC_AND: '\\&&';
 ESC_OR:  '\\||';
 
 
+
+// the file descriptor of a redirect: digits right before < or >, as in 2>file, 2>&1, 3<file.
+// With a space (echo 2 > f) the digits are a word.
+IO_NUMBER: {atRedirectStart()}? [0-9]+ {redirectAhead()}? ;
 
 NUMBER :
      INTEGER

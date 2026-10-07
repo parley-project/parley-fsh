@@ -104,10 +104,21 @@ public class Console extends SignalEnabledThread {
 
 	public static class FileDiscriptor {
 
+		/** the source of a copy of another descriptor (exec 3>&1): closing the copy leaves the stream open */
+		private static final Object SHARED = new Object();
+
 		int id;
 		InputStream in;
 		PrintStream out;
 		Object source;
+
+		public static FileDiscriptor shared(int id, PrintStream out) {
+			return new FileDiscriptor(id, out, SHARED);
+		}
+
+		public static FileDiscriptor shared(int id, InputStream in) {
+			return new FileDiscriptor(id, in, SHARED);
+		}
 
 		public FileDiscriptor(int id, InputStream in) {
 			this.id = id;
@@ -2120,7 +2131,11 @@ delimiter
 		Map<Integer, FileDiscriptor> tmp = getFiles();
 		FileDiscriptor ret = files.remove(id);
 		if( ret != null) {
-			if (ret.source instanceof IRandomAccessStream) {
+			if( ret.source == FileDiscriptor.SHARED ) {
+				if( ret.out != null ) {
+					ret.out.flush();
+				}
+			} else if (ret.source instanceof IRandomAccessStream) {
 				IRandomAccessStream rad = (IRandomAccessStream) ret.source ;
 				try {
 					rad.close();
@@ -2137,6 +2152,14 @@ delimiter
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * Forget a file descriptor without closing its stream (n>&m- moved it to n).
+	 */
+	public FileDiscriptor removeFileDistcriptor(int id) {
+		getFiles();
+		return files.remove(id);
 	}
 
 	public Map<Integer,FileDiscriptor> getFiles() {

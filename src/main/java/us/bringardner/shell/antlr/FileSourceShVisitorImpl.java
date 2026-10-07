@@ -301,14 +301,8 @@ commandStatement
 		if( ctx.hereDocument()!=null) {
 			ret.setHereDocument(ctx.hereDocument());
 		}
-		RerdirectImpl redirect = null;
-		
-		if( ctx.redirect2!=null) {
-			redirect = parseRedirect(ret,ctx.children,args,ctx.redirect2);
-		} else if( ctx.redirect1!=null) {
-			redirect = parseRedirect(ret,ctx.children,null,ctx.redirect1);
-		}
-		ret.setRedirect(redirect);
+		// before and after the command: < in sort > out
+		ret.setRedirect(RerdirectImpl.find(ctx.children));
 
 		return ret;
 	}
@@ -332,29 +326,6 @@ commandStatement
 		ret.stop = word.stop;
 		return ret;
 	}
-
-	private RerdirectImpl parseRedirect(Statement stmt,List<ParseTree> kids, Argument[] args, RedirectContext redirect) {
-		RerdirectImpl ret = new RerdirectImpl();
-		ret.context=redirect;
-		
-		if( args !=null ) {
-			// the last kid is the redirect
-			// if the next to the last child is NOT WS then the last argument belongs the the redirect
-			Object tmp2 = kids.get(kids.size()-2);
-			if (tmp2 instanceof TerminalNode) {
-				//System.out.println("Last arg is NOT part of redirect");
-			} else {
-				ret.fid = args[args.length-1];
-				Argument[] args2 = new Argument[args.length-1];
-				for (int idx = 0; idx < args2.length; idx++) {
-					args2[idx] = args[idx];
-				}
-				stmt.setArgs(args2, null);
-			}
-		}
-		return ret;
-	}
-
 
 	/*
 
@@ -498,13 +469,16 @@ ifStatement
 	@Override
 	public StatementGroup visitStatement_group(Statement_groupContext ctx) {
 		StatementGroup1 g1 = visitStatement_group1(ctx.statement_group1());
-		RerdirectImpl redirect = null;
-		if( ctx.redirect1!=null) {
-			
-		} else if( ctx.redirect2!=null) {
-			
+		// { ...; } > out and ( ... ) 2>&1: the redirects around the braces, in order
+		List<ParseTree> kids = new ArrayList<>();
+		for(ParseTree kid : ctx.children) {
+			if( kid == ctx.statement_group1() ) {
+				kids.addAll(ctx.statement_group1().children);
+			} else {
+				kids.add(kid);
+			}
 		}
-		return new StatementGroup(ctx, g1,redirect);
+		return new StatementGroup(ctx, g1,RerdirectImpl.find(kids));
 	}
 
 	@Override

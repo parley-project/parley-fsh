@@ -2,6 +2,7 @@ package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -294,10 +295,16 @@ $((12+32))
 				this.file = file;				
 			}
 
+			public RedirectExpect(String name, String[] args, String rdop, String file, String fromId, String toId) {
+				this(name, args, rdop, file);
+				this.fromId = fromId;
+				this.toId = toId;
+			}
+
 		}
 		String code = 
-				//"cmd arg1 arg2 > file 2>&-\n" +
-				//"cmd arg > file 2>&1\n" +
+				"cmd arg1 arg2 > file 2>&-\n" +
+				"cmd arg > file 2>&1\n" +
 				"cmd &>> /file\n" +
 				"cmd >> ~/file\n" +
 				"cmd &> file\n" +
@@ -307,8 +314,8 @@ $((12+32))
 				"cmd < file";
 		//System.out.println(code);
 		RedirectExpect [] expects = {
-				//new RedirectExpect("cmd", new String[]{"arg1","arg2"},">","file","2","-"),
-				//new RedirectExpect("cmd",new String[]{"arg"},">","file","2","1"),
+				new RedirectExpect("cmd", new String[]{"arg1","arg2"},">","file","2","-"),
+				new RedirectExpect("cmd",new String[]{"arg"},">","file","2","1"),
 				new RedirectExpect("cmd",new String[0],"&>>","/file"),
 				new RedirectExpect("cmd",new String[0],">>","~/file"),
 				new RedirectExpect("cmd",new String[0],"&>","file"),
@@ -337,32 +344,19 @@ $((12+32))
 				RerdirectImpl redirectStart = cs.getRedirect();
 				assertNotNull(redirectStart,"All  cmds in this test have redirection");
 
-				for(Redirect_oneContext redirect : redirectStart.context.redirect_one()) {
-					if( redirect.redirectionOperator()!=null) {
-						String op =  redirect.redirectionOperator().getText();
-						assertEquals(expect.rdop, op);
-						String path = null;
-						// the getText here wo
-						if( redirect.args !=null) {
-							ArgumentContext args2 = redirect.args;
-							path = args2.getText();
-						} else {
-							throw new RuntimeException("Error no path");
-						}
-						assertEquals(expect.file, path);
-
-						FileSourceShParser.File_addressContext address = redirect.file_address();
-						if( address != null ) {
-
-							Token fromId = address.fromId;
-							Token toId = address.toId;
-
-							boolean ok = isEq(fromId==null?"null":fromId.getText(),expect.fromId);
-							assertTrue(ok,"From id "+fromId+" "+expect.fromId);
-							ok = isEq(toId==null?"null":toId.getText(),expect.toId);
-							assertTrue(ok,"To id "+toId+" "+expect.toId);					
-						}
-					}
+				// the first redirect is op file; a second one is fromId>&toId
+				Redirect_oneContext redirect = redirectStart.redirects.get(0);
+				assertNull(redirect.fd);
+				assertEquals(expect.rdop, redirect.redirectionOperator().getText());
+				assertEquals(expect.file, redirect.target.getText());
+				if( expect.fromId != null ) {
+					assertEquals(2, redirectStart.redirects.size());
+					Redirect_oneContext dup = redirectStart.redirects.get(1);
+					assertEquals(expect.fromId, dup.fd.getText());
+					assertEquals(">&", dup.redirectionOperator().getText());
+					assertEquals(expect.toId, dup.target.getText());
+				} else {
+					assertEquals(1, redirectStart.redirects.size());
 				}
 
 

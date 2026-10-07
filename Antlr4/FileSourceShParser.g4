@@ -127,18 +127,8 @@ commandStatement:
     
 redirect: (redirect_one WS*)+;
  
- // the file descriptor in "2>file" is the argument before the operator (see FileSourceShVisitorImpl.parseRedirect);
- // an optional argument here made the parser read to the end of every command
- redirect_one: 
- 		  redirectionOperator white* (args=argument WS*)?
-		| file_address
-		| redirectionOperator white* (args=argument WS*)? white* file_address
-		;    
-
-file_address:
-        	fromId=NUMBER? REDIRECT_BOTH toId=NUMBER
-         | fromId=NUMBER? REDIRECT_BOTH toId=MINUS
-        ;
+ // [n]op word: 2>file, >>log, <in, 2>&1, >&2, 3<&-, &>out
+ redirect_one: fd=IO_NUMBER? redirectionOperator WS* target=argument ;
 
 
 
@@ -412,9 +402,10 @@ statement_or_statement1: (statement|statement1);
 statement_group: redirect1=redirect? statement_group1 redirect2=redirect? 
     	;
 		
+// the redirects apply to the whole group: { ...; } 2>/dev/null, ( ... ) > out
 statement_group1
- 		: redirect1=redirect?  LCURLY white* statement_or_statement1* white* RCURLY redirect1=redirect?
-        | redirect1=redirect?  LPAREN white* statement_or_statement1* white* RPAREN redirect1=redirect?
+ 		: redirect1=redirect?  LCURLY white* statement_or_statement1* white* RCURLY (WS* redirect2=redirect)?
+        | redirect1=redirect?  LPAREN white* statement_or_statement1* white* RPAREN (WS* redirect2=redirect)?
 		;
 
 

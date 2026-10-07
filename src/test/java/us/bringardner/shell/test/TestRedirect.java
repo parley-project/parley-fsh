@@ -161,18 +161,11 @@ public class TestRedirect extends AbstractConsoleTest {
 	
 	@Test
 	public void testRedirect01_7() throws Exception{
-		String cmd = "echo here 2>&1/dev/null"
-				;
-
-		String expectOut = 
-				""
-				;
-		String stdIn = "";
-		String expectErr = "";
-		int exitCode = 0;
-		
-		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);
-		
+		// as in bash: after >& comes a file descriptor (or a file name, when there is no number before >&)
+		ExecuteResult res = executeCommand("echo here 2>&1/dev/null", "");
+		assertEquals("", res.getStdOut());
+		assertTrue(res.getStdErr().contains("1/dev/null: ambiguous redirect"), res.getStdErr());
+		assertEquals(1, res.exitCode);
 	}
 
 
@@ -505,7 +498,7 @@ exec 3>&- #close fd 3.
 		try {
 			executeCommand("echo one > "+file+"; echo two > "+file+"; wc -l < "+file,"",0,"       1\n","");
 			ExecuteResult res = executeCommand("set -C; echo three > "+file,"",1);
-			assertTrue(res.getStdErr().contains("no clobber"));
+			assertTrue(res.getStdErr().contains("cannot overwrite existing file"), res.getStdErr());
 		} finally {
 			executeCommand("rm -f "+file,"");
 		}

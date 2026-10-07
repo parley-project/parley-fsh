@@ -469,7 +469,16 @@ public class CommandStatement extends Statement{
 		List<Closeable> redirected = null;
 
 		try {
-			redirected = configureRedirect(ctx,redirect);				
+			Integer firstFd = null;
+			if( redirect != null && redirect.fdWord != null && args.length > 0 ) {
+				// $fid<> file: the word (now the last argument) is the file descriptor, not an argument
+				String val = ""+new Argument(redirect.fdWord).getValue(ctx);
+				if( val.matches("[0-9]+") && val.equals(""+args[args.length-1].getValue(ctx))) {
+					firstFd = Integer.parseInt(val);
+					args = java.util.Arrays.copyOf(args, args.length-1);
+				}
+			}
+			redirected = configureRedirect(ctx,redirect,firstFd);				
 		
 			if( hereId !=null ) {
 				Object obj = ctx.getValue(hereId);

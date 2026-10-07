@@ -131,12 +131,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitRedirect_one(FileSourceShParser.Redirect_oneContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#file_address}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitFile_address(FileSourceShParser.File_addressContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#command}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

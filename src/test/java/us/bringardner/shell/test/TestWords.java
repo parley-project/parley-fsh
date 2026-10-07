@@ -286,4 +286,44 @@ public class TestWords extends AbstractConsoleTest {
 		assertEquals(2, res.exitCode);
 		assertTrue(res.getStdErr().contains("-q: invalid option"), res.getStdErr());
 	}
+
+	@Test
+	public void testRedirectFileDescriptors() throws IOException {
+		String f = path("fd.txt");
+		// stderr inside $( ) is not captured, and >&2 goes to the current stderr
+		ExecuteResult res = executeCommand("x=$(echo out; echo err >&2); echo \"[$x]\"", "");
+		assertEquals("[out]\n", res.getStdOut());
+		assertEquals("err", res.getStdErr().trim());
+		res = executeCommand("echo e2 1>&2", "");
+		assertEquals("", res.getStdOut());
+		assertEquals("e2", res.getStdErr().trim());
+		// 2>&1 and the order of redirects
+		expect("ls /no-such-26 2>&1 | cut -c1-3", "ls:\n");
+		expect("ls /no-such-26 > /dev/null 2>&1; echo $?", "1\n");
+		expect("ls /no-such-26 2>&1 > /dev/null | cut -c1-3", "ls:\n");
+		expect("f() { echo out; echo err >&2; }; f > "+f+" 2>&1; cat "+f, "out\nerr\n");
+		expect("f() { echo out; echo err >&2; }; f &> "+f+"; cat "+f, "out\nerr\n");
+		// digits with a space are a word
+		expect("echo 2 > "+f+"; cat "+f+"; echo x 2>/dev/null", "2\nx\n");
+		// before and after the command
+		expect("echo in > "+f+"; < "+f+" cat > "+f+"2; cat "+f+"2", "in\n");
+		// exec and file descriptors above 2
+		expect("exec 3>"+f+"; echo three >&3; exec 3>&-; cat "+f, "three\n");
+		expect("exec 4>&1; echo four >&4; exec 4>&-; echo still", "four\nstill\n");
+		expect("echo line > "+f+"; exec 5<"+f+"; read v <&5; echo \"$v\"; exec 5<&-", "line\n");
+		res = executeCommand("echo bad >&7", "");
+		assertEquals("7: Bad file descriptor", res.getStdErr().trim());
+	}
+
+	@Test
+	public void testGroupsAndSubshells() throws IOException {
+		expect("{ echo a; echo b >&2; } 2>/dev/null", "a\n");
+		expect("x=$( { echo in; echo err >&2; } 2>&1 ); echo \"[$x]\"", "[in\nerr]\n");
+		expect("{ echo g; } > "+path("g.txt")+"; cat "+path("g.txt"), "g\n");
+		expect("( echo sub; echo suberr >&2 ) 2>&1 | cat", "sub\nsuberr\n");
+		expect("x=$( (echo q) ); echo $x; ( exit 3 ); echo $?", "q\n3\n");
+		expect("f() { ( set -- z; echo $1 ); echo $1; }; f a", "z\na\n");
+		// a failed command does not stop the rest
+		expect("{ false; echo hi; }; ( false; echo there )", "hi\nthere\n");
+	}
 }
