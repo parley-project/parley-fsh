@@ -2,8 +2,6 @@ package us.bringardner.shell.antlr.statement;
 
 
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +12,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
 import us.bringardner.shell.Console.CommandThread;
 import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.FsshList;
+import us.bringardner.shell.Pipe;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
@@ -63,7 +62,7 @@ public class PipeStatement extends Statement{
 		// (the streams are put back afterward, as when the first stage ran on the caller's context)
 		PrintStream callerOut = ctx.stdout;
 		PrintStream callerErr = ctx.stderr;
-		List<PipedInputStream> pipes = new ArrayList<>();
+		List<Pipe> pipes = new ArrayList<>();
 		try {
 		
 			//  Create the threads
@@ -76,11 +75,12 @@ public class PipeStatement extends Statement{
 			for (int idx = 0; idx < cmds.length-1; idx++) {
 				CommandThread t = threads[idx];
 				CommandThread t2 = threads[idx+1];			
-				PipedInputStream  in = new PipedInputStream();
-				pipes.add(in);
-				PipedOutputStream out = new PipedOutputStream(in);
-				t.ctx.stdout = new PrintStream(out);
-				t2.ctx.stdin = in;
+				// (not java.io's piped streams: they fail with "Write end dead" when the thread
+				// that wrote last has ended, before the stage closes its end)
+				Pipe pipe = new Pipe();
+				pipes.add(pipe);
+				t.ctx.stdout = new PrintStream(pipe.out);
+				t2.ctx.stdin = pipe.in;
 				if(ops[idx].equals("|&")) {
 					t.ctx.stderr = t.ctx.stdout; 
 				}
@@ -143,11 +143,8 @@ public class PipeStatement extends Statement{
 		} finally {
 			ctx.stdout = callerOut;
 			ctx.stderr = callerErr;
-			for(PipedInputStream in : pipes) {
-				try {
-					in.close();
-				} catch (IOException e) {
-				}
+			for(Pipe pipe : pipes) {
+				pipe.in.close();
 			}
 		}
 		return ret;

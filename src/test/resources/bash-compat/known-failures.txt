@@ -7,3 +7,21 @@
 alias-expand
 
 
+
+# long tail
+bashpid
+caller-builtin
+cmdsub-read-file
+dbl-option-test
+dollar-bracket
+dollar-dquote
+local-options
+named-fd
+nameref-declare
+nameref-local
+param-transform
+param-transform-array
+printf-time
+procsub-output
+quoted-array-first
+return-mod-256
