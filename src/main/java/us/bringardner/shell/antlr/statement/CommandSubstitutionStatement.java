@@ -104,4 +104,42 @@ public class CommandSubstitutionStatement extends Statement{
 	
 		return exitCode;
 	}
+	/**
+	 * <(cmd): run cmd in a subshell, put its output in a temporary file, and return the file's name
+	 * (bash uses a pipe; a file reads the same). The file is deleted when the shell exits.
+	 */
+	public static String processSubstitution(String token, ShellContext primary) {
+		String code = token.substring(2, token.length()-1);
+		ShellContext ctx = primary.subShell();
+		ByteArrayOutputStream bao = new ByteArrayOutputStream();
+		ctx.stdout = new PrintStream(bao);
+		Console.Snapshot saved = null;
+		try {
+			saved = primary.console.snapshot();
+			for(Statement s : FileSourceShVisitorImpl.parse(code)) {
+				s.process(ctx);
+			}
+		} catch (ExitException e) {
+		} catch (Exception e) {
+			String msg = e.getMessage();
+			primary.stderr.println(msg != null ? msg : e.toString());
+		} finally {
+			if( saved != null ) {
+				try {
+					primary.console.restore(saved);
+				} catch (IOException e) {
+					primary.stderr.println(e.getMessage());
+				}
+			}
+		}
+		try {
+			java.io.File file = java.io.File.createTempFile("bjlshell-", ".fifo");
+			file.deleteOnExit();
+			ctx.stdout.flush();
+			java.nio.file.Files.write(file.toPath(), bao.toByteArray());
+			return file.getAbsolutePath();
+		} catch (IOException e) {
+			throw new RuntimeException("process substitution: "+e.getMessage(), e);
+		}
+	}
 }

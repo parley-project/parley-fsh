@@ -82,6 +82,7 @@ import us.bringardner.shell.antlr.statement.JobControlStatement;
 import us.bringardner.shell.antlr.statement.LogicStatement;
 import us.bringardner.shell.antlr.statement.MathStatement;
 import us.bringardner.shell.antlr.statement.NegateStatement;
+import us.bringardner.shell.antlr.statement.RedirectedStatement;
 import us.bringardner.shell.antlr.statement.PipeStatement;
 import us.bringardner.shell.antlr.statement.SelectStatement;
 import us.bringardner.shell.antlr.statement.StatementGroup;
@@ -228,6 +229,13 @@ statement
 
 	@Override
 	public Statement visitPipeableStatement(PipeableStatementContext ctx) {
+		Statement ret = visitPipeable(ctx);
+		RerdirectImpl redirect = ctx.commandStatement() == null && ctx.statement_group() == null
+				? RerdirectImpl.find(ctx.children) : null;
+		return redirect == null ? ret : new RedirectedStatement(ctx, ret, redirect);
+	}
+
+	private Statement visitPipeable(PipeableStatementContext ctx) {
 		if( ctx.commandStatement() !=null ) {
 			return visitCommandStatement(ctx.commandStatement());
 		} else if( ctx.statement_group() !=null ) {

@@ -115,6 +115,7 @@ argumentPart:
     | mathExpression
     | arg_command_substitution
     | braceExpansion
+    | procSubst=PROC_SUBST
     ;
 
 // $name, $1, $? ... (a bare name is a literal part of the word); $name[index] indexes an array
@@ -162,11 +163,12 @@ pipeableStatement:
 		commandStatement
 		| statement_group WS*  // a command takes the spaces before | itself; a group did not, so "{ ...; } | x" failed
 		// loops and other compound commands: ... | while read x; do ...; done
-		| whileStatement WS*
-		| until_statement WS*
-		| forStatement WS*
-		| ifStatement
-		| caseStatement WS*
+		// ... and they take redirects: while read l; do ...; done < file
+		| whileStatement (WS* redirect)? WS*
+		| until_statement (WS* redirect)? WS*
+		| forStatement (WS* redirect)? WS*
+		| ifStatement (WS* redirect)? WS*
+		| caseStatement (WS* redirect)? WS*
 		;
 		    
 pipeOp:
@@ -393,7 +395,7 @@ functionDefinition:
     
     ;
 
-string : DQ_STRING | SQ_STRING | ESC;
+string : DQ_STRING | SQ_STRING | ANSI_STRING | ESC;
 
 arrayInitializer:
      LPAREN argument_list RPAREN

@@ -130,8 +130,73 @@ public class ShellContext {
 		} else if( context.ESC()!=null) {
 			String tmp = context.ESC().getText().substring(1);
 			return tmp;
+		} else if( context.ANSI_STRING()!=null) {
+			String tmp = context.ANSI_STRING().getText();
+			return ansiC(tmp.substring(2, tmp.length()-1));
 		}
 		throw new RuntimeException("No valid string for "+context.getText());
+	}
+
+	/**
+	 * The escapes of $'...', as bash reads them (each after a backslash): a b e E f n r t v, a backslash,
+	 * quotes and ?, nnn (octal), xHH, uHHHH, UHHHHHHHH and cX (control-X). Anything else keeps its backslash.
+	 */
+	public static String ansiC(String text) {
+		StringBuilder ret = new StringBuilder();
+		int n = text.length();
+		for (int idx = 0; idx < n; idx++) {
+			char c = text.charAt(idx);
+			if( c != '\\' || idx+1 >= n ) {
+				ret.append(c);
+				continue;
+			}
+			char e = text.charAt(++idx);
+			switch (e) {
+			case 'a': ret.append('\u0007'); break;
+			case 'b': ret.append('\b'); break;
+			case 'e':
+			case 'E': ret.append('\u001b'); break;
+			case 'f': ret.append('\f'); break;
+			case 'n': ret.append('\n'); break;
+			case 'r': ret.append('\r'); break;
+			case 't': ret.append('\t'); break;
+			case 'v': ret.append('\u000b'); break;
+			case '\\': case '\'': case '"': case '?': ret.append(e); break;
+			case 'c':
+				if( idx+1 < n ) {
+					ret.append((char)(text.charAt(++idx) & 0x1f));
+				} else {
+					ret.append("\\c");
+				}
+				break;
+			case 'x': case 'u': case 'U': {
+				int max = e == 'x' ? 2 : e == 'u' ? 4 : 8;
+				int end = idx+1;
+				while( end < n && end-idx-1 < max && Character.digit(text.charAt(end), 16) >= 0 ) {
+					end++;
+				}
+				if( end == idx+1 ) {
+					ret.append('\\').append(e);
+				} else {
+					ret.appendCodePoint(Integer.parseInt(text.substring(idx+1, end), 16));
+					idx = end-1;
+				}
+				break;
+			}
+			default:
+				if( e >= '0' && e <= '7' ) {
+					int end = idx;
+					while( end < n && end-idx < 3 && text.charAt(end) >= '0' && text.charAt(end) <= '7' ) {
+						end++;
+					}
+					ret.append((char) Integer.parseInt(text.substring(idx, end), 8));
+					idx = end-1;
+				} else {
+					ret.append('\\').append(e);
+				}
+			}
+		}
+		return ret.toString();
 	}
 
 

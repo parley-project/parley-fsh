@@ -121,11 +121,22 @@ fragment DQ_PART
     ;
 
 fragment CMD_PART
-    : ~["'()\\] | '\\' . | '(' CMD_PART* ')' | '"' DQ_PART* '"' | '\'' ~['\\]* '\''
+    : ~["'()\\] | '\\' . | '(' CMD_PART* ')' | '"' DQ_PART* '"' | '\'' ~[']* '\''
     ;
 
+// $'a\tb': quoted, with backslash escapes as in C
+ANSI_STRING
+    : '$\'' ( ~['\\] | '\\' . )* '\''
+    ;
+
+// <(cmd): the command's output, as a file name
+PROC_SUBST
+    : '<(' CMD_PART* ')'
+    ;
+
+// everything between single quotes is as written, backslashes too ('a\' is a\), as in bash
 SQ_STRING
-    : '\'' ( ~['\\] | '\\' . )* '\''
+    : '\'' ~[']* '\''
     ;
 
 // backslash-newline joins lines (echo a \<newline> b is echo a b)

@@ -96,6 +96,8 @@ argumentPart:
 			ret = visit(part.mathExpression(),ctx);
 		} else if(part.arg_command_substitution()!=null) {
 			ret = visit(part.arg_command_substitution(),ctx);
+		} else if( part.procSubst != null ) {
+			ret = CommandSubstitutionStatement.processSubstitution(part.procSubst.getText(), ctx);
 		} else if( part.braceExpansion()!=null) {
 			throw new RuntimeException("brace expantion must be done before calling getValue");
 		} else {

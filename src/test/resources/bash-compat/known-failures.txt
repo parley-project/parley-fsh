@@ -95,10 +95,8 @@ pipestatus
 printf-v
 
 # process
-process-substitution
 
 # quote
-quote-ansi-c
 
 # random
 
@@ -108,8 +106,6 @@ quote-ansi-c
 readonly
 
 # redir
-redir-both
-redir-out-append
 
 # seconds
 
