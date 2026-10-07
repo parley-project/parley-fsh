@@ -25,6 +25,7 @@ statement:
 statement1:
       // ! before any command or pipeline inverts its status
       NOT WS+ negated=statement1
+    | DBL_TEST
     | ifStatement
     | mathStatement
     | whileStatement
@@ -56,8 +57,10 @@ assignStatement: assignment (WS+ assignment)* WS*
 		
 // the value is a word, like a command argument: x=sub-dir and y=$x$x are text, x=$((1+2)) is a number
 assignment:		
-      (LOCAL WS)? WS* id1=ID WS* EQ WS* arrayInitializer // Specific rule for array init
-    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* EQ WS* value=argument?
+      // a=(x y), a+=(z)
+      (LOCAL WS)? WS* id1=ID WS* op=(EQ|PLUS_EQ) WS* arrayInitializer
+      // x=1, x+=1, a[2]=c, m[key]=v
+    | (LOCAL WS)? WS* id1=ID (WS* (associative_index | array_index))? WS* op=(EQ|PLUS_EQ) WS* value=argument?
     ;
 
 boolean: TRUE | FALSE;
@@ -191,6 +194,7 @@ boolean_statement: boolean;
 
 compare : 
 		  WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
+		| WS* DBL_TEST (';' WS*)?        // if [[ $x == a* ]]
 		| WS* compare_prime (';' WS*)?
         | WS* LSQUARE WS* compare_prime WS* RSQUARE
         | WS* LSQUARE WS* simpleCompare=compare WS* RSQUARE
@@ -470,8 +474,12 @@ replacement_string: ~RCURLY* ;
 pbody: ~RCURLY*;
 
 // New rule to support 'declare -A my_array' and 'declare -A my_array=([key1]=value1 [key2]=value2)'
+// declare -opts name[=value] ...: -A and -a arrays, -i integer, -x export
 declareAssociativeArrayStatement:
-     white* DECLARE_A WS* id1=ID (WS* EQ WS* associativeArrayInitializer)? 
+     white* DECLARE_A (WS+ declareItem)* WS*
+    ;
+
+declareItem: id1=ID (EQ (associativeArrayInitializer | arrayInitializer | value=argument)?)? 
     ;
 
 associativeArrayInitializer:

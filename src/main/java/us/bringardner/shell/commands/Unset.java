@@ -15,6 +15,8 @@ public class Unset extends ShellCommand{
 			+ "	Exit status: 0 unless an option is invalid."
 			;
 
+	private static final java.util.regex.Pattern ELEMENT = java.util.regex.Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]");
+
 	public Unset() {
 		super(name, help);
 	}
@@ -52,7 +54,16 @@ public class Unset extends ShellCommand{
 
 		for(; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
-			if( functions ) {
+			java.util.regex.Matcher m = ELEMENT.matcher(text);
+			if( !functions && m.matches()) {
+				// unset 'a[1]' or 'm[key]': one element
+				Object val = ctx.getVariable(m.group(1));
+				if( val instanceof java.util.Map<?,?> ) {
+					((java.util.Map<?,?>) val).remove(m.group(2));
+				} else if( val instanceof java.util.List<?> ) {
+					((java.util.List<?>) val).remove(us.bringardner.shell.antlr.Arithmetic.expandAndEvaluate(m.group(2), ctx).intValue());
+				}
+			} else if( functions ) {
 				ctx.removeFunction(text);
 			} else if( !ctx.unSetVariable(text) && !variables ) {
 				// as in bash, a name that is no variable may be a function

@@ -176,6 +176,8 @@ argumentPart:
 		return findAt(text.substring(1, text.length()-1));
 	}
 
+	private static final java.util.regex.Pattern QUOTED_ARRAY = java.util.regex.Pattern.compile("\\$\\{([a-zA-Z_][a-zA-Z_0-9]*)\\[@\\]\\}");
+
 	static int[] findAt(String body) {
 		int n = body.length();
 		for (int idx = 0; idx < n; idx++) {
@@ -206,6 +208,12 @@ argumentPart:
 				return new int[] {idx, idx+2};
 			} else if( c == '$' && body.startsWith("{@}", idx+1)) {
 				return new int[] {idx, idx+4};
+			} else if( c == '$' && body.startsWith("{", idx+1)) {
+				// ${name[@]}: an array's elements
+				java.util.regex.Matcher m = QUOTED_ARRAY.matcher(body).region(idx, n);
+				if( m.lookingAt()) {
+					return new int[] {idx, m.end()};
+				}
 			}
 		}
 		return null;
@@ -281,7 +289,9 @@ argumentPart:
 			String body = text.substring(1, text.length()-1);
 			String prefix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(0, at[0]), ctx, Quoting.DOUBLE_QUOTED);
 			String suffix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(at[1]), ctx, Quoting.DOUBLE_QUOTED);
-			List<Object> params = ctx.getPositionalParameterValues();
+			String atText = body.substring(at[0], at[1]);
+			java.util.regex.Matcher am = QUOTED_ARRAY.matcher(atText);
+			List<Object> params = am.matches() ? Parameter.values(ctx.getVariable(am.group(1))) : ctx.getPositionalParameterValues();
 			if( params.isEmpty()) {
 				if( !prefix.isEmpty() || !suffix.isEmpty()) {
 					appendQuoted(prefix+suffix);

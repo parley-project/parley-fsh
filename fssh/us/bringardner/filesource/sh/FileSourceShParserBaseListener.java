@@ -1001,6 +1001,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterDeclareItem(FileSourceShParser.DeclareItemContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitDeclareItem(FileSourceShParser.DeclareItemContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterAssociativeArrayInitializer(FileSourceShParser.AssociativeArrayInitializerContext ctx) { }
 	/**
 	 * {@inheritDoc}

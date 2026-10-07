@@ -396,7 +396,8 @@ public class TestParameter extends AbstractConsoleTest {
 	public void testParameter27() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
-		String expect = "0\n";
+		// as in bash: an unset array has no indexes
+		String expect = "\n";
 		String code = ""
 				+ "echo ${!array[*]}\n";
 		//System.out.println(code);

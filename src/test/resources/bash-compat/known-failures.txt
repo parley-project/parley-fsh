@@ -8,16 +8,8 @@ alias-expand
 # arith
 
 # array
-array-append
-array-assign-index
-array-indices
-array-quoted-at
-array-star-join
-array-unset-element
 
 # assoc
-assoc-basic
-assoc-keys
 
 # brace
 brace-list
@@ -34,13 +26,8 @@ break-n
 # comments
 
 # dbl
-dbl-and-or
-dbl-numbers
-dbl-pattern
-dbl-regex
 
 # declare
-declare-int
 
 # export
 
@@ -75,8 +62,6 @@ mapfile
 # param
 param-case
 param-default
-param-indirect
-param-positional-10
 
 # pipe
 pipe-subshell-var

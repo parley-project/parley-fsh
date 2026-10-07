@@ -103,17 +103,17 @@ public class FsshList implements List<Object> {
 
 	@Override
 	public Iterator<Object> iterator() {
+		// the values in index order (an array may have holes: a[0] and a[5])
+		Iterator<ListEntry> it = new ArrayList<>(entries.values()).iterator();
 		return new Iterator<Object>() {
-			int pos = 0;
-			
 			@Override
 			public Object next() {
-				return get(pos++);
+				return it.next().value;
 			}
 			
 			@Override
 			public boolean hasNext() {
-				return pos<size();
+				return it.hasNext();
 			}
 		};
 	}
@@ -128,8 +128,11 @@ public class FsshList implements List<Object> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Object[] toArray(Object[] a) {
-		for (int idx = 0; idx < a.length; idx++) {
-			a[idx] = entries.get(idx).value;
+		int idx = 0;
+		for(ListEntry e : entries.values()) {
+			if( idx < a.length ) {
+				a[idx++] = e.value;
+			}
 		}
 		return a;
 	}
@@ -137,7 +140,9 @@ public class FsshList implements List<Object> {
 
 	@Override
 	public boolean add(Object e) {
-		ListEntry le = new ListEntry(size(), e);
+		// after the highest index (the array may have holes: a[5]=x; a+=(y) puts y at 6)
+		int next = entries.isEmpty() ? 0 : ((TreeMap<Integer,ListEntry>) entries).lastKey()+1;
+		ListEntry le = new ListEntry(next, e);
 		entries.put(le.index, le);
 		return true;
 	}
@@ -161,7 +166,10 @@ public class FsshList implements List<Object> {
 
 	@Override
 	public boolean addAll(Collection<?> c) {
-		throw new RuntimeException(" Not implemented in FsshList");
+		for(Object o : c) {
+			add(o);
+		}
+		return !c.isEmpty();
 	}
 
 

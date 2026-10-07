@@ -1,5 +1,6 @@
 package us.bringardner.shell.antlr;
 
+import us.bringardner.shell.Console;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,10 +51,104 @@ ${parameter:-word}
 			);
 	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,})(?<colon>[:])?(?<type>[-=?+])(?<val>.*)");
 
+	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
+	private static final Pattern MAP_ELEMENT = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]");
+	private static final Pattern INDIRECT = Pattern.compile("!([a-zA-Z_][a-zA-Z_0-9]*)");
+	private static final Pattern POSITIONAL = Pattern.compile("[0-9]+");
+
+	/**
+	 * ${a[@]} ${a[*]} (the values; [*] joined by the first character of IFS), ${!a[@]} (the indexes
+	 * or keys), ${#a[@]} (how many), ${!ref} (the variable ref names) and ${10}.
+	 * @return the value, or null if text is none of these
+	 */
+	static Object arrayForms(String text, ShellContext sc) {
+		Matcher m = ARRAY_ALL.matcher(text);
+		if( m.matches()) {
+			Object val = sc.getVariable(m.group(2));
+			List<Object> items = new ArrayList<>();
+			if( m.group(1).equals("!")) {
+				if( val instanceof FsshList ) {
+					items.addAll(((FsshList) val).getIndexes());
+				} else if( val instanceof Map<?,?> ) {
+					items.addAll(((Map<?,?>) val).keySet());
+				} else if( val instanceof List<?> ) {
+					for (int idx = 0; idx < ((List<?>) val).size(); idx++) {
+						items.add(idx);
+					}
+				} else if( val != null ) {
+					items.add(0);
+				}
+			} else {
+				items.addAll(values(val));
+			}
+			// ${#a[@]} (Console.convertHash writes # as |)
+			if( m.group(1).equals("#") || m.group(1).equals("|")) {
+				return items.size();
+			}
+			String sep = " ";
+			if( m.group(3).equals("*")) {
+				Object ifs = sc.getVariable(Console.IFS);
+				sep = ifs == null ? " " : ifs.toString().isEmpty() ? "" : ifs.toString().substring(0, 1);
+			}
+			StringBuilder ret = new StringBuilder();
+			for(Object o : items) {
+				if( ret.length() > 0 ) {
+					ret.append(sep);
+				}
+				ret.append(o);
+			}
+			return ret.toString();
+		}
+		m = MAP_ELEMENT.matcher(text);
+		if( m.matches() && sc.getVariable(m.group(1)) instanceof Map<?,?> ) {
+			// ${m[any key]}: the key as written, quotes removed
+			String key = m.group(2);
+			if( key.length() >= 2 && (key.startsWith("\"") && key.endsWith("\"") || key.startsWith("'") && key.endsWith("'"))) {
+				key = key.substring(1, key.length()-1);
+			}
+			Object val = ((Map<?,?>) sc.getVariable(m.group(1))).get(key);
+			return val == null ? "" : val;
+		}
+		m = INDIRECT.matcher(text);
+		if( m.matches()) {
+			Object ref = sc.getVariable(m.group(1));
+			if( ref == null || ref.toString().isEmpty()) {
+				return "";
+			}
+			Object val = sc.getVariable(ref.toString());
+			return val == null ? "" : val;
+		}
+		if( POSITIONAL.matcher(text).matches()) {
+			Object val = sc.getVariable("$"+text);
+			return val == null ? "" : val;
+		}
+		return null;
+	}
+
+	/** the values of an array (in index order) or a map, or a scalar as one value */
+	public static List<Object> values(Object val) {
+		List<Object> ret = new ArrayList<>();
+		if( val instanceof Map<?,?> ) {
+			ret.addAll(((Map<?,?>) val).values());
+		} else if( val instanceof List<?> ) {
+			for(Object o : (List<?>) val) {
+				ret.add(o);
+			}
+		} else if( val != null ) {
+			ret.add(val);
+		}
+		return ret;
+	}
+
 	public Object evaluate(ShellContext sc)  {
 		String fullText = ctx1.getText();
 		fullText = fullText.substring(2,fullText.length()-1);
 		fullText = FileSourceShPreProcessorVisitorImpl.processString(fullText, sc);
+
+		Object array = arrayForms(fullText, sc);
+		if( array != null ) {
+			return array;
+		}
 		
 		Matcher m = NO_RANGE.matcher(fullText);
 		if( m.matches()) {

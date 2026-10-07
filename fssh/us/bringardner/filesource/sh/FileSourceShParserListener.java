@@ -828,6 +828,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitDeclareAssociativeArrayStatement(FileSourceShParser.DeclareAssociativeArrayStatementContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#declareItem}.
+	 * @param ctx the parse tree
+	 */
+	void enterDeclareItem(FileSourceShParser.DeclareItemContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#declareItem}.
+	 * @param ctx the parse tree
+	 */
+	void exitDeclareItem(FileSourceShParser.DeclareItemContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#associativeArrayInitializer}.
 	 * @param ctx the parse tree
 	 */

@@ -5,15 +5,17 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
-import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignmentContext;
+import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
+import us.bringardner.shell.antlr.Arithmetic;
 import us.bringardner.shell.antlr.Expression;
+import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 
 public class AssignStatement extends Statement{
@@ -50,6 +52,13 @@ assignStatement
 		for(AssignmentContext assignment : actx.assignment()) {
 			name = assignment.id1.getText();
 			Object val = valueOf(assignment, ctx);
+			boolean append = assignment.op != null && assignment.op.getType() == FileSourceShParser.PLUS_EQ;
+			ParserRuleContext index = assignment.associative_index() != null ? assignment.associative_index() : assignment.array_index();
+			if( index != null ) {
+				setElement(ctx, name, index, val, append);
+				continue;
+			}
+			val = combine(ctx, name, ctx.getVariable(name), val, append);
 			if( assignment.LOCAL()!=null) {
 				ctx.setLocalVariable(name, val);
 			} else {
@@ -58,6 +67,72 @@ assignStatement
 		}
 		ret = ctx.console.substitutionCount() != before ? ctx.console.getLastExitCode() : 0;
 		return ret;
+	}
+
+	/**
+	 * The new value: x=v, x+=v (text appended, or a number added for declare -i), a+=(v w) (appended
+	 * to the array).
+	 */
+	private static Object combine(ShellContext ctx, String name, Object old, Object val, boolean append) {
+		if( val instanceof List<?> ) {
+			if( !append ) {
+				return val;
+			}
+			FsshList list = new FsshList();
+			if( old instanceof FsshList ) {
+				// keep the indexes (a[5]=z; a+=(w) puts w at 6)
+				for(int idx : ((FsshList) old).getIndexes()) {
+					list.set(idx, ((FsshList) old).get(idx));
+				}
+			} else if( old instanceof List<?> ) {
+				list.addAll((List<?>) old);
+			} else if( old != null ) {
+				list.add(old);
+			}
+			list.addAll((List<?>) val);
+			return list;
+		}
+		if( ctx.console.isInteger(name)) {
+			Number n = Arithmetic.evaluate(""+val, ctx);
+			return append ? Arithmetic.evaluate(""+(old == null ? 0 : old)+"+("+n+")", ctx) : n;
+		}
+		return append ? (old == null ? "" : ""+old)+val : val;
+	}
+
+	/**
+	 * a[i]=v (i is arithmetic) or m[key]=v for an associative array.
+	 */
+	private static void setElement(ShellContext ctx, String name, ParserRuleContext index, Object val, boolean append) {
+		String raw = index.getText();
+		raw = raw.substring(1, raw.length()-1);
+		Object cur = ctx.getVariable(name);
+		Object key;
+		if( cur instanceof java.util.Map<?,?> ) {
+			key = keyText(raw, ctx);
+		} else {
+			int idx = Arithmetic.expandAndEvaluate(raw, ctx).intValue();
+			if( idx < 0 && cur instanceof FsshList ) {
+				List<Integer> indexes = ((FsshList) cur).getIndexes();
+				idx += indexes.isEmpty() ? 0 : indexes.get(indexes.size()-1)+1;
+			}
+			key = idx;
+		}
+		if( append ) {
+			Object old = cur instanceof List<?> && key instanceof Integer ? ((List<?>) cur).get((Integer) key)
+					: cur instanceof java.util.Map<?,?> ? ((java.util.Map<?,?>) cur).get(key) : null;
+			val = (old == null ? "" : ""+old)+val;
+		}
+		ctx.setVariable(name, key, val);
+	}
+
+	/** an associative array key as written: quotes removed, $x expanded */
+	private static String keyText(String raw, ShellContext ctx) {
+		if( raw.length() >= 2 && (raw.startsWith("\"") && raw.endsWith("\"") || raw.startsWith("'") && raw.endsWith("'"))) {
+			String inner = raw.substring(1, raw.length()-1);
+			return raw.startsWith("'") ? inner : FileSourceShPreProcessorVisitorImpl.processString(inner, ctx,
+					FileSourceShPreProcessorVisitorImpl.Quoting.DOUBLE_QUOTED);
+		}
+		return FileSourceShPreProcessorVisitorImpl.processString(raw, ctx);
 	}
 
 	/**

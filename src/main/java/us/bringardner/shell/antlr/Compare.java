@@ -44,6 +44,9 @@ compare : LSQUARE compare_prime RSQUARE
 	}
 
 	private boolean evaluate0(ShellContext sc) throws IOException {
+		if( ctx.DBL_TEST() != null ) {
+			return DoubleBracket.test(ctx.DBL_TEST().getText(), sc) == 0;
+		}
 		if( ctx.ARITH_COMMAND() != null ) {
 			try {
 				return Arithmetic.isTrue(Arithmetic.expandAndEvaluate(Arithmetic.body(ctx.ARITH_COMMAND().getText()), sc));

@@ -2170,6 +2170,21 @@ delimiter
 		lastExitCode = code;
 	}
 
+	/** variables declared with declare -i: an assignment's value is arithmetic */
+	private final java.util.Set<String> integerVariables = ConcurrentHashMap.newKeySet();
+
+	public boolean isInteger(String name) {
+		return integerVariables.contains(name);
+	}
+
+	public void setInteger(String name, boolean integer) {
+		if( integer ) {
+			integerVariables.add(name);
+		} else {
+			integerVariables.remove(name);
+		}
+	}
+
 	/** how many $( ) have run (an assignment's status is that of its $( ), if it has one) */
 	private final java.util.concurrent.atomic.AtomicLong substitutions = new java.util.concurrent.atomic.AtomicLong();
 

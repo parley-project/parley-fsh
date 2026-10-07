@@ -503,6 +503,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitDeclareAssociativeArrayStatement(FileSourceShParser.DeclareAssociativeArrayStatementContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#declareItem}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDeclareItem(FileSourceShParser.DeclareItemContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#associativeArrayInitializer}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

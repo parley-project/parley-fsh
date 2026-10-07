@@ -80,6 +80,7 @@ import us.bringardner.shell.antlr.statement.FunctionDefStatement;
 import us.bringardner.shell.antlr.statement.IfStatement;
 import us.bringardner.shell.antlr.statement.JobControlStatement;
 import us.bringardner.shell.antlr.statement.LogicStatement;
+import us.bringardner.shell.antlr.statement.DoubleBracketStatement;
 import us.bringardner.shell.antlr.statement.MathStatement;
 import us.bringardner.shell.antlr.statement.NegateStatement;
 import us.bringardner.shell.antlr.statement.RedirectedStatement;
@@ -168,7 +169,9 @@ statement
 		}
 		Statement ret = null;
 		//String txt = ctx.getText();
-		if(ctx.pipeStatement()!=null ) {
+		if( ctx.DBL_TEST() != null ) {
+			ret = new DoubleBracketStatement(ctx);
+		} else if(ctx.pipeStatement()!=null ) {
 			ret = visitPipeStatement(ctx.pipeStatement());
 		} else if(ctx.mathStatement()!=null ) {
 			ret = visitMathStatement(ctx.mathStatement());

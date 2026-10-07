@@ -251,6 +251,9 @@ COLON: ':';
 AT:'@';
 TEXT:~[ \t\r\n];
 
+// [[ expression ]]: DoubleBracket evaluates the text (the words are not split or globbed)
+DBL_TEST: {atCommentStart()}? '[[' [ \t\n] .*? [ \t\n] ']]' ;
+
 // $(( expression )) and (( expression )): Arithmetic evaluates the text. Parentheses inside nest.
 // (The three tokens after them are left for text that is not balanced.)
 ARITH_EXPANSION: '$((' ARITH_BODY '))';
