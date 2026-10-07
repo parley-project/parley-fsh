@@ -585,8 +585,15 @@ argumentPart:
 			}
 			ret.addAll(item == null ? List.of("") : expandItem(item, ctx));
 			return ret;
+		} else if( exp.literal != null ) {
+			// {a}, {$v+set}: text, with its variables expanded
+			List<String> ret = new ArrayList<>();
+			for(String s : expandItem(exp.literal, ctx)) {
+				ret.add("{"+s+"}");
+			}
+			return ret;
 		} else {
-			// {a}: text, as written
+			// {}: text, as written
 			return List.of(exp.getText());
 		}
 	}
@@ -598,6 +605,8 @@ argumentPart:
 		for(ParseTree kid : item.children) {
 			if( kid instanceof BraceExpansionContext ) {
 				ret = product(ret, expandBraces((BraceExpansionContext) kid, ctx));
+			} else if( kid instanceof us.bringardner.fsh.parser.FileSourceShParser.BraceTextContext ) {
+				ret = product(ret, List.of(kid.getText()));
 			} else {
 				ret = product(ret, List.of(braceItem((AssociativeArrayValueContext) kid, ctx)));
 			}

@@ -173,6 +173,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCompareStatement(FileSourceShParser.CompareStatementContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#bracketGroup}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBracketGroup(FileSourceShParser.BracketGroupContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#testWords}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -425,6 +431,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitArrayInitializer(FileSourceShParser.ArrayInitializerContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#array_list}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitArray_list(FileSourceShParser.Array_listContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#list}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -550,6 +562,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitBraceItem(FileSourceShParser.BraceItemContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#braceText}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBraceText(FileSourceShParser.BraceTextContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#braceRange}.
 	 * @param ctx the parse tree

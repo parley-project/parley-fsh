@@ -235,12 +235,17 @@ statement
 			return new RedirectedStatement(ctx, test, RerdirectImpl.find(ctx.children));
 		}
 		List<List<Statement>> stmts = new ArrayList<>();
-		if( ctx.statement()!=null) {
+		if( ctx.then != null ) {
+			// [ test ] { cmds }: the group runs if the test passes
 			List<Statement> list = new ArrayList<>();
+			for(Statement_or_statement1Context s : ctx.then.statement_or_statement1()) {
+				Statement tmp = visitStatement_or_statement1(s);
+				if( tmp != null ) {
+					list.add(tmp);
+				}
+			}
 			stmts.add(list);
-			list.add(visitStatement(ctx.statement()));
 		}
-
 		IfStatement ret = new IfStatement(ctx, Arrays.asList(compare), stmts);
 
 		return ret;

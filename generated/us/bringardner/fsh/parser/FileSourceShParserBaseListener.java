@@ -341,6 +341,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterBracketGroup(FileSourceShParser.BracketGroupContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitBracketGroup(FileSourceShParser.BracketGroupContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterTestWords(FileSourceShParser.TestWordsContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -845,6 +857,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterArray_list(FileSourceShParser.Array_listContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitArray_list(FileSourceShParser.Array_listContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterList(FileSourceShParser.ListContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1092,6 +1116,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitBraceItem(FileSourceShParser.BraceItemContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterBraceText(FileSourceShParser.BraceTextContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitBraceText(FileSourceShParser.BraceTextContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

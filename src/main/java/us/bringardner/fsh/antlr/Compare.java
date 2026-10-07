@@ -79,6 +79,9 @@ compare : LSQUARE compare_prime RSQUARE
 		}
 	}
 
+	/** while the redirect of [ ] < file is in place (see evaluate0) */
+	private boolean redirecting;
+
 	/** true if the last evaluate found a [ ] that is not a valid test */
 	public boolean failed;
 
@@ -111,6 +114,30 @@ compare : LSQUARE compare_prime RSQUARE
 		}
 		if( ctx.DBL_TEST() != null ) {
 			return DoubleBracket.test(ctx.DBL_TEST().getText(), sc) == 0;
+		}
+		if( ctx.bracketRedirect != null && !redirecting ) {
+			// if [ -r /dev/stdin ] < /dev/null: the test with the redirect in place
+			boolean[] result = new boolean[1];
+			Statement test = new Statement(ctx) {
+				@Override
+				protected int execute(ShellContext s) throws IOException {
+					redirecting = true;
+					try {
+						result[0] = evaluate0(s);
+					} finally {
+						redirecting = false;
+					}
+					return result[0] ? 0 : 1;
+				}
+			};
+			java.util.List<org.antlr.v4.runtime.tree.ParseTree> kids = new java.util.ArrayList<>();
+			kids.add(ctx.bracketRedirect);
+			new us.bringardner.fsh.antlr.statement.RedirectedStatement(ctx, test, RerdirectImpl.find(kids)).process(sc);
+			return result[0];
+		}
+		if( ctx.assign != null ) {
+			// if x=$(cmd); then
+			return new FileSourceShVisitorImpl().visitAssignStatement(ctx.assign).process(sc) == 0;
 		}
 		if( ctx.pipe != null ) {
 			return new FileSourceShVisitorImpl().visitPipeStatement(ctx.pipe).process(sc) == 0;

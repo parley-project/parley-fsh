@@ -42,6 +42,9 @@ lexer grammar FileSourceShLexer;
 			} else if( c == '$' && i+1 < text.length() && text.charAt(i+1) == '{' ) {
 				depth++;
 				i++;
+			} else if( c == '{' ) {
+				// ${b:-{c}}: braces in the word pair up
+				depth++;
 			} else if( c == '}' && depth > 0 ) {
 				depth--;
 			}
@@ -96,6 +99,8 @@ SEMI_SEMI:';;';
 SEMI_AMP:';&';
 SEMI_SEMI_AMP:';;&';
 DOLLAR_PAREM:'$(';
+// before HASH: a lone # line is a comment too (on a tie the first rule wins)
+LINE_COMMENT: {atCommentStart()}? '#' ~[\r\n]* -> skip;
 HASH:'#';
 
 NL:  '\n';
@@ -200,7 +205,6 @@ FALSE: 'false' {atKeywordEnd()}?;
 
 // # starts a comment only at the start of a word (a#b and $# are not comments); the newline after
 // it is kept, so the next line stays a separate command
-LINE_COMMENT: {atCommentStart()}? '#' ~[\r\n]* -> skip;
 
 
 

@@ -6,7 +6,8 @@ options {
    
 }
 
-script: SHEBANG? statement+ EOF;
+// a script may end in blank lines (or comments), or be only comments
+script: SHEBANG? statement* white* EOF;
 
 	
 conditionalStatement:
@@ -85,6 +86,8 @@ path_segment: TILDE
         | LOCAL        
         | COLON
         | SPECIAL_UNIX
+        // homebrew-update-if-needed, setup-gem-x: -ne -ge ... lex as test operators
+        | TEST_OP | EQUALITY | NOT_EQ
 		;
 
 path_segment_list: path_segment +;
@@ -120,6 +123,8 @@ argumentPart:
              | SPECIAL_UNIX
              // !(*.o), @(a|b) ...
              | EXTGLOB
+             // grep ^abc
+             | POS
              // [[:alpha:]]*: a character class in a pattern
              | POSIX_CHAR_CLASS)
     | string
@@ -142,7 +147,8 @@ signed_number: (MINUS|PLUS|PERC)? NUMBER;
 // command before it could choose (seconds for a long path)
 commandStatement:
       // VAR=value cmd: the assignments are for this command only
-      WS*	redirect1=redirect? WS* (prefix+=assignment WS+)* command (WS+ argument)* WS* (hereDocument WS*)? redirect2=redirect?
+      // redirects may come between the arguments: echo >&2 "msg", cat <in >out -
+      WS*	redirect1=redirect? WS* (prefix+=assignment WS+)* command (WS+ argument | WS* redirect)* WS* (hereDocument WS*)? redirect2=redirect?
     ;
     
     
@@ -195,11 +201,15 @@ pipeOp:
 	PIPE white* AMP?
 	;    
 
-// [ words ] (test's arguments, then a redirect may follow); the second form is this shell's grouping
+// [ words ] (test's arguments, then a redirect may follow). This shell also runs a { } group
+// after ] if the test passes: [ 1 -gt 0 ] {echo yes}. (Any statement could follow, which made
+// [ x ] > /dev/null && y read > /dev/ as its redirect and null as its command.)
 compareStatement:
-      LSQUARE testWords RSQUARE (WS* redirect)? WS* statement?
-    | LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* statement?
+      LSQUARE testWords RSQUARE (WS* redirect)? WS* (then=bracketGroup WS*)?
+    | LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* (then=bracketGroup WS*)?
     ;
+
+bracketGroup: LCURLY white* (statement_or_statement1 white*)* RCURLY;
 
 testWords: (WS+ argument)* WS+ ;
 
@@ -218,9 +228,11 @@ boolean_statement: boolean;
 compare : 
 		  // if ( cmds ); then, while { cmds; }: the group's status
 		  WS* group=statement_group1 (';' WS*)?
+		  // if x=$(cmd); then: the assignment's status (the $( )'s)
+		| WS* assign=assignStatement (';' WS*)?
 		  // if declare -F f >/dev/null; then
 		| WS* declare=declareAssociativeArrayStatement (';' WS*)?
-		| WS* LSQUARE testWords RSQUARE (';' WS*)?   // if [ -e f -a -d d ]
+		| WS* LSQUARE testWords RSQUARE (WS* bracketRedirect=redirect)? (';' WS*)?   // if [ -e f -a -d d ]
 		| WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
 		| WS* DBL_TEST (';' WS*)?        // if [[ $x == a* ]]
 		| WS* compare_prime (';' WS*)?
@@ -229,8 +241,9 @@ compare :
         // if echo x | grep -q x; then: a pipeline's status
         | WS* pipe=pipeStatement (';' WS*)?
         | WS* NOT notCompare=compare
-        | left=compare WS* AND WS* right=compare
-        | left=compare WS* OR WS*  right=compare
+        // a newline may follow && or ||: if a &&\n   b; then
+        | left=compare WS* AND white* right=compare
+        | left=compare WS* OR white*  right=compare
         ;
 
 compare_prime: 
@@ -435,13 +448,17 @@ functionDefinition:
     ;
 
 // my-func, lib.init, ns::f
-funcName: ID ((MINUS | DOT | COLON | ID | NUMBER)* ID)? ;
+// my-func, lib.init, ns::f, homebrew---taps, setup-gem-x (-ge and -gem lex as other tokens)
+funcName: ID ((MINUS | MINUS_MINUS | DOT | COLON | ID | NUMBER | TEST_OP | EQUALITY | NOT_EQ | ARG_ID)* (ID | NUMBER))? ;
 
 string : DQ_STRING | SQ_STRING | ANSI_STRING | ESC;
 
 arrayInitializer:
-     LPAREN argument_list RPAREN
+     LPAREN array_list RPAREN
     ;
+
+// a=( on several lines, with comments )
+array_list: white* (argument (white+ argument)* white*)? ;
 
 // ends at a newline or ;, as in bash
 list: 
@@ -547,7 +564,9 @@ braceExpansion: LCURLY (braceRange|braceArgList|literal=braceItem?) RCURLY
 	
 // {a,b{1,2},}: at least one comma ({a} is text); an item is text and braces, and may be empty
 braceArgList: braceItem? (COMMA braceItem?)+;
-braceItem: (associativeArrayValue | braceExpansion)+;
+braceItem: (associativeArrayValue | braceExpansion | braceText)+;
+// x\${$v+set}, {a.b,c/d}: punctuation in an item is text
+braceText: PLUS | MINUS | DOT | COLON | SLASH | EQ | AT | STAR | QUESTION | TILDE | PERC | ESC;
 braceRange: start=braceBound DOT_DOT end=braceBound (DOT_DOT incr=braceBound)?;
 // {-2..2}
 braceBound: MINUS? associativeArrayValue;

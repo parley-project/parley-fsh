@@ -194,7 +194,7 @@ assignStatement
 			if( ctx.getVariable(actx.id1.getText()) instanceof java.util.Map<?,?> ) {
 				// m=([k]=v ...) of an associative array (declare -A m): keys, not indexes
 				java.util.Map<String,Object> map = new java.util.TreeMap<>();
-				for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
+				for(ArgumentContext ac : actx.arrayInitializer().array_list().argument()) {
 					String text = ""+new Argument(ac).getValue(ctx);
 					int close = text.indexOf("]=");
 					if( text.startsWith("[") && close > 0 ) {
@@ -206,7 +206,7 @@ assignStatement
 				return map;
 			}
 			FshList list = new FshList();
-			for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
+			for(ArgumentContext ac : actx.arrayInitializer().array_list().argument()) {
 				java.util.regex.Matcher m = INDEXED.matcher(ac.getText());
 				if( m.matches()) {
 					String text = ""+new Argument(ac).getValue(ctx);

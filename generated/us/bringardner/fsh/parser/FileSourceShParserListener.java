@@ -278,6 +278,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitCompareStatement(FileSourceShParser.CompareStatementContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#bracketGroup}.
+	 * @param ctx the parse tree
+	 */
+	void enterBracketGroup(FileSourceShParser.BracketGroupContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#bracketGroup}.
+	 * @param ctx the parse tree
+	 */
+	void exitBracketGroup(FileSourceShParser.BracketGroupContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#testWords}.
 	 * @param ctx the parse tree
 	 */
@@ -698,6 +708,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitArrayInitializer(FileSourceShParser.ArrayInitializerContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#array_list}.
+	 * @param ctx the parse tree
+	 */
+	void enterArray_list(FileSourceShParser.Array_listContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#array_list}.
+	 * @param ctx the parse tree
+	 */
+	void exitArray_list(FileSourceShParser.Array_listContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#list}.
 	 * @param ctx the parse tree
 	 */
@@ -907,6 +927,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitBraceItem(FileSourceShParser.BraceItemContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#braceText}.
+	 * @param ctx the parse tree
+	 */
+	void enterBraceText(FileSourceShParser.BraceTextContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#braceText}.
+	 * @param ctx the parse tree
+	 */
+	void exitBraceText(FileSourceShParser.BraceTextContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#braceRange}.
 	 * @param ctx the parse tree

@@ -195,7 +195,7 @@ associativeArrayElement
 				val = map;
 			} else if( item.arrayInitializer() != null ) {
 				FshList list = new FshList();
-				for(ArgumentContext ac : item.arrayInitializer().argument_list().argument()) {
+				for(ArgumentContext ac : item.arrayInitializer().array_list().argument()) {
 					for(String w : us.bringardner.fsh.Glob.expandWord(ac, sc)) {
 						list.add(w);
 					}
