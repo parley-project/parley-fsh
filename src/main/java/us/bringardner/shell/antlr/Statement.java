@@ -95,7 +95,7 @@ public abstract class Statement {
 		case ">":
 		case ">|": {
 			FileSource file = ctx.getFileSource(word);
-			if( op.equals(">") && file.exists() && ctx.console.options.contains(Option.NoClobberRedirect)) {
+			if( op.equals(">") && file.exists() && ctx.console.isOptionEnabled(Option.NoClobberRedirect)) {
 				throw new IOException(word+": cannot overwrite existing file");
 			}
 			setOut(ctx, fd == null ? 1 : fd, new PrintStream(file.getOutputStream()), file, opened);

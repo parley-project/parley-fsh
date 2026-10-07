@@ -209,7 +209,7 @@ public class ShellContext {
 	 * @return
 	 */
 	private Object getSpecialParameter(String name) {
-		List<Object> positionalParameters = console.positionalParameters;
+		List<Object> positionalParameters = topPositional();
 		if( !functionStack.isEmpty()) {
 			positionalParameters = functionStack.peek().args;
 		}
@@ -283,7 +283,7 @@ public class ShellContext {
 		or those set by the shell itself (such as the -i option).
 		 */
 		case '-':StringBuilder bufx = new StringBuilder();
-		for(Option flag : console.options) {
+		for(Option flag : console.getOptions()) {
 			bufx.append(flag.label);
 		}
 
@@ -606,9 +606,9 @@ $
 				return null;
 			}
 		} else {
-			int sz = console.positionalParameters.size();
+			int sz = topPositional().size();
 			if( pos < sz) {
-				return console.positionalParameters.get(pos);
+				return topPositional().get(pos);
 			}
 		}
 		return "";
@@ -691,6 +691,9 @@ $
 		if( isolated != null ) {
 			ret.isolated = new java.util.HashMap<>(isolated);
 		}
+		if( stagePositional != null ) {
+			ret.stagePositional = new ArrayList<>(stagePositional);
+		}
 		return ret;
 	}
 
@@ -698,6 +701,19 @@ $
 	 * A subshell for a pipe stage: it runs at the same time as the shell, so it gets its own
 	 * variables instead of a snapshot ( ... ) would restore.
 	 */
+	/** a pipe stage's own $0 $1 ... (set -- there), or null: the shell's */
+	private List<Object> stagePositional;
+
+	/** $0 $1 ... outside a function: the stage's own, or the shell's */
+	private List<Object> topPositional() {
+		return stagePositional != null ? stagePositional : console.positionalParameters;
+	}
+
+	/** this is (in) a pipe stage */
+	public boolean isIsolated() {
+		return isolated != null;
+	}
+
 	public ShellContext isolatedSubShell() {
 		ShellContext ret = subShell();
 		if( ret.isolated == null ) {
@@ -917,7 +933,7 @@ $
 		@SuppressWarnings("unchecked")
 		Map<String,Object> local = (Map<String, Object>) map.get(LOCAL_VARIABLES);
 		ret.putAll(local);
-		Object zero = console.positionalParameters.get(0);
+		Object zero = topPositional().get(0);
 		ret.put("$0", zero);
 
 		if( functionStack.size()>0) {
@@ -927,7 +943,7 @@ $
 				ret.put("$"+idx, val);
 			}
 		} else {
-			List<Object> list = console.positionalParameters;
+			List<Object> list = topPositional();
 			for(int idx=0,sz=list.size(); idx<sz; idx++ ) {
 				Object val = list.get(idx) ;
 				ret.put("$"+idx, val);
@@ -942,7 +958,7 @@ $
 	 * @return $1, $2 ... of the running function, or of the script outside a function
 	 */
 	public List<Object> getPositionalParameterValues() {
-		List<Object> all = functionStack.isEmpty() ? console.positionalParameters : functionStack.peek().args;
+		List<Object> all = functionStack.isEmpty() ? topPositional() : functionStack.peek().args;
 		List<Object> ret = new ArrayList<>();
 		if( all != null ) {
 			for(int idx=1, sz=all.size(); idx < sz; idx++) {
@@ -956,7 +972,13 @@ $
 	 * Set $1, $2 ... of the running function, or of the script outside a function ($0 is kept).
 	 */
 	public void setPositionalParameterValues(List<Object> values) {
-		if( functionStack.isEmpty()) {
+		if( functionStack.isEmpty() && isolated != null ) {
+			// set -- in a pipe stage changes the stage's
+			List<Object> list = new ArrayList<>();
+			list.add(topPositional().isEmpty() ? "" : topPositional().get(0));
+			list.addAll(values);
+			stagePositional = list;
+		} else if( functionStack.isEmpty()) {
 			console.setPositionalParameters(false, values);
 		} else {
 			List<Object> args = functionStack.peek().args;
@@ -969,7 +991,7 @@ $
 
 	public List<Object>  getAllPositionalParameters() {
 		List<Object> ret = new ArrayList<>();
-		ret.addAll(console.positionalParameters);
+		ret.addAll(topPositional());
 
 		if( functionStack.size()>0) {
 			FunctionInvocation inv = functionStack.peek();

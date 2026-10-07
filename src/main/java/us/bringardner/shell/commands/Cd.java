@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.io.filesource.FileSource;
+import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 
@@ -61,8 +62,13 @@ public class Cd extends ShellCommand{
 			return -1;
 		}
 
-		//  PWD and OLD_PWD variables are managed by console
+		//  PWD and OLD_PWD variables are managed by console (in a pipe stage, set here: the stage's own)
+		String old = ctx.console.getCurrentDirectory().getAbsolutePath();
 		ctx.console.setCurrentDirectory(dir);
+		if( ctx.isIsolated()) {
+			ctx.setVariable(Console.VARIABLE_OLDPWD, old);
+			ctx.setVariable(Console.VARIABLE_PWD, dir.getAbsolutePath());
+		}
 		
 		
 		

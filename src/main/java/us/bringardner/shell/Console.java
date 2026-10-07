@@ -554,6 +554,10 @@ delimiter
 			started = running = true;
 			start = System.currentTimeMillis();
 			try {
+				if( ctx.isIsolated()) {
+					// a pipe stage: its own directory and options
+					ctx.console.enterStage();
+				}
 				exitCode = cmd.process(ctx);
 			} catch (Exception e) {
 				error = e;
@@ -996,7 +1000,7 @@ delimiter
 					int exitCode = job.getExitCode();
 					if( exitCode!=0 ) {
 						handleMetaSignal(ConsoleMetaSignal.Err);
-						if(isInteractive && options.contains(Option.ExitImediately)) {
+						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 							Console.exit(this,exitCode);
 						}
 					}
@@ -1136,7 +1140,7 @@ delimiter
 					exitCode = executeAsJob(job);	
 					if( exitCode!=0) {
 						handleMetaSignal(ConsoleMetaSignal.Err);
-						if(isInteractive && options.contains(Option.ExitImediately)) {
+						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 							Console.exit(this,exitCode);
 						}
 					}
@@ -1147,7 +1151,7 @@ delimiter
 					exitCode = executeAsJob(e.job);
 					if( exitCode!=0) {
 						handleMetaSignal(ConsoleMetaSignal.Err);
-						if(isInteractive && options.contains(Option.ExitImediately)) {
+						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 							Console.exit(this,exitCode);
 						}
 					}
@@ -2043,6 +2047,7 @@ delimiter
 		private final Map<String,Object> environment;
 		private final List<Object> positional;
 		private final List<Option> options;
+		private final Map<String,Boolean> shellOptions;
 		private final Map<String,Object> alias;
 		private final Map<String,FunctionDefStatement> functions;
 		private final FileSource cwd;
@@ -2052,7 +2057,8 @@ delimiter
 			variables = new TreeMap<>(c.variables);
 			environment = new TreeMap<>(c.environmentVariables);
 			positional = new ArrayList<>(c.positionalParameters);
-			options = new ArrayList<>(c.options);
+			options = new ArrayList<>(c.optionList());
+			shellOptions = new TreeMap<>(c.getShellOptions());
 			alias = new TreeMap<>(c.alias);
 			functions = new TreeMap<>(c.functions);
 			cwd = c.getCurrentDirectory();
@@ -2071,13 +2077,15 @@ delimiter
 		environmentVariables.putAll(s.environment);
 		positionalParameters.clear();
 		positionalParameters.addAll(s.positional);
-		options.clear();
-		options.addAll(s.options);
+		optionList().clear();
+		optionList().addAll(s.options);
+		getShellOptions().clear();
+		getShellOptions().putAll(s.shellOptions);
 		alias.clear();
 		alias.putAll(s.alias);
 		functions.clear();
 		functions.putAll(s.functions);
-		mountFactory.setCurrentDirectory(s.cwd);
+		changeDirectory(s.cwd);
 		synchronized (this) {
 			// close what the subshell opened (exec 3>file) and put back what it closed or replaced
 			for(Integer id : new ArrayList<>(files.keySet())) {
@@ -2093,9 +2101,54 @@ delimiter
 		}
 	}
 
-	public FileSource getCurrentDirectory() throws IOException {
+	/**
+	 * A pipe stage's own current directory and options: the stage runs on its own thread, at the
+	 * same time as the shell, so cd, set -x and shopt there must not change the shell's (bash's
+	 * stages are subshells). Threads a stage starts inherit it.
+	 */
+	public static final class StageState {
+		FileSource cwd;
+		List<Option> options;
+		Map<String,Boolean> shellOptions;
+	}
 
-		return mountFactory.getCurrentDirectory();
+	private final InheritableThreadLocal<StageState> stage = new InheritableThreadLocal<>();
+
+	/**
+	 * This thread is a pipe stage: from now on it has its own copy of the directory and options.
+	 */
+	public void enterStage() throws IOException {
+		StageState s = new StageState();
+		s.cwd = getCurrentDirectory();
+		s.options = new java.util.concurrent.CopyOnWriteArrayList<>(optionList());
+		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
+		stage.set(s);
+	}
+
+	/** the options in effect on this thread (a stage's own, or the shell's) */
+	private List<Option> optionList() {
+		StageState s = stage.get();
+		return s != null ? s.options : options;
+	}
+
+	/** the options set now (set -e ... , $-) */
+	public List<Option> getOptions() {
+		return Collections.unmodifiableList(new ArrayList<>(optionList()));
+	}
+
+	public FileSource getCurrentDirectory() throws IOException {
+		StageState s = stage.get();
+		return s != null ? s.cwd : mountFactory.getCurrentDirectory();
+	}
+
+	/** set the directory without PWD and OLDPWD (a stage's, or the shell's) */
+	private void changeDirectory(FileSource dir) throws IOException {
+		StageState s = stage.get();
+		if( s != null ) {
+			s.cwd = dir;
+		} else {
+			mountFactory.setCurrentDirectory(dir);
+		}
 	}
 
 
@@ -2119,28 +2172,37 @@ delimiter
 		if( path.equals("..")) {
 			return getCurrentDirectory().getParentFile();			
 		}
-		
+		StageState s = stage.get();
+		if( s != null && !path.isEmpty() && !path.startsWith("/") && !path.startsWith("~") && !(path.length() > 1 && path.charAt(1) == ':')) {
+			// relative to the stage's own directory
+			String dir = s.cwd.getAbsolutePath();
+			return mountFactory.createFileSource(dir.endsWith("/") ? dir+path : dir+"/"+path);
+		}
 		return mountFactory.createFileSource(path);
 	}
 
 
 
 	public void setCurrentDirectory(FileSource dir) throws IOException {
-		setVariable(VARIABLE_OLDPWD, getCurrentDirectory().getAbsolutePath());
-		mountFactory.setCurrentDirectory(dir);				
-		setVariable(VARIABLE_PWD, dir.getAbsolutePath());
+		String old = getCurrentDirectory().getAbsolutePath();
+		changeDirectory(dir);
+		if( stage.get() == null ) {
+			// (in a pipe stage cd sets the stage's PWD and OLDPWD)
+			setVariable(VARIABLE_OLDPWD, old);
+			setVariable(VARIABLE_PWD, dir.getAbsolutePath());
+		}
 	}
 
 	public boolean isOptionEnabled(Option o) {
-		return options.contains(o);
+		return optionList().contains(o);
 	}
 
 
 	public void setOption(Option o,boolean enable) {
 		if( !enable ) {
-			options.remove(o);
-		} else if(!options.contains(o)) {
-			options.add(o);
+			optionList().remove(o);
+		} else if(!optionList().contains(o)) {
+			optionList().add(o);
 		}
 	}
 
@@ -2216,7 +2278,8 @@ delimiter
 	}
 
 	public Map<String,Boolean> getShellOptions() {
-		return shellOptions;
+		StageState s = stage.get();
+		return s != null ? s.shellOptions : shellOptions;
 	}
 
 	/** getopts: OPTIND and where in that word the next letter is */
@@ -2479,7 +2542,7 @@ delimiter
 				handleMetaSignal(ConsoleMetaSignal.Debug);
 				ret = stmt.process(sc);
 				// the caller (Console.run) handles the ERR trap and exit for -e
-				if( ret !=0 && options.contains(Option.ExitImediately)) {
+				if( ret !=0 && isOptionEnabled(Option.ExitImediately)) {
 					return ret;
 				}
 			}
@@ -2589,14 +2652,14 @@ delimiter
 				ret = stmt.process(sc);			
 				if( ret !=0) {
 					handleMetaSignal(ConsoleMetaSignal.Err);
-					if(isInteractive && options.contains(Option.ExitImediately)) {
+					if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 						break;
 					}					
 				}
 			}		
 			if( ret!=0) {
 				// (ERR ran after the failed statement)
-				if(isInteractive && options.contains(Option.ExitImediately)) {
+				if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 					Console.exit(sc.console,ret);
 				}
 				return ret;
