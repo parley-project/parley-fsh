@@ -319,6 +319,7 @@ redirectionOperator:
     | REDIRECT_BOTH_2 //&>word
     | REDIRECT_READ_WRITE // <>
     | REDIRECT_INPUT_FROM_FID // <&
+    | HERE_STRING // <<<word
     ;
 
 

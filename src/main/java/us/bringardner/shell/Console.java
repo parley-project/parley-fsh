@@ -303,7 +303,8 @@ public class Console extends SignalEnabledThread {
         here-document
 delimiter
 	 */
-	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?<<\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
+	// << but not <<< (a here-string: cat <<<word)
+	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?(?<!<)<<(?!<)\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
 	public static boolean debugPositional = false;
 	//terminal used for debugging
 	public static PrintStream System_out = System.out;

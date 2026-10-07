@@ -53,6 +53,8 @@ lexer grammar FileSourceShLexer;
 PARAMETER_START: '${' ->pushMode(ParameterMode);
 
 HERE_START:'<<';
+// cmd <<< word: word and a newline are the input
+HERE_STRING:'<<<';
 HERE_START_RM_TABS:'<<-';
 
 

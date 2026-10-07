@@ -1,6 +1,7 @@
 package us.bringardner.shell.antlr;
 
 import java.awt.Point;
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -104,6 +105,10 @@ public abstract class Statement {
 			setIn(ctx, fd == null ? 0 : fd, file.getInputStream(), file, opened);
 			break;
 		}
+		case "<<<":
+			// a here-string: the word and a newline
+			setIn(ctx, fd == null ? 0 : fd, new ByteArrayInputStream((word+"\n").getBytes()), null, opened);
+			break;
 		case ">&":
 			if( fd == null && !isDescriptor(word)) {
 				// >&word is &>word

@@ -344,4 +344,16 @@ public class TestWords extends AbstractConsoleTest {
 		// the status still comes out
 		expect("( exit 4 ); echo $?; x=$(exit 5); echo $?", "4\n5\n");
 	}
+
+	@Test
+	public void testHereString() throws IOException {
+		expect("cat <<< \"here\"; cat <<< here; cat <<<here", "here\nhere\nhere\n");
+		// the word is expanded but not split
+		expect("x=\"a  b\"; cat <<< \"$x\"; x=\"a b\"; cat <<< $x", "a  b\na b\n");
+		expect("read a b <<< \"one two\"; echo \"$b-$a\"", "two-one\n");
+		expect("f() { cat; }; f <<< fn; cat 0<<< zero", "fn\nzero\n");
+		expect("cat <<< q > "+path("hs.txt")+"; cat "+path("hs.txt"), "q\n");
+		// a here-document next to a here-string
+		expect("cat <<EOF\ndoc\nEOF\ncat <<< str", "doc\nstr\n");
+	}
 }
