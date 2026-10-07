@@ -275,6 +275,11 @@ COLON: ':';
 AT:'@';
 TEXT:~[ \t\r\n];
 
+// extended patterns (shopt -s extglob in bash): ?(a|b) *(a|b) +(a|b) @(a|b) !(a|b), with nesting.
+// Part of a word; outside a pattern they are syntax errors in bash, so they are always read.
+EXTGLOB: [?*+@!] '(' EXTGLOB_BODY ')' ;
+fragment EXTGLOB_BODY: ( ~[()] | '(' EXTGLOB_BODY ')' )* ;
+
 // [[ expression ]]: DoubleBracket evaluates the text (the words are not split or globbed)
 DBL_TEST: {atCommentStart()}? '[[' [ \t\n] .*? [ \t\n] ']]' ;
 

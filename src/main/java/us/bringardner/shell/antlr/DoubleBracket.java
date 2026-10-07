@@ -158,6 +158,9 @@ public class DoubleBracket {
 				idx = quoteEnd(body, idx);
 			} else if( c == '$' && idx+1 < n && (body.charAt(idx+1) == '(' || body.charAt(idx+1) == '{')) {
 				idx = closeEnd(body, idx+1);
+			} else if( !regex && c == '(' && idx > 0 && "?*+@!".indexOf(body.charAt(idx-1)) >= 0 && (idx-1 >= start) ) {
+				// an extended pattern: a@(b|c), !(x)
+				idx = closeEnd(body, idx);
 			} else if( regex && c == '(' ) {
 				parens++;
 				idx++;

@@ -115,7 +115,9 @@ argumentPart:
              // # in a word is text (a#b); at the start of a word it begins a comment
              | HASH
              // a lone - _ + = or ~ ( _* )
-             | SPECIAL_UNIX)
+             | SPECIAL_UNIX
+             // !(*.o), @(a|b) ...
+             | EXTGLOB)
     | string
     | argVariable
     | parameter

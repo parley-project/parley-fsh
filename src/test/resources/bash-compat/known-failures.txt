@@ -6,6 +6,4 @@
 # reads a whole line before an alias defined on it takes effect; this shell always expands them.
 alias-expand
 
-# Not yet: extended patterns !(...) @(...) +(...) need the lexer to read them.
-shopt-extglob
 

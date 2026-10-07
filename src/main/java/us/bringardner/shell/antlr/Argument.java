@@ -141,7 +141,7 @@ argumentPart:
 			if( part.literal != null ) {
 				int type = part.literal.getType();
 				if( type == FileSourceShParser.STAR || type == FileSourceShParser.QUESTION
-						|| type == FileSourceShParser.LSQUARE) {
+						|| type == FileSourceShParser.LSQUARE || type == FileSourceShParser.EXTGLOB) {
 					return true;
 				}
 			}

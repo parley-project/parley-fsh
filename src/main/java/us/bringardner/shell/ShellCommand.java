@@ -221,12 +221,67 @@ public abstract class ShellCommand {
 	 * every other character is itself (+ ( . are not regular expression operators here).
 	 * @param greedy false: * and ? match as little as they can (for # and % in ${x#pat})
 	 */
+	/** the index of the ) that closes the ( at open, or -1 */
+	private static int extEnd(String text, int open) {
+		int depth = 0;
+		for (int idx = open; idx < text.length(); idx++) {
+			char c = text.charAt(idx);
+			if( c == '\\' ) {
+				idx++;
+			} else if( c == '(' ) {
+				depth++;
+			} else if( c == ')' && --depth == 0 ) {
+				return idx;
+			}
+		}
+		return -1;
+	}
+
+	/** a|b|c (| inside nested parentheses is not split) as regular expressions joined by | */
+	private static String alternatives(String body, boolean greedy) {
+		StringBuilder ret = new StringBuilder();
+		int depth = 0;
+		int start = 0;
+		for (int idx = 0; idx <= body.length(); idx++) {
+			char c = idx < body.length() ? body.charAt(idx) : '|';
+			if( c == '\\' ) {
+				idx++;
+			} else if( c == '(' ) {
+				depth++;
+			} else if( c == ')' ) {
+				depth--;
+			} else if( c == '|' && depth == 0 ) {
+				if( ret.length() > 0 ) {
+					ret.append('|');
+				}
+				ret.append(prepWildCards(body.substring(start, Math.min(idx, body.length())), greedy));
+				start = idx+1;
+			}
+		}
+		return ret.toString();
+	}
+
 	public static String prepWildCards(String cleanPath,boolean greedy) {
 		StringBuilder ret = new StringBuilder();
 		String lazy = greedy ? "" : "?";
 		int n = cleanPath.length();
 		for (int idx = 0; idx < n; idx++) {
 			char c = cleanPath.charAt(idx);
+			int ext = "?*+@!".indexOf(c) >= 0 && idx+1 < n && cleanPath.charAt(idx+1) == '(' ? extEnd(cleanPath, idx+1) : -1;
+			if( ext > 0 ) {
+				// ?(a|b) *(a|b) +(a|b) @(a|b) !(a|b)
+				String alts = alternatives(cleanPath.substring(idx+2, ext), greedy);
+				if( c == '!' ) {
+					// anything that is not one of them: the rest of the pattern must not match them
+					// followed by what comes after
+					String rest = prepWildCards(cleanPath.substring(ext+1), greedy);
+					ret.append("(?:(?!(?:").append(alts).append(")(?:").append(rest).append(")$).*?)").append(rest);
+					return ret.toString();
+				}
+				ret.append("(?:").append(alts).append(')').append(c == '@' ? "" : ""+c);
+				idx = ext;
+				continue;
+			}
 			switch (c) {
 			case '*': ret.append(".*").append(lazy); break;
 			case '?': ret.append('.'); break;

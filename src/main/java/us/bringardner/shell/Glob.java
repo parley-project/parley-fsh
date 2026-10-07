@@ -47,7 +47,8 @@ public class Glob {
 
 	/** true if text has *, ? or [ (a word that is a pattern) */
 	public static boolean isPattern(String text) {
-		return text.indexOf('*') >= 0 || text.indexOf('?') >= 0 || text.indexOf('[') >= 0;
+		return text.indexOf('*') >= 0 || text.indexOf('?') >= 0 || text.indexOf('[') >= 0
+				|| text.contains("@(") || text.contains("!(") || text.contains("+(");
 	}
 
 	/**
