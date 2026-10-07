@@ -11,6 +11,7 @@ import us.bringardner.filesource.sh.FileSourceShParser.AssignStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.AssignmentContext;
 import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.shell.FsshList;
+import us.bringardner.shell.Glob;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
 import us.bringardner.shell.antlr.Arithmetic;
@@ -147,16 +148,28 @@ assignStatement
 	/**
 	 * The value of one assignment: a=(...) is a list, a= is empty, and a value with one part keeps its type.
 	 */
+	private static final java.util.regex.Pattern INDEXED = java.util.regex.Pattern.compile("\\[[^\\]]+\\]=.*", java.util.regex.Pattern.DOTALL);
+
 	public static Object valueOf(AssignmentContext actx, ShellContext ctx) throws IOException {
 
 		Object val = null;
 		
 		if( actx.arrayInitializer()!=null) {
-			List<Object> list = new FsshList();
+			// each item is a word, expanded like a command's ("${a[@]}", $(cmd), *.c); [i]=v sets
+			// element i
+			FsshList list = new FsshList();
 			for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
-				Argument arg = new Argument(ac);
-				Object v = arg.getValue(ctx);
-				list.add(v);
+				java.util.regex.Matcher m = INDEXED.matcher(ac.getText());
+				if( m.matches()) {
+					String text = ""+new Argument(ac).getValue(ctx);
+					int close = text.indexOf("]=");
+					int idx = Arithmetic.expandAndEvaluate(text.substring(1, close), ctx).intValue();
+					list.set(idx, text.substring(close+2));
+					continue;
+				}
+				for(String w : Glob.expandWord(ac, ctx)) {
+					list.add(w);
+				}
 			}
 			val = list;
 		} else if( actx.value == null ) {

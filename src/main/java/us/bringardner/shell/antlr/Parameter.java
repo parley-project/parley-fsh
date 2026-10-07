@@ -52,6 +52,10 @@ ${parameter:-word}
 	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,})(?<colon>[:])?(?<type>[-=?+])(?<val>.*)");
 
 	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
+	private static final Pattern ARRAY_OP = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]([/#|%^,].*)", Pattern.DOTALL);
+	private static final Pattern LENGTH = Pattern.compile("[#|]([a-zA-Z_][a-zA-Z_0-9]*)");
+	/** a variable for one element while ${a[@]/x/y} works on it */
+	private static final String ELEMENT = "__bjlshell_element";
 	private static final Pattern TOGGLE_CASE = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)(~~?)");
 	private static final Pattern SIMPLE_NAME = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
 	private static final Pattern MAP_ELEMENT = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]");
@@ -69,17 +73,7 @@ ${parameter:-word}
 			Object val = sc.getVariable(m.group(2));
 			List<Object> items = new ArrayList<>();
 			if( m.group(1).equals("!")) {
-				if( val instanceof FsshList ) {
-					items.addAll(((FsshList) val).getIndexes());
-				} else if( val instanceof Map<?,?> ) {
-					items.addAll(((Map<?,?>) val).keySet());
-				} else if( val instanceof List<?> ) {
-					for (int idx = 0; idx < ((List<?>) val).size(); idx++) {
-						items.add(idx);
-					}
-				} else if( val != null ) {
-					items.add(0);
-				}
+				items.addAll(keys(val));
 			} else {
 				items.addAll(values(val));
 			}
@@ -100,6 +94,34 @@ ${parameter:-word}
 				ret.append(o);
 			}
 			return ret.toString();
+		}
+		m = ARRAY_OP.matcher(text);
+		if( m.matches()) {
+			// ${a[@]/x/y}, ${a[@]#pat} ...: the operation on each element
+			StringBuilder ret = new StringBuilder();
+			String sep = " ";
+			if( m.group(2).equals("*")) {
+				Object ifs = sc.getVariable(Console.IFS);
+				sep = ifs == null ? " " : ifs.toString().isEmpty() ? "" : ifs.toString().substring(0, 1);
+			}
+			for(Object e : values(sc.getVariable(m.group(1)))) {
+				sc.setLocalVariable(ELEMENT, e);
+				if( ret.length() > 0 ) {
+					ret.append(sep);
+				}
+				ret.append(FileSourceShPreProcessorVisitorImpl.processString("${"+ELEMENT+m.group(3)+"}", sc));
+			}
+			sc.unSetVariable(ELEMENT);
+			return ret.toString();
+		}
+		m = LENGTH.matcher(text);
+		if( m.matches()) {
+			Object val = sc.getVariable(m.group(1));
+			if( val instanceof List<?> || val instanceof Map<?,?> ) {
+				// ${#a} is the length of element 0
+				Object first = ShellContext.firstElement(val);
+				return first == null ? 0 : first.toString().length();
+			}
 		}
 		m = TOGGLE_CASE.matcher(text);
 		if( m.matches()) {
@@ -137,6 +159,10 @@ ${parameter:-word}
 			if( ref == null || ref.toString().isEmpty()) {
 				return "";
 			}
+			if( ref.toString().contains("[")) {
+				// r="a[1]": ${!r} is that element
+				return FileSourceShPreProcessorVisitorImpl.processString("${"+ref+"}", sc);
+			}
 			Object val = sc.getVariable(ref.toString());
 			return val == null ? "" : val;
 		}
@@ -145,6 +171,23 @@ ${parameter:-word}
 			return val == null ? "" : val;
 		}
 		return null;
+	}
+
+	/** the indexes of an array or the keys of a map (0 for a scalar) */
+	public static List<Object> keys(Object val) {
+		List<Object> ret = new ArrayList<>();
+		if( val instanceof FsshList ) {
+			ret.addAll(((FsshList) val).getIndexes());
+		} else if( val instanceof Map<?,?> ) {
+			ret.addAll(((Map<?,?>) val).keySet());
+		} else if( val instanceof List<?> ) {
+			for (int idx = 0; idx < ((List<?>) val).size(); idx++) {
+				ret.add(idx);
+			}
+		} else if( val != null ) {
+			ret.add(0);
+		}
+		return ret;
 	}
 
 	/** the values of an array (in index order) or a map, or a scalar as one value */

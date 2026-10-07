@@ -21,6 +21,28 @@ public class Glob {
 	private Glob() {
 	}
 
+	/**
+	 * The words a word becomes: braces, splitting and pathname expansion (as for a command's
+	 * arguments, and array values a=(*.c)).
+	 */
+	public static List<String> expandWord(us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext word, ShellContext ctx) throws IOException {
+		List<us.bringardner.shell.antlr.Argument> fields = us.bringardner.shell.antlr.Argument.expandWord(word, ctx, true);
+		if( fields == null ) {
+			fields = List.of(new us.bringardner.shell.antlr.Argument(word));
+		}
+		List<String> ret = new ArrayList<>();
+		for(us.bringardner.shell.antlr.Argument a : fields) {
+			String value = ""+a.getValue(ctx);
+			List<String> matches = a.hasUnquotedWildcard() ? expand(value, ctx) : List.of();
+			if( matches.isEmpty()) {
+				ret.add(value);
+			} else {
+				ret.addAll(matches);
+			}
+		}
+		return ret;
+	}
+
 	/** true if text has *, ? or [ (a word that is a pattern) */
 	public static boolean isPattern(String text) {
 		return text.indexOf('*') >= 0 || text.indexOf('?') >= 0 || text.indexOf('[') >= 0;
@@ -99,70 +121,7 @@ public class Glob {
 	 * A segment of a pattern as a regular expression.
 	 */
 	public static Pattern toRegex(String glob) {
-		StringBuilder rx = new StringBuilder();
-		int n = glob.length();
-		for (int idx = 0; idx < n; idx++) {
-			char c = glob.charAt(idx);
-			switch (c) {
-			case '*':
-				rx.append(".*");
-				break;
-			case '?':
-				rx.append('.');
-				break;
-			case '\\':
-				if( idx+1 < n ) {
-					rx.append(Pattern.quote(""+glob.charAt(++idx)));
-				} else {
-					rx.append("\\\\");
-				}
-				break;
-			case '[': {
-				int end = classEnd(glob, idx);
-				if( end < 0 ) {
-					rx.append("\\[");
-					break;
-				}
-				String body = glob.substring(idx+1, end);
-				rx.append('[');
-				int start = 0;
-				if( body.startsWith("!") || body.startsWith("^")) {
-					rx.append('^');
-					start = 1;
-				}
-				for (int j = start; j < body.length(); j++) {
-					char b = body.charAt(j);
-					if( b == '-' && j > start && j < body.length()-1 ) {
-						rx.append('-');
-					} else if( "\\[]^&".indexOf(b) >= 0 ) {
-						rx.append('\\').append(b);
-					} else {
-						rx.append(b);
-					}
-				}
-				rx.append(']');
-				idx = end;
-				break;
-			}
-			default:
-				rx.append(Pattern.quote(""+c));
-			}
-		}
-		return Pattern.compile(rx.toString(), Pattern.DOTALL);
+		return Pattern.compile(ShellCommand.prepWildCards(glob, true), Pattern.DOTALL);
 	}
 
-	/** the index of the ] that closes the [ at start (a ] right after [ or [! is part of the set), or -1 */
-	private static int classEnd(String glob, int start) {
-		int idx = start+1;
-		if( idx < glob.length() && (glob.charAt(idx) == '!' || glob.charAt(idx) == '^')) {
-			idx++;
-		}
-		if( idx < glob.length() && glob.charAt(idx) == ']' ) {
-			idx++;
-		}
-		while( idx < glob.length() && glob.charAt(idx) != ']' ) {
-			idx++;
-		}
-		return idx < glob.length() ? idx : -1;
-	}
 }

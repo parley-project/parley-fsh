@@ -9,15 +9,8 @@ alias-expand
 
 
 # array
-array-assign-list-index
-array-copy
-array-from-cmdsub
-array-from-glob
-array-iterate-indices
-array-replace-all
 
 # assoc
-assoc-test-key
 
 # background
 
@@ -27,7 +20,6 @@ assoc-test-key
 command-builtin
 
 # dbl
-dbl-pattern-class
 
 # declare
 declare-p
@@ -40,12 +32,9 @@ mapfile-callback-free
 
 # param
 param-error-message
-param-indirect-array
-param-length-array
 param-replace-empty
 
 # printf
-printf-v-array
 
 # read
 read-eof-status

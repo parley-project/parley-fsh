@@ -297,7 +297,22 @@ public class DoubleBracket {
 		switch (op) {
 		case "-n": return !val.isEmpty();
 		case "-z": return val.isEmpty();
-		case "-v": return ctx.getVariable(val) != null;
+		case "-v": {
+			java.util.regex.Matcher m = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]").matcher(val);
+			if( m.matches()) {
+				// -v a[1], -v m[key]: that element is set
+				Object arr = ctx.getVariable(m.group(1));
+				if( arr instanceof java.util.Map<?,?> ) {
+					return ((java.util.Map<?,?>) arr).containsKey(m.group(2));
+				}
+				if( arr instanceof java.util.List<?> ) {
+					int idx = Arithmetic.expandAndEvaluate(m.group(2), ctx).intValue();
+					return ((java.util.List<?>) arr).get(idx) != null;
+				}
+				return false;
+			}
+			return ctx.getVariable(val) != null;
+		}
 		case "-o": return false;
 		case "-t": return false;
 		}

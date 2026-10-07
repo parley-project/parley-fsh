@@ -20,6 +20,8 @@ public class Printf extends ShellCommand{
 			+ "	-v var assigns the output to var instead of writing it."
 			;
 
+	private static final java.util.regex.Pattern ELEMENT = java.util.regex.Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]");
+
 	/** an argument that is not a number: printf goes on, with status 1 */
 	private boolean failed;
 
@@ -64,7 +66,14 @@ public class Printf extends ShellCommand{
 			}
 		} while( used < values.size());
 
-		if( var != null ) {
+		java.util.regex.Matcher element = var == null ? null : ELEMENT.matcher(var);
+		if( element != null && element.matches()) {
+			// -v 'a[1]', -v 'm[key]'
+			Object cur = ctx.getVariable(element.group(1));
+			Object key = cur instanceof java.util.Map<?,?> ? element.group(2)
+					: (Object) us.bringardner.shell.antlr.Arithmetic.expandAndEvaluate(element.group(2), ctx).intValue();
+			ctx.setVariable(element.group(1), key, out.toString());
+		} else if( var != null ) {
 			ctx.setVariable(var, out.toString());
 		} else {
 			ctx.stdout.print(out);
