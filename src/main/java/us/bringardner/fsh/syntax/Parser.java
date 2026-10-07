@@ -37,6 +37,77 @@ import us.bringardner.fsh.syntax.Ast.Subshell;
  */
 public final class Parser {
 
+	/** how fragment reads its text */
+	public enum Fragment {
+		/** as a word: quotes, \, $ and ` count (blanks and ; | & < > ( ) are text) */
+		WORD,
+		/** as the inside of "...": only \ (before $ ` " \), $ and ` count */
+		QUOTED,
+		/** as the word in "${x:-word}": as QUOTED, but "..." quotes again and \} is } */
+		QUOTED_PARAMETER,
+		/** as the string in "${x/pattern/string}": as QUOTED_PARAMETER, and \& is & */
+		QUOTED_REPLACEMENT,
+		/** as an unquoted here-document: only \ (before $ ` \), $ and ` count */
+		HERE_DOCUMENT
+	}
+
+	/**
+	 * Read text that is already known to be one piece (the word in ${x:-word}, a ${x#pattern},
+	 * a here-document's body) as a word.
+	 */
+	public static Word fragment(String text, Fragment mode) {
+		Parser p = new Parser(text);
+		p.commandStart = false;
+		Word w;
+		if( mode == Fragment.WORD ) {
+			p.fragment = true;
+			w = p.readWord(false);
+		} else {
+			w = new Word();
+			w.parts.addAll(p.doubleParts(mode));
+			w.end = text.length();
+			w.raw = text;
+		}
+		w.line = 1;
+		return w;
+	}
+
+	/**
+	 * The index of the first c in text at or after from that is not quoted or inside an
+	 * expansion (the / that ends the pattern of ${x/pattern/string}), or -1.
+	 */
+	public static int indexOfUnquoted(String text, char c, int from) {
+		Parser p = new Parser(text);
+		for (int i = from; i < text.length(); ) {
+			char d = text.charAt(i);
+			if( d == c ) {
+				return i;
+			}
+			if( d == '$' && i+1 < text.length()) {
+				char n = text.charAt(i+1);
+				if( n == '(' ) {
+					i = p.skipCommandSub(i);
+					continue;
+				}
+				if( n == '{' ) {
+					i = p.braceClose(i+2)+1;
+					continue;
+				}
+				if( n == '\'' ) {
+					int j = i+2;
+					while( j < text.length() && text.charAt(j) != '\'' ) {
+						j += text.charAt(j) == '\\' ? 2 : 1;
+					}
+					i = j+1;
+					continue;
+				}
+			}
+			int q = p.skipQuoted(i);
+			i = q != i ? q : i+1;
+		}
+		return -1;
+	}
+
 	/** parse a whole script */
 	public static Sequence parse(String source) {
 		Parser p = new Parser(source);
@@ -107,6 +178,8 @@ public final class Parser {
 	private final List<String> closers = new ArrayList<>();
 	/** how many ${ list; } are being read */
 	private int functionSubs;
+	/** reading a piece of text as one word (see fragment): nothing ends it but the end */
+	private boolean fragment;
 	/** reading a word of name=( ... ) */
 	private boolean arrayElement;
 	/** the next word is the target of a redirect (it does not change commandStart) */
@@ -314,7 +387,7 @@ public final class Parser {
 				} else if( c == ')' ) {
 					depth--;
 				}
-			} else if( isMeta(c)) {
+			} else if( isMeta(c) && !fragment ) {
 				if( (c == '<' || c == '>') && ch(pos+1) == '(' && pos == w.start ) {
 					// <(cmd) starts the word
 				} else {
@@ -365,7 +438,7 @@ public final class Parser {
 				break;
 			case '<':
 			case '>':
-				if( !regex ) {
+				if( !regex && !fragment ) {
 					// <(cmd) >(cmd)
 					flush(w, lit);
 					char dir = c;
@@ -441,23 +514,34 @@ public final class Parser {
 	private Word.DoubleQuoted readDouble(boolean locale) {
 		int open = pos;
 		pos++;
+		List<Word.Part> parts = doubleParts(Fragment.QUOTED);
+		if( atEnd(pos)) {
+			pos = open;
+			throw eof("\"");
+		}
+		pos++;
+		return new Word.DoubleQuoted(parts, locale);
+	}
+
+	/**
+	 * The text and expansions of a double-quoted string from pos: up to its closing " (QUOTED, pos
+	 * is left on the "), or to the end of the text (QUOTED_PARAMETER, HERE_DOCUMENT).
+	 */
+	private List<Word.Part> doubleParts(Fragment mode) {
 		List<Word.Part> parts = new ArrayList<>();
 		StringBuilder lit = new StringBuilder();
-		while( true ) {
-			if( atEnd(pos)) {
-				pos = open;
-				throw eof("\"");
-			}
+		String escapable = mode == Fragment.HERE_DOCUMENT ? "$`\\" : mode == Fragment.QUOTED_PARAMETER ? "$`\"\\}"
+				: mode == Fragment.QUOTED_REPLACEMENT ? "$`\"\\}&" : "$`\"\\";
+		while( !atEnd(pos)) {
 			char c = ch(pos);
-			if( c == '"' ) {
-				pos++;
+			if( c == '"' && mode == Fragment.QUOTED ) {
 				break;
 			}
 			if( c == '\\' ) {
 				char n = ch(pos+1);
 				if( n == '\n' ) {
 					pos += 2;
-				} else if( "$`\"\\".indexOf(n) >= 0 ) {
+				} else if( !atEnd(pos+1) && escapable.indexOf(n) >= 0 ) {
 					flushTo(parts, lit);
 					parts.add(new Word.Escaped(n));
 					pos += 2;
@@ -465,6 +549,10 @@ public final class Parser {
 					lit.append('\\');
 					pos++;
 				}
+			} else if( c == '"' && (mode == Fragment.QUOTED_PARAMETER || mode == Fragment.QUOTED_REPLACEMENT)) {
+				// "${x:-"a b"}": quotes inside quote again
+				flushTo(parts, lit);
+				parts.add(readDouble(false));
 			} else if( c == '$' ) {
 				Word.Part p = readDollar(true);
 				if( p == null ) {
@@ -483,7 +571,7 @@ public final class Parser {
 			}
 		}
 		flushTo(parts, lit);
-		return new Word.DoubleQuoted(parts, locale);
+		return parts;
 	}
 
 	private static void flushTo(List<Word.Part> parts, StringBuilder lit) {

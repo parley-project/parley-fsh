@@ -1,0 +1,270 @@
+# word expansion cases: "### setup" lines, then "### words": a word line, a tab, and what bash
+# prints for printf '<%s>' with it (A: assignment, C:subject: case pattern, R:subject: =~, H: here-document)
+### setup
+x="a b"; y="  lead  trail  "; e=; n=3; s=hello.world.tar.gz
+set -- one "two three" "" four
+### words
+$x	<a><b>
+"$x"	<a b>
+$y	<lead><trail>
+"$y"	<  lead  trail  >
+$e	<>
+"$e"	<>
+x$e	<x>
+$e$e	<>
+"$e"$e	<>
+''	<>
+""	<>
+$@	<one><two><three><four>
+"$@"	<one><two three><><four>
+$*	<one><two><three><four>
+"$*"	<one two three  four>
+"a$@b"	<aone><two three><><fourb>
+"$@" x	<one><two three><><four><x>
+$#	<4>
+"${#}"	<4>
+${#x}	<3>
+${#@}	<4>
+$1 "$2" ${3} "${4}"	<one><two three><four>
+${10}	<>
+${n}	<3>
+${x:-d} ${u:-d} ${e:-d} ${e-d} ${u-d}	<a><b><d><d><d>
+"${u:-a b}" ${u:-a b} ${u:-"a b"}	<a b><a><b><a b>
+${x:+alt} ${u:+alt} ${e:+alt} ${e+alt}	<alt><alt>
+"${u:+x}"	<>
+${s#*.} ${s##*.} ${s%.*} ${s%%.*}	<world.tar.gz><gz><hello.world.tar><hello>
+${s/./-} ${s//./-} ${s/#hello/HI} ${s/%gz/GZ}	<hello-world.tar.gz><hello-world-tar-gz><HI.world.tar.gz><hello.world.tar.GZ>
+${s//[aeiou]/} ${s/o/&&} ${s//o/"&"}	<hll.wrld.tr.gz><helloo.world.tar.gz><hell&.w&rld.tar.gz>
+${x^} ${x^^} ${s^^[aeiou]}	<A><b><A><B><hEllO.wOrld.tAr.gz>
+${s:1} ${s:1:3} ${s: -2} ${s: -5:2} ${s:n} ${s:1:-2}	<ello.world.tar.gz><ell><gz><ar><lo.world.tar.gz><ello.world.tar.>
+${s:100}	<>
+${@:2} "${@:2:2}" ${@: -1}	<two><three><four><two three><><four>
+'a'"b"$x	<aba><b>
+$'a\tb' $'\x41'	<a\tb><A>
+$((1+2)) $((n*2)) "$((n<2))"	<3><6><0>
+$(echo hi) "$(echo 'a  b')" $(printf 'a\n\n')	<hi><a  b><a>
+`echo bq`	<bq>
+{a,b}c x{1..3} {3..1} {01..03} {a..c} {a,b}{1,2} {a} {}	<ac><bc><x1><x2><x3><3><2><1><01><02><03><a><b><c><a1><a2><b1><b2><{a}><{}>
+"{a,b}" \{a,b}	<{a,b}><{a,b}>
+${u?}	ERR u: parameter not set
+${u:?custom msg}	ERR u: custom msg
+${x y}	ERR ${x y}: bad substitution
+### setup
+IFS=:; v="a:b::c:"; w=" a : b "
+### words
+$v	<a><b><><c>
+"$v"	<a:b::c:>
+$w	< a >< b >
+"$*"	<>
+### setup
+IFS=", "; v="a, b,,c"
+set -- p q
+### words
+$v	<a><b><><c>
+"$*"	<p,q>
+${*}	<p><q>
+### setup
+IFS=; v="a b"
+set -- p q
+### words
+$v	<a b>
+"$*"	<pq>
+$*	<p><q>
+### setup
+a=(x "y z" "") ; declare -A m=([k]=v [j]="w w"); i=1
+### words
+${a[0]} ${a[1]} "${a[1]}" ${a[i]} ${a[i+1]} ${a[-1]} ${a[-3]}	<x><y><z><y z><y><z><x>
+${a[@]}	<x><y><z>
+"${a[@]}"	<x><y z><>
+"${a[*]}"	<x y z >
+${#a[@]} ${#a[1]} ${!a[@]}	<3><3><0><1><2>
+${a}	<x>
+${a[@]:1} "${a[@]:1:1}"	<y><z><y z>
+"${a[@]/y/Y}" "${a[@]^^}"	<x><Y z><><X><Y Z><>
+${a[@]@Q}	<'x'><'y><z'><''>
+${x@Q} ${u@Q}	<>
+### setup
+cd @GLOBDIR@
+### words
+*.txt	<a.txt><b.txt><d e.txt>
+"*.txt"	<*.txt>
+*.nomatch	<*.nomatch>
+sub/*.c	<sub/x.c><sub/y.c>
+*	<a.txt><b.txt><c.log><d e.txt><sub>
+.*	<.hidden>
+[ab].txt	<a.txt><b.txt>
+?.txt	<a.txt><b.txt>
+${u:-*.log}	<c.log>
+"$(echo *.log)"	<c.log>
+### setup
+p=pre_; pre_a=1; pre_b=2; r=pre_a; arr=(1 2)
+declare -n ref=pre_b
+### words
+${!pre_*}	<pre_a><pre_b>
+"${!pre_@}"	<pre_a><pre_b>
+${!r}	<1>
+${!r:-x}	<1>
+${!ref}	<pre_b>
+$ref	<2>
+### setup
+set -u; x=1
+### words
+$u	ERR u: unbound variable
+"${u}"	ERR u: unbound variable
+${u:-ok}	<ok>
+$@	<>
+${#u}	ERR u: unbound variable
+### setup
+x=abc; unset y
+### words
+${x:=new} ${y:=new}	<abc><new>
+${1:=x}	ERR $1: cannot assign in this way
+${x@U} ${x@u} ${x@A}	<ABC><Abc><x='abc'>
+${#x}	<3>
+### setup
+x="a b"; e=; s='a*b'; q="it's"; bs='a\b'; star='*'
+cd @GLOBDIR@
+### words
+"${x:-'q'}" ${u:-'q r'} "${u:-"q r"}" "${u:-$x}" ${u:-$x}	<a b><q r><q r><a b><a><b>
+"${u:-a\}b}" ${u:-a\}b}	<a}b><a}b>
+${s#a\*} ${s#"a*"} "${s#a*}" ${s#'a'}	<b><b><*b><sub>
+"${s/'*'/-}" ${s/\*/-} ${s/"*"/-}	<a-b><a-b><a-b>
+${q} "$q" ${q//\'/X}	<it's><it's><itXs>
+"$bs" $bs "a\b" 'a\b' a\\b "a\$x" "\$x" \$x	<a\b><a\b><a\b><a\b><a\b><a$x><$x><$x>
+"\"" '\' "\\"	<"><\><\>
+$star "$star" ${star}.txt "*".txt *"."txt *'.txt'	<a.txt><b.txt><c.log><d e.txt><sub><*><a.txt><b.txt><d e.txt><*.txt><a.txt><b.txt><d e.txt><a.txt><b.txt><d e.txt>
+$e* "$e"* ${e:-*}.log	<a.txt><b.txt><c.log><d e.txt><sub><a.txt><b.txt><c.log><d e.txt><sub><c.log>
+{a,b}.txt {c,d}*	<a.txt><b.txt><c.log><d e.txt>
+"$(echo "a b")" $(echo "a b")	<a b><a><b>
+"`echo a\\\\b`"	<a\b>
+$'a\'b' $'\101\x42\u0043' $'\e' $"x"	<a'b><ABC><><x>
+"${x/a/\&}" ${x/a/&-&}	<& b><a-a><b>
+${x//?/.}	<...>
+${x%% *} ${x#* }	<a><b>
+"${x:0:1}" "${x: -1}" ${x:(-1)}	<a><b><b>
+"$((1+$(echo 2)))" $(( x=5, x*2 )) $[2*3]	<3><10><6>
+${x@Q} "${q@Q}"	<'a><b'><'it'\''s'>
+### setup
+f() { echo "${@:2:1}|$#"; }
+set -- a b c
+v=(1 2 3 4 5)
+### words
+$(f x y z)	<y|3>
+${v[@]:1:2} ${v[@]: -2} ${v[*]:3}	<2><3><4><5><4><5>
+"${v[@]::2}"	<1><2>
+${@:4}	<>
+${#v[*]}	<5>
+### setup
+v=([3]=c [1]=a [7]=g)
+### words
+${v[@]} ${!v[@]} ${#v[@]} ${v[-1]} ${v[@]:2} ${v[@]:4:1}	<a><c><g><1><3><7><3><g><c><g><g>
+### setup
+x=' a  b '; IFS=' '
+### words
+$x	<a><b>
+"$x"	< a  b >
+${x}x	<a><b><x>
+x${x}	<x><a><b>
+### setup
+s=hello.world.tar.gz; x="a b"; v='$x'; t='a&b'; amp='&'
+### words
+${s//o/"&"} "${s//o/"&"}" "${s/o/&}" "${s/o/\&}" ${s/o/\&} ${s/o/'&'}	<hell&.w&rld.tar.gz><hell&.w&rld.tar.gz><hello.world.tar.gz><hell&.world.tar.gz><hell&.world.tar.gz><hell&.world.tar.gz>
+${s/o/$amp} "${s/o/$amp}" ${s/o/"$amp"}	<hello.world.tar.gz><hello.world.tar.gz><hell&.world.tar.gz>
+${t//&/+} "${t/&/x}" ${t/\&/x}	<a+b><axb><axb>
+$v "$v" ${v} '$v'	<$x><$x><$x><$v>
+### setup
+a=1; b=2
+### words
+$((a+b)) $((a++ + ++b)) $((10/3)) $((2**10)) $((7%3)) $((-7/2)) $((1<<4)) $((0x10)) $((010)) $((2#101)) $((a?5:6))	<3><4><3><1024><1><-3><16><16><8><5><5>
+$((1/0))	ERR 1/0: division by 0 (error token is "0")
+$((x+))	ERR x+: arithmetic syntax error: operand expected (error token is "+")
+"$(( "1" + 2 ))"	<3>
+### setup
+f=( "" a "" ); g=()
+### words
+${f[@]}	<a>
+"${f[@]}"	<><a><>
+"${g[@]}"	<>
+"${g[@]}" x	<x>
+"${g[*]}"	<>
+${#f[@]} ${#g[@]}	<3><0>
+"x${g[@]}y"	<xy>
+"${f[@]:-def}" ${g[@]:-def}	<><a><><def>
+### setup
+IFS=$' \t\n'; x=$'a\tb\nc  d'
+### words
+$x	<a><b><c><d>
+### setup
+a=1; b=0
+### words
+$((1/0))	ERR 1/0: division by 0 (error token is "0")
+$((x+))	ERR x+: arithmetic syntax error: operand expected (error token is "+")
+$((1 2))	ERR 1 2: arithmetic syntax error in expression (error token is "2")
+$((5%b))	ERR 5%b: division by 0 (error token is "b")
+$((2**-1))	ERR 2**-1: exponent less than 0 (error token is "1")
+$((a/b))	ERR a/b: division by 0 (error token is "b")
+### setup
+x="a b"; s='a*b'; p='*.c'; e=; set -- 1 2 3; IFS=:
+### words
+A:$x	<a b>
+A:"$x"	<a b>
+A:$@	<1 2 3>
+A:"$@"	<1 2 3>
+A:$*	<1:2:3>
+A:"$*"	<1:2:3>
+A:{a,b}	<{a,b}>
+A:*.c	<*.c>
+A:$e	<>
+A:'q'\x"y"	<qxy>
+C:abc:a*	<y>
+C:abc:"a*"	<n>
+C:'a*':"a*"	<y>
+C:a.c:$p	<y>
+C:a.c:"$p"	<n>
+C:a*b:$s	<y>
+C:axb:$s	<y>
+C:axb:"$s"	<n>
+C:ab:@(ab|cd)	<y>
+C:abc:[a-c]bc	<y>
+C:Abc:[[:upper:]]*	<y>
+C:'a b':a\ b	<y>
+C:a:\a	<y>
+C:'\':'\'	<y>
+C:a:'a'	<y>
+C:"x y":$x	<n>
+H:plain $x "q" 'sq' \$x \\ \" `echo bq` $(echo cs) ${x:-d} $((1+2))	plain a b "q" 'sq' $x \ \" bq cs a b 3
+R:abc:^a.c$	<y>
+R:a.c:"a.c"	<y>
+R:abc:"a.c"	<n>
+R:abc:a(b|x)c	<y>
+R:ab:$s	<y>
+R:'a*b':"$s"	<y>
+R:abc:'^a'	<n>
+### setup
+false; _x=1; set -- a b
+### words
+$? "$?" ${?}	<0><0><0>
+$# ${#} ${##}	<2><2><1>
+$_x ${_x}	<1><1>
+${#*} ${#@}	<2><2>
+$1$2 ${1}x "${2}"y	<ab><ax><by>
+"${@: -1}" ${*:1:1}	<b><a>
+${!#}	<b>
+${@/a/A} "${*/b/B}"	<A><b><a B>
+${@^}	<A><B>
+### setup
+x=AbC; n=5; arr=(a b c)
+### words
+${x:n} ${x:1:n} ${x:$((n-4))}	<bC><bC>
+${arr[*]: -1} ${arr[@]:(-2):1} ${arr[n-4]}	<c><b><b>
+${arr[@]#a} "${arr[*]%c}"	<b><c><a b >
+${#arr} ${#arr[*]} ${#x}	<1><3><3>
+${x:-${arr[1]}} ${x:+${arr[2]}}	<AbC><c>
+${u:-${u2:-deep}}	<deep>
+"${u:-$(echo "q r")}"	<q r>
+### setup
+v="a.b.c"
+### words
+${v%.*} ${v%%.*} ${v#*.} ${v##*.} ${v/./} ${v//./}	<a.b><a><b.c><c><ab.c><abc>
+${v/#a/X} ${v/%c/Y} ${v/#/P} ${v/%/S} ${v//} ${v/}	<X.b.c><a.b.Y><Pa.b.c><a.b.cS><a.b.c><a.b.c>
+${v/b} ${v//./"/"} ${v//./\/}	<a..c><a/b/c><a/b/c>

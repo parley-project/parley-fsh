@@ -74,7 +74,7 @@ public class Arithmetic {
 		Number ret = a.comma(true);
 		a.skipSpace();
 		if( a.pos < text.length()) {
-			throw a.error("syntax error in expression");
+			throw a.error("arithmetic syntax error in expression");
 		}
 		return ret;
 	}
@@ -144,8 +144,28 @@ public class Arithmetic {
 
 	// ---------------------------------------------------------------- errors
 
+	/** where the last number or variable read starts: bash names it in an error about a value */
+	private int lastToken = -1;
+
+	private ArithmeticError errorAtLast(String msg) {
+		if( lastToken < 0 ) {
+			return error(msg);
+		}
+		int end = lastToken;
+		while( end < text.length() && (Character.isLetterOrDigit(text.charAt(end)) || "_#@.".indexOf(text.charAt(end)) >= 0)) {
+			end++;
+		}
+		return new ArithmeticError(text.trim()+": "+msg+" (error token is \""+text.substring(lastToken, end)+"\")");
+	}
+
+	/** where the last operator read starts: at the end of the text, bash names it in an error */
+	private int lastOperator = -1;
+
 	private ArithmeticError error(String msg) {
 		String rest = text.substring(Math.min(pos, text.length())).trim();
+		if( rest.isEmpty() && lastOperator >= 0 && msg.endsWith("operand expected")) {
+			rest = text.substring(lastOperator).trim();
+		}
 		return new ArithmeticError(text.trim()+": "+msg+(rest.isEmpty() ? "" : " (error token is \""+rest+"\")"));
 	}
 
@@ -165,6 +185,7 @@ public class Arithmetic {
 			if( notFollowedBy != null && end < text.length() && notFollowedBy.indexOf(text.charAt(end)) >= 0 ) {
 				return false;
 			}
+			lastOperator = pos;
 			pos = end;
 			return true;
 		}
@@ -401,7 +422,7 @@ public class Arithmetic {
 		skipSpace();
 		Lvalue lv = lvalue(eval);
 		if( lv == null ) {
-			throw error("syntax error: operand expected");
+			throw error("arithmetic syntax error: operand expected");
 		}
 		if( !eval ) {
 			return ZERO;
@@ -417,6 +438,7 @@ public class Arithmetic {
 		int start = pos;
 		Lvalue lv = lvalue(eval);
 		if( lv != null ) {
+			lastToken = start;
 			if( take("++")) {
 				if( !eval ) {
 					return ZERO;
@@ -441,7 +463,7 @@ public class Arithmetic {
 	private Number primary(boolean eval) {
 		skipSpace();
 		if( pos >= text.length()) {
-			throw error("syntax error: operand expected");
+			throw error("arithmetic syntax error: operand expected");
 		}
 		char c = text.charAt(pos);
 		if( c == '(' ) {
@@ -455,11 +477,12 @@ public class Arithmetic {
 		if( Character.isDigit(c) || (c == '.' && pos+1 < text.length() && Character.isDigit(text.charAt(pos+1)))) {
 			return number();
 		}
-		throw error("syntax error: operand expected");
+		throw error("arithmetic syntax error: operand expected");
 	}
 
 	private Number number() {
 		int start = pos;
+		lastToken = start;
 		while( pos < text.length() && (Character.isLetterOrDigit(text.charAt(pos)) || text.charAt(pos) == '#'
 				|| text.charAt(pos) == '@' || text.charAt(pos) == '_' || text.charAt(pos) == '.')) {
 			pos++;
@@ -532,12 +555,12 @@ public class Arithmetic {
 			case "**": return Math.pow(x, y);
 			case "/":
 				if( y == 0 ) {
-					throw error("division by 0");
+					throw errorAtLast("division by 0");
 				}
 				return x/y;
 			default:
 				if( y == 0 ) {
-					throw error("division by 0");
+					throw errorAtLast("division by 0");
 				}
 				return x%y;
 			}
@@ -548,17 +571,17 @@ public class Arithmetic {
 		case "*": return x*y;
 		case "/":
 			if( y == 0 ) {
-				throw error("division by 0");
+				throw errorAtLast("division by 0");
 			}
 			return x/y;
 		case "%":
 			if( y == 0 ) {
-				throw error("division by 0");
+				throw errorAtLast("division by 0");
 			}
 			return x%y;
 		case "**":
 			if( y < 0 ) {
-				throw error("exponent less than 0");
+				throw errorAtLast("exponent less than 0");
 			}
 			long ret = 1;
 			for (long i = 0; i < y; i++) {
