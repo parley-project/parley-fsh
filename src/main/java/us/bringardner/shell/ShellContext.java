@@ -342,10 +342,22 @@ $
 	 * 
 	 * @param name the variable as written, for the error message ($x, ${x} ...)
 	 */
+	/**
+	 * set -u and an unset variable: an error, which ends a script (as in bash).
+	 */
+	public void unbound(String name) {
+		String msg = name+": unbound variable";
+		if( console.isInteractive ) {
+			throw new RuntimeException(msg);
+		}
+		stderr.println(msg);
+		throw new us.bringardner.shell.antlr.signal.ExitException(this, 1);
+	}
+
 	public String expand(Object value, String name) {
 		if( value == null ) {
 			if( console != null && console.isOptionEnabled(Option.NullParameterIsError)) {
-				throw new RuntimeException(name.replaceAll("^\\$\\{?|\\}$", "")+": unbound variable");
+				unbound(name.replaceAll("^\\$\\{?|\\}$", ""));
 			}
 			return "";
 		}

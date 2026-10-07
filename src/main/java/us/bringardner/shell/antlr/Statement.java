@@ -193,6 +193,18 @@ public abstract class Statement {
 		}
 	}
 
+	/** a closed descriptor (>&-): writing to it is an error */
+	public static class ClosedStream extends PrintStream {
+		public ClosedStream() {
+			super(new OutputStream() {
+				@Override
+				public void write(int b) throws IOException {
+					throw new IOException("Bad file descriptor");
+				}
+			});
+		}
+	}
+
 	private static PrintStream getOut(ShellContext ctx, int m) {
 		if( m == 1 ) {
 			return ctx.stdout;
@@ -216,7 +228,7 @@ public abstract class Statement {
 			ctx.stdin = InputStream.nullInputStream();
 		} else if( n == 1 ) {
 			ctx.stdout.flush();
-			ctx.stdout = new PrintStream(OutputStream.nullOutputStream());
+			ctx.stdout = new ClosedStream();
 		} else if( n == 2 ) {
 			ctx.stderr.flush();
 			ctx.stderr = new PrintStream(OutputStream.nullOutputStream());
@@ -443,7 +455,8 @@ public abstract class Statement {
 			if( allowed && globWords() && w.hasUnquotedWildcard()) {
 				String pattern = ""+w.getValue(ctx);
 				List<String> matches = Glob.expand(pattern, ctx);
-				if( !matches.isEmpty()) {
+				if( !matches.isEmpty() || Glob.option(ctx, "nullglob")) {
+					// (with shopt -s nullglob a pattern that matches nothing is removed)
 					for(String m : matches) {
 						out.add(new Argument(m));
 					}

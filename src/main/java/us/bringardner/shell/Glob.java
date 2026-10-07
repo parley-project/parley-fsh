@@ -35,7 +35,9 @@ public class Glob {
 			String value = ""+a.getValue(ctx);
 			List<String> matches = a.hasUnquotedWildcard() ? expand(value, ctx) : List.of();
 			if( matches.isEmpty()) {
-				ret.add(value);
+				if( !(a.hasUnquotedWildcard() && option(ctx, "nullglob"))) {
+					ret.add(value);
+				}
 			} else {
 				ret.addAll(matches);
 			}
@@ -78,12 +80,20 @@ public class Glob {
 					continue;
 				}
 				FileSource dir = ctx.console.createFileSource(path.isEmpty() ? "." : path);
+				if( segment.equals("**") && option(ctx, "globstar")) {
+					// ** matches this directory and every one below it (and, last, every file)
+					if( !last ) {
+						next.add(path);
+					}
+					below(ctx, dir, path, last, next);
+					continue;
+				}
 				FileSource [] kids = dir.isDirectory() ? dir.listFiles() : null;
 				if( kids == null ) {
 					continue;
 				}
-				Pattern rx = toRegex(segment);
-				boolean hidden = segment.startsWith(".");
+				Pattern rx = option(ctx, "nocaseglob") ? Pattern.compile(toRegex(segment).pattern(), Pattern.DOTALL | Pattern.CASE_INSENSITIVE) : toRegex(segment);
+				boolean hidden = segment.startsWith(".") || option(ctx, "dotglob");
 				for(FileSource kid : kids) {
 					String name = kid.getName();
 					if( name.equals(".") || name.equals("..") || (name.startsWith(".") && !hidden)) {
@@ -104,6 +114,32 @@ public class Glob {
 		}
 		Collections.sort(ret);
 		return ret;
+	}
+
+	/** shopt name is set */
+	public static boolean option(ShellContext ctx, String name) {
+		return Boolean.TRUE.equals(ctx.console.getShellOptions().get(name));
+	}
+
+	/** every directory below dir (and, if files, every file too); hidden ones only with dotglob */
+	private static void below(ShellContext ctx, FileSource dir, String path, boolean files, List<String> out) throws IOException {
+		FileSource [] kids = dir.isDirectory() ? dir.listFiles() : null;
+		if( kids == null ) {
+			return;
+		}
+		for(FileSource kid : kids) {
+			String name = kid.getName();
+			if( name.startsWith(".") && !option(ctx, "dotglob")) {
+				continue;
+			}
+			String child = join(path, name);
+			if( kid.isDirectory()) {
+				out.add(child);
+				below(ctx, kid, child, files, out);
+			} else if( files ) {
+				out.add(child);
+			}
+		}
 	}
 
 	private static String join(String path, String name) {

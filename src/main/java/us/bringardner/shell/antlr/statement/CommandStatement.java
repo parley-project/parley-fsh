@@ -34,6 +34,7 @@ import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.RerdirectImpl;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.Statement.ClosedStream;
 import us.bringardner.shell.antlr.signal.ExitException;
 import us.bringardner.shell.antlr.signal.ReturnException;
 
@@ -538,6 +539,11 @@ public class CommandStatement extends Statement{
 							cmd.setArgs(args);
 							cmd.setContext(context);
 							ret = cmd.process(ctx);
+							if( ret == 0 && ctx.stdout instanceof ClosedStream && ctx.stdout.checkError()) {
+								// echo hi >&-
+								ctx.stderr.println(name+": write error: Bad file descriptor");
+								ret = 1;
+							}
 						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 							throw new IOException(e);
 						}

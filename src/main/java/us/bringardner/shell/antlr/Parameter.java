@@ -118,6 +118,10 @@ ${parameter:-word}
 		m = LENGTH.matcher(text);
 		if( m.matches()) {
 			Object val = sc.getVariable(m.group(1));
+			if( val == null && sc.console.isOptionEnabled(Console.Option.NullParameterIsError)) {
+				// ${#x} of an unset x after set -u
+				sc.unbound(m.group(1));
+			}
 			if( val instanceof List<?> || val instanceof Map<?,?> ) {
 				// ${#a} is the length of element 0
 				Object first = ShellContext.firstElement(val);
@@ -557,8 +561,9 @@ ${parameter:-word}
 					val = name+": "+val;
 				}
 				if( !sc.console.isInteractive) {
-					// console will write val to stderr
-					throw new ExitException(sc, 1,val);
+					// written here: a subshell that ends does not print the exit's message
+					sc.stderr.println(val);
+					throw new ExitException(sc, 1);
 				} else {
 					sc.stderr.println(val);
 				}

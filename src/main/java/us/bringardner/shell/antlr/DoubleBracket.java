@@ -387,7 +387,7 @@ public class DoubleBracket {
 	private boolean regex(String text, String word) {
 		Pattern rx;
 		try {
-			rx = Pattern.compile(regexOf(word));
+			rx = Pattern.compile(regexOf(word), Glob.option(ctx, "nocasematch") ? Pattern.CASE_INSENSITIVE : 0);
 		} catch (PatternSyntaxException e) {
 			throw new SyntaxError("invalid regular expression `"+word+"'");
 		}
@@ -429,7 +429,7 @@ public class DoubleBracket {
 		for(Part p : parts(raw)) {
 			rx.append(p.quoted ? Pattern.quote(p.text) : Glob.toRegex(p.text).pattern());
 		}
-		return Pattern.compile(rx.toString(), Pattern.DOTALL);
+		return Pattern.compile(rx.toString(), Pattern.DOTALL | (Glob.option(ctx, "nocasematch") ? Pattern.CASE_INSENSITIVE : 0));
 	}
 
 	/** the regular expression of =~ : unquoted parts are a regular expression, quoted parts are text */

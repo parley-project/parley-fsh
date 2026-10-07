@@ -2516,6 +2516,25 @@ delimiter
 	/**
 	 * Run the EXIT trap, once (when a script ends or exits).
 	 */
+	/**
+	 * A subshell's own EXIT trap: the shell's is put aside while it runs (bash does not give it to
+	 * the subshell) and the subshell's runs when it ends, with $? its status.
+	 * @return the shell's EXIT trap, for {@link #endSubshellTrap(List, int)}
+	 */
+	public List<String> beginSubshellTrap() {
+		return signalHandlers.remove(ConsoleMetaSignal.Exit);
+	}
+
+	public void endSubshellTrap(List<String> shells, int status) {
+		if( signalHandlers.containsKey(ConsoleMetaSignal.Exit)) {
+			setLastExitCode(status);
+			runExitTrap();
+		}
+		if( shells != null ) {
+			signalHandlers.put(ConsoleMetaSignal.Exit, shells);
+		}
+	}
+
 	private void runExitTrap() {
 		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
 		if( actions != null ) {

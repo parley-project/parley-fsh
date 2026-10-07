@@ -6,61 +6,6 @@
 # reads a whole line before an alias defined on it takes effect; this shell always expands them.
 alias-expand
 
-
-
-# array
-
-# assoc
-
-# background
-
-# case
-
-# command
-
-# dbl
-
-# declare
-
-# func
-
-# mapfile
-
-# param
-param-error-message
-
-# printf
-
-# read
-
-# redir
-redir-close
-
-# script
-
-# select
-
-# semicolon
-
-# set
-set-u-default
-
-# shopt
-shopt-dotglob
+# Not yet: extended patterns !(...) @(...) +(...) need the lexer to read them.
 shopt-extglob
-shopt-globstar
-shopt-nocasematch
-shopt-nullglob
 
-# source
-
-# test
-
-# trap
-trap-exit-status
-
-# type
-
-# unset
-
-# wait

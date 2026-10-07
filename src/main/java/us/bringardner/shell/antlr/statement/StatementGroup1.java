@@ -35,13 +35,18 @@ public class StatementGroup1 extends Statement{
 			// ( list ): a subshell, so its changes (x=1, cd, exit, set --, exec 3>f ...) stay inside
 			ShellContext sub = sc.subShell();
 			Console.Snapshot saved = sc.console.snapshot();
+			List<String> trap = sc.console.beginSubshellTrap();
+			int ret = 1;
 			try {
-				return run(sub);
+				ret = run(sub);
 			} catch (ExitException e) {
-				return e.exitCode;
+				ret = e.exitCode;
 			} finally {
+				// its EXIT trap runs as it ends
+				sc.console.endSubshellTrap(trap, ret);
 				sc.console.restore(saved);
 			}
+			return ret;
 		}
 		return run(sc);
 	}
