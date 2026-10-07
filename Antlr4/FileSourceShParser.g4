@@ -187,6 +187,8 @@ pipeableStatement:
 		| ifStatement (WS* redirect)? WS*
 		| caseStatement (WS* redirect)? WS*
 		| selectStatement (WS* redirect)? WS*
+		// declare -f f | head, declare -p x | cat
+		| declareAssociativeArrayStatement
 		;
 		    
 pipeOp:

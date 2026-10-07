@@ -512,12 +512,12 @@ public class TestDirStack extends AbstractConsoleTest{
 				+"~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
 				+ "~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
 				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
-				+ "0	~/dirstack/one/two/three/four/five\n"
-				+ "1	~/dirstack/one/two/three/four\n"
-				+ "2	~/dirstack/one/two/three\n"
-				+ "3	~/dirstack/one/two\n"
-				+ "4	~/dirstack/one\n"
-				+ "5	~/dirstack\n"
+				+ " 0  ~/dirstack/one/two/three/four/five\n"
+				+ " 1  ~/dirstack/one/two/three/four\n"
+				+ " 2  ~/dirstack/one/two/three\n"
+				+ " 3  ~/dirstack/one/two\n"
+				+ " 4  ~/dirstack/one\n"
+				+ " 5  ~/dirstack\n"
 						
 				;
 		
@@ -555,7 +555,7 @@ public class TestDirStack extends AbstractConsoleTest{
 				+ "~/dirstack/one/two/three/four/five ~/dirstack/one/two/three/four ~/dirstack/one/two/three ~/dirstack/one/two ~/dirstack/one ~/dirstack\n"
 				+ "~/dirstack/one/two\n"
 				+ "~/dirstack/one/two/three\n"
-				+ "2\t/home/dirstack/one/two/three\n"
+				+ " 2  /home/dirstack/one/two/three\n"
 						
 				;
 		

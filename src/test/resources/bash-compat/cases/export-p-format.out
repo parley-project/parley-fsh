@@ -1,0 +1,4 @@
+declare -x EX1="v"
+declare -x EX2="a b"
+declare -x EX3="q"
+0

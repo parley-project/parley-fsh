@@ -93,7 +93,7 @@ public class TestExport extends AbstractConsoleTest {
 			System.out.println(cmd);
 			System.out.println(err);
 		}
-		Pattern expect = Pattern.compile("export (.+[=].*)");
+		Pattern expect = Pattern.compile("declare -x (.+)");
 		for(String line : out.split("\n")) {
 			Matcher m = expect.matcher(line);
 			assertTrue(m.matches(),"Line="+line);
@@ -117,7 +117,8 @@ public class TestExport extends AbstractConsoleTest {
 		cmd = "export -p";
 		ExecuteResult ret = executeCommand(console,cmd,stdIn,exitCode);
 		String out = ret.getStdOut().replaceAll("\r", "");
-		int idx = out.indexOf(fulVAl);
+		// as bash prints it: declare -x testVar="testVal"
+		int idx = out.indexOf(var+"=\""+val+"\"");
 		assertTrue(idx>=0);
 		
 		cmd = "export -n "+var;

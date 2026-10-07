@@ -1,0 +1,5 @@
+extglob             	off
+nullglob            	off
+shopt -s nullglob
+shopt -u extglob
+on

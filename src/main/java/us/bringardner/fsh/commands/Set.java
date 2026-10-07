@@ -110,7 +110,7 @@ public class Set extends ShellCommand{
 								for(Option oo : Console.Option.values()) {
 									if(oo != Option.Option) {
 										if( set ) {
-											ctx.stdout.printf("%s\t: %s\n",oo.longName, (ctx.console.isOptionEnabled(oo)?"on":"off"));
+											ctx.stdout.printf("%-15s\t%s\n",oo.longName, (ctx.console.isOptionEnabled(oo)?"on":"off"));
 										} else {
 											ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.longName);
 										}

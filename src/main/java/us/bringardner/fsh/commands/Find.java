@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import us.bringardner.parley.files.FileSource;
@@ -89,205 +88,306 @@ public class Find extends ShellCommand{
 		super(name, help);
 	}
 
-	class FindNumber {
+	/** a numeric test argument: +n more than, -n less than, n exactly */
+	static class FindNumber {
 		char sign = '=';
 		long numerator;
-		long denominator;
+		long denominator = 1;
 	}
-	
-	private static final long DAY = 60000*60*24;
-	
-	class FindContext {
 
-		public FindContext(ShellContext ctx) {
-			sc = ctx;
-		}
-		
-		StringBuilder out = new StringBuilder();
+	private static final long DAY = 60000*60*24;
+
+	/** one test of the expression */
+	private interface Test {
+		boolean test(FileSource file, String path, int depth) throws IOException;
+	}
+
+	/** the walk: the tests (or-groups of and-ed tests), the depth limits and the output */
+	class FindContext {
 		ShellContext sc;
 		boolean followLinks = false;
-		Pattern name;
-		FindNumber amin;
-		FindNumber mmin;
-		FindNumber mtime;
-		FindNumber atime;
-		FindNumber size;
-		
-		public boolean haseTests() {
-			return !(name == null && mmin ==  null && mtime == null && size == null);
-		}
-		
-		public boolean test(FileSource file) throws IOException {
+		/** -o separates the groups; a file matches if every test of one group does */
+		List<List<Test>> groups = new ArrayList<>();
+		int maxDepth = Integer.MAX_VALUE;
+		int minDepth = 0;
+		/** -print0: a NUL after each path instead of a newline */
+		boolean print0 = false;
+		/** -exec cmd {} \; (each file) or + (all at once); null if none */
+		List<String> exec;
+		boolean execAll;
+		List<String> execFiles = new ArrayList<>();
+		int status = 0;
 
-			boolean ret = false;
-			if(name !=null) {
-				Matcher m = name.matcher(file.getName());
-				ret = m.matches();
-			} else if(amin!=null) {
-				//-amin n File was last accessed less than, more than or exactly n minutes ago.
-				long time = file.lastAccessTime();
-				long now  = System.currentTimeMillis();
-				long delta = now - time;
-				long minutes = delta/6000;				
-				ret = test(amin,minutes);				
-			} else if(atime!=null) {
-				long time = file.lastAccessTime();
-				long now  = System.currentTimeMillis();
-				long delta = now - time;
-				long days = delta/DAY;				
-				ret = test(atime,days);			
-			} else if(mmin!=null) {
-				long time = file.lastModified();
-				long now  = System.currentTimeMillis();
-				long delta = now - time;
-				long minutes = delta/6000;				
-				ret = test(mmin,minutes);
-			} else if(mtime!=null) {
-			} else if(size!=null) {
-				
-			} else {
-				ret = false;
-			}
-			return ret;
+		FindContext(ShellContext ctx) {
+			sc = ctx;
+			groups.add(new ArrayList<>());
 		}
 
-		private boolean test(FindNumber arg, long value) {
-			boolean ret = false;
-			long val = value / arg.denominator;
-			
-			if( arg.sign=='=') {
-				ret = val == arg.numerator;
-			} else if( arg.sign=='-') {
-				ret = val < arg.numerator;
-			} else {
-				ret = val > arg.numerator;
-			}
-			
-			return ret;
-		}
-
-		public void find(FileSource file) throws IOException {			
-			if( test(file)) {
-				print(file);
-			}
-			if( file.isDirectory()) {
-				if(!followLinks) {
-					FileSource lnk = file.getLinkedTo();
-					if( lnk !=null) {
-						return;
+		boolean matches(FileSource file, String path, int depth) throws IOException {
+			for(List<Test> group : groups) {
+				boolean all = true;
+				for(Test t : group) {
+					if( !t.test(file, path, depth)) {
+						all = false;
+						break;
 					}
+				}
+				if( all ) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		void find(FileSource file, String path, int depth) throws IOException {
+			if( depth >= minDepth && matches(file, path, depth)) {
+				act(path);
+			}
+			if( file.isDirectory() && depth < maxDepth ) {
+				if( !followLinks && depth > 0 && file.getLinkedTo() != null ) {
+					return;
 				}
 				FileSource[] kids = file.listFiles();
 				if( kids !=null) {
 					// name order, so the output does not depend on the file system's listing order
 					Arrays.sort(kids, Comparator.comparing(FileSource::getName));
 					for(FileSource kid : kids) {
-						find(kid);
+						find(kid, path.endsWith("/") ? path+kid.getName() : path+"/"+kid.getName(), depth+1);
 					}
 				}
 			}
 		}
 
-		private void print(FileSource file) {
-			//sc.stdout.println(file);
-			out.append(file.getAbsolutePath());
-			out.append('\n');
+		private void act(String path) throws IOException {
+			if( exec != null ) {
+				if( execAll ) {
+					execFiles.add(path);
+				} else {
+					List<String> words = new ArrayList<>();
+					for(String w : exec) {
+						words.add(w.replace("{}", path));
+					}
+					run(words);
+				}
+				return;
+			}
+			sc.stdout.print(path);
+			sc.stdout.print(print0 ? '\0' : '\n');
 		}
 
+		void finish() throws IOException {
+			if( exec != null && execAll && !execFiles.isEmpty()) {
+				List<String> words = new ArrayList<>();
+				for(String w : exec) {
+					if( w.equals("{}")) {
+						words.addAll(execFiles);
+					} else {
+						words.add(w);
+					}
+				}
+				run(words);
+			}
+			sc.stdout.flush();
+		}
+
+		/** -exec: the command, run by the shell */
+		private void run(List<String> words) throws IOException {
+			StringBuilder code = new StringBuilder();
+			for(String w : words) {
+				code.append('\'').append(w.replace("'", "'\\''")).append("' ");
+			}
+			int rc = 0;
+			List<us.bringardner.fsh.antlr.Statement> stmts;
+			try {
+				stmts = us.bringardner.fsh.antlr.FileSourceShVisitorImpl.parse(code.toString().trim());
+			} catch (Exception e) {
+				throw new IOException(e.getMessage(), e);
+			}
+			for(us.bringardner.fsh.antlr.Statement s : stmts) {
+				rc = s.process(sc);
+			}
+			if( rc != 0 ) {
+				status = 1;
+			}
+		}
 	}
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
 		FindContext fctx = new FindContext(ctx);
 		List<String> paths = new ArrayList<String>();
-
-		for(int idx=0; idx < args.length; idx++ ) {
-			String arg = (""+args[idx].getValue(ctx)).trim();
-
-			if( arg.equals("-P")) {
+		int idx = 0;
+		// options, then the start points, then the expression
+		for(; idx < args.length; idx++ ) {
+			String arg = ""+args[idx].getValue(ctx);
+			if( arg.equals("-P") || arg.equals("-H")) {
+				continue;
+			} else if( arg.equals("-L")) {
 				fctx.followLinks = true;
-			} else if( arg.equals("-name")) {
-				String val = (""+args[++idx].getValue(ctx)).trim();
-				val = prepWildCards(val);
-				fctx.name = Pattern.compile(val);
-			} else if( arg.equals("-mmin")) {
-				String val = (""+args[++idx].getValue(ctx)).trim();
-				fctx.mmin = parseNumber(val);
-			} else if( arg.equals("-mtime")) {
-				String val = (""+args[++idx].getValue(ctx)).trim();
-				fctx.mtime = parseNumber(val);
-			} else if( arg.equals("-size")) {
-				String val = (""+args[++idx].getValue(ctx)).trim();
-				fctx.size = parseNumber(val);
-			} else if( arg.startsWith("-")) {
-				throw new IOException("Invalid argument = "+arg);
 			} else {
-				paths.add(arg);
+				break;
 			}
 		}
-
+		for(; idx < args.length; idx++ ) {
+			String arg = ""+args[idx].getValue(ctx);
+			if( arg.startsWith("-") || arg.equals("!") || arg.equals("(")) {
+				break;
+			}
+			paths.add(arg);
+		}
+		boolean negate = false;
+		for(; idx < args.length; idx++ ) {
+			String arg = ""+args[idx].getValue(ctx);
+			Test test = null;
+			switch (arg) {
+			case "!":
+			case "-not":
+				negate = !negate;
+				continue;
+			case "-a":
+			case "-and":
+				continue;
+			case "-o":
+			case "-or":
+				fctx.groups.add(new ArrayList<>());
+				continue;
+			case "-print":
+				continue;
+			case "-print0":
+				fctx.print0 = true;
+				continue;
+			case "-maxdepth":
+				fctx.maxDepth = Integer.parseInt(""+args[++idx].getValue(ctx));
+				continue;
+			case "-mindepth":
+				fctx.minDepth = Integer.parseInt(""+args[++idx].getValue(ctx));
+				continue;
+			case "-exec": {
+				fctx.exec = new ArrayList<>();
+				for(idx++; idx < args.length; idx++) {
+					String w = ""+args[idx].getValue(ctx);
+					if( w.equals(";") ) {
+						break;
+					}
+					if( w.equals("+") && !fctx.exec.isEmpty() && fctx.exec.get(fctx.exec.size()-1).equals("{}")) {
+						fctx.execAll = true;
+						break;
+					}
+					fctx.exec.add(w);
+				}
+				continue;
+			}
+			case "-name":
+			case "-iname": {
+				Pattern p = Pattern.compile(prepWildCards(""+args[++idx].getValue(ctx)), arg.equals("-iname") ? Pattern.CASE_INSENSITIVE : 0);
+				test = (f, path, d) -> p.matcher(d == 0 ? baseName(path) : f.getName()).matches();
+				break;
+			}
+			case "-path":
+			case "-wholename": {
+				Pattern p = Pattern.compile(prepWildCards(""+args[++idx].getValue(ctx)));
+				test = (f, path, d) -> p.matcher(path).matches();
+				break;
+			}
+			case "-type": {
+				String t = ""+args[++idx].getValue(ctx);
+				test = (f, path, d) -> switch (t) {
+				case "f" -> f.isFile() && f.getLinkedTo() == null;
+				case "d" -> f.isDirectory() && (d == 0 || f.getLinkedTo() == null);
+				case "l" -> f.getLinkedTo() != null;
+				default -> false;
+				};
+				break;
+			}
+			case "-empty":
+				test = (f, path, d) -> f.isDirectory() ? (f.listFiles() == null || f.listFiles().length == 0) : f.length() == 0;
+				break;
+			case "-mmin":
+			case "-amin":
+			case "-mtime":
+			case "-atime": {
+				FindNumber n = parseNumber(""+args[++idx].getValue(ctx));
+				boolean access = arg.startsWith("-a");
+				long unit = arg.endsWith("min") ? 60000 : DAY;
+				test = (f, path, d) -> compare(n, (System.currentTimeMillis() - (access ? f.lastAccessTime() : f.lastModified())) / unit);
+				break;
+			}
+			case "-size": {
+				FindNumber n = parseNumber(""+args[++idx].getValue(ctx));
+				test = (f, path, d) -> {
+					if( f.isDirectory()) {
+						return false;
+					}
+					long units = (f.length() + n.denominator - 1) / n.denominator;
+					return compare(n, units);
+				};
+				break;
+			}
+			default:
+				ctx.stderr.println("find: "+arg+": unknown primary or operator");
+				return 1;
+			}
+			if( negate ) {
+				Test t = test;
+				test = (f, path, d) -> !t.test(f, path, d);
+				negate = false;
+			}
+			fctx.groups.get(fctx.groups.size()-1).add(test);
+		}
 		if( paths.size()==0) {
 			ctx.stderr.println("usage: find [-P] path ... [expression]");
 			return 1;
 		}
-
-		if( !fctx.haseTests() ) {
-			fctx.name = Pattern.compile(".*");
-		}
-
-
+		int ret = 0;
 		for(String startPoint : paths) {
-			List<FileSource> dirs = getFiles(ctx, startPoint);
-			for(FileSource kid : dirs) {
-				fctx.find(kid);				
+			FileSource start = ctx.getFileSource(startPoint);
+			if( !start.exists()) {
+				ctx.stderr.println("find: "+startPoint+": No such file or directory");
+				ret = 1;
+				continue;
 			}
+			fctx.find(start, startPoint, 0);
 		}
-
-		ctx.stdout.print(fctx.out.toString());
-		return ret;
+		fctx.finish();
+		return ret != 0 ? ret : fctx.status;
 	}
 
-	private FindNumber parseNumber(String val) {
+	private static String baseName(String path) {
+		String p = path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length()-1) : path;
+		return p.substring(p.lastIndexOf('/')+1);
+	}
+
+	private static boolean compare(FindNumber arg, long value) {
+		if( arg.sign == '+') {
+			return value > arg.numerator;
+		} else if( arg.sign == '-') {
+			return value < arg.numerator;
+		}
+		return value == arg.numerator;
+	}
+
+	/** +n, -n or n, with a size unit (c w b k M G; b, 512 bytes, if none) for -size */
+	private static FindNumber parseNumber(String val) {
 		FindNumber ret = new FindNumber();
 		String number = val;
-		int idx=0;
-		
-		if( val.charAt(0)=='+' || val.charAt(0)=='-') {
-			ret.sign = val.charAt(0);
-			number = val.substring(1);
+		if( number.startsWith("+") || number.startsWith("-")) {
+			ret.sign = number.charAt(0);
+			number = number.substring(1);
 		}
-		
-		while(idx<number.length() && !Character.isDigit(number.charAt(idx))) {
-			idx++;
+		int end = 0;
+		while( end < number.length() && Character.isDigit(number.charAt(end))) {
+			end++;
 		}
-		
-		if(idx > 0 ) {
-			String tmp = number.substring(idx);
-			number = number.substring(0, idx);
-			if( !tmp.isEmpty()) {
-				char type = tmp.charAt(0);
-				switch (type) {
-				case 'b': ret.denominator = 512;break;
-				case 'c': ret.denominator = 1;break;
-				case 'w': ret.denominator = 2;break;
-				case 'k': ret.denominator = 1024;break;
-				case 'M': ret.denominator = 1048576;break;
-				case 'G': ret.denominator = 1073741824;break;
-				default:
-					throw new IllegalArgumentException("Unexpected value: " + type);
-				}
-			}
-		}
-		
-		
-		ret.numerator = Long.parseLong(number);
-		
-		
-		
-		return null;
+		ret.numerator = end == 0 ? 0 : Long.parseLong(number.substring(0, end));
+		String unit = number.substring(end);
+		ret.denominator = switch (unit) {
+		case "c" -> 1;
+		case "w" -> 2;
+		case "k" -> 1024;
+		case "M" -> 1048576;
+		case "G" -> 1073741824;
+		default -> 512;
+		};
+		return ret;
 	}
-
-
-
 }

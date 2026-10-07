@@ -52,14 +52,11 @@ public class Export extends ShellCommand{
 			}
 		} else {
 			if(sa.options.contains(Arguments.p) || sa.paths.size()==0) {
-				boolean print = sa.options.contains(Arguments.p);
-				// display variables
-				Map<String, Object> env = ctx.getEnvironmentVariables();
+				// as bash prints them: declare -x NAME="value", in name order
+				Map<String, Object> env = new java.util.TreeMap<>(ctx.getEnvironmentVariables());
 				for(String name : env.keySet()) {
-					if( print ) {
-						ctx.stdout.print(ctx.console.isInteractive?"declare -x ":"export ");
-					} 
-					ctx.stdout.println(""+name+"="+env.get(name));
+					Object v = env.get(name);
+					ctx.stdout.println("declare -x "+name+(v == null ? "" : "=\""+(""+v).replaceAll("([\"\\\\$`])", "\\\\$1")+"\""));
 				}
 				
 			} else if(sa.options.contains(Arguments.n)) {
@@ -81,6 +78,13 @@ public class Export extends ShellCommand{
 						String name = val.substring(0, eq);
 						ctx.unSetVariable(name);
 						ctx.setEnvironmentVariable(name, val.substring(eq+1));					
+					} else if( val.matches("[a-zA-Z_][a-zA-Z_0-9]*")) {
+						// export name: the variable's value goes to the environment
+						Object v = ctx.getVariable(val);
+						if( v != null && ctx.getEvironmentVariable(val) == null ) {
+							ctx.unSetVariable(val);
+							ctx.setEnvironmentVariable(val, ""+ShellContext.firstElement(v));
+						}
 					}
 				}
 			}

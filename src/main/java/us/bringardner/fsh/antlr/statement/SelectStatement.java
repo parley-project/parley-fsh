@@ -148,9 +148,9 @@ public class SelectStatement extends LoopStatement{
 					if( pos >=0 && pos < entries.size()) {
 						res = entries.get(pos);
 					}
-					sc.setLocalVariable(varName, res);
+					sc.setVariable(varName, res);
 				} catch (Exception e) {				
-					sc.setLocalVariable(varName, "");
+					sc.setVariable(varName, "");
 				}
 
 				for(Statement stmt : stmts) {

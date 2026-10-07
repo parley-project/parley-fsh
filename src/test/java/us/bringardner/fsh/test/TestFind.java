@@ -86,7 +86,8 @@ public class TestFind extends AbstractConsoleTest {
 	@Test
 	public void testFind02() throws IOException {
 		String cmd = "find .";
-		String expect = "TestFiles\n"
+		// as in bash: the start point as given, then the paths under it
+		String expect = ".\n"
 				+ "./AbcFile.js\n"
 				+ "./AbcFile.php\n"
 				+ "./AbcFile.properties\n"
@@ -123,19 +124,19 @@ public class TestFind extends AbstractConsoleTest {
 	public void testFind03() throws IOException {
 		// quoted, as in bash: unquoted, Abc* would be expanded before find runs
 		String cmd = "find . -name 'Abc*'";
-		String expect = "/Volumes/Data/eclipse-git/fsh/TestFiles/AbcFile.js\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01def.2/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01def.2/AbcFile.properties";
+		String expect = "./AbcFile.js\n"
+				+ "./AbcFile.php\n"
+				+ "./AbcFile.properties\n"
+				+ "Folder01/AbcFile.php\n"
+				+ "Folder01/AbcFile.properties\n"
+				+ "Folder01/Folder01abc.1/AbcFile.php\n"
+				+ "Folder01/Folder01abc.1/AbcFile.properties\n"
+				+ "Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
+				+ "Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
+				+ "Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
+				+ "Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
+				+ "Folder01/Folder01def.2/AbcFile.php\n"
+				+ "Folder01/Folder01def.2/AbcFile.properties";
 		
 		ExecuteResult res = executeCommand(cmd, "", 0);
 		assertEquals("", res.getStdErr());
@@ -147,16 +148,16 @@ public class TestFind extends AbstractConsoleTest {
 	public void testFind04() throws IOException {
 		String cmd = "find Folder01 -name 'Abc*'";
 		String expect = 
-				 "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01def.2/AbcFile.php\n"
-				+ "/Volumes/Data/eclipse-git/fsh/TestFiles/Folder01/Folder01def.2/AbcFile.properties";
+				 "Folder01/AbcFile.php\n"
+				+ "Folder01/AbcFile.properties\n"
+				+ "Folder01/Folder01abc.1/AbcFile.php\n"
+				+ "Folder01/Folder01abc.1/AbcFile.properties\n"
+				+ "Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
+				+ "Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
+				+ "Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
+				+ "Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
+				+ "Folder01/Folder01def.2/AbcFile.php\n"
+				+ "Folder01/Folder01def.2/AbcFile.properties";
 		
 		ExecuteResult res = executeCommand(cmd, "", 0);
 		assertEquals("", res.getStdErr());

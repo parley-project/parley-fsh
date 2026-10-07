@@ -1,0 +1,5 @@
+errexit        	off
+noglob         	off
+pipefail       	on
+set +o errexit
+set -o pipefail

@@ -163,7 +163,16 @@ associativeArrayElement
 				continue;
 			}
 			Object val = null;
-			if( item.associativeArrayInitializer() != null ) {
+			if( item.associativeArrayInitializer() != null && opts.indexOf('A') < 0 && !(sc.getVariable(name) instanceof Map<?,?>)) {
+				// declare -a a=() or a=([2]=x): an indexed array (the [key]= form, or empty, read
+				// as an associative one)
+				FshList list = new FshList();
+				for( AssociativeArrayElementContext e : item.associativeArrayInitializer().associativeArrayElement()) {
+					int index = Arithmetic.evaluate(key(e, sc), sc).intValue();
+					list.set(index, e.value == null ? "" : new Argument(e.value).getValue(sc));
+				}
+				val = list;
+			} else if( item.associativeArrayInitializer() != null ) {
 				Map<String,Object> map = new TreeMap<>();
 				for( AssociativeArrayElementContext e : item.associativeArrayInitializer().associativeArrayElement()) {
 					map.put(key(e, sc), e.value == null ? "" : new Argument(e.value).getValue(sc));

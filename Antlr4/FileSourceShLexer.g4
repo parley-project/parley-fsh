@@ -194,7 +194,8 @@ LINE_COMMENT: {atCommentStart()}? '#' ~[\r\n]* -> skip;
 
 
 
-SHEBANG: '#!' ~[\r\n]* [\r\n];
+// only on the first line; elsewhere #! is a comment, as in bash
+SHEBANG: {getCharIndex() == 0}? '#!' ~[\r\n]* [\r\n];
 LOCAL: 'local' {atKeywordEnd()}?;
 LCURLY:'{';
 RCURLY:'}';
@@ -283,7 +284,8 @@ PERC_QUESTION:'%?';
 // (" -la", "/-Volumes"), so a path with "/-" could not be parsed
 // (before ARG_ID and ID: plain declare is as long as an ID, and the first rule wins)
 // declare -l x, declare +l x (+ takes the attribute away), declare x=1 (no options)
-DECLARE_A : 'declare' ([ \t]* [-+] DECLARE_OP+)? {atKeywordEnd()}?;
+// typeset is the older name of declare
+DECLARE_A : ('declare' | 'typeset') ([ \t]* [-+] DECLARE_OP+)? {atKeywordEnd()}?;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 ARG_ID  : {atWordStart()}? ('-'|'+')+[a-zA-Z_]LETTER_OR_DIGIT* ;
 ID      :   [a-zA-Z_]LETTER_OR_DIGIT* ;

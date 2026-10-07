@@ -53,7 +53,8 @@ public class Shopt extends ShellCommand{
 			}
 			return ret;
 		}
-		Map<String,Boolean> show = new TreeMap<>();
+		// all of them in name order; the names given in the order given
+		Map<String,Boolean> show = names.isEmpty() ? new TreeMap<>() : new java.util.LinkedHashMap<>();
 		if( names.isEmpty()) {
 			show.putAll(options);
 		} else {
@@ -74,7 +75,7 @@ public class Shopt extends ShellCommand{
 				if( print ) {
 					ctx.stdout.println("shopt "+(e.getValue() ? "-s " : "-u ")+e.getKey());
 				} else {
-					ctx.stdout.printf("%-15s\t%s\n", e.getKey(), e.getValue() ? "on" : "off");
+					ctx.stdout.printf("%-20s\t%s\n", e.getKey(), e.getValue() ? "on" : "off");
 				}
 			}
 		}

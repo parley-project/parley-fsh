@@ -96,7 +96,9 @@ public class ForStatement extends LoopStatement{
 				break;
 			}
 			Object val = arg;
-			sc.setLocalVariable(varName, val);	
+			// an ordinary variable, as in bash (it stays set after the loop, and read or x=
+			// change it); a hidden local one shadowed later assignments
+			sc.setVariable(varName, val);
 
 
 			for(Statement stmt : stmts) {

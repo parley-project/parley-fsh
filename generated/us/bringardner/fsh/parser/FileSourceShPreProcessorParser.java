@@ -169,7 +169,7 @@ public class FileSourceShPreProcessorParser extends Parser {
 			setState(33);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 937982L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 1036286L) != 0)) {
 				{
 				setState(31);
 				_errHandler.sync(this);
@@ -199,6 +199,8 @@ public class FileSourceShPreProcessorParser extends Parser {
 				case T__6:
 				case T__8:
 				case T__9:
+				case PPDIGIT:
+				case PPTAG:
 				case PPNL:
 				case PPTEXT:
 					{
@@ -1135,6 +1137,14 @@ public class FileSourceShPreProcessorParser extends Parser {
 		public TerminalNode PPNL(int i) {
 			return getToken(FileSourceShPreProcessorParser.PPNL, i);
 		}
+		public List<TerminalNode> PPDIGIT() { return getTokens(FileSourceShPreProcessorParser.PPDIGIT); }
+		public TerminalNode PPDIGIT(int i) {
+			return getToken(FileSourceShPreProcessorParser.PPDIGIT, i);
+		}
+		public List<TerminalNode> PPTAG() { return getTokens(FileSourceShPreProcessorParser.PPTAG); }
+		public TerminalNode PPTAG(int i) {
+			return getToken(FileSourceShPreProcessorParser.PPTAG, i);
+		}
 		public PptextContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1172,7 +1182,7 @@ public class FileSourceShPreProcessorParser extends Parser {
 					{
 					setState(154);
 					_la = _input.LA(1);
-					if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 657124L) != 0)) ) {
+					if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 755428L) != 0)) ) {
 					_errHandler.recoverInline(this);
 					}
 					else {
@@ -1232,7 +1242,7 @@ public class FileSourceShPreProcessorParser extends Parser {
 		"\u0002\u0000\u0001\u0002\u0004\u0007\u0001\u0000\u0004\u0005\u0001\u0000"+
 		"\u0007\u0007\u0003\u0000\u0001\u0001\u0004\u0004\u0006\u0006\u0001\u0000"+
 		"\b\n\u0002\u0000\b\b\n\n\u0002\u0000\u000b\r\u000f\u0010\u0005\u0000\u0002"+
-		"\u0002\u0005\u0007\t\n\u0011\u0011\u0013\u0013\u00af\u0000!\u0001\u0000"+
+		"\u0002\u0005\u0007\t\n\u000f\u0011\u0013\u0013\u00af\u0000!\u0001\u0000"+
 		"\u0000\u0000\u0002&\u0001\u0000\u0000\u0000\u0004(\u0001\u0000\u0000\u0000"+
 		"\u00064\u0001\u0000\u0000\u0000\b6\u0001\u0000\u0000\u0000\n?\u0001\u0000"+
 		"\u0000\u0000\fj\u0001\u0000\u0000\u0000\u000e~\u0001\u0000\u0000\u0000"+

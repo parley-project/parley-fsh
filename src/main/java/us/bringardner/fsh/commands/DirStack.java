@@ -56,7 +56,8 @@ public abstract class DirStack extends ShellCommand{
 				}
 			}
 			if( showIndex) {
-				buf.append(""+idx+"\t");
+				// as bash: " 0  ~/dir"
+				buf.append(String.format("%2d  ", idx));
 			}
 			String path = stack.get(idx).toString();
 			if(!fullPath && path.startsWith(tmp)) {

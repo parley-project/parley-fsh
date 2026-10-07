@@ -1976,10 +1976,10 @@ delimiter
 
 	/**
 	 * The # that are operators: ${#x}, ${x#pat} ${x##pat}, ${x/#pat/r}, ${!#}. A # in a pattern
-	 * or a word (${k%%#*}, ${v//#/X}, ${x:-#}) is text.
+	 * or a word (${k%%#*}, ${v//#/X}, ${x:-#}) is text. (The first # of ## is | by then.)
 	 * @param before the text between ${ and the #
 	 */
-	private static final Pattern HASH_OPERATOR = Pattern.compile("!?|!?([a-zA-Z_][a-zA-Z_0-9]*|[0-9]+|[@*?$!-])(\\[[^\\]]*\\])?(#|/|//)?");
+	private static final Pattern HASH_OPERATOR = Pattern.compile("!?|!?([a-zA-Z_][a-zA-Z_0-9]*|[0-9]+|[@*?$!-])(\\[[^\\]]*\\])?([#|]|/)?");
 
 	private static boolean isHashOperator(String before) {
 		return HASH_OPERATOR.matcher(before).matches();

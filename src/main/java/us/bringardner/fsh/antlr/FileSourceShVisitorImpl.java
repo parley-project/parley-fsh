@@ -251,6 +251,7 @@ statement
 	public Statement visitPipeableStatement(PipeableStatementContext ctx) {
 		Statement ret = visitPipeable(ctx);
 		RerdirectImpl redirect = ctx.commandStatement() == null && ctx.statement_group() == null
+				&& ctx.declareAssociativeArrayStatement() == null
 				? RerdirectImpl.find(ctx.children) : null;
 		return redirect == null ? ret : new RedirectedStatement(ctx, ret, redirect);
 	}
@@ -272,6 +273,10 @@ statement
 			return visitCaseStatement(ctx.caseStatement());
 		} else if( ctx.selectStatement() !=null ) {
 			return visitSelectStatement(ctx.selectStatement());
+		} else if( ctx.declareAssociativeArrayStatement() !=null ) {
+			Statement ret = new DeclareAssociateArrayStatement(ctx.declareAssociativeArrayStatement());
+			RerdirectImpl r = RerdirectImpl.find(ctx.declareAssociativeArrayStatement().children);
+			return r == null ? ret : new RedirectedStatement(ctx.declareAssociativeArrayStatement(), ret, r);
 		} else {
 			throw new RuntimeException("No option in pipable");
 		}		

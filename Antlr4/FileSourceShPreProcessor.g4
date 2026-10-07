@@ -37,7 +37,8 @@ ppvariable:
     		| '$' PPID 
     		;
 
-pptext:  (PPTEXT|PPNL|'('|')'|'"'|'\''|'{'|'}')+ ;
+// digits and @ # - ! not after a $ are text ("5! = $(f)": two in a row stopped the expansion)
+pptext:  (PPTEXT|PPNL|PPDIGIT|PPTAG|'('|')'|'"'|'\''|'{'|'}')+ ;
 
     
 PPID      :   [a-zA-Z_][a-zA-Z_0-9.]* ;
