@@ -491,11 +491,16 @@ associativeArrayInitializer:
 
 
 // text before and after the braces is part of the word (see Argument)
-braceExpansion: LCURLY (braceRange|braceArgList) RCURLY
+// {a} and {} are text (no comma and no ..)
+braceExpansion: LCURLY (braceRange|braceArgList|literal=braceItem?) RCURLY
 	;
 	
-braceArgList:associativeArrayValue (COMMA associativeArrayValue)*;
-braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue)?;
+// {a,b{1,2},}: at least one comma ({a} is text); an item is text and braces, and may be empty
+braceArgList: braceItem? (COMMA braceItem?)+;
+braceItem: (associativeArrayValue | braceExpansion)+;
+braceRange: start=braceBound DOT_DOT end=braceBound (DOT_DOT incr=braceBound)?;
+// {-2..2}
+braceBound: MINUS? associativeArrayValue;
 
 associativeArrayElement:
     white* LSQUARE key=argument RSQUARE WS* EQ WS* value=argument white*

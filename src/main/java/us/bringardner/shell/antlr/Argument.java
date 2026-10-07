@@ -1,5 +1,8 @@
 package us.bringardner.shell.antlr;
 
+import us.bringardner.filesource.sh.FileSourceShParser.BraceBoundContext;
+import org.antlr.v4.runtime.tree.ParseTree;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceItemContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -417,28 +420,36 @@ argumentPart:
 	 */
 	public static List<String> expandBraces(ArgumentContext word, ShellContext ctx) throws IOException {
 		List<ArgumentPartContext> parts = word.argumentPart();
-		int braceIdx = -1;
-		for (int idx = 0; idx < parts.size() && braceIdx < 0; idx++) {
-			if( parts.get(idx).braceExpansion() != null ) {
-				braceIdx = idx;
-			}
+		boolean any = false;
+		for(ArgumentPartContext part : parts) {
+			any |= part.braceExpansion() != null;
 		}
-		if( braceIdx < 0 ) {
+		if( !any ) {
 			return null;
 		}
-		StringBuilder prefix = new StringBuilder();
-		for (int idx = 0; idx < braceIdx; idx++) {
-			prefix.append(getValue(parts.get(idx), ctx));
-		}
-		StringBuilder suffix = new StringBuilder();
-		for (int idx = braceIdx+1; idx < parts.size(); idx++) {
-			ArgumentPartContext part = parts.get(idx);
-			// only the first braces are expanded
-			suffix.append(part.braceExpansion() != null ? part.getText() : getValue(part, ctx));
-		}
+		// every combination, left to right: {x,y}{1,2} is x1 x2 y1 y2
 		List<String> ret = new ArrayList<>();
-		for(String val : expandBraces(parts.get(braceIdx).braceExpansion(), ctx)) {
-			ret.add(prefix+val+suffix);
+		ret.add("");
+		for (int idx = 0; idx < parts.size(); idx++) {
+			ArgumentPartContext part = parts.get(idx);
+			List<String> alternatives;
+			if( part.braceExpansion() != null ) {
+				alternatives = expandBraces(part.braceExpansion(), ctx);
+			} else {
+				String home = tilde(parts, idx, ctx);
+				alternatives = List.of(home != null ? home : ""+getValue(part, ctx));
+			}
+			ret = product(ret, alternatives);
+		}
+		return ret;
+	}
+
+	private static List<String> product(List<String> left, List<String> right) {
+		List<String> ret = new ArrayList<>();
+		for(String l : left) {
+			for(String r : right) {
+				ret.add(l+r);
+			}
 		}
 		return ret;
 	}
@@ -448,14 +459,37 @@ argumentPart:
 		if( exp.braceRange()!=null) {
 			return expandBraces(exp.braceRange(),ctx);
 		} else if(exp.braceArgList()!=null) {
+			// the items are between the commas; an item may be empty ({a,} is a and an empty word)
 			List<String> ret = new ArrayList<>();
-			for(AssociativeArrayValueContext arg : exp.braceArgList().associativeArrayValue()) {
-				ret.add(braceItem(arg, ctx));
+			BraceItemContext item = null;
+			for(ParseTree kid : exp.braceArgList().children) {
+				if( kid instanceof BraceItemContext ) {
+					item = (BraceItemContext) kid;
+				} else {
+					ret.addAll(item == null ? List.of("") : expandItem(item, ctx));
+					item = null;
+				}
 			}
+			ret.addAll(item == null ? List.of("") : expandItem(item, ctx));
 			return ret;
 		} else {
-			throw new IOException("Invalid brace expantion "+exp.getText());
+			// {a}: text, as written
+			return List.of(exp.getText());
 		}
+	}
+
+	/** an item of a list: text and nested braces (b{1,2} is b1 b2) */
+	private static List<String> expandItem(BraceItemContext item, ShellContext ctx) throws IOException {
+		List<String> ret = new ArrayList<>();
+		ret.add("");
+		for(ParseTree kid : item.children) {
+			if( kid instanceof BraceExpansionContext ) {
+				ret = product(ret, expandBraces((BraceExpansionContext) kid, ctx));
+			} else {
+				ret = product(ret, List.of(braceItem((AssociativeArrayValueContext) kid, ctx)));
+			}
+		}
+		return ret;
 	}
 
 	/**
@@ -471,36 +505,53 @@ argumentPart:
 	//	braceRange: start=associativeArrayValue DOT_DOT end=associativeArrayValue (DOT_DOT incr=associativeArrayValue);
 	private static List<String> expandBraces(BraceRangeContext range, ShellContext ctx) throws IOException {
 		List<String>  ret = new ArrayList<>();
-		String startStr = braceItem(range.start, ctx);
-		String endStr   = braceItem(range.end, ctx);
+		String startStr = bound(range.start, ctx);
+		String endStr   = bound(range.end, ctx);
 		boolean isChar = Character.isLetter(startStr.charAt(0));
 		int start = isChar?startStr.charAt(0): Integer.parseInt( startStr);
 		int end = isChar?endStr.charAt(0): Integer.parseInt( endStr);
 
 		int inc = 1;
-		if( !isChar ) {
-			if( range.incr !=null) {
-				String tmp = visit(range.incr, ctx);
-				inc = Math.abs(Integer.parseInt(tmp));
-				if( inc == 0 ) {
-					// bash treats an increment of 0 as 1
-					inc = 1;
-				}
+		if( range.incr !=null) {
+			// a step for letters too: {a..e..2} is a c e
+			inc = Math.abs(Integer.parseInt(bound(range.incr, ctx)));
+			if( inc == 0 ) {
+				// bash treats an increment of 0 as 1
+				inc = 1;
 			}
 		}
+		// {01..10}: numbers as wide as the wider end, with zeros
+		int width = 0;
+		if( !isChar && (startStr.matches("-?0\\d+") || endStr.matches("-?0\\d+"))) {
+			width = Math.max(startStr.length(), endStr.length());
+		}
 
-		if(start < end) {
+		if(start <= end) {
 			for(int idx=start; idx <=end; idx += inc) {
-				ret.add(isChar ? ""+((char)idx) : ""+idx);
+				ret.add(isChar ? ""+((char)idx) : pad(idx, width));
 			}
 		} else {
 			for(int idx=start; idx >=end; idx -= inc) {
-				ret.add(isChar ? ""+((char)idx) : ""+idx);
+				ret.add(isChar ? ""+((char)idx) : pad(idx, width));
 			}
 		}
 
 		return ret;
 	}
+
+	private static String bound(BraceBoundContext b, ShellContext ctx) throws IOException {
+		return (b.MINUS() != null ? "-" : "")+braceItem(b.associativeArrayValue(), ctx);
+	}
+
+	private static String pad(int n, int width) {
+		String digits = ""+Math.abs(n);
+		int size = width-(n < 0 ? 1 : 0);
+		while( digits.length() < size ) {
+			digits = "0"+digits;
+		}
+		return (n < 0 ? "-" : "")+digits;
+	}
+
 
 	public static Object visit(AssignStatementContext assignStatement, ShellContext ctx)  {
 		String ret = assignStatement.getText();

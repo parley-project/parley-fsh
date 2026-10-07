@@ -1049,6 +1049,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterBraceItem(FileSourceShParser.BraceItemContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitBraceItem(FileSourceShParser.BraceItemContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterBraceRange(FileSourceShParser.BraceRangeContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1056,6 +1068,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitBraceRange(FileSourceShParser.BraceRangeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterBraceBound(FileSourceShParser.BraceBoundContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitBraceBound(FileSourceShParser.BraceBoundContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

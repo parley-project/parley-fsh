@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
-import us.bringardner.filesource.sh.FileSourceShParser.AssociativeArrayValueContext;
+import us.bringardner.filesource.sh.FileSourceShParser.BraceItemContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import us.bringardner.filesource.sh.FileSourceShParser.BraceExpansionContext;
@@ -386,7 +386,7 @@ public class TestPreProsess {
 						return 6;
 					}
 					
-					List<AssociativeArrayValueContext> list1 = result.braceArgList().associativeArrayValue();
+					List<BraceItemContext> list1 = result.braceArgList().braceItem();
 					if( list1 == null) {
 						return 7;
 					}
