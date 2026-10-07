@@ -1,0 +1,8 @@
+attempt 1 failed, waiting 1s
+attempt 2 failed, waiting 2s
+attempt 3 failed, waiting 4s
+ok after 4
+attempt 1 failed, waiting 1s
+attempt 2 failed, waiting 2s
+giving up
+rc=1

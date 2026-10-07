@@ -761,21 +761,15 @@ ${parameter:-word}
 				if( body.startsWith("^") || body.startsWith(",")) {
 					return patternChageCase(ret,bodyText,bc);
 				}
-				if( bc.children.size()>1) {
-					TerminalNode tn = (TerminalNode) bc.children.get(0);
-					int type = tn.getSymbol().getType();
-					if( type == FileSourceShParser.SLASH) {
-						return patternSearchReplace(ret,bodyText,bc);
-					} 
+				// by the operator's text: the tokens differ (%- is not PERC, so ${s%-} did nothing)
+				if( body.length() > 1 && body.startsWith("/")) {
+					return patternSearchReplace(ret,bodyText,bc);
 				}
-				if( bc.children.size()>1) {
-					TerminalNode tn = (TerminalNode) bc.children.get(0);
-					int type = tn.getSymbol().getType();
-					if( type == FileSourceShParser.PIPE || type == FileSourceShParser.OR) {
-						return patternHashReplaceHead(ret,bodyText,bc);
-					} else if( type == FileSourceShParser.PERC | type == FileSourceShParser.PERC_PERC) {
-						return patternHashReplaceTail(ret,bodyText,bc);
-					} 
+				if( body.length() > 1 && body.startsWith("|")) {
+					return patternHashReplaceHead(ret,bodyText,bc);
+				}
+				if( body.length() > 1 && body.startsWith("%")) {
+					return patternHashReplaceTail(ret,bodyText,bc);
 				}
 
 				if( bc.children.size()>2) {

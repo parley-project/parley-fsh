@@ -112,6 +112,12 @@ assignStatement
 	 * to the array).
 	 */
 	private static Object combine(ShellContext ctx, String name, Object old, Object val, boolean append) {
+		if( val instanceof java.util.Map<?,?> map && append && old instanceof java.util.Map<?,?> before ) {
+			// m+=([k]=v): added to (or replacing in) the existing keys
+			java.util.Map<Object,Object> ret = new java.util.TreeMap<>(before);
+			ret.putAll(map);
+			return ret;
+		}
 		if( val instanceof List<?> ) {
 			if( !append ) {
 				return val;
@@ -185,6 +191,20 @@ assignStatement
 		if( actx.arrayInitializer()!=null) {
 			// each item is a word, expanded like a command's ("${a[@]}", $(cmd), *.c); [i]=v sets
 			// element i
+			if( ctx.getVariable(actx.id1.getText()) instanceof java.util.Map<?,?> ) {
+				// m=([k]=v ...) of an associative array (declare -A m): keys, not indexes
+				java.util.Map<String,Object> map = new java.util.TreeMap<>();
+				for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
+					String text = ""+new Argument(ac).getValue(ctx);
+					int close = text.indexOf("]=");
+					if( text.startsWith("[") && close > 0 ) {
+						map.put(text.substring(1, close), text.substring(close+2));
+					} else {
+						ctx.stderr.println(actx.id1.getText()+": "+text+": must use subscript when assigning associative array");
+					}
+				}
+				return map;
+			}
 			FshList list = new FshList();
 			for(ArgumentContext ac : actx.arrayInitializer().argument_list().argument()) {
 				java.util.regex.Matcher m = INDEXED.matcher(ac.getText());

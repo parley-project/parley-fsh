@@ -164,11 +164,11 @@ public class Read extends ShellCommand{
 			Object tmp = ctx.getVariable(Console.IFS);
 			String ifs = tmp == null ? " \t\n" : tmp.toString();
 			if( arrayName !=null ) {
-				ctx.setVariable(arrayName, null);
+				// the whole array at once, so a local one (local a; read -ra a) gets it
 				List<String> words = split(line, ifs, Integer.MAX_VALUE);
-				for(int idx=0; idx < words.size(); idx++ ) {
-					ctx.setVariable(arrayName, idx, words.get(idx));
-				}
+				us.bringardner.fsh.FshList list = new us.bringardner.fsh.FshList();
+				list.addAll(words);
+				ctx.setVariable(arrayName, list);
 			} else {
 				List<String> values = split(line, ifs, names.size());
 				for(int idx=0; idx < names.size(); idx++ ) {

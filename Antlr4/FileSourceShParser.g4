@@ -226,6 +226,8 @@ compare :
 		| WS* compare_prime (';' WS*)?
         | WS* LSQUARE WS* compare_prime WS* RSQUARE
         | WS* LSQUARE WS* simpleCompare=compare WS* RSQUARE
+        // if echo x | grep -q x; then: a pipeline's status
+        | WS* pipe=pipeStatement (';' WS*)?
         | WS* NOT notCompare=compare
         | left=compare WS* AND WS* right=compare
         | left=compare WS* OR WS*  right=compare

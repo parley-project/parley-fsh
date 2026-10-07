@@ -1,0 +1,3 @@
+ann    1000 Ann Smith    zsh
+bob    1001 (none)       bash
+/bin/bash=2 /usr/sbin/nologin=1 /bin/zsh=1 

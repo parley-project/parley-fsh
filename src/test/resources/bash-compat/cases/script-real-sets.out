@@ -1,0 +1,4 @@
+uniq: apple banana cherry date
+intersect: banana date
+a-b: apple cherry
+union: 5 fig

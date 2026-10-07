@@ -1,0 +1,20 @@
+42
+rc=0
+Hello, stranger!
+rc=0
+Hello, Ann!
+rc=0
+tool 1.2.0
+rc=0
+Usage: tool <command> [options]
+Commands:
+  add <a> <b>     add two numbers
+  greet [name]    say hello
+  version         print the version
+rc=0
+unknown command: bogus
+Usage: tool <command> [options]
+Commands:
+  add <a> <b>     add two numbers
+  greet [name]    say hello
+  version         print the version

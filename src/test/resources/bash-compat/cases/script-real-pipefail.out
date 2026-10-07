@@ -1,0 +1,8 @@
+[true] rc=0
+[false] rc=1
+handled
+pipe rc=1
+pipe rc=0
+no zzz
+got dat
+no pipefail rc=0

@@ -112,6 +112,9 @@ compare : LSQUARE compare_prime RSQUARE
 		if( ctx.DBL_TEST() != null ) {
 			return DoubleBracket.test(ctx.DBL_TEST().getText(), sc) == 0;
 		}
+		if( ctx.pipe != null ) {
+			return new FileSourceShVisitorImpl().visitPipeStatement(ctx.pipe).process(sc) == 0;
+		}
 		if( ctx.declare != null ) {
 			Statement s = new us.bringardner.fsh.antlr.statement.DeclareAssociateArrayStatement(ctx.declare);
 			RerdirectImpl r = RerdirectImpl.find(ctx.declare.children);
