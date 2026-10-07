@@ -12,6 +12,8 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.PipeStatementContext;
 import us.bringardner.shell.Console.CommandThread;
+import us.bringardner.shell.Console.Option;
+import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ConsoleSignal;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
@@ -39,7 +41,7 @@ public class PipeStatement extends Statement{
 	private static void forwardControl(ShellContext ctx, CommandThread [] threads) {
 		RuntimeException stop = ctx.getException();
 		boolean paused = ctx.isPaused();
-		for (int idx = 1; idx < threads.length; idx++) {
+		for (int idx = 0; idx < threads.length; idx++) {
 			ShellContext stage = threads[idx].ctx;
 			if( stop != null && stage.getException() == null ) {
 				stage.setExecption(stop);
@@ -56,8 +58,9 @@ public class PipeStatement extends Statement{
 
 		CommandThread [] threads = new CommandThread[cmds.length];
 		this.threads = threads;
-		threads[0] = new CommandThread(ctx,cmds[0]);
-		// the first command runs on the caller's context, so its streams must be restored afterward
+		// every stage is a subshell, as in bash: echo a | read x does not set x in the shell
+		threads[0] = new CommandThread(ctx.isolatedSubShell(),cmds[0]);
+		// (the streams are put back afterward, as when the first stage ran on the caller's context)
 		PrintStream callerOut = ctx.stdout;
 		PrintStream callerErr = ctx.stderr;
 		List<PipedInputStream> pipes = new ArrayList<>();
@@ -65,7 +68,7 @@ public class PipeStatement extends Statement{
 		
 			//  Create the threads
 			for (int idx = 1; idx < cmds.length; idx++) {
-				ShellContext ctx2 = ctx.subShell();
+				ShellContext ctx2 = ctx.isolatedSubShell();
 				threads[idx] = new CommandThread(ctx2,cmds[idx]);			
 			}
 			// set up pipes
@@ -106,6 +109,16 @@ public class PipeStatement extends Statement{
 				}
 			}
 			ret = threads[cmds.length-1].exitCode;
+			// PIPESTATUS has each stage's status; with set -o pipefail the status is the last
+			// failed stage's (0 if none failed)
+			FsshList statuses = new FsshList();
+			for(CommandThread t : threads) {
+				statuses.add(t.exitCode);
+				if( t.exitCode != 0 && ctx.console.isOptionEnabled(Option.PipeFail)) {
+					ret = t.exitCode;
+				}
+			}
+			ctx.setVariable("PIPESTATUS", statuses);
 			PipeStatementContext pctx = (PipeStatementContext)getContext();
 			if( pctx.NOT()!=null) {
 				ret = ret==0?1:0;

@@ -73,6 +73,10 @@ public class Set extends ShellCommand{
 				boolean set = val.startsWith("-");
 				String val1 = val.substring(1);
 				Option o1 = Option.find(val1);
+				if( o1 == Option.Option ) {
+					// -o name is read below, one letter at a time (this turned on the option named o)
+					o1 = Option.Unsupported;
+				}
 				if( o1 != Option.Unsupported) {
 					ctx.console.setOption(o1, set);	
 				} else {
@@ -97,17 +101,18 @@ public class Set extends ShellCommand{
 								Argument a2 = args[++idx];
 								val = ""+a2.getValue(ctx);
 								Option o2 = Option.find(val);
-								if( o2 == null ) {
-									throw new IOException("unknown -o option name");
+								if( o2 == null || o2 == Option.Unsupported || o2 == Option.Option ) {
+									ctx.stderr.println("set: "+val+": invalid option name");
+									return 2;
 								}
 								ctx.console.setOption(o2, set);							
 							} else {
 								for(Option oo : Console.Option.values()) {
 									if(oo != Option.Option) {
 										if( set ) {
-											ctx.stdout.printf("%s\t: %s\n",oo.toString(), (ctx.console.isOptionEnabled(oo)?"on":"off"));
+											ctx.stdout.printf("%s\t: %s\n",oo.longName, (ctx.console.isOptionEnabled(oo)?"on":"off"));
 										} else {
-											ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.toString());
+											ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.longName);
 										}
 									}
 								}

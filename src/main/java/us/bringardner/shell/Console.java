@@ -205,31 +205,40 @@ public class Console extends SignalEnabledThread {
 	public enum Option {
 		Unsupported("")
 		, Option("o")
-		, MarkAllForExport("a")
-		, ReprtJobStausImediately("b")
-		, ExitImediately("e")
-		, DisableFilenameExpansion("f")
+		, MarkAllForExport("a", "allexport")
+		, ReprtJobStausImediately("b", "notify")
+		, ExitImediately("e", "errexit")
+		, DisableFilenameExpansion("f", "noglob")
 		, RistrictectShell ("r")
-		, ExitAfterOne ("t")
-		, NullParameterIsError ("u")
-		, PrintLinesAsRead ("v")
-		, PrintCommandTrace ("x")
-		, DoBraceExpantion ("B")
-		, NoClobberRedirect ("C")
-		, DontFollowLinks ("P")
+		, ExitAfterOne ("t", "onecmd")
+		, NullParameterIsError ("u", "nounset")
+		, PrintLinesAsRead ("v", "verbose")
+		, PrintCommandTrace ("x", "xtrace")
+		, DoBraceExpantion ("B", "braceexpand")
+		, NoClobberRedirect ("C", "noclobber")
+		, DontFollowLinks ("P", "physical")
+		// set -o pipefail: a pipeline's status is the last failed stage's
+		, PipeFail ("\u0000pipefail", "pipefail")
 		, KeyboardEcho ("kbecho")
 		, VerboseError ("verboseError")
 		;
 		public final String label;
+		/** the name for set -o (errexit for -e) */
+		public final String longName;
 
 
 		private Option(String label) {
+			this(label, label);
+		}
+
+		private Option(String label, String longName) {
 			this.label = label;
+			this.longName = longName;
 		}
 
 		public static Option find(String name) {
 			for(Option o : values()) {
-				if( o.label.equals(name)) {
+				if( o.label.equals(name) || (!name.isEmpty() && o.longName.equals(name))) {
 					return o;
 				}
 			}

@@ -63,13 +63,10 @@ param-case
 param-default
 
 # pipe
-pipe-subshell-var
 
 # pipefail
-pipefail
 
 # pipestatus
-pipestatus
 
 # printf
 printf-v

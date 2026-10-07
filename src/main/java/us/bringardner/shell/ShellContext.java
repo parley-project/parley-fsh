@@ -388,9 +388,45 @@ $
 		setVariable(name, value);				
 	}
 
+	/**
+	 * A pipe stage's own variables (null: the shell's are used): its assignments go here, so they
+	 * do not reach the shell, as in bash where each stage is a subshell. UNSET marks an unset one.
+	 */
+	private Map<String,Object> isolated;
+	private static final Object UNSET = new Object();
+
+	/** a variable outside any function: the stage's own, or the shell's */
+	private Object globalVariable(String name) {
+		if( isolated != null && isolated.containsKey(name)) {
+			Object v = isolated.get(name);
+			return v == UNSET ? null : v;
+		}
+		return console.getVariable(name);
+	}
+
+	private void setGlobalVariable(String name, Object value) {
+		if( isolated != null ) {
+			isolated.put(name, value == null ? UNSET : value);
+		} else {
+			console.setVariable(name, value);
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
-		Object val = console.getVariable(name);
+		Object val = globalVariable(name);
+		if( isolated != null && !isolated.containsKey(name)) {
+			// the shell's array: change a copy
+			if( val instanceof FsshList ) {
+				FsshList copy = new FsshList();
+				for(int idx : ((FsshList) val).getIndexes()) {
+					copy.set(idx, ((FsshList) val).get(idx));
+				}
+				val = copy;
+			} else if( val instanceof Map<?,?> ) {
+				val = new TreeMap<>((Map<String,Object>) val);
+			}
+		}
 
 		if( val == null) {
 			if (index instanceof Integer) {
@@ -411,7 +447,7 @@ $
 			Map<String,Object> map = (Map<String, Object>)val;
 			map.put(""+index, value);
 		}
-		console.setVariable(name, val);
+		setGlobalVariable(name, val);
 	}
 
 	public void setVariable(String name, Object value) {
@@ -419,7 +455,7 @@ $
 			// name=value sets the function's local variable
 			functionStack.peek().local.put(name, value);
 		} else {
-			console.setVariable(name, value);
+			setGlobalVariable(name, value);
 		}
 	}
 
@@ -445,6 +481,11 @@ $
 			return true;
 		}
 
+		if( isolated != null ) {
+			boolean was = globalVariable(name) != null;
+			isolated.put(name, UNSET);
+			return was;
+		}
 		val = console.variables.remove(name);
 		if( val !=null) {
 			return true;
@@ -481,6 +522,10 @@ $
 		}
 		Object ret = getLocalVariable(name);
 		if( ret == null ) {
+			if( isolated != null && isolated.containsKey(name)) {
+				Object v = isolated.get(name);
+				return v == UNSET ? null : v;
+			}
 			ret = console.getVariable(name);
 			if( ret == null) {
 				ret = getEvironmentVariable(name);
@@ -561,6 +606,22 @@ $
 			if( l != null ) {
 				((Map<String, Object>) ret.commandStack.peek().get(LOCAL_VARIABLES)).putAll(l);
 			}
+		}
+		// a subshell inside a pipe stage sees (a copy of) the stage's variables
+		if( isolated != null ) {
+			ret.isolated = new java.util.HashMap<>(isolated);
+		}
+		return ret;
+	}
+
+	/**
+	 * A subshell for a pipe stage: it runs at the same time as the shell, so it gets its own
+	 * variables instead of a snapshot ( ... ) would restore.
+	 */
+	public ShellContext isolatedSubShell() {
+		ShellContext ret = subShell();
+		if( ret.isolated == null ) {
+			ret.isolated = new java.util.HashMap<>();
 		}
 		return ret;
 	}

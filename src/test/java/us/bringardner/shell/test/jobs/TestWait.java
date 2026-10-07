@@ -93,7 +93,13 @@ public class TestWait extends AbstractConsoleTest {
 		String out = res.getStdOut();
 		String err = res.getStdErr();
 		assertEquals(expectErr, err);
-		assertEquals(expectOut, out);
+		// the two jobs and the script print their first lines at the same time, in any order (as
+		// in bash); the jobs finish in the order of their sleeps
+		String [] expectLines = expectOut.split("\n");
+		String [] outLines = out.split("\n");
+		assertEquals(expectLines.length, outLines.length, out);
+		assertEquals(sorted(expectLines, 0, 3), sorted(outLines, 0, 3), out);
+		assertEquals(java.util.Arrays.asList(expectLines).subList(3, expectLines.length), java.util.Arrays.asList(outLines).subList(3, outLines.length), out);
 		assertEquals(3, res.exitCode);
 		String val = ""+console.getVariable("var");
 		assertEquals("200001", val);
@@ -143,5 +149,10 @@ public class TestWait extends AbstractConsoleTest {
 		assertEquals("", res.getStdErr());
 		assertEquals("waited\n", res.getStdOut());
 		assertEquals(0, res.exitCode);
+	}
+	private static java.util.List<String> sorted(String [] lines, int from, int to) {
+		java.util.List<String> ret = new java.util.ArrayList<>(java.util.Arrays.asList(lines).subList(from, to));
+		java.util.Collections.sort(ret);
+		return ret;
 	}
 }
