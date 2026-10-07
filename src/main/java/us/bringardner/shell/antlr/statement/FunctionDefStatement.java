@@ -74,7 +74,12 @@ public class FunctionDefStatement extends Statement{
 		} catch (ReturnException e) {
 			ret = e.exitCode;
 		} finally {
-			ctx.exitFunction(this);
+			try {
+				ctx.console.setLastExitCode(ret);
+				ctx.functionReturning();
+			} finally {
+				ctx.exitFunction(this);
+			}
 		}
 		if( debug == RunState.StepOver) {
 			ctx.console.getDebugContext().setCurrentState(RunState.StepOver);

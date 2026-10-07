@@ -62,12 +62,17 @@ public class PipeStatement extends Statement{
 		// (the streams are put back afterward, as when the first stage ran on the caller's context)
 		PrintStream callerOut = ctx.stdout;
 		PrintStream callerErr = ctx.stderr;
+		java.io.InputStream callerIn = ctx.stdin;
+		// shopt -s lastpipe (in a script): the last stage runs in this shell, so
+		// echo hi | read v sets v
+		boolean lastInShell = cmds.length > 1 && !ctx.console.isInteractive && !ctx.isIsolated()
+				&& us.bringardner.shell.Glob.option(ctx, "lastpipe");
 		List<Pipe> pipes = new ArrayList<>();
 		try {
 		
 			//  Create the threads
 			for (int idx = 1; idx < cmds.length; idx++) {
-				ShellContext ctx2 = ctx.isolatedSubShell();
+				ShellContext ctx2 = lastInShell && idx == cmds.length-1 ? ctx : ctx.isolatedSubShell();
 				threads[idx] = new CommandThread(ctx2,cmds[idx]);			
 			}
 			// set up pipes
@@ -96,7 +101,18 @@ public class PipeStatement extends Statement{
 
 			//start threads
 			for(CommandThread t : threads) {
-				t.start();
+				if( !lastInShell || t != last ) {
+					t.start();
+				}
+			}
+			if( lastInShell ) {
+				// here, on this thread (the pipeline's status runs the ERR trap, not this stage)
+				ctx.errTrapBlocked++;
+				try {
+					last.run();
+				} finally {
+					ctx.errTrapBlocked--;
+				}
 			}
 			for(CommandThread t : threads) {
 				while(t.isAlive()) {
@@ -143,6 +159,7 @@ public class PipeStatement extends Statement{
 		} finally {
 			ctx.stdout = callerOut;
 			ctx.stderr = callerErr;
+			ctx.stdin = callerIn;
 			for(Pipe pipe : pipes) {
 				pipe.in.close();
 			}

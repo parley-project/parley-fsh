@@ -219,6 +219,10 @@ public class Console extends SignalEnabledThread {
 		, DontFollowLinks ("P", "physical")
 		// set -o pipefail: a pipeline's status is the last failed stage's
 		, PipeFail ("\u0000pipefail", "pipefail")
+		// set -E: functions, ( ) and pipe stages inherit the ERR trap
+		, ErrTrace ("E", "errtrace")
+		// set -T: functions inherit the DEBUG and RETURN traps
+		, FuncTrace ("T", "functrace")
 		, KeyboardEcho ("kbecho")
 		, VerboseError ("verboseError")
 		;
@@ -1000,7 +1004,6 @@ delimiter
 
 					int exitCode = job.getExitCode();
 					if( exitCode!=0 ) {
-						handleMetaSignal(ConsoleMetaSignal.Err);
 						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 							Console.exit(this,exitCode);
 						}
@@ -1140,7 +1143,6 @@ delimiter
 
 					exitCode = executeAsJob(job);	
 					if( exitCode!=0) {
-						handleMetaSignal(ConsoleMetaSignal.Err);
 						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 							Console.exit(this,exitCode);
 						}
@@ -1151,7 +1153,6 @@ delimiter
 					currentJob.set(e.job);
 					exitCode = executeAsJob(e.job);
 					if( exitCode!=0) {
-						handleMetaSignal(ConsoleMetaSignal.Err);
 						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 							Console.exit(this,exitCode);
 						}
@@ -2389,6 +2390,76 @@ delimiter
 		signalHandlers.computeIfAbsent(signal, k -> new CopyOnWriteArrayList<>()).add(action);		
 	}
 
+	/** trap action EXIT/ERR/RETURN/DEBUG: the action replaces the one before; null removes it */
+	public void setTrap(ConsoleMetaSignal signal, String action) {
+		if( action == null ) {
+			signalHandlers.remove(signal);
+		} else {
+			signalHandlers.put(signal, new CopyOnWriteArrayList<>(List.of(action)));
+		}
+	}
+
+	/** trap action SIG: the action replaces the one before; null removes it */
+	public void setTrap(ShellContext ctx, Signal signal, String action) {
+		if( action == null ) {
+			osSignalHandlers.remove(signal.getNumber());
+		} else {
+			List<ConsoleSignalHandler> list = new CopyOnWriteArrayList<>();
+			list.add(new ConsoleSignalHandler(ctx, action));
+			osSignalHandlers.put(signal.getNumber(), list);
+		}
+	}
+
+	/** the traps, as trap -p prints them: {name, action}, EXIT first, then by signal number */
+	public List<String[]> traps() {
+		List<String[]> ret = new ArrayList<>();
+		java.util.function.BiConsumer<ConsoleMetaSignal,String> meta = (s, name) -> {
+			List<String> a = signalHandlers.get(s);
+			if( a != null && !a.isEmpty()) {
+				ret.add(new String[] {name, a.get(a.size()-1)});
+			}
+		};
+		meta.accept(ConsoleMetaSignal.Exit, "EXIT");
+		Map<Integer,String> names = us.bringardner.shell.commands.Trap.getLocalSignals();
+		for(Map.Entry<Integer, List<ConsoleSignalHandler>> e : osSignalHandlers.entrySet()) {
+			if( !e.getValue().isEmpty()) {
+				String n = names.get(e.getKey());
+				ret.add(new String[] {"SIG"+(n == null ? ""+e.getKey() : n), e.getValue().get(e.getValue().size()-1).action});
+			}
+		}
+		meta.accept(ConsoleMetaSignal.Debug, "DEBUG");
+		meta.accept(ConsoleMetaSignal.Return, "RETURN");
+		meta.accept(ConsoleMetaSignal.Err, "ERR");
+		return ret;
+	}
+
+	/**
+	 * Run the ERR, RETURN (or DEBUG) trap in ctx, so $1 and local variables are the running
+	 * function's; $? is kept. A trap does not run inside its own action.
+	 */
+	public void runTrap(ConsoleMetaSignal signal, ShellContext ctx) {
+		List<String> actions = signalHandlers.get(signal);
+		if( actions == null || actions.isEmpty() || inProcess.contains(signal)) {
+			return;
+		}
+		int saved = getLastExitCode();
+		inProcess.push(signal);
+		try {
+			for(String code : actions) {
+				for(Statement s : FileSourceShVisitorImpl.parse(code)) {
+					s.process(ctx);
+				}
+			}
+		} catch (us.bringardner.shell.antlr.signal.FsshException e) {
+			throw e;
+		} catch (Exception e) {
+			ctx.stderr.println(e.getMessage());
+		} finally {
+			inProcess.pop();
+			setLastExitCode(saved);
+		}
+	}
+
 	private  Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new ConcurrentSkipListMap<>();
 
 	public void registerHandler(ShellContext ctx,final Signal signal, String action) {
@@ -2652,7 +2723,7 @@ delimiter
 				handleMetaSignal(ConsoleMetaSignal.Debug);
 				ret = stmt.process(sc);			
 				if( ret !=0) {
-					handleMetaSignal(ConsoleMetaSignal.Err);
+					// (the ERR trap ran as the statement failed: see Statement.process)
 					if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
 						break;
 					}					

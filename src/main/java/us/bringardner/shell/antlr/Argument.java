@@ -100,8 +100,13 @@ argumentPart:
 		if( parts.size() > 1 && !(""+parts.get(1).getText()).startsWith("/")) {
 			return null;
 		}
-		Object home = ctx.getVariable("HOME");
-		return home == null ? null : home.toString();
+		return tildeValue(parts.get(0).literal.getText(), ctx);
+	}
+
+	/** ~ is $HOME, ~+ $PWD and ~- $OLDPWD; null if that is not set */
+	public static String tildeValue(String tilde, ShellContext ctx) {
+		Object val = ctx.getVariable(tilde.equals("~+") ? "PWD" : tilde.equals("~-") ? "OLDPWD" : "HOME");
+		return val == null ? null : val.toString();
 	}
 
 	/**
@@ -131,8 +136,7 @@ argumentPart:
 				return null;
 			}
 		}
-		Object home = ctx.getVariable("HOME");
-		return home == null ? null : home.toString();
+		return tildeValue(part.literal.getText(), ctx);
 	}
 
 	public static Object getValue(ArgumentPartContext part, ShellContext ctx)  {

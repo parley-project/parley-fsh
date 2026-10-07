@@ -93,6 +93,8 @@ public class CommandSubstitutionStatement extends Statement{
 			return readFile(read.group(1), primary);
 		}
 		ShellContext ctx = primary.subShell();
+		// x=$(false) runs the ERR trap once, for the assignment
+		ctx.errTrapBlocked++;
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
 		
 		ctx.stdout = new PrintStream(bao);

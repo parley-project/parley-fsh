@@ -247,7 +247,8 @@ TEST_OP:'-lt'|'-le'|'-gt'|'-ge';
 MINUS:'-';
 PIPE:'|';
 AMP:'&';
-TILDE:'~';
+// ~ is $HOME, ~+ $PWD and ~- $OLDPWD (at the start of a word)
+TILDE:'~' [+\-]?;
 QUESTION:'?';
 TIME: 'time' {atKeywordEnd()}?;
 LPAREN:'(';

@@ -57,6 +57,8 @@ public class Read extends ShellCommand{
 		int n = -1;
 		int N = -1;
 		int timeout = -1;
+		timeoutSeconds = -1;
+		timedOut = false;
 		
 		/*
 		 * e & i are for command line editing
@@ -78,7 +80,16 @@ public class Read extends ShellCommand{
 					case 'p':prompt = ""+args[++idx1].getValue(ctx); break;
 					case 'r':options.add(Options.r);break;
 					case 's':options.add(Options.s);break;
-					case 't':timeout = Integer.parseInt(""+args[++idx1].getValue(ctx));break;
+					case 't':
+						// seconds, maybe with a fraction: -t 0.5
+						try {
+							timeoutSeconds = Double.parseDouble(""+args[++idx1].getValue(ctx));
+						} catch (NumberFormatException e) {
+							ctx.stderr.println("read: "+args[idx1].getValue(ctx)+": invalid timeout specification");
+							return 1;
+						}
+						timeout = (int) Math.ceil(timeoutSeconds);
+						break;
 					case 'u':int fd = Integer.parseInt(""+args[++idx1].getValue(ctx));
 					// TODO: Set input from fd
 						if( fd !=0) {
@@ -98,10 +109,18 @@ public class Read extends ShellCommand{
 
 		
 		String line = "";
+		if( timeoutSeconds == 0 ) {
+			// read -t 0: whether there is input, without reading it
+			return ctx.stdin.available() > 0 || !mayBlock(ctx.stdin) ? 0 : 1;
+		}
 		try {
 			line = readLine(ctx,prompt,lineDelim,timeout,editLineText,n, N, options);	
 		} catch (EOFException e2) {
 			return 1;
+		}
+		if( timedOut ) {
+			// as in bash: what was read is kept, and the status is 128+SIGALRM
+			ret = 142;
 		}
 		if( eof ) {
 			ret = 1;
@@ -185,6 +204,35 @@ public class Read extends ShellCommand{
 	/** the last read ended at the end of the input, not at a delimiter */
 	private boolean eof;
 
+	/** read -t: seconds to wait for input (-1: no limit) */
+	private double timeoutSeconds = -1;
+	/** the last read ran out of time */
+	private boolean timedOut;
+
+	/** a pipe or terminal may wait for input; a file or text never does (and available() is 0 at its end) */
+	private static boolean mayBlock(java.io.InputStream in) {
+		return !(in instanceof java.io.FileInputStream || in instanceof java.io.ByteArrayInputStream);
+	}
+
+	/** wait until there is input; false if the time ran out first */
+	private boolean waitForInput(ShellContext ctx, long deadline) throws IOException {
+		if( deadline < 0 || !mayBlock(ctx.stdin)) {
+			return true;
+		}
+		while( ctx.stdin.available() <= 0 ) {
+			if( System.currentTimeMillis() >= deadline ) {
+				return false;
+			}
+			try {
+				Thread.sleep(5);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public String readLine(ShellContext ctx,String prompt) throws IOException {
 		List<Options> options = new ArrayList<>();
 		String editLineText="";
@@ -235,7 +283,16 @@ public class Read extends ShellCommand{
 
 		int i = 0;
 		eof = false;
-		while((i=ctx.stdin.read())!=-1) {
+		timedOut = false;
+		long deadline = timeoutSeconds > 0 ? System.currentTimeMillis()+(long)(timeoutSeconds*1000) : -1;
+		while( true ) {
+			if( !waitForInput(ctx, deadline)) {
+				timedOut = true;
+				return buf.toString();
+			}
+			if( (i=ctx.stdin.read()) == -1 ) {
+				break;
+			}
 			if(i == '\\' && !options.contains(Options.r)) {
 				int next = ctx.stdin.read();
 				if( next == '\n' ) {

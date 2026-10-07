@@ -1,0 +1,4 @@
+trap -- 'echo x' EXIT
+trap -- 'echo x' EXIT
+trap -- 'echo y' SIGUSR1
+done

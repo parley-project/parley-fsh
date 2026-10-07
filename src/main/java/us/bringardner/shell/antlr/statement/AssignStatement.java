@@ -186,8 +186,7 @@ assignStatement
 				for (int idx = 0; idx < parts.size(); idx++) {
 					String home = Argument.tilde(parts, idx, ctx);
 					if( home == null && idx > 0 && isTilde(parts.get(idx)) && afterColon(parts.get(idx-1)) && beforeSlashOrColon(parts, idx+1)) {
-						Object h = ctx.getVariable("HOME");
-						home = h == null ? null : h.toString();
+						home = Argument.tildeValue(parts.get(idx).literal.getText(), ctx);
 					}
 					text.append(home != null ? home : Argument.getValue(parts.get(idx), ctx));
 				}
@@ -225,8 +224,8 @@ assignStatement
 				Number number = parseNumber(text);
 				return number == null ? text : number;
 			case FileSourceShParser.TILDE: {
-				// x=~ is the home directory
-				Object home = ctx.getVariable("HOME");
+				// x=~ is the home directory (~+ $PWD, ~- $OLDPWD)
+				String home = Argument.tildeValue(text, ctx);
 				return home == null ? text : home;
 			}
 			case FileSourceShParser.TRUE: return true;

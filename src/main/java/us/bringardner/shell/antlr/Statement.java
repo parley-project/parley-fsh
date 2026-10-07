@@ -403,6 +403,10 @@ public abstract class Statement {
 			ret = execute(ctx);
 			// $? is the status of the last statement, whatever kind it is (if, [ ], a loop, a group ...)
 			ctx.console.setLastExitCode(ret);
+			if( ret != 0 && errexitApplies() && ctx.conditionDepth == 0 && ctx.errTrapBlocked == 0 ) {
+				// the ERR trap: as set -e, not for conditions, && || lists or !
+				ctx.console.runTrap(us.bringardner.shell.Console.ConsoleMetaSignal.Err, ctx);
+			}
 			if( ret != 0 && errexitApplies() && ctx.conditionDepth == 0 && ctx.console.isOptionEnabled(Option.ExitImediately)) {
 				// set -e: a failed command ends the script
 				throw new ExitException(ctx, ret);

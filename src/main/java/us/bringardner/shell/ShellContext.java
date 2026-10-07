@@ -683,8 +683,85 @@ $
 			if( ret == null) {
 				ret = getEvironmentVariable(name);
 			}
+			if( ret == null ) {
+				ret = dynamicVariable(name);
+			}
 		}
 		return ret;
+	}
+
+	private static volatile String hostName;
+	private static volatile Long userId;
+
+	/** $PPID $UID $EUID $HOSTNAME $EPOCHSECONDS $EPOCHREALTIME, as bash sets them */
+	private static Object dynamicVariable(String name) {
+		switch (name) {
+		case "PPID":
+			return ProcessHandle.current().parent().map(ProcessHandle::pid).orElse(0L);
+		case "UID":
+		case "EUID":
+			if( userId == null ) {
+				userId = findUserId();
+			}
+			return userId;
+		case "HOSTNAME":
+			if( hostName == null ) {
+				hostName = findHostName();
+			}
+			return hostName;
+		case "EPOCHSECONDS":
+			return System.currentTimeMillis()/1000;
+		case "EPOCHREALTIME": {
+			java.time.Instant now = java.time.Instant.now();
+			return String.format("%d.%06d", now.getEpochSecond(), now.getNano()/1000);
+		}
+		default:
+			return null;
+		}
+	}
+
+	private static Long findUserId() {
+		try {
+			// jdk.security.auth, where there is one
+			Class<?> c = Class.forName("com.sun.security.auth.module.UnixSystem");
+			return (Long) c.getMethod("getUid").invoke(c.getConstructor().newInstance());
+		} catch (Throwable e) {
+		}
+		String id = run("id", "-u");
+		try {
+			return id == null ? 0L : Long.parseLong(id);
+		} catch (NumberFormatException e) {
+			return 0L;
+		}
+	}
+
+	private static String findHostName() {
+		String ret = System.getenv("HOSTNAME");
+		if( ret == null || ret.isEmpty()) {
+			ret = run("hostname");
+		}
+		if( ret == null || ret.isEmpty()) {
+			try {
+				ret = java.net.InetAddress.getLocalHost().getHostName();
+			} catch (Exception e) {
+				ret = "localhost";
+			}
+		}
+		return ret;
+	}
+
+	/** the first line a command prints, or null */
+	private static String run(String ... cmd) {
+		try {
+			Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
+			try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
+				String line = r.readLine();
+				p.waitFor();
+				return line == null ? null : line.trim();
+			}
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	private Object getPositionalVariable(int pos) {
@@ -769,6 +846,7 @@ $
 		ret.stdout = stdout;
 		ret.stdin = stdin;
 		ret.stderr = stderr;
+		ret.errTrapBlocked = errTrapBlocked + (console.isOptionEnabled(Console.Option.ErrTrace) ? 0 : 1);
 		for(FunctionInvocation inv : functionStack) {
 			ret.functionStack.push(inv.copy());
 		}
@@ -807,6 +885,8 @@ $
 
 	public ShellContext isolatedSubShell() {
 		ShellContext ret = subShell();
+		// the pipeline's status runs the ERR trap, not its stages
+		ret.errTrapBlocked++;
 		if( ret.isolated == null ) {
 			ret.isolated = new java.util.HashMap<>();
 		}
@@ -855,6 +935,10 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
+		/** set -E is off: the ERR trap does not run in this function */
+		boolean errBlocked;
+		/** trap ... RETURN was set while this ran: it runs when this returns */
+		boolean returnTrap;
 
 		public FunctionInvocation(Object[] args2, FunctionDefStatement function) throws IOException {
 			this.function = function;
@@ -892,11 +976,38 @@ $
 		FunctionInvocation inv = new FunctionInvocation(args,function);
 		// the line it was called from (caller)
 		inv.callLine = statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
+		inv.errBlocked = !console.isOptionEnabled(Console.Option.ErrTrace);
+		if( inv.errBlocked ) {
+			errTrapBlocked++;
+		}
 		functionStack.push(inv);		
 	}
 
 	public void exitFunction(FunctionDefStatement functionDefStatement) {
-		functionStack.pop();		
+		FunctionInvocation inv = functionStack.pop();
+		if( inv.errBlocked ) {
+			errTrapBlocked--;
+		}
+	}
+
+	/**
+	 * The ERR trap does not run inside functions, ( ), $( ) and pipe stages unless set -E is on
+	 * (they do not inherit it): above 0 it is off.
+	 */
+	public int errTrapBlocked;
+
+	/** trap ... RETURN in a function: it runs when that function returns */
+	public void returnTrapSet() {
+		if( !functionStack.isEmpty()) {
+			functionStack.peek().returnTrap = true;
+		}
+	}
+
+	/** a function is returning: its RETURN trap runs (any function's, with set -T) */
+	public void functionReturning() {
+		if( !functionStack.isEmpty() && (functionStack.peek().returnTrap || console.isOptionEnabled(Console.Option.FuncTrace))) {
+			console.runTrap(Console.ConsoleMetaSignal.Return, this);
+		}
 	}
 
 	public boolean isInFunction() {

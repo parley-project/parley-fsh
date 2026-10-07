@@ -68,42 +68,93 @@ public class Trap extends ShellCommand implements SignalHandler {
 	
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
-		
-		ShellArgument ops = parseArgs(ctx, Args.class);
-		if( ops.paths.size()>0) {
-			String action = ops.paths.remove(0);
-			for(String val : ops.paths) {
-				val = val.toUpperCase();
-				if( val.startsWith("SIG") ) {
-					val = val.substring(3);
-				}
-				if(Character.isDigit(val.charAt(0))) {
-					try {
-						int n = Integer.parseInt(val);					
-						val = getLocalSignals().get(n);	
-					} catch (Exception e) {
-						ret = 1;
-						ctx.stderr.println(e);
-					}
-					
-				}
-				Console.ConsoleMetaSignal cs = Console.ConsoleMetaSignal.find(val);
-				if( cs == ConsoleMetaSignal.UnKnown ) {
-					try {
-						Signal s = new Signal(val);
-						ctx.console.registerHandler(ctx, s,action);
-					} catch (Exception e) {
-						ret = 1;
-						ctx.stderr.println(e);
-					}					
+		java.util.List<String> words = new java.util.ArrayList<>();
+		for(int idx = 0; idx < args.length; idx++) {
+			words.add(""+args[idx].getValue(ctx));
+		}
+		boolean print = words.isEmpty();
+		boolean list = false;
+		while( !words.isEmpty() && words.get(0).startsWith("-") && words.get(0).length() > 1 ) {
+			String opt = words.remove(0);
+			if( opt.equals("--")) {
+				break;
+			}
+			for(char c : opt.substring(1).toCharArray()) {
+				if( c == 'p' || c == 'P' ) {
+					print = true;
+				} else if( c == 'l' ) {
+					list = true;
 				} else {
-					ctx.console.registerHandler(cs,action);
+					ctx.stderr.println("trap: -"+c+": invalid option");
+					ctx.stderr.println("trap: usage: trap [-lp] [[action] signal_spec ...]");
+					return 2;
 				}
 			}
 		}
-		
+		if( list ) {
+			for(java.util.Map.Entry<Integer, String> e : getLocalSignals().entrySet()) {
+				ctx.stdout.printf("%2d) SIG%s%n", e.getKey(), e.getValue());
+			}
+			return 0;
+		}
+		if( print ) {
+			// trap -p [sigspec ...]: the traps as commands that set them again
+			java.util.Set<String> only = new java.util.HashSet<>();
+			for(String w : words) {
+				only.add(normalName(w));
+			}
+			for(String[] t : ctx.console.traps()) {
+				if( only.isEmpty() || only.contains(t[0])) {
+					ctx.stdout.println("trap -- '"+t[1].replace("'", "'\\''")+"' "+t[0]);
+				}
+			}
+			return 0;
+		}
+		// trap action sig ...; trap sig (one word) and trap - sig ... reset
+		String action = words.size() == 1 ? "-" : words.remove(0);
+		int ret = 0;
+		for(String w : words) {
+			String n = normalName(w);
+			String a = action.equals("-") ? null : action;
+			ConsoleMetaSignal cs = ConsoleMetaSignal.find(n);
+			if( cs != ConsoleMetaSignal.UnKnown ) {
+				ctx.console.setTrap(cs, a);
+				if( cs == ConsoleMetaSignal.Return && a != null ) {
+					ctx.returnTrapSet();
+				}
+				continue;
+			}
+			try {
+				ctx.console.setTrap(ctx, new Signal(n.substring(3)), a);
+			} catch (Exception e) {
+				ctx.stderr.println("trap: "+w+": invalid signal specification");
+				ret = 1;
+			}
+		}
 		return ret;
+	}
+
+	/** EXIT ERR RETURN DEBUG, or SIGNAME for a signal given by name or number; as given if neither */
+	private static String normalName(String w) {
+		String val = w.toUpperCase();
+		if( val.equals("0")) {
+			return "EXIT";
+		}
+		if( ConsoleMetaSignal.find(val) != ConsoleMetaSignal.UnKnown ) {
+			return val;
+		}
+		if( val.startsWith("SIG")) {
+			val = val.substring(3);
+		}
+		if( !val.isEmpty() && Character.isDigit(val.charAt(0))) {
+			try {
+				String n = getLocalSignals().get(Integer.parseInt(val));
+				return n == null ? w : "SIG"+n;
+			} catch (NumberFormatException e) {
+				return w;
+			}
+		}
+		return "SIG"+val;
 	}
 
 	@Override
