@@ -36,7 +36,6 @@ brace-step
 # funcname
 
 # getopts
-getopts
 
 # glob
 
@@ -49,7 +48,6 @@ getopts
 # local
 
 # mapfile
-mapfile
 
 # negate
 
@@ -64,7 +62,6 @@ param-default
 # pipestatus
 
 # printf
-printf-v
 
 # process
 

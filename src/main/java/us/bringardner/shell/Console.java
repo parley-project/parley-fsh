@@ -408,6 +408,11 @@ delimiter
 		registerCommand(new us.bringardner.shell.commands.Colon());
 		registerCommand(new us.bringardner.shell.commands.Test());
 		registerCommand(new us.bringardner.shell.commands.Readonly());
+		registerCommand(new us.bringardner.shell.commands.Printf());
+		registerCommand(new us.bringardner.shell.commands.Getopts());
+		registerCommand(new us.bringardner.shell.commands.Mapfile());
+		registerCommand(new us.bringardner.shell.commands.Readarray());
+		registerCommand(new us.bringardner.shell.commands.Shopt());
 		registerCommand(new us.bringardner.shell.commands.BracketTest());
 		registerCommand(new Unmount());
 		registerCommand(new Unset());
@@ -2180,6 +2185,36 @@ delimiter
 
 	public void setLastExitCode(int code) {
 		lastExitCode = code;
+	}
+
+	/** shopt's options, by name */
+	private final Map<String,Boolean> shellOptions = new ConcurrentHashMap<>();
+	{
+		for(String n : new String[] {"autocd", "cdspell", "checkwinsize", "dotglob", "expand_aliases", "extglob",
+				"failglob", "globstar", "histappend", "inherit_errexit", "lastpipe", "nocaseglob", "nocasematch",
+				"nullglob", "sourcepath", "xpg_echo"}) {
+			shellOptions.put(n, false);
+		}
+		shellOptions.put("checkwinsize", true);
+		shellOptions.put("sourcepath", true);
+	}
+
+	public Map<String,Boolean> getShellOptions() {
+		return shellOptions;
+	}
+
+	/** getopts: OPTIND and where in that word the next letter is */
+	private int getoptsIndex = 1;
+	private int getoptsPos = 0;
+
+	/** where in the word at optind getopts is (0 if OPTIND was changed by the script) */
+	public int getoptsPosition(int optind) {
+		return optind == getoptsIndex ? getoptsPos : 0;
+	}
+
+	public void setGetoptsPosition(int optind, int pos) {
+		getoptsIndex = optind;
+		getoptsPos = pos;
 	}
 
 	/** readonly variables: they cannot be set or unset */
