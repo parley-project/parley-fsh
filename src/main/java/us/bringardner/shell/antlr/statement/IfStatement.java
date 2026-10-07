@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import us.bringardner.filesource.sh.FileSourceShParser.CompareStatementContext;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Compare;
 import us.bringardner.shell.antlr.Statement;
@@ -51,8 +52,11 @@ ifStatement
 		int ret = 0;
 		int numCmp = compare.size();
 		int numStm = stmtsList.size();
+		// [ test ] alone: its status is the result
+		boolean test = getContext() instanceof CompareStatementContext;
 		if( numCmp >0) {
 			int matched = numCmp;
+			boolean failed = false;
 			
 			for(int idx=0,sz=compare.size(); idx < sz ; idx++) {
 				Compare c = compare.get(idx);
@@ -60,20 +64,20 @@ ifStatement
 					matched = idx;
 					break;
 				}
+				failed |= c.failed;
 			}
 			if( matched < numStm) {
-				List<Statement> stmts = stmtsList.get(matched);
-				for(int idx=0,sz=stmts.size(); idx < sz ; idx++) {
-					Statement s = stmts.get(idx);
+				// as in bash, a failed command does not stop the rest; the status is the last one's
+				for(Statement s : stmtsList.get(matched)) {
 					ret = s.process(sc);
-					if( ret != 0) {
-						break;
-					}
 				}
+			} else if( test && matched == numCmp ) {
+				ret = failed ? 2 : 1;
 			}
 			
 		}
 		return ret;
 	}
+
 
 }

@@ -378,7 +378,8 @@ public class TestIfStatement extends AbstractConsoleTest{
 			System.out.println(err);
 		}
 
-		assertEquals(0, res.exitCode);
+		// the status is the test's: false
+		assertEquals(1, res.exitCode);
 		assertEquals(expect, out);
 		assertEquals("", err);
 	}

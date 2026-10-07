@@ -2114,6 +2114,18 @@ delimiter
 		lastExitCode = code;
 	}
 
+	/** how many $( ) have run (an assignment's status is that of its $( ), if it has one) */
+	private final java.util.concurrent.atomic.AtomicLong substitutions = new java.util.concurrent.atomic.AtomicLong();
+
+	public long substitutionCount() {
+		return substitutions.get();
+	}
+
+	public void substitutionDone(int code) {
+		lastExitCode = code;
+		substitutions.incrementAndGet();
+	}
+
 	public int getLastExitCode() {
 		return lastExitCode;
 	}

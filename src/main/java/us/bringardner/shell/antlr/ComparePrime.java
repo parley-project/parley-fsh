@@ -1,10 +1,16 @@
 package us.bringardner.shell.antlr;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Char_classContext;
+import us.bringardner.filesource.sh.FileSourceShParser.CommandStatementContext;
+import us.bringardner.filesource.sh.FileSourceShParser.CompareContext;
+import us.bringardner.filesource.sh.FileSourceShParser.CompareStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Compare_primeContext;
 import us.bringardner.filesource.sh.FileSourceShParser.File_testContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Regular_expressionContext;
@@ -102,6 +108,9 @@ compare
 			Matcher m = p.matcher(val.toString());
 			ret = m.find();
 			//System.out.println("ret="+ret+" val='"+val+"' rx2='"+rx2+"'");
+		} else if(ctx.commandStatement()!=null && inBrackets()) {
+			// [ word ... ] tests the words; it does not run them
+			ret = testWords(sc);
 		} else if(ctx.commandStatement()!=null) {
 			FileSourceShVisitorImpl v = new FileSourceShVisitorImpl();
 			CommandStatement stmt = v.visitCommandStatement(ctx.commandStatement());
@@ -575,6 +584,61 @@ True if the length of string is non-zero.
 
 		return ret;
 
+	}
+
+	/** [ x ] is compare: [ compare_prime ] inside if and while, and compareStatement: [ compare ] alone */
+	private boolean inBrackets() {
+		if( !(ctx.getParent() instanceof CompareContext)) {
+			return false;
+		}
+		CompareContext parent = (CompareContext) ctx.getParent();
+		return parent.LSQUARE() != null
+				|| (parent.getParent() instanceof CompareStatementContext)
+				|| (parent.getParent() instanceof CompareContext && ((CompareContext) parent.getParent()).LSQUARE() != null);
+	}
+
+	/**
+	 * The words of [ ... ] that the grammar did not read as a test (the operators it knows are
+	 * read as comparisons): one word is its value, no words are false, and more are an error, as in bash.
+	 */
+	private Object testWords(ShellContext sc) throws IOException {
+		CommandStatementContext cmd = ctx.commandStatement();
+		List<ArgumentContext> words = new ArrayList<>();
+		if( cmd.command().cmdWord != null ) {
+			words.add(FileSourceShVisitorImpl.toArgument(cmd.command().cmdWord));
+		}
+		List<String> values = new ArrayList<>();
+		if( cmd.command().cmdWord == null ) {
+			values.add(cmd.command().getText());
+		}
+		words.addAll(cmd.argument());
+		for(ArgumentContext word : words) {
+			List<Argument> fields = Argument.expandWord(word, sc, true);
+			if( fields == null ) {
+				values.add(""+new Argument(word).getValue(sc));
+			} else {
+				for(Argument a : fields) {
+					values.add(""+a.getValue(sc));
+				}
+			}
+		}
+		switch (values.size()) {
+		case 0:
+			return false;
+		case 1:
+			String val = values.get(0);
+			try {
+				return Double.parseDouble(val) != 0.0;
+			} catch (NumberFormatException e) {
+				return val;
+			}
+		case 2:
+			throw new Compare.TestSyntaxException(values.get(0)+": unary operator expected");
+		case 3:
+			throw new Compare.TestSyntaxException(values.get(1)+": binary operator expected");
+		default:
+			throw new Compare.TestSyntaxException("too many arguments");
+		}
 	}
 
 	public boolean evaluate(ShellContext sc) throws IOException {

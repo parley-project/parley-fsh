@@ -21,10 +21,31 @@ compare : LSQUARE compare_prime RSQUARE
 		;
 		
 	 */
+	/** a [ ] that is not a valid test (as in bash: a message and status 2) */
+	public static class TestSyntaxException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+		public TestSyntaxException(String msg) {
+			super(msg);
+		}
+	}
+
+	/** true if the last evaluate found a [ ] that is not a valid test */
+	public boolean failed;
+
 	public boolean evaluate(ShellContext sc) throws IOException {
+		failed = false;
+		try {
+			return evaluate0(sc);
+		} catch (TestSyntaxException e) {
+			sc.stderr.println("[: "+e.getMessage());
+			failed = true;
+			return false;
+		}
+	}
+
+	private boolean evaluate0(ShellContext sc) throws IOException {
 		if( ctx.simpleCompare!=null) {
-			Compare tmp = new Compare(ctx.simpleCompare);
-			return tmp.evaluate(sc);
+			return new Compare(ctx.simpleCompare).evaluate0(sc);
 		}
 		
 		if( ctx.compare_prime()!=null) {
@@ -32,25 +53,18 @@ compare : LSQUARE compare_prime RSQUARE
 			return tmp.evaluate(sc);
 		} 
 		if( ctx.NOT()!=null) {
-			Compare tmp = new Compare(ctx.notCompare);
-			return !tmp.evaluate(sc);
+			return !new Compare(ctx.notCompare).evaluate0(sc);
 		}
 		
-		Compare left = new Compare(ctx.left);
-		Compare right = new Compare(ctx.right);
+		// the right side runs only if it decides the result (true || cmd does not run cmd)
 		if( ctx.AND()!=null) {
-			return left.evaluate(sc) && right.evaluate(sc);
+			return new Compare(ctx.left).evaluate0(sc) && new Compare(ctx.right).evaluate0(sc);
 		}
 		
 		if( ctx.OR()!=null) {
-			boolean l1 = left.evaluate(sc);
-			boolean l2 = right.evaluate(sc);
-			return l1 || l2;
+			return new Compare(ctx.left).evaluate0(sc) || new Compare(ctx.right).evaluate0(sc);
 		}
-		
 		
 		throw new RuntimeException("Invalide compare"+ctx.getText());
 	}
-	
-	
 }

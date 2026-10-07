@@ -46,9 +46,11 @@ assignStatement
 		AssignStatementContext actx = (AssignStatementContext) getContext();
 		AssignmentContext assignment = actx.assignment();
 		name = assignment.id1.getText();
+		// the status is that of the last $( ) in the value (x=$(false) is 1), or 0 (the value may
+		// read $?, so it is not reset first)
+		long before = ctx.console.substitutionCount();
 		Object val = getValue(ctx);
-		
-		
+		ret = ctx.console.substitutionCount() != before ? ctx.console.getLastExitCode() : 0;
 		
 		if( assignment.LOCAL()!=null) {
 			ctx.setLocalVariable(name, val);

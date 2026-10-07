@@ -311,7 +311,7 @@ commandStatement
 	 * A command word as an argument (a word), so it is expanded like one. The grammar has its own
 	 * rule because a plain word there would also take keywords such as done and fi.
 	 */
-	private static ArgumentContext toArgument(CommandWordContext word) {
+	public static ArgumentContext toArgument(CommandWordContext word) {
 		ArgumentContext ret = new ArgumentContext(word, word.invokingState);
 		ArgumentPartContext first = new ArgumentPartContext(ret, word.invokingState);
 		ParserRuleContext start = (ParserRuleContext) word.commandWordStart().getChild(0);

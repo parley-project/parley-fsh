@@ -265,22 +265,13 @@ ${parameter:-word}
 					}
 					
 					//System.out.println("n1="+n1+" "+n2+" "+n3);
-					int offset = Integer.parseInt(n1.trim());
+					// an empty field is 0: ${x::2}, ${x:1:}
+					int offset = n1.isBlank() ? 0 : Integer.parseInt(n1.trim());
 
 
-					if (ret instanceof String) {
-						if( offset < 0 ) {
-							offset = ((String) ret).length()+offset;
-						}
-						if( n2 == null ) {
-							ret = ((String) ret).substring(offset);
-						} else {
-							int len = Integer.parseInt(n2);
-							if( len < 0) {
-								len = ((String) ret).length()+len-offset;
-							}
-							ret = ((String) ret).substring(offset,offset+len);
-						}
+					if (!(ret instanceof List<?>)) {
+						// a number is text here too (x=12345; ${x:1:2})
+						ret = substring(""+ret, offset, n2 == null ? null : n2.isBlank() ? 0 : Integer.parseInt(n2.trim()));
 					} else if (ret instanceof List<?>) {
 						@SuppressWarnings("unchecked")
 						List<Object> list = (List<Object>) ret;
@@ -300,23 +291,23 @@ ${parameter:-word}
 						}
 						int len = list.size();
 						if( n2 !=null) {
-							len = Integer.parseInt(n2);
+							len = n2.isBlank() ? 0 : Integer.parseInt(n2.trim());
 							if( len < 0) {
 								throw new RuntimeException(""+len+": substring expression < 0");
 							} else {
 								len = offset+len;
 							}
 						}
+						// past either end there is nothing
+						len = Math.min(len, list.size());
 						StringBuilder bufx = new StringBuilder();
-						for(int idx=offset; idx < len; idx++) {
+						for(int idx=Math.max(offset, 0); idx < len; idx++) {
 							if( !bufx.isEmpty()) {
 								bufx.append(" ");
 							}
 							bufx.append(""+list.get(idx));
 						}
 						ret = bufx.toString();
-					} else {
-						throw new RuntimeException("Un excpeted type ="+ret.getClass());
 					}
 
 				} else {
@@ -639,5 +630,33 @@ ${parameter##word}
 			return indexes.isEmpty() ? 0 : indexes.get(indexes.size()-1)+1;
 		}
 		return list.size();
+	}
+	/**
+	 * ${x:offset:length} as in bash: a negative offset counts from the end, a negative length is an
+	 * end counted from the end, and a range past either end gives what is inside it (often nothing).
+	 */
+	static String substring(String text, int offset, Integer length) {
+		int size = text.length();
+		if( offset < 0 ) {
+			offset += size;
+			if( offset < 0 ) {
+				return "";
+			}
+		}
+		if( offset > size ) {
+			return "";
+		}
+		int end = size;
+		if( length != null ) {
+			if( length < 0 ) {
+				end = size+length;
+				if( end < offset ) {
+					throw new RuntimeException(length+": substring expression < 0");
+				}
+			} else {
+				end = (int)Math.min((long)offset+length, size);
+			}
+		}
+		return text.substring(offset, end);
 	}
 }

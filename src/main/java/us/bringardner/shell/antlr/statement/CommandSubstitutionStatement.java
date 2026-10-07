@@ -99,7 +99,7 @@ public class CommandSubstitutionStatement extends Statement{
 				stdout = stdout.substring(0, stdout.length()-1);
 			}
 			// $? after x=$(cmd) is the status of cmd
-			primary.console.setLastExitCode(exitCode);
+			primary.console.substitutionDone(exitCode);
 		}
 	
 		return exitCode;

@@ -340,6 +340,8 @@ public abstract class Statement {
 
 		try {
 			ret = execute(ctx);
+			// $? is the status of the last statement, whatever kind it is (if, [ ], a loop, a group ...)
+			ctx.console.setLastExitCode(ret);
 		} finally {
 			args = savedArgs;
 			ctx.exitStatement(ret,this);

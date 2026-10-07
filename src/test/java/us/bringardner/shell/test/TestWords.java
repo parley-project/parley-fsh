@@ -356,4 +356,32 @@ public class TestWords extends AbstractConsoleTest {
 		// a here-document next to a here-string
 		expect("cat <<EOF\ndoc\nEOF\ncat <<< str", "doc\nstr\n");
 	}
+
+	@Test
+	public void testSubstringBounds() throws IOException {
+		expect("x=12345; echo ${x:1:2} ${x: -2} :${x:7}: ${x:1:-1} ${x::2} :${x:2:}:", "23 45 :: 234 12 ::\n");
+		expect("e=; echo \"[${e:0:3}]\" \"[${nope:1}]\"", "[] []\n");
+		expect("a=(p q r); echo ${a[@]:1} :${a[@]:5}:", "q r ::\n");
+		ExecuteResult res = executeCommand("x=abc; echo ${x:1:-3}", "");
+		assertTrue(res.getStdErr().contains("-3: substring expression < 0"), res.getStdErr());
+	}
+
+	@Test
+	public void testTestErrorsAndStatus() throws IOException {
+		// [ ] tests its words; it does not run them
+		ExecuteResult res = executeCommand("[ 3 -xx 4 ]; echo $?; [ a b ]; echo $?; [ a b c d ]; echo $?", "");
+		assertEquals("2\n2\n2\n", res.getStdOut());
+		assertEquals("[: -xx: binary operator expected\n[: a: unary operator expected\n[: too many arguments", res.getStdErr().trim());
+		res = executeCommand("if [ 3 -xx 4 ]; then echo y; else echo n; fi", "");
+		assertEquals("n\n", res.getStdOut());
+		// $? after any statement
+		expect("[ 1 == 2 ]; echo $?; [ 1 == 1 ]; echo $?; [ \"\" ]; echo $?", "1\n0\n1\n");
+		expect("x=true; [ $x ]; echo $?; x=0; [ $x ]; echo $?; [ $nope ]; echo $?", "0\n1\n1\n");
+		expect("for i in 1; do false; done; echo $?; { false; }; echo $?", "1\n1\n");
+		expect("x=1; echo $?; false; x=2; echo $?; false; y=$?; echo $y", "0\n0\n1\n");
+		expect("echo a | grep -q b; echo $?", "1\n");
+		// && and || stop as soon as the result is known; a branch runs every command
+		expect("if true || echo RIGHT; then echo ok; fi; if false && echo LEFT; then :; fi", "ok\n");
+		expect("if true; then false; echo after; fi", "after\n");
+	}
 }
