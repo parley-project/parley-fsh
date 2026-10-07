@@ -40,9 +40,14 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 ## Layout
 
 - `src/main/java/us/bringardner/fsh` — the shell (`Console` is the entry point)
-- `src/main/java/us/bringardner/fsh/ide` — a small script editor/runner
 - `generated/us/bringardner/fsh/parser` — the parser ANTLR generates from
   `Antlr4/` (regenerate with `Antlr4/build.sh`)
+
+## The IDE
+
+The script editor and debugger is a separate project,
+[fsh-ide](https://github.com/tony-bringardner/fsh-ide). fsh exposes the debugger
+hooks it uses (`DebugContext`, `DebugController`).
 
 ## License
 

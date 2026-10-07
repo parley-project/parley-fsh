@@ -9,9 +9,7 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
 - Packages: `us.bringardner.shell` → `us.bringardner.fsh`;
   the generated parser `us.bringardner.filesource.sh` → `us.bringardner.fsh.parser`
   (source folder `fssh/` → `generated/`).
-- Classes: `FsshException` → `FshException`, `FsshList` → `FshList`,
-  `BjlShellIDE` → `FshIDE`, `BjlShellIDETextArea` → `FshIDETextArea`,
-  `BjlShellTreeViewPanel` → `FshTreeViewPanel`.
+- Classes: `FsshException` → `FshException`, `FsshList` → `FshList`.
 - Command name `fssh` → `fsh` (`$0`, the `\s`/`\l` prompt escapes, error messages).
 - History file `~/.fssh_history` → `~/.fsh_history`.
 - Start-up file `~/.fsshrc` → `~/.fshrc`.
@@ -19,11 +17,17 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   `parley-files-ftp` and `parley-files-sftp` at run time only; `parley-files-jdbc`
   only with `-Pjdbc`. The unused `bjl_net_framework` dependency was dropped.
 
+### Moved out
+- The IDE (`us.bringardner.shell.ide`) moved to its own project,
+  [fsh-ide](https://github.com/tony-bringardner/fsh-ide), with its images and
+  spell-check dictionary. fsh no longer depends on the RSyntaxTextArea
+  autocomplete/spellchecker libraries, JAXB or the full ANTLR tool (only
+  `antlr4-runtime`).
+- `DebugControlPanel.DebugController` is now `us.bringardner.fsh.DebugController`.
+
 ### Still accepted
 - `~/.fsshrc` is read when `~/.fshrc` doesn't exist.
 - `#!fssh` scripts run as before.
-- IDE settings saved under the old preferences node are copied to the new one on
-  first start.
 
 ### Action needed
 - macOS: rebuild the native keyboard library with `macos/compile.sh`. The JNI

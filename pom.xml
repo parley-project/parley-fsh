@@ -83,7 +83,8 @@
 
 	<build>
 		<!-- Eclipse has resources/ and generated/ (the generated ANTLR parser) as source
-		     folders; Maven has to be told, or it can't build the project (BJL-25) -->
+		     folders; Maven has to be told, or it can't build the project (BJL-25).
+		     The IDE (and its images) moved to fsh-ide (BJL-88). -->
 		<resources>
 			<resource>
 				<directory>resources</directory>
@@ -173,36 +174,18 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- The IDE's editor -->
+		<!-- The parser in generated/ needs only the ANTLR runtime -->
 		<dependency>
-			<groupId>com.fifesoft</groupId>
-			<artifactId>autocomplete</artifactId>
-			<version>3.3.2</version>
+			<groupId>org.antlr</groupId>
+			<artifactId>antlr4-runtime</artifactId>
+			<version>4.13.2</version>
 		</dependency>
-		<dependency>
-			<groupId>com.fifesoft</groupId>
-			<artifactId>spellchecker</artifactId>
-			<version>3.0.0</version>
-		</dependency>
-		<dependency>
-			<groupId>jakarta.xml.bind</groupId>
-			<artifactId>jakarta.xml.bind-api</artifactId>
-			<version>4.0.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.sun.xml.bind</groupId>
-			<artifactId>jaxb-impl</artifactId>
-			<version>4.0.3</version>
-			<scope>runtime</scope>
-		</dependency>
-
-		<!-- The parser in generated/ needs the ANTLR runtime; the IDE's tree view uses
-		     org.abego.treelayout, which comes with the full antlr4 artifact
-		     (Eclipse had these from lib/antlr-4.13.2-complete.jar) -->
+		<!-- The full tool, for the test utilities that regenerate the parser (AntlrBuild*) -->
 		<dependency>
 			<groupId>org.antlr</groupId>
 			<artifactId>antlr4</artifactId>
 			<version>4.13.2</version>
+			<scope>test</scope>
 		</dependency>
 
 		<!-- The tests use JUnit 5 (plus JUnit 4's Assert in places) -->
