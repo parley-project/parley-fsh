@@ -1,6 +1,5 @@
 package us.bringardner.fsh;
 
-import java.awt.Component;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -191,11 +190,6 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 	@Override
 	protected boolean connectImpl() throws IOException {
 		return true;
-	}
-
-	@Override
-	public Component getEditPropertiesComponent() {
-		return null;
 	}
 
 	@Override

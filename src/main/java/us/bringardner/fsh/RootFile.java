@@ -37,11 +37,11 @@ import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.ProgressMonitor;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.FileSourceFilter;
+import us.bringardner.parley.files.FileSourceProgress;
 import us.bringardner.parley.files.ISeekableInputStream;
 
 /**
@@ -318,7 +318,7 @@ public class RootFile implements FileSource {
 
 	
 	@Override
-	public FileSource[] listFiles(ProgressMonitor progress) {
+	public FileSource[] listFiles(FileSourceProgress progress) {
 		throw new RuntimeException("Not implemented");
 	}
 
