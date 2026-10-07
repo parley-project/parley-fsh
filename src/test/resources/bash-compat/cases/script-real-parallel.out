@@ -1,0 +1,4 @@
+job 1 done
+job 2 done
+job 3 done
+failures=2 jobs=3

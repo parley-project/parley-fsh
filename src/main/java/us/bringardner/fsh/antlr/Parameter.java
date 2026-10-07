@@ -597,7 +597,13 @@ ${parameter:-word}
 				if( as.ID()!=null) {
 					index = as.ID().getText();
 				} else {
-					throw new RuntimeException("No ID in associative array");
+					// [0], [$s.$k], ["a b"]: the expanded text (an indexed array evaluates it)
+					String text = as.getText();
+					text = FileSourceShPreProcessorVisitorImpl.processString(text.substring(1, text.length()-1), sc);
+					if( text.length() >= 2 && (text.startsWith("\"") && text.endsWith("\"") || text.startsWith("'") && text.endsWith("'"))) {
+						text = text.substring(1, text.length()-1);
+					}
+					index = text;
 				}
 			} else if( ctx.parameter_index().AT()!=null) {
 				index =  ctx.parameter_index().AT().getText();
@@ -613,7 +619,9 @@ ${parameter:-word}
 					List<?> list = (List<?>) ret;
 					int idx = 0;
 					try {
-						idx = ((Number)Expression.toNumber(index, sc)).intValue();
+						// a[i+1]: the subscript of an indexed array is arithmetic
+						idx = index instanceof String str ? Arithmetic.evaluate(str, sc).intValue()
+								: ((Number)Expression.toNumber(index, sc)).intValue();
 					} catch (Exception e) {
 					}
 					// as in bash: a negative index counts from the end, and an index with no
@@ -1096,7 +1104,8 @@ ${parameter:-word}
 			}
 		}
 		String target = idx < 0 ? tmp : tmp.substring(0, idx);
-		String replace = idx < 0 ? "" : tmp.substring(idx+1);
+		// the replacement is a word: its quotes and backslashes are removed (\\ is \, \" is ")
+		String replace = idx < 0 ? "" : removeQuotes(tmp.substring(idx+1));
 		if( target.isEmpty()) {
 			return ret;
 		}
@@ -1114,6 +1123,39 @@ ${parameter:-word}
 		return ret;
 	}
 
+
+	/** quote removal: 'a' "b" \c become a b c */
+	private static String removeQuotes(String text) {
+		if( text.indexOf('\\') < 0 && text.indexOf('\'') < 0 && text.indexOf('"') < 0 ) {
+			return text;
+		}
+		StringBuilder ret = new StringBuilder();
+		char quote = 0;
+		for (int idx = 0; idx < text.length(); idx++) {
+			char c = text.charAt(idx);
+			if( quote == '\'' ) {
+				if( c == '\'' ) {
+					quote = 0;
+				} else {
+					ret.append(c);
+				}
+			} else if( c == '\\' && idx+1 < text.length()) {
+				char next = text.charAt(++idx);
+				if( quote == '"' && "\"\\$`".indexOf(next) < 0 ) {
+					// in double quotes only these are escapes
+					ret.append(c);
+				}
+				ret.append(next);
+			} else if( c == '"' ) {
+				quote = quote == '"' ? 0 : '"';
+			} else if( c == '\'' && quote == 0 ) {
+				quote = '\'';
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
+	}
 
 	private Object patternHashReplaceTail(Object val, String bodyText, PbodyContext bc) {
 		if (val instanceof List<?>) {

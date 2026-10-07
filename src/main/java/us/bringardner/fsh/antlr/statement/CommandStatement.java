@@ -422,6 +422,10 @@ public class CommandStatement extends Statement{
 
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
+		if( ctx.trapLine == null ) {
+			// $BASH_COMMAND (a trap's own commands leave it as the one the trap ran for)
+			ctx.currentCommand = commandText();
+		}
 		try {
 			return execute0(ctx);
 		} finally {
@@ -747,6 +751,16 @@ public class CommandStatement extends Statement{
 			}
 		}
 		return null;
+	}
+
+	/** the command as written, with a space after a file redirect's operator (2> /dev/null), as bash shows it */
+	private String commandText() {
+		org.antlr.v4.runtime.ParserRuleContext c = getContext();
+		if( c.start == null || c.stop == null || c.stop.getStopIndex() < c.start.getStartIndex()) {
+			return c.getText();
+		}
+		String text = c.start.getInputStream().getText(org.antlr.v4.runtime.misc.Interval.of(c.start.getStartIndex(), c.stop.getStopIndex())).trim();
+		return text.replaceAll("(?<![<>&|])(\\d*)(>>|>\\||&>>|&>|>|<)(?![&>(])\\s*", "$1$2 ");
 	}
 
 	/** a command file that exists but may not be run (status 126) */

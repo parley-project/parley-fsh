@@ -1,0 +1,5 @@
+generated got 2 args: a b c
+rc=5
+generated got 1 args: x
+rc=5
+[generated got 1 args: z]

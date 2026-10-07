@@ -1,0 +1,2 @@
+line 3: false
+line 4: ls /nonexistent 2> /dev/null

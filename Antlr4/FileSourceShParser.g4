@@ -218,6 +218,8 @@ boolean_statement: boolean;
 compare : 
 		  // if ( cmds ); then, while { cmds; }: the group's status
 		  WS* group=statement_group1 (';' WS*)?
+		  // if declare -F f >/dev/null; then
+		| WS* declare=declareAssociativeArrayStatement (';' WS*)?
 		| WS* LSQUARE testWords RSQUARE (';' WS*)?   // if [ -e f -a -d d ]
 		| WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
 		| WS* DBL_TEST (';' WS*)?        // if [[ $x == a* ]]
@@ -255,6 +257,8 @@ file_test: WS* op=ARG_ID WS+ target=argument WS*;
 associative_index:
 		(LSQUARE ID RSQUARE)
 		| (LSQUARE index=string RSQUARE)
+		// m[$section.$key]=v: any word up to ]
+		| (LSQUARE assocKey RSQUARE)
 		;
 
 regular_expression:	rx_pattern+ ;
@@ -524,6 +528,8 @@ declareAssociativeArrayStatement:
     ;
 
 declareItem: id1=ID (EQ (associativeArrayInitializer | arrayInitializer | value=argument)?)? 
+    // declare -F "cmd_$c", declare "$name=$value": a name made by expansion
+    | word=argument
     ;
 
 associativeArrayInitializer:

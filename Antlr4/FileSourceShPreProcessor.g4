@@ -41,7 +41,8 @@ ppvariable:
 pptext:  (PPTEXT|PPNL|PPDIGIT|PPTAG|'('|')'|'"'|'\''|'{'|'}')+ ;
 
     
-PPID      :   [a-zA-Z_][a-zA-Z_0-9.]* ;
+// no dot: "$f.txt" is $f then .txt
+PPID      :   [a-zA-Z_][a-zA-Z_0-9]* ;
 PPDIGIT:[0-9]+;
 PPTAG:[@#\-!];
 PPNL:'\n';

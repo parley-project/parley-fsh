@@ -1,0 +1,7 @@
+5
+20
+commands: add help mul 
+no such command: div
+rc=1
+42
+evaluated 42

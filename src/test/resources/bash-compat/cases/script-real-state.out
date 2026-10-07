@@ -1,0 +1,6 @@
+start -> running
+pause -> paused
+resume -> running
+stop -> stopped
+start -> running
+ignored bogus in running

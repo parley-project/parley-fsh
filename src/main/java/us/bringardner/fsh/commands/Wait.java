@@ -9,6 +9,7 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.antlr.Argument;
 import us.bringardner.fsh.antlr.statement.JobControlStatement;
 import us.bringardner.fsh.job.IJob;
+import us.bringardner.fsh.job.JobState;
 import us.bringardner.fsh.job.JobManager;
 
 public class Wait extends ShellCommand{
@@ -116,7 +117,8 @@ public class Wait extends ShellCommand{
 				}
 				for(IJob job : jobs) {
 					if( !complete.contains(job.getPid())) {
-						if(job.hasStarted() && !job.isRunning()) {
+						// finished: terminated (started but not yet running is not finished)
+						if(isFinished(job)) {
 							ret = job.getExitCode();
 							if( ret < 0) {
 								ret = job.getExitCode();
@@ -144,7 +146,7 @@ public class Wait extends ShellCommand{
 		}
 		// as in bash, a job that was waited for leaves the job table (jobs no longer lists it)
 		for(IJob job : jobs) {
-			if( job.hasStarted() && !job.isRunning()) {
+			if( isFinished(job)) {
 				jm.remove(job);
 			}
 		}
@@ -152,4 +154,8 @@ public class Wait extends ShellCommand{
 		return ret;
 	}
 
+	private static boolean isFinished(IJob job) {
+		JobState state = job.getState();
+		return state == JobState.Termnated || state == JobState.Notified;
+	}
 }

@@ -1,0 +1,7 @@
+step 1
+handled
+not found ok
+x=fine
+step 2
+error on line 11: ls /no/such/dir 2> /dev/null (rc=1)
+exit rc=1

@@ -110,7 +110,16 @@ public class Printf extends ShellCommand{
 				spec.append(format.charAt(idx++));
 			}
 			if( idx < n && format.charAt(idx) == '*' ) {
-				spec.append(number(next < values.size() ? values.get(next++) : "0", ctx));
+				// %*s: the width is an argument; 0 is none (Java read %0s as the 0 flag), and a
+				// negative one left-justifies
+				long width = number(next < values.size() ? values.get(next++) : "0", ctx);
+				if( width < 0 ) {
+					spec.append('-');
+					width = -width;
+				}
+				if( width > 0 ) {
+					spec.append(width);
+				}
 				idx++;
 			} else {
 				while( idx < n && Character.isDigit(format.charAt(idx))) {

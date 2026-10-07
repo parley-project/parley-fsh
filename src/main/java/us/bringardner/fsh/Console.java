@@ -2519,6 +2519,9 @@ delimiter
 		}
 		String action = handlers.get(handlers.size()-1).action;
 		int saved = getLastExitCode();
+		Integer savedLine = ctx.trapLine;
+		String savedCommand = ctx.currentCommand;
+		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
 			for(Statement s : FileSourceShVisitorImpl.parse(action)) {
 				s.process(ctx);
@@ -2529,6 +2532,8 @@ delimiter
 			ctx.stderr.println(e.getMessage());
 		} finally {
 			setLastExitCode(saved);
+			ctx.trapLine = savedLine;
+			ctx.currentCommand = savedCommand;
 		}
 		return true;
 	}
@@ -2567,6 +2572,9 @@ delimiter
 		}
 		int saved = getLastExitCode();
 		inProcess.push(signal);
+		Integer savedLine = ctx.trapLine;
+		String savedCommand = ctx.currentCommand;
+		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
 			for(String code : actions) {
 				for(Statement s : FileSourceShVisitorImpl.parse(code)) {
@@ -2580,6 +2588,8 @@ delimiter
 		} finally {
 			inProcess.pop();
 			setLastExitCode(saved);
+			ctx.trapLine = savedLine;
+			ctx.currentCommand = savedCommand;
 		}
 	}
 

@@ -394,8 +394,22 @@ $
 
 	private Object index(Object ret, Associative_indexContext associativeIndex, Array_indexContext arrayIndex) {
 		if( associativeIndex!=null) {
-			// associative arrays should be in a parameter ${s[s]} so this should not happen.
-			throw new RuntimeException("Handle associative array");
+			// $a[0], $m[key] (an fsh form; bash has ${a[0]}): the expanded subscript, arithmetic
+			// for an indexed array
+			String text = associativeIndex.getText();
+			text = us.bringardner.fsh.antlr.FileSourceShPreProcessorVisitorImpl.processString(text.substring(1, text.length()-1), this);
+			if( ret instanceof Map<?,?> ) {
+				return ((Map<?,?>) ret).get(text);
+			}
+			if( ret instanceof List<?> ) {
+				int ii = us.bringardner.fsh.antlr.Arithmetic.evaluate(text, this).intValue();
+				List<?> list = (List<?>) ret;
+				if( ii < 0 ) {
+					ii += list.size();
+				}
+				return ii >= 0 && ii < list.size() ? list.get(ii) : null;
+			}
+			return text.equals("0") ? ret : null;
 		}
 
 		if( arrayIndex!=null) {
@@ -688,7 +702,15 @@ $
 			return files;
 		}
 		if( name.equals("LINENO")) {
+			if( trapLine != null ) {
+				// in a trap: the line of the command it ran for
+				return trapLine;
+			}
 			return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
+		}
+		if( name.equals("BASH_COMMAND")) {
+			// the command running (in a trap: the one the trap ran for)
+			return currentCommand;
 		}
 		Object ret = getLocalVariable(name);
 		if( ret == null ) {
@@ -1056,6 +1078,16 @@ $
 			return value;
 		}
 		return attr == 'u' ? value.toString().toUpperCase() : value.toString().toLowerCase();
+	}
+
+	/** while a trap runs: the line of the command it ran for ($LINENO), or null */
+	public Integer trapLine;
+	/** the simple command running, as bash shows it in $BASH_COMMAND */
+	public volatile String currentCommand = "";
+
+	/** the line of the statement running (0 if none) */
+	public int currentLine() {
+		return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
 	}
 
 	/** trap ... RETURN in a function: it runs when that function returns */

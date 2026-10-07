@@ -1,0 +1,5 @@
+database.pass=s3cr=t
+database.user=admin
+server.host=example.com
+server.port=8080
+port+1=8081

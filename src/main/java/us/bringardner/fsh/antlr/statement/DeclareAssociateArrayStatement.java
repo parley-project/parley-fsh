@@ -109,7 +109,7 @@ associativeArrayElement
 			boolean names = opts.indexOf('F') >= 0;
 			java.util.List<String> wanted = new java.util.ArrayList<>();
 			for(DeclareItemContext item : ctx.declareItem()) {
-				wanted.add(item.id1.getText());
+				wanted.add(itemName(item, sc));
 			}
 			if( wanted.isEmpty()) {
 				wanted.addAll(new java.util.TreeSet<>(sc.console.getFunctions().keySet()));
@@ -131,7 +131,7 @@ associativeArrayElement
 			// declare -p name ...: as declarations the shell can read back
 			int ret = 0;
 			for(DeclareItemContext item : ctx.declareItem()) {
-				String name = item.id1.getText();
+				String name = itemName(item, sc);
 				Object val = sc.getVariable(name);
 				if( val == null ) {
 					sc.stderr.println("declare: "+name+": not found");
@@ -142,8 +142,23 @@ associativeArrayElement
 			}
 			return ret;
 		}
+		int status = 0;
 		for(DeclareItemContext item : ctx.declareItem()) {
-			String name = item.id1.getText();
+			String name = itemName(item, sc);
+			// declare "$name=$value": the value after the =
+			String wordValue = null;
+			if( item.word != null ) {
+				String text = ""+new Argument(item.word).getValue(sc);
+				int eq = text.indexOf('=');
+				if( eq >= 0 ) {
+					wordValue = text.substring(eq+1);
+				}
+			}
+			if( !name.matches("[a-zA-Z_][a-zA-Z_0-9]*")) {
+				sc.stderr.println((local ? "local" : "declare")+": `"+name+"': not a valid identifier");
+				status = 1;
+				continue;
+			}
 			if( opts.indexOf('i') >= 0 ) {
 				sc.console.setInteger(name, !remove);
 			}
@@ -186,6 +201,11 @@ associativeArrayElement
 					}
 				}
 				val = list;
+			} else if( wordValue != null ) {
+				val = wordValue;
+				if( sc.console.isInteger(name)) {
+					val = Arithmetic.evaluate(""+val, sc);
+				}
 			} else if( item.value != null ) {
 				val = new Argument(item.value).getValue(sc);
 				if( sc.console.isInteger(name)) {
@@ -221,7 +241,7 @@ associativeArrayElement
 				sc.setEnvironmentVariable(name, v == null ? "" : ""+v);
 			}
 		}
-		return 0;
+		return status;
 	}
 
 
@@ -249,5 +269,14 @@ associativeArrayElement
 			}
 		}
 		return ret.toString();
+	}
+	/** the name an item declares: x of x=1, or the expanded word's text before any = */
+	private static String itemName(DeclareItemContext item, ShellContext sc) {
+		if( item.id1 != null ) {
+			return item.id1.getText();
+		}
+		String text = ""+new Argument(item.word).getValue(sc);
+		int eq = text.indexOf('=');
+		return eq < 0 ? text : text.substring(0, eq);
 	}
 }

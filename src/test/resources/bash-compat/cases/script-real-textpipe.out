@@ -1,0 +1,9 @@
+requests: 5
+404s: 2
+10.0.0.1 3
+10.0.0.3 1
+bytes=0
+ 200
+ 404
+/about.html:1
+/index.html:2
