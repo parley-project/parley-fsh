@@ -63,6 +63,7 @@ public class Source extends ShellCommand{
 				}
 				int ret = 0;
 				ctx.sourceDepth++;
+				ctx.sourceFiles.addLast(path);
 				try {
 					for(Statement s : FileSourceShVisitorImpl.parse(ctx.console.preProcess(code.trim(), ctx))) {
 						ret = s.process(ctx);
@@ -70,6 +71,7 @@ public class Source extends ShellCommand{
 				} catch (ReturnException e) {
 					ret = e.exitCode;
 				} finally {
+					ctx.sourceFiles.pollLast();
 					ctx.sourceDepth--;
 					if( saved != null ) {
 						ctx.setPositionalParameterValues(saved);

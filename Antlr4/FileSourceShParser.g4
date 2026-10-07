@@ -203,7 +203,7 @@ mathStatement:
     ;
 
 // $(( x * 2 )): the text between the parentheses is evaluated by Arithmetic
-mathExpression: ARITH_EXPANSION ;
+mathExpression: ARITH_EXPANSION | DOLLAR_BRACKET ;
 
 boolean_statement: boolean;
 

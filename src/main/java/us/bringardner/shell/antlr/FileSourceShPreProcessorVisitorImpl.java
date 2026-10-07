@@ -229,7 +229,9 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 					name = v.PPID().getText();
 				}
 
-				chunks.add(sc.expand(sc.getVariable(name), v.getText()));				
+				// "$a" of an array is its element 0
+				Object value = sc.getVariable(name);
+				chunks.add(sc.expand(v.PPID() != null ? ShellContext.firstElement(value) : value, v.getText()));				
 			} else if (rule instanceof PpescapeContext) {
 				items.add(rule);
 				chunks.add(unescape(originalText(code1, rule), quoting));

@@ -192,7 +192,7 @@ argumentPart:
 		if( part.string() == null || part.string().DQ_STRING() == null ) {
 			return null;
 		}
-		String text = part.string().DQ_STRING().getText();
+		String text = ShellContext.dq(part.string().DQ_STRING().getText());
 		return findAt(text.substring(1, text.length()-1));
 	}
 
@@ -310,7 +310,7 @@ argumentPart:
 		 */
 		private void addQuotedAt(ArgumentPartContext part) {
 			int [] at = quotedAt(part);
-			String text = part.string().DQ_STRING().getText();
+			String text = ShellContext.dq(part.string().DQ_STRING().getText());
 			String body = text.substring(1, text.length()-1);
 			String prefix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(0, at[0]), ctx, Quoting.DOUBLE_QUOTED);
 			String suffix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(at[1]), ctx, Quoting.DOUBLE_QUOTED);

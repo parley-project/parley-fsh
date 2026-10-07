@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.misc.Interval;
 
 import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
@@ -58,12 +59,39 @@ public class CommandSubstitutionStatement extends Statement{
 	}
 
 
+	/** $(< file): the file's text, without running anything */
+	private static final java.util.regex.Pattern READ_FILE = java.util.regex.Pattern.compile("<\\s*([^<>|&;\\s]+|\"[^\"]*\"|'[^']*')");
+
+	private int readFile(String word, ShellContext primary) {
+		String path = FileSourceShPreProcessorVisitorImpl.processString(word, primary);
+		if( path.length() > 1 && (path.startsWith("\"") && path.endsWith("\"") || path.startsWith("'") && path.endsWith("'"))) {
+			path = path.substring(1, path.length()-1);
+		}
+		try (java.io.InputStream in = primary.getFileSource(path).getInputStream()) {
+			stdout = new String(in.readAllBytes());
+			exitCode = 0;
+		} catch (IOException e) {
+			primary.stderr.println(path+": No such file or directory");
+			stdout = "";
+			exitCode = 1;
+		}
+		while(stdout.endsWith("\n")) {
+			stdout = stdout.substring(0, stdout.length()-1);
+		}
+		primary.console.substitutionDone(exitCode);
+		return exitCode;
+	}
+
 	/**
 	 * Run code in a subshell and capture its standard output. As in bash, every command runs (a
 	 * failure does not stop the rest, exit does), the status is that of the last one, and
 	 * standard error is not captured: it goes where the caller's goes.
 	 */
 	public int execute(String code, ShellContext primary) {
+		java.util.regex.Matcher read = READ_FILE.matcher(code.trim());
+		if( read.matches()) {
+			return readFile(read.group(1), primary);
+		}
 		ShellContext ctx = primary.subShell();
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
 		

@@ -124,7 +124,7 @@ public class ShellContext {
 			return tmp.substring(1, tmp.length()-1);				
 		} else if( context.DQ_STRING() !=null) {
 
-			String tmp = context.DQ_STRING().getText();
+			String tmp = dq(context.DQ_STRING().getText());
 			String ret = FileSourceShPreProcessorVisitorImpl.processString(tmp.substring(1,tmp.length()-1), this, Quoting.DOUBLE_QUOTED);
 			return ret;
 		} else if( context.ESC()!=null) {
@@ -135,6 +135,11 @@ public class ShellContext {
 			return ansiC(tmp.substring(2, tmp.length()-1));
 		}
 		throw new RuntimeException("No valid string for "+context.getText());
+	}
+
+	/** a double-quoted string as written ("..."), without the $ of $"..." */
+	public static String dq(String token) {
+		return token.startsWith("$") ? token.substring(1) : token;
 	}
 
 	/**
@@ -293,7 +298,8 @@ public class ShellContext {
 $
 ($$) Expands to the process ID of the shell. In a subshell, it expands to the process ID of the invoking shell, not the subshell.
 		 */
-		case '$':ret = 0;
+		// the shell's process id (the JVM's); $BASHPID is the same
+		case '$':ret = ProcessHandle.current().pid();
 		break;
 		/*
 !
@@ -579,6 +585,18 @@ $
 			names.add("main");
 			return names;
 		}
+		if( name.equals("BASHPID")) {
+			return ProcessHandle.current().pid();
+		}
+		if( name.equals("BASH_SOURCE")) {
+			// the files being sourced, innermost first, then the script
+			FsshList files = new FsshList();
+			for(java.util.Iterator<String> it = sourceFiles.descendingIterator(); it.hasNext(); ) {
+				files.add(it.next());
+			}
+			files.add(""+getPositionalVariable(0));
+			return files;
+		}
 		if( name.equals("LINENO")) {
 			return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
 		}
@@ -725,6 +743,24 @@ $
 	/** how many sourced files are running (return ends the innermost) */
 	public int sourceDepth;
 
+	/** the files being sourced, outermost first ($BASH_SOURCE) */
+	public final java.util.Deque<String> sourceFiles = new java.util.ArrayDeque<>();
+
+	/**
+	 * caller n: the call n frames up.
+	 * @return {line, function (or main), file}, or null if there is no such frame
+	 */
+	public String [] callerFrame(int n) {
+		int idx = functionStack.size()-1-n;
+		if( idx < 0 ) {
+			return null;
+		}
+		FunctionInvocation inv = functionStack.get(idx);
+		String from = idx > 0 ? functionStack.get(idx-1).function.getName() : "main";
+		String file = sourceFiles.isEmpty() ? ""+getPositionalVariable(0) : sourceFiles.peekLast();
+		return new String[] {""+inv.callLine, from, file};
+	}
+
 	public Object getEvironmentVariable(String name) {		
 		return console.getEvironmentVariables(name);
 	}
@@ -741,6 +777,8 @@ $
 		List<Object> args = new ArrayList<>();;
 		FunctionDefStatement function;
 		Map<String,Object> local = new TreeMap<>();
+
+		int callLine;
 
 		public FunctionInvocation(Object[] args2, FunctionDefStatement function) throws IOException {
 			this.function = function;
@@ -775,7 +813,10 @@ $
 			}
 		}
 
-		functionStack.push(new FunctionInvocation(args,function));		
+		FunctionInvocation inv = new FunctionInvocation(args,function);
+		// the line it was called from (caller)
+		inv.callLine = statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
+		functionStack.push(inv);		
 	}
 
 	public void exitFunction(FunctionDefStatement functionDefStatement) {

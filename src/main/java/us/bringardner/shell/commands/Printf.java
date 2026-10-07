@@ -117,6 +117,15 @@ public class Printf extends ShellCommand{
 					spec.append(format.charAt(idx++));
 				}
 			}
+			int close = idx < n && format.charAt(idx) == '(' ? format.indexOf(")T", idx) : -1;
+			if( close > 0 ) {
+				// %(strftime format)T: a time, the argument in seconds since 1970 (none or -1: now)
+				String when = next < values.size() ? values.get(next++) : null;
+				String text = strftime(format.substring(idx+1, close), when, ctx);
+				out.append(String.format(spec.toString()+"s", text));
+				idx = close+1;
+				continue;
+			}
 			Integer precision = null;
 			if( idx < n && format.charAt(idx) == '.' ) {
 				idx++;
@@ -188,6 +197,74 @@ public class Printf extends ShellCommand{
 			failed = true;
 			return "";
 		}
+	}
+
+	/**
+	 * A time as strftime formats it (the time zone is $TZ, or the system's).
+	 */
+	static String strftime(String fmt, String when, ShellContext ctx) {
+		long seconds = System.currentTimeMillis()/1000;
+		if( when != null && !when.isBlank()) {
+			try {
+				long v = Long.parseLong(when.trim());
+				if( v >= 0 ) {
+					seconds = v;
+				}
+			} catch (NumberFormatException e) {
+			}
+		}
+		Object tz = ctx.getVariable("TZ");
+		java.time.ZoneId zone;
+		try {
+			zone = tz == null || tz.toString().isBlank() ? java.time.ZoneId.systemDefault() : java.time.ZoneId.of(tz.toString());
+		} catch (java.time.DateTimeException e) {
+			zone = java.time.ZoneOffset.UTC;
+		}
+		java.time.ZonedDateTime t = java.time.Instant.ofEpochSecond(seconds).atZone(zone);
+		StringBuilder ret = new StringBuilder();
+		for (int i = 0; i < fmt.length(); i++) {
+			char c = fmt.charAt(i);
+			if( c != '%' || i+1 >= fmt.length()) {
+				ret.append(c);
+				continue;
+			}
+			char d = fmt.charAt(++i);
+			switch (d) {
+			case 'Y': ret.append(t.getYear()); break;
+			case 'C': ret.append(String.format("%02d", t.getYear()/100)); break;
+			case 'y': ret.append(String.format("%02d", t.getYear()%100)); break;
+			case 'm': ret.append(String.format("%02d", t.getMonthValue())); break;
+			case 'd': ret.append(String.format("%02d", t.getDayOfMonth())); break;
+			case 'e': ret.append(String.format("%2d", t.getDayOfMonth())); break;
+			case 'j': ret.append(String.format("%03d", t.getDayOfYear())); break;
+			case 'H': ret.append(String.format("%02d", t.getHour())); break;
+			case 'k': ret.append(String.format("%2d", t.getHour())); break;
+			case 'I': ret.append(String.format("%02d", (t.getHour()+11)%12+1)); break;
+			case 'l': ret.append(String.format("%2d", (t.getHour()+11)%12+1)); break;
+			case 'M': ret.append(String.format("%02d", t.getMinute())); break;
+			case 'S': ret.append(String.format("%02d", t.getSecond())); break;
+			case 'p': ret.append(t.getHour() < 12 ? "AM" : "PM"); break;
+			case 'a': ret.append(t.format(java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.US))); break;
+			case 'A': ret.append(t.format(java.time.format.DateTimeFormatter.ofPattern("EEEE", java.util.Locale.US))); break;
+			case 'b':
+			case 'h': ret.append(t.format(java.time.format.DateTimeFormatter.ofPattern("MMM", java.util.Locale.US))); break;
+			case 'B': ret.append(t.format(java.time.format.DateTimeFormatter.ofPattern("MMMM", java.util.Locale.US))); break;
+			case 'u': ret.append(t.getDayOfWeek().getValue()); break;
+			case 'w': ret.append(t.getDayOfWeek().getValue()%7); break;
+			case 'Z': ret.append(t.format(java.time.format.DateTimeFormatter.ofPattern("zzz", java.util.Locale.US))); break;
+			case 'z': ret.append(t.format(java.time.format.DateTimeFormatter.ofPattern("xx"))); break;
+			case 's': ret.append(seconds); break;
+			case 'F': ret.append(strftime("%Y-%m-%d", ""+seconds, ctx)); break;
+			case 'T': ret.append(strftime("%H:%M:%S", ""+seconds, ctx)); break;
+			case 'D': ret.append(strftime("%m/%d/%y", ""+seconds, ctx)); break;
+			case 'R': ret.append(strftime("%H:%M", ""+seconds, ctx)); break;
+			case 'n': ret.append('\n'); break;
+			case 't': ret.append('\t'); break;
+			case '%': ret.append('%'); break;
+			default: ret.append('%').append(d);
+			}
+		}
+		return ret.toString();
 	}
 
 	/** %.5d: at least precision digits */

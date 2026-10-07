@@ -61,7 +61,7 @@ compare
 				ret = Integer.parseInt(tmp);
 			}			
 		} else if( ctx.string()!=null) {
-			String stringVal = ctx.string().getText();
+			String stringVal = ShellContext.dq(ctx.string().getText());
 			stringVal = stringVal.substring(1,stringVal.length()-1);
 			if( ctx.string().SQ_STRING()!=null) {
 				ret = stringVal;
@@ -164,7 +164,7 @@ rx_pattern
 		if(p.variable()!=null ) {
 			ret.append(""+sc.getVariable(p.variable()));
 		} else if(p.string()!=null ) {
-			String stringVal = p.string().getText();
+			String stringVal = ShellContext.dq(p.string().getText());
 			stringVal = stringVal.substring(1,stringVal.length()-1);
 			if( p.string().SQ_STRING()!=null) {
 				ret.append(stringVal);

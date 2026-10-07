@@ -416,6 +416,7 @@ delimiter
 		registerCommand(new us.bringardner.shell.commands.Type());
 		registerCommand(new us.bringardner.shell.commands.Builtin());
 		registerCommand(new us.bringardner.shell.commands.CommandCmd());
+		registerCommand(new us.bringardner.shell.commands.Caller());
 		registerCommand(new us.bringardner.shell.commands.BracketTest());
 		registerCommand(new Unmount());
 		registerCommand(new Unset());

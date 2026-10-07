@@ -316,7 +316,12 @@ public class DoubleBracket {
 			}
 			return ctx.getVariable(val) != null;
 		}
-		case "-o": return false;
+		case "-o": {
+			// a set -o option is on
+			us.bringardner.shell.Console.Option o = us.bringardner.shell.Console.Option.find(val);
+			return o != us.bringardner.shell.Console.Option.Unsupported && o != us.bringardner.shell.Console.Option.Option
+					&& ctx.console.isOptionEnabled(o);
+		}
 		case "-t": return false;
 		}
 		try {

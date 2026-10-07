@@ -79,6 +79,10 @@ public class Arithmetic {
 	 * @return the expression in $(( expression )) or (( expression ))
 	 */
 	public static String body(String token) {
+		if( token.startsWith("$[")) {
+			// $[ expression ], the old form
+			return token.substring(2, token.length()-1);
+		}
 		int open = token.startsWith("$") ? 3 : 2;
 		return token.substring(open, token.length()-2);
 	}

@@ -45,7 +45,8 @@ public class TestPositionalAndSpecialParameters extends AbstractConsoleTest{
 				+ "2\n"
 				+ "0\n"
 				+ "B\n"
-				+ "0\n"
+				// $$ is the shell's process id (the JVM's)
+				+ ProcessHandle.current().pid()+"\n"
 				+ "0\n"
 				+ ""
 						;

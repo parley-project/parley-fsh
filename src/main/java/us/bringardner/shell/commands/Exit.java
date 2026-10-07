@@ -26,7 +26,8 @@ public class Exit extends ShellCommand{
 			} catch (Exception e) {
 			}
 		}
-		throw new ExitException(ctx, ret);
+		// a status is 0 to 255
+		throw new ExitException(ctx, ((ret % 256)+256) % 256);
 	}
 
 }

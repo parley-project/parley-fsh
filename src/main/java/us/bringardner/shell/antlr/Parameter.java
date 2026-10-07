@@ -53,6 +53,20 @@ ${parameter:-word}
 
 	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
 	private static final Pattern ANSI = Pattern.compile("\\$'((?:[^'\\\\]|\\\\.)*)'");
+	private static final Pattern TRANSFORM = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)(\\[[@*]\\])?@([QEUuLA])");
+
+	/** ${x@op}: Q quoted for the shell, E with $'...' escapes done, U u L case, A as an assignment */
+	static String transform(String s, char op, String name) {
+		switch (op) {
+		case 'Q': return "'"+s.replace("'", "'\\''")+"'";
+		case 'E': return ShellContext.ansiC(s);
+		case 'U': return s.toUpperCase();
+		case 'u': return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0))+s.substring(1);
+		case 'L': return s.toLowerCase();
+		default: return name+"='"+s.replace("'", "'\\''")+"'";
+		}
+	}
+
 	private static final Pattern ARRAY_OP = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]([/#|%^,].*)", Pattern.DOTALL);
 	private static final Pattern LENGTH = Pattern.compile("[#|]([a-zA-Z_][a-zA-Z_0-9]*)");
 	/** a variable for one element while ${a[@]/x/y} works on it */
@@ -93,6 +107,23 @@ ${parameter:-word}
 					ret.append(sep);
 				}
 				ret.append(o);
+			}
+			return ret.toString();
+		}
+		m = TRANSFORM.matcher(text);
+		if( m.matches()) {
+			// ${x@Q} ${x@E} ${x@U} ${x@u} ${x@L} ${x@A}; ${a[@]@Q} each element
+			Object val = sc.getVariable(m.group(1));
+			java.util.List<Object> items = m.group(2) != null ? values(val) : new java.util.ArrayList<>(java.util.Arrays.asList(ShellContext.firstElement(val)));
+			StringBuilder ret = new StringBuilder();
+			for(Object o : items) {
+				if( o == null ) {
+					continue;
+				}
+				if( ret.length() > 0 ) {
+					ret.append(' ');
+				}
+				ret.append(transform(""+o, m.group(3).charAt(0), m.group(1)));
 			}
 			return ret.toString();
 		}

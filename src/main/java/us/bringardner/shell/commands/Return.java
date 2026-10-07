@@ -26,7 +26,8 @@ public class Return extends ShellCommand{
 			}
 		}
 		
-		throw new ReturnException(ctx,this,ret);
+		// a status is 0 to 255: return 300 is 44, return -1 is 255
+		throw new ReturnException(ctx,this,((ret % 256)+256) % 256);
 	//return ret;
 	}
 

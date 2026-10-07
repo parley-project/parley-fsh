@@ -130,9 +130,13 @@ DECIMAL
     : INTEGER DOT INTEGER  EXPONENT?;
 
 // $( ) inside a double-quoted string may contain quotes and parentheses: "$(echo "x")"
+// "...", and $"..." (a string to translate; there is no catalog, so it is the same text)
 DQ_STRING
-    : '"' DQ_PART* '"'
+    : '$'? '"' DQ_PART* '"'
     ;
+
+// $[ expression ]: the old form of $(( expression ))
+DOLLAR_BRACKET: '$[' ~[\]]* ']' ;
 
 fragment DQ_PART
     : ~["\\$] | '\\' . | '$(' CMD_PART* ')' | '${' PARAM_PART* '}' | '$'
