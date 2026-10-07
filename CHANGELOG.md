@@ -25,6 +25,18 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   `antlr4-runtime`).
 - `DebugControlPanel.DebugController` is now `us.bringardner.fsh.DebugController`.
 
+### Changed
+- The GUI console's workings are in `ConsoleIO`, which uses no UI toolkit, so consoles in
+  other toolkits (JavaFX) can share them; `ConsolePanel` is now its Swing view. Its
+  methods are unchanged.
+- In the GUI console, a line typed while a script runs goes to the script's standard
+  input, so `read` gets it (it used to wait for ever). Interrupting a thread waiting for
+  that input ends the wait.
+- The GUI console no longer waits on the UI for every write: output is decoded as UTF-8
+  (a character split across writes, or a non-ASCII one written a byte at a time, is no
+  longer garbled) and shown in batches. Debug messages it printed to `System.out` and
+  its status labels are gone.
+
 ### Still accepted
 - `~/.fsshrc` is read when `~/.fshrc` doesn't exist.
 - `#!fssh` scripts run as before.
