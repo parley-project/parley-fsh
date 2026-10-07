@@ -17,37 +17,28 @@ alias-expand
 # case
 
 # command
-command-builtin
 
 # dbl
 
 # declare
-declare-p
 
 # func
-func-return-no-arg
 
 # mapfile
-mapfile-callback-free
 
 # param
 param-error-message
-param-replace-empty
 
 # printf
 
 # read
-read-eof-status
 
 # redir
 redir-close
 
 # script
-script-default-args
-script-join-array
 
 # select
-select-noninteractive
 
 # semicolon
 
@@ -62,7 +53,6 @@ shopt-nocasematch
 shopt-nullglob
 
 # source
-source-return
 
 # test
 
@@ -70,9 +60,7 @@ source-return
 trap-exit-status
 
 # type
-type-function
 
 # unset
-unset-function-var
 
 # wait

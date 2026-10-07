@@ -230,11 +230,18 @@ public class ShellContext {
 		the parameters are separated by spaces. If IFS is null, the parameters are joined without intervening separators.
 		 */
 		case '*':
-			Object tmp = getValue(Console.IFS);
+			// joined by the first character of IFS (a local IFS too); an empty IFS joins with nothing
+			Object tmp = getVariable(Console.IFS);
 			if( tmp !=null) {
 				String tmp2 = tmp.toString();
 				if( tmp2.length()>0) {
 					seperator = tmp2.charAt(0);
+				} else {
+					StringBuilder joined = new StringBuilder();
+					for(int idx=1, sz= positionalParameters.size(); idx < sz; idx++) {
+						joined.append(positionalParameters.get(idx));
+					}
+					return joined.toString();
 				}
 			}
 			// fall through
@@ -686,6 +693,9 @@ $
 		}
 		return ret;
 	}
+
+	/** how many sourced files are running (return ends the innermost) */
+	public int sourceDepth;
 
 	public Object getEvironmentVariable(String name) {		
 		return console.getEvironmentVariables(name);

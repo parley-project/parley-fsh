@@ -601,8 +601,8 @@ public class CommandStatement extends Statement{
 			}
 		} catch (ReturnException e) {
 			returnStatus = e.exitCode;
-			if( ctx.isInFunction()) {
-				// let FunctionDefStatement.invoke end the function
+			if( ctx.isInFunction() || ctx.sourceDepth > 0 ) {
+				// let FunctionDefStatement.invoke (or source) end the function
 				throw e;
 			}
 		} catch (ExitException e) {
@@ -704,6 +704,29 @@ public class CommandStatement extends Statement{
 
 	}
 
+	/**
+	 * @return the program name runs (a path, or found in PATH), or null
+	 */
+	public static FileSource which(String execName, ShellContext ctx) throws IOException {
+		if( execName.contains("/")) {
+			FileSource file = ctx.getFileSource(execName);
+			return file.exists() ? file : null;
+		}
+		FileSourceFactory factory = ctx.getFileSource(".").getFileSourceFactory();
+		String [] exts = new String[0];
+		Object tmpExt = ctx.getEvironmentVariable("PATHEXT");
+		if( tmpExt!=null) {
+			exts = tmpExt.toString().split(""+factory.getPathSeperatorChar());
+		}
+		for(String path : (""+ctx.getEvironmentVariable("PATH")).split(""+factory.getPathSeperatorChar())) {
+			FileSource file = findExecutable(execName,path,exts,ctx);
+			if( file !=null && file.isFile()) {
+				return file;
+			}
+		}
+		return null;
+	}
+
 	private FileSource findExecutable(String execName, ShellContext ctx) throws IOException {
 
 		FileSource file = executables.get(execName);
@@ -744,7 +767,7 @@ public class CommandStatement extends Statement{
 	}
 
 
-	private FileSource findExecutable(String execName,String path, String[] exts,ShellContext ctx) throws IOException {
+	private static FileSource findExecutable(String execName,String path, String[] exts,ShellContext ctx) throws IOException {
 		FileSource file = null;
 		FileSource dir = ctx.getFileSource(path);
 		if( dir.exists()) {

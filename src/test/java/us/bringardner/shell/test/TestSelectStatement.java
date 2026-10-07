@@ -1,6 +1,7 @@
 package us.bringardner.shell.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
@@ -35,7 +36,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? you picked two (2)\n";
+		String expectOut = 	"you picked two (2)\n";
 		String expectErr = 	
 				  "1) one              \n"
 				+ "2) two              \n"
@@ -50,7 +51,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		// the prompt (#?) is on standard error, as in bash, between the menus
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr, err.replace("#? ", ""));
 	}
 
 	@Test
@@ -64,7 +67,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? #? you picked two (2)\n";
+		String expectOut = 	"you picked two (2)\n";
 		String expectErr = 	
 				  "1) one              \n"
 				+ "2) two              \n"
@@ -85,7 +88,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		// the prompt (#?) is on standard error, as in bash, between the menus
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr, err.replace("#? ", ""));
 	}
 	
 	@Test
@@ -99,7 +104,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? you picked  (test)\n";
+		String expectOut = 	"you picked  (test)\n";
 		String expectErr = 	
 				  "1) one              \n"
 				+ "2) two              \n"
@@ -114,7 +119,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		// the prompt (#?) is on standard error, as in bash, between the menus
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr, err.replace("#? ", ""));
 	}
 
 	@Test
@@ -128,7 +135,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? you picked AbcFile.php (2)\n";
+		String expectOut = 	"you picked AbcFile.php (2)\n";
 		String expectErr = 	
 				    "1) AbcFile.js                 \n"
 				    + "2) AbcFile.php                \n"
@@ -145,7 +152,8 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr.trim(), err.trim());
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr.trim(), err.replace("#? ", "").trim());
 	}
 	
 	@Test
@@ -162,7 +170,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		}
 		
 		//System.out.println(cmd);
-		String expectOut = 	"#? you picked Folder01/AbcFile.properties (2)\n";
+		String expectOut = 	"you picked Folder01/AbcFile.properties (2)\n";
 		if(getOs()== OperatingSystem.Windows) {
 			expectOut = 	expectOut.replaceAll("/", "\\\\");
 		}
@@ -186,7 +194,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		// the prompt (#?) is on standard error, as in bash, between the menus
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr, err.replace("#? ", ""));
 	}
 	
 	@Test
@@ -202,7 +212,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? you picked two (2)\n";
+		String expectOut = 	"you picked two (2)\n";
 		String expectErr = 	
 				    " 1) one         \n"
 				  + " 2) two         \n"
@@ -223,7 +233,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		// the prompt (#?) is on standard error, as in bash, between the menus
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr, err.replace("#? ", ""));
 	}
 
 	@Test
@@ -243,7 +255,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 				;
 		
 		
-		String expectOut = 	"#? you picked 20 (20)\n";
+		String expectOut = 	"you picked 20 (20)\n";
 		String expectErr = 	
 				      "  1) 1          15) 15         29) 29         43) 43         57) 57         71) 71         85) 85         99) 99        \n"
 				    + "  2) 2          16) 16         30) 30         44) 44         58) 58         72) 72         86) 86        100) 100       \n"
@@ -268,7 +280,9 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(0, res.exitCode);
 		assertEquals(expectOut, out);
-		assertEquals(expectErr, err);
+		// the prompt (#?) is on standard error, as in bash, between the menus
+		assertTrue(err.contains("#? "), err);
+		assertEquals(expectErr, err.replace("#? ", ""));
 	}
 	
 }

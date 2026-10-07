@@ -103,6 +103,9 @@ public class Read extends ShellCommand{
 		} catch (EOFException e2) {
 			return 1;
 		}
+		if( eof ) {
+			ret = 1;
+		}
 		
 		if(arrayName == null &&  names.size()==0) {
 			ctx.setVariable("REPLY", line);
@@ -179,6 +182,9 @@ public class Read extends ShellCommand{
 		return ifs.indexOf(c) >= 0 && Character.isWhitespace(c);
 	}
 
+	/** the last read ended at the end of the input, not at a delimiter */
+	private boolean eof;
+
 	public String readLine(ShellContext ctx,String prompt) throws IOException {
 		List<Options> options = new ArrayList<>();
 		String editLineText="";
@@ -220,15 +226,25 @@ public class Read extends ShellCommand{
 
 	private String readLineConsole(ShellContext ctx,String prompt, char lineDelim, int timeout, String editLineText,int n,int N, List<Options> options) throws IOException {
 		if(prompt!=null && !prompt.isEmpty()) {
-			ctx.stdout.print(prompt);
+			// on standard error, as in bash
+			ctx.stderr.print(prompt);
+			ctx.stderr.flush();
 		}
 		
 		StringBuilder buf = new StringBuilder();
 
 		int i = 0;
+		eof = false;
 		while((i=ctx.stdin.read())!=-1) {
 			if(i == '\\' && !options.contains(Options.r)) {
-				buf.append((char)ctx.stdin.read());
+				int next = ctx.stdin.read();
+				if( next == '\n' ) {
+					// backslash-newline: the line goes on
+					continue;
+				}
+				if( next >= 0 ) {
+					buf.append((char)next);
+				}
 			} else if(N<0 && i == lineDelim ) {
 				break;
 			} else  {
@@ -241,6 +257,8 @@ public class Read extends ShellCommand{
 		if( i<0 && buf.length()==0) {
 			throw new EOFException();
 		}
+		// a last line with no delimiter is read, but read fails (as in bash)
+		eof = i < 0;
 		
 		String line = buf.toString();
 		return line;

@@ -1,9 +1,14 @@
 package us.bringardner.shell.commands;
 
+import us.bringardner.shell.antlr.signal.ExitException;
+import us.bringardner.shell.antlr.signal.ReturnException;
+import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
+import us.bringardner.shell.antlr.Statement;
+import java.util.List;
+import java.util.ArrayList;
 import java.io.InputStream;
 
 import us.bringardner.io.filesource.FileSource;
-import us.bringardner.shell.FsshList;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 
@@ -46,24 +51,36 @@ public class Source extends ShellCommand{
 			}
 			try (InputStream in = file.getInputStream()) {
 				String code = new String(in.readAllBytes());
-				FsshList tmp = ctx.console.getPositionalParameters();
-				FsshList tmp2 = null;
+				// in the caller's context (its functions and locals), and return ends the file
+				List<Object> saved = null;
 				if( args.length>1) {
-					tmp2 = new FsshList();
+					saved = ctx.getPositionalParameterValues();
+					List<Object> params = new ArrayList<>();
 					for (int idx = 1; idx < args.length; idx++) {
-						String val = args[idx].getValue(ctx).toString();
-						tmp2.add(val);
+						params.add(""+args[idx].getValue(ctx));
 					}
-					ctx.console.setPositionalParameters(false, tmp2);
+					ctx.setPositionalParameterValues(params);
 				}
-				
-				int ret = ctx.console.executeUsingAntlr(code);
-				ctx.console.setPositionalParameters(false, tmp);
-				
-				return ret;				
+				int ret = 0;
+				ctx.sourceDepth++;
+				try {
+					for(Statement s : FileSourceShVisitorImpl.parse(ctx.console.preProcess(code.trim(), ctx))) {
+						ret = s.process(ctx);
+					}
+				} catch (ReturnException e) {
+					ret = e.exitCode;
+				} finally {
+					ctx.sourceDepth--;
+					if( saved != null ) {
+						ctx.setPositionalParameterValues(saved);
+					}
+				}
+				return ret;
 			}
+		} catch (ExitException e) {
+			throw e;
 		} catch (Exception e) {
-			ctx.stderr.println("source: "+e);
+			ctx.stderr.println("source: "+(e.getMessage() != null ? e.getMessage() : e));
 			return 1;
 		}
 				

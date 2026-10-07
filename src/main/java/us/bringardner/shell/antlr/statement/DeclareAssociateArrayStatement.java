@@ -39,11 +39,69 @@ associativeArrayElement
     :NL? LSQUARE key=argument RSQUARE EQ value=argument NL?
     ;    
 	 */
+	/** declare -- x="1", declare -a a=([0]="x"), declare -A m=([k]="v" ) */
+	static String declaration(String name, Object val, ShellContext sc) {
+		String flags = "";
+		StringBuilder value = new StringBuilder();
+		if( val instanceof Map<?,?> ) {
+			flags += "A";
+			value.append('(');
+			for(Map.Entry<?,?> e : ((Map<?,?>) val).entrySet()) {
+				value.append('[').append(e.getKey()).append("]=").append(quote(e.getValue())).append(' ');
+			}
+			value.append(')');
+		} else if( val instanceof FsshList ) {
+			flags += "a";
+			value.append('(');
+			FsshList list = (FsshList) val;
+			boolean first = true;
+			for(int idx : list.getIndexes()) {
+				if( !first ) {
+					value.append(' ');
+				}
+				first = false;
+				value.append('[').append(idx).append("]=").append(quote(list.get(idx)));
+			}
+			value.append(')');
+		} else {
+			value.append(quote(val));
+		}
+		if( sc.console.isInteger(name)) {
+			flags += "i";
+		}
+		if( sc.console.isReadonly(name)) {
+			flags += "r";
+		}
+		if( sc.getEvironmentVariable(name) != null ) {
+			flags += "x";
+		}
+		return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name+"="+value;
+	}
+
+	private static String quote(Object v) {
+		return "\""+(""+v).replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("`", "\\`")+"\"";
+	}
+
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		DeclareAssociativeArrayStatementContext ctx = (DeclareAssociativeArrayStatementContext) getContext();
 		String opts = ctx.DECLARE_A().getText();
 		opts = opts.substring(opts.indexOf('-')+1);
+		if( opts.indexOf('p') >= 0 ) {
+			// declare -p name ...: as declarations the shell can read back
+			int ret = 0;
+			for(DeclareItemContext item : ctx.declareItem()) {
+				String name = item.id1.getText();
+				Object val = sc.getVariable(name);
+				if( val == null ) {
+					sc.stderr.println("declare: "+name+": not found");
+					ret = 1;
+				} else {
+					sc.stdout.println(declaration(name, val, sc));
+				}
+			}
+			return ret;
+		}
 		for(DeclareItemContext item : ctx.declareItem()) {
 			String name = item.id1.getText();
 			if( opts.indexOf('i') >= 0 ) {

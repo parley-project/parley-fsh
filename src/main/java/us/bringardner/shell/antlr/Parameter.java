@@ -49,9 +49,10 @@ ${parameter:-word}
 					+ ":(?<number3>[\\-0-9]*)"
 			+ ""
 			);
-	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,})(?<colon>[:])?(?<type>[-=?+])(?<val>.*)");
+	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,}|[0-9]+|[@*#?$!])(?<colon>[:])?(?<type>[-=?+])(?<val>.*)", Pattern.DOTALL);
 
 	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
+	private static final Pattern ANSI = Pattern.compile("\\$'((?:[^'\\\\]|\\\\.)*)'");
 	private static final Pattern ARRAY_OP = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]([/#|%^,].*)", Pattern.DOTALL);
 	private static final Pattern LENGTH = Pattern.compile("[#|]([a-zA-Z_][a-zA-Z_0-9]*)");
 	/** a variable for one element while ${a[@]/x/y} works on it */
@@ -208,6 +209,17 @@ ${parameter:-word}
 	public Object evaluate(ShellContext sc)  {
 		String fullText = ctx1.getText();
 		fullText = fullText.substring(2,fullText.length()-1);
+		// $'...' in a pattern (${x%$'\\n'}): its text, quoted so the pattern takes it as text
+		if( fullText.contains("$'")) {
+			Matcher ansi = ANSI.matcher(fullText);
+			StringBuilder buf = new StringBuilder();
+			while( ansi.find()) {
+				String text = ShellContext.ansiC(ansi.group(1)).replace("\\", "\\\\").replace("\"", "\\\"");
+				ansi.appendReplacement(buf, Matcher.quoteReplacement("\""+text+"\""));
+			}
+			ansi.appendTail(buf);
+			fullText = buf.toString();
+		}
 		fullText = FileSourceShPreProcessorVisitorImpl.processString(fullText, sc);
 
 		Object array = arrayForms(fullText, sc);
@@ -490,7 +502,11 @@ ${parameter:-word}
 		String type = m.group("type");
 		String val = m.group("val");
 		String colon = m.group("colon");
-		Object ret = sc.getVariable(name);
+		// ${1:-x}, ${@:-x}: positional and special parameters
+		Object ret = Character.isLetter(name.charAt(0)) || name.charAt(0) == '_' ? sc.getVariable(name) : sc.getVariable("$"+name);
+		if( ret != null && !Character.isLetter(name.charAt(0)) && name.charAt(0) != '_' && name.matches("[0-9]+") && sc.getPositionalParameterValues().size() < Integer.parseInt(name)) {
+			ret = null;
+		}
 		// with the colon, an empty value counts as missing too (${e:-d} is d when e is empty)
 		boolean missing = ret == null || (colon != null && (""+ret).isEmpty());
 		switch(type.charAt(0)) {
@@ -631,52 +647,49 @@ ${parameter:-word}
 	
 	private Object patternSearchReplace(Object val, String bodyText, PbodyContext bc) {
 		String ret = ""+val;
-		
-		
 		PatternType type = PatternType.One;
 
+		// /pat/rep (first), //pat/rep (all), /#pat/rep (start, # is written |), /%pat/rep (end);
+		// with no /rep the match is deleted
 		String tmp = bodyText.substring(1);
-		int idx = tmp.lastIndexOf('/');
-		if( idx > 0 ) {
-			String replace = tmp.substring(idx+1);
-			String target  = tmp.substring(0,idx);
-			
-			// # match start % match end
-			if( target.charAt(0)== '/') {
-				target = target.substring(1);
-				type = PatternType.All;
-			} else if( target.charAt(0)== '|') {
-				target = target.substring(1);
-				type = PatternType.Start;
-			} else if( target.charAt(0)== '%') {
-				target = target.substring(1);
-				type = PatternType.End;
-			}
-			
-			String preped = ShellCommand.prepWildCards(target,true);
-
-			if(type == PatternType.Start) {
-				preped = "^"+preped;
-			} else if(type == PatternType.End) {
-				preped = preped + "$";
-			}
-			
-			Pattern rx = Pattern.compile(preped);
-			Matcher m = rx.matcher(ret);
-			
-			
-			if(m.find()) {
-				if( type == PatternType.One) {
-					ret = m.replaceFirst(replace);
-				} else {
-					ret = m.replaceAll(replace);
-				}
-			}
-			
+		if( tmp.startsWith("/")) {
+			type = PatternType.All;
+			tmp = tmp.substring(1);
+		} else if( tmp.startsWith("|") || tmp.startsWith("#")) {
+			type = PatternType.Start;
+			tmp = tmp.substring(1);
+		} else if( tmp.startsWith("%")) {
+			type = PatternType.End;
+			tmp = tmp.substring(1);
 		}
-
+		int idx = -1;
+		for (int i = 0; i < tmp.length(); i++) {
+			if( tmp.charAt(i) == '\\' ) {
+				i++;
+			} else if( tmp.charAt(i) == '/' ) {
+				idx = i;
+				break;
+			}
+		}
+		String target = idx < 0 ? tmp : tmp.substring(0, idx);
+		String replace = idx < 0 ? "" : tmp.substring(idx+1);
+		if( target.isEmpty()) {
+			return ret;
+		}
+		String preped = ShellCommand.prepWildCards(target,true);
+		if(type == PatternType.Start) {
+			preped = "^(?:"+preped+")";
+		} else if(type == PatternType.End) {
+			preped = "(?:"+preped+")$";
+		}
+		Matcher m = Pattern.compile(preped, Pattern.DOTALL).matcher(ret);
+		if(m.find()) {
+			String rep = Matcher.quoteReplacement(replace);
+			ret = type == PatternType.All ? m.replaceAll(rep) : m.replaceFirst(rep);
+		}
 		return ret;
 	}
+
 
 	private Object patternHashReplaceTail(Object val, String bodyText, PbodyContext bc) {
 		if (val instanceof List<?>) {

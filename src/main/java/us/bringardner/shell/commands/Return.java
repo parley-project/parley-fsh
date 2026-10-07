@@ -17,7 +17,8 @@ public class Return extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
+		// with no number, the status of the last command (as in bash)
+		int ret = ctx.console.getLastExitCode();
 		if( args.length>0) {
 			try {
 				ret = Integer.parseInt(args[0].getValue(ctx).toString());

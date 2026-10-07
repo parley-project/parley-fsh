@@ -249,8 +249,9 @@ public class TestReadStatement extends AbstractConsoleTest {
 				;
 		//System.out.println(cmd);
 		String stdIn = "tony\n";
+		// the prompt is written to standard error, as in bash
 		String expect = 
-				"Enter name:tony\n"				
+				"tony\n"				
 				;
 		int exitCode = 0;
 		
@@ -258,6 +259,7 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
+		assertEquals("Enter name:", ret.getStdErr());
 		
 		//String err = ret.getStdErr();
 		
