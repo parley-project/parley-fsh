@@ -37,7 +37,7 @@
         <wb-resource deploy-path="/" source-path="/Antlr4"/>
                         
         
-        <wb-resource deploy-path="/" source-path="/fssh"/>
+        <wb-resource deploy-path="/" source-path="/generated"/>
                                                                     
     
     

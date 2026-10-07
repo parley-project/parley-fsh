@@ -1,4 +1,4 @@
-# Sourced by run.sh and fssh.sh: sets CLASSPATH and LIB_DIR for running the shell from this project.
+# Sourced by run.sh and fsh.sh: sets CLASSPATH and LIB_DIR for running the shell from this project.
 # The dependency classpath comes from Maven and is cached in target/ until pom.xml changes.
 
 LIB_DIR=$(cd "$(dirname "$0")" && pwd)

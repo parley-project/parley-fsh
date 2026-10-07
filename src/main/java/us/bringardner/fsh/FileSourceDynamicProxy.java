@@ -1,0 +1,100 @@
+package us.bringardner.fsh;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+
+import us.bringardner.parley.files.FileSource;
+
+public class FileSourceDynamicProxy implements InvocationHandler {
+
+	private FileSource target;
+	private FileSource parent;
+	
+	public FileSourceDynamicProxy(FileSource parent,FileSource target) {
+		this.parent = parent;
+		this.target = target;
+	}
+	
+	FileSource getProxy(FileSource proxy,FileSource fs) {
+		FileSource ret = (FileSource) Proxy.newProxyInstance(
+				  RootFile.class.getClassLoader(), 
+				  new Class[] { FileSource.class }, 
+				  new FileSourceDynamicProxy(proxy,fs));
+
+		return ret;
+	}
+	
+	@Override
+	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+		    Object result = method.invoke(target, args);
+		    String name = method.getName();
+		    
+		    // The path shown in the shell is the virtual one (under the mount point).
+		    // getCanonicalPath is left alone: like a link, a mount resolves to the real
+		    // file, so the shared isChildOfMine (which compares canonical paths) works (BJL-25).
+		    if( name.equals("getAbsolutePath") || name.equals("toString")) {
+		    	RootFile root = findRoot(parent);
+		    	String tmp2 = root.target.getAbsolutePath();
+		    	String tmp3 = target.getAbsolutePath();
+		    	String tmp5 = tmp3.substring(tmp2.length());
+		    	if(  tmp5.startsWith("\\")) {
+		    		tmp5 = tmp5.substring(1);
+		    	}
+		    	String path =null;
+		    	char sep = target.getFileSourceFactory().getSeperatorChar();
+		    	String tmp1 = root.getAbsolutePath();
+		    	if( tmp1.endsWith(""+sep) || tmp5.startsWith(""+sep)) {
+		    		path = tmp1+tmp5;
+		    	} else {
+		    		path = tmp1+sep+tmp5;
+		    	}
+		    	
+		    	if( path.startsWith("//") ) {
+		    		path = path.substring(1);
+		    	}
+		    	
+		    	return path;
+		    }  else if( name.equals("getParentFile")) {
+		    	return parent;
+		    } else if( name.equals("listFiles") && args == null) {
+		    	FileSource kids [] = (FileSource[])result;
+				FileSource [] ret = new FileSource[kids.length];
+				for (int idx = 0; idx < ret.length; idx++) {
+					ret[idx] = getProxy((FileSource) proxy,kids[idx]);
+				}
+		    	return ret;
+		    } else if( name.equals("getChild")) {
+		    	if( result != null ) {
+		    		if (result instanceof FileSource) {
+						FileSource target = (FileSource) result;
+						return getProxy((FileSource)proxy, target);	
+					}
+		    		
+		    		
+		    	}
+		    }
+		    // isChildOfMine: the real file's shared implementation (it used to compare
+		    // the virtual names with startsWith, so /data/x counted as inside /dat)
+		    
+		    
+		    
+		    
+	        return result;		
+	}
+
+	private RootFile findRoot(FileSource file) throws IOException {
+		if (file instanceof RootFile) {
+			return (RootFile) file;
+		}
+		FileSource file2 = file.getParentFile();
+		if( file2 == null ) {
+			return null;
+		}
+		
+		return findRoot(file2); 
+		
+	}
+
+}

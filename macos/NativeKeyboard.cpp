@@ -66,7 +66,7 @@ static int idx = 0;
 /*
  * @return the number of bytes that can be read without blocking.
  */
-JNIEXPORT jint JNICALL Java_us_bringardner_shell_NativeKeyboard_ready(JNIEnv *, jobject) {
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_ready(JNIEnv *, jobject) {
 	if( idx < cnt ) {
 		return cnt - idx;
 	}
@@ -82,7 +82,7 @@ JNIEXPORT jint JNICALL Java_us_bringardner_shell_NativeKeyboard_ready(JNIEnv *, 
  * @return the next byte (0-255), a special key (KEY_UP ...), KEY_NONE if nothing was typed
  * within a second, or KEY_EOF at the end of input.
  */
-JNIEXPORT jint JNICALL Java_us_bringardner_shell_NativeKeyboard_getChar(JNIEnv *, jobject) {
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_getChar(JNIEnv *, jobject) {
 
 	if( idx < cnt ) {
 		return buffer[idx++];

@@ -1,0 +1,283 @@
+package us.bringardner.fsh.test;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.io.IOException;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+
+@TestMethodOrder(OrderAnnotation.class)
+public class TestForStatement extends AbstractConsoleTest {
+
+	
+	
+	@BeforeAll
+	public static void setup() throws IOException {
+		AbstractConsoleTest.setup("TestFiles");
+		if(!testFilesDir.exists() ) {
+			System.out.println(testFilesDir.getAbsolutePath()+" does not exists");
+		}
+	}
+	
+	
+
+	@Test
+	public void testForStatent01_1() throws Exception{
+		String cmd = 
+				 "for i in 1 2 3; do\n"
+				 + "	echo \"i=$i\"\n"
+				 + "done"
+				;
+
+		String expect = 
+				"i=1\n"
+				+ "i=2\n"
+				+ "i=3\n"
+				
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode);
+		assertEquals(expect, out);
+		assertEquals("", err);
+	}
+
+	@Test
+	public void testForStatent02_1() throws Exception{
+		String cmd = 
+				 "for i in {1..3}; do\n"
+				 + "  echo \"Outer loop: $i\"\n"
+				 + "  for j in {1..3}; do \n"
+				 + "    if [ $j -eq 2 ]; then\n"
+				 + "      continue 2\n"
+				 + "    fi\n"
+				 + "    echo \"    Inner loop: $j\"\n"
+				 + "  done\n"
+				 + "done"
+				;
+		
+		String expect = 
+				"Outer loop: 1\n"
+				+ "    Inner loop: 1\n"
+				+ "Outer loop: 2\n"
+				+ "    Inner loop: 1\n"
+				+ "Outer loop: 3\n"
+				+ "    Inner loop: 1\n"
+				+ ""
+				
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		assertEquals(expect, out);
+		assertEquals("", err);
+	}
+	
+	@Test
+	public void testForStatent02_2() throws Exception{
+		String cmd = 
+				 "for i in {1..3}; do\n"
+				 + "  echo \"Outer loop: $i\"\n"
+				 + "  for j in {1..3}; do \n"
+				 + "    if [ $j -eq 2 ]; then\n"
+				 + "      continue\n"
+				 + "    fi\n"
+				 + "    echo \"    Inner loop: $j\"\n"
+				 + "  done\n"
+				 + "done"
+				;
+		
+		String expect = 
+				"Outer loop: 1\n"
+				+ "    Inner loop: 1\n"
+				+ "    Inner loop: 3\n"
+				+ "Outer loop: 2\n"
+				+ "    Inner loop: 1\n"
+				+ "    Inner loop: 3\n"
+				+ "Outer loop: 3\n"
+				+ "    Inner loop: 1\n"
+				+ "    Inner loop: 3\n"
+				
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		assertEquals(expect, out);
+		assertEquals("", err);
+	}
+
+	@Test
+	public void testForStatent02_3() throws Exception{
+		String cmd = 
+				 "for i in {1..3}; do\n"
+				 + "  echo \"Outer loop: $i\"\n"
+				 + "  for j in {1..3}; do \n"
+				 + "    if [ $j -eq 2 ]; then\n"
+				 + "      break\n"
+				 + "    fi\n"
+				 + "    echo \"    Inner loop: $j\"\n"
+				 + "  done\n"
+				 + "done"
+				;
+		
+		String expect = 
+				"Outer loop: 1\n"
+				+ "    Inner loop: 1\n"
+				+ "Outer loop: 2\n"
+				+ "    Inner loop: 1\n"
+				+ "Outer loop: 3\n"
+				+ "    Inner loop: 1\n"
+				+ ""
+				
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		assertEquals(expect, out);
+		assertEquals("", err);
+	}
+
+	@Test
+	public void testForStatent03_1() throws Exception{
+		String cmd = 
+				 "for (( i=1; i<=10; i++ ))\n"
+				 + "do  \n"
+				 + " echo \"Loop number:\" $i\n"
+				 + "done"
+				;
+		
+		String expect = 
+				"Loop number: 1\n"
+				+ "Loop number: 2\n"
+				+ "Loop number: 3\n"
+				+ "Loop number: 4\n"
+				+ "Loop number: 5\n"
+				+ "Loop number: 6\n"
+				+ "Loop number: 7\n"
+				+ "Loop number: 8\n"
+				+ "Loop number: 9\n"
+				+ "Loop number: 10\n"
+				+ ""
+				
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		assertEquals(expect, out);
+		assertEquals("", err);
+	}
+	
+	@Test
+	public void testForStatent03_2() throws Exception{
+		String cmd = 
+				 "for word in This is a list of words\n"
+				 + "do\n"
+				 + " echo $word\n"
+				 + "done"
+				;
+		
+		String expect = 
+				"This\n"
+				+ "is\n"
+				+ "a\n"
+				+ "list\n"
+				+ "of\n"
+				+ "words\n"
+				+ ""
+				
+				;
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		assertEquals(expect, out);
+		assertEquals("", err);
+	}
+
+	@Test
+	public void testForStatent03_3() throws Exception{
+		String cmd = 
+				 "for file in \"*.php\"\n"
+				 + "do \n"
+				 + " ls -lh \"$file\"\n"
+				 + "done"
+				;
+		
+		//System.out.println(cmd);
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		String lines[] = out.split("\n");
+		assertEquals(1, lines.length,err);
+		assertTrue(lines[0].endsWith("AbcFile.php"));
+		assertEquals("", err);
+	}
+
+	@Test
+	public void testForStatent04_1() throws Exception{
+		String cmd = 
+				 "for file in *\n"
+				 + "do \n"
+				 + " echo \"$file\"\n"
+				 + "done"
+				;
+		
+		String expect [] = {"Folder01"
+				, "Hotel California.txt"
+				, "AbcFile.js"
+				, "AbcFile.properties"
+				, "AbcFile.php"
+				, "SymLink2Folder01"
+		};
+		
+		ExecuteResult res = executeCommand(cmd,"");
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(0, res.exitCode,err);
+		String lines[] = out.split("\n");
+		assertEquals(6, lines.length,err);
+		for(String val : expect) {
+			assertTrue(out.contains(val));
+		}
+		
+		assertEquals("", err);
+	}
+
+	private static void expectOut(String code, String out) throws IOException {
+		ExecuteResult res = executeCommand(code, "");
+		assertEquals("", res.getStdErr(), code);
+		assertEquals(out, res.getStdOut(), code);
+		assertEquals(0, res.exitCode, code);
+	}
+
+	@Test
+	public void testCStyleForWithSemicolon() throws IOException {
+		expectOut("for ((i=0; i<3; i++)); do echo $i; done", "0\n1\n2\n");
+		expectOut("for ((i=10; i>7; i--)); do echo $i; done", "10\n9\n8\n");
+		expectOut("for ((i=0; i<6; i+=2)); do echo $i; done", "0\n2\n4\n");
+	}
+
+	@Test
+	public void testListEndsAtNewline() throws IOException {
+		// in the list, do is a word; on the next line it starts the loop body
+		expectOut("for x in a do b; do echo $x; done", "a\ndo\nb\n");
+		expectOut("for x in a b\ndo\necho $x\ndone", "a\nb\n");
+	}
+}

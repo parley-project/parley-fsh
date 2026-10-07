@@ -1,0 +1,81 @@
+package us.bringardner.fsh.job;
+
+import us.bringardner.fsh.Console;
+import us.bringardner.fsh.ConsoleSignal;
+import us.bringardner.fsh.ShellContext;
+
+public class ForgroundJob extends AbstractJob {
+
+	String code;
+	public ForgroundJob(ShellContext ctx,String code) {
+		super(ctx);
+		this.code = code;
+	}
+	
+	@Override
+	public String toString() {
+		return code;
+	}
+
+	Console console;
+	
+	@Override
+	public int process() throws Exception {
+		
+		ShellContext ctx = getShellContext();
+		setState(JobState.Running);		
+		console = ctx.console;
+		int ret=console.executeUsingAntlr(ctx,code);
+		setState(JobState.Termnated);
+		return ret;
+	}
+
+	@Override
+	public void handleSignal(ConsoleSignal signal) {
+		
+		JobState currentState = getState();
+		
+		switch (currentState) {
+		case Termnated:
+		case Notified:return;
+		default:
+			break;
+		}
+		
+		if(!isIgnoreSignal(signal)) {
+			switch (signal) {
+			case ChildStopped: 				
+				break;
+			case Continue: 
+				if( currentState == JobState.Suspended) {
+					setState(JobState.Running);
+				}
+				
+				break;
+			case Hup: 
+			case Interupt:
+			case Terminate:
+			case Kill: 				
+				setState(JobState.Termnated);
+				break;
+			case Suspend:
+				setState(JobState.Suspended);
+				break;
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + signal);
+			}
+			
+		}		
+	}
+
+	@Override
+	public void interuptJob() {
+		thread.interrupt();		
+	}
+
+	@Override
+	public String getCommandLine() {
+		return code;
+	}
+
+}

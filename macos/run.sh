@@ -9,4 +9,4 @@ if [ $# -gt 0 ] ; then
 	debug="-agentlib:jdwp=transport=dt_socket,suspend=n,address=localhost:8001,server=y"
 fi
 
-java $debug --enable-native-access=ALL-UNNAMED -Djava.library.path="$LIB_DIR" us.bringardner.shell.Console
+java $debug --enable-native-access=ALL-UNNAMED -Djava.library.path="$LIB_DIR" us.bringardner.fsh.Console

@@ -1,0 +1,158 @@
+package us.bringardner.fsh.test.jobs;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+
+import java.io.IOException;
+import java.time.Duration;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import us.bringardner.fsh.Console;
+import us.bringardner.fsh.test.AbstractConsoleTest;
+
+public class TestWait extends AbstractConsoleTest {
+
+
+	@BeforeAll
+	public static void beforeAll() throws IOException {
+		waitForJobs = true;
+		AbstractConsoleTest.setup("TestFiles");
+		console.isInteractive=false;
+		String code = "# Define a function\n"
+				+ "my_function() {\n"
+				+ "    echo \"Function started sleep=$1 ret=$2\"\n"
+				+ "    sleep $1  \n"
+				+ "    echo \"Function completed sleep=$1 ret=$2\"\n"
+				+ "   return $2\n"
+				+ "}\n"
+				+ ""
+				;
+		// install the function
+		ExecuteResult res = executeCommand(code, "");
+		
+		assertEquals(res.exitCode, 0);
+	}
+
+	@AfterAll
+	public static void afterAll() {
+
+	}
+
+
+
+
+	@Test
+	public void testWait01() throws IOException, InterruptedException {
+		String expectOut = "";
+		String expectErr = "";
+		
+		String code = ""
+				+ "sleep 1 &\n"
+				+ "wait"
+				;
+
+		Console.setNextPid(100000);
+		console.jobManager.clear();
+		ExecuteResult res = executeCommand(code, "");
+		String val = res.getStdErr();
+		assertEquals(expectErr, val);
+		assertEquals(expectOut, res.getStdOut());
+		assertEquals(0, res.exitCode);
+		
+	}
+	@Test
+	public void testWait02() throws IOException, InterruptedException {
+		String expectOut = "Function started sleep=1 ret=2\n"
+				+ "Function started sleep=2 ret=3\n"
+				+ "started 200000 200001\n"
+				+ "Function completed sleep=1 ret=2\n"
+				+ "Function completed sleep=2 ret=3\n"
+				;
+		String expectErr = "";
+		
+		String code = ""
+				+ "my_function 1 2 &\n"
+				+ "pid1=$!\n"
+				+ "pid=$!\n"
+				+ "my_function 2 3 &\n"
+				+ "pid2=$!\n"
+				+ "pid=\"$pid1 $pid2\"\n"
+				+ "echo \"started $pid\"\n"
+				+ "wait -p var $pid1 $pid2"
+				;
+
+		Console.setNextPid(200000);
+		console.jobManager.clear();
+		ExecuteResult res = executeCommand(code, "");
+		
+		
+		
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(expectErr, err);
+		// the two jobs and the script print their first lines at the same time, in any order (as
+		// in bash); the jobs finish in the order of their sleeps
+		String [] expectLines = expectOut.split("\n");
+		String [] outLines = out.split("\n");
+		assertEquals(expectLines.length, outLines.length, out);
+		assertEquals(sorted(expectLines, 0, 3), sorted(outLines, 0, 3), out);
+		assertEquals(java.util.Arrays.asList(expectLines).subList(3, expectLines.length), java.util.Arrays.asList(outLines).subList(3, outLines.length), out);
+		assertEquals(3, res.exitCode);
+		String val = ""+console.getVariable("var");
+		assertEquals("200001", val);
+	}
+	
+
+	@Test
+	public void testWait03() throws IOException, InterruptedException {
+		String expectOut = "Function started sleep=1 ret=2\n"
+				+ "Function started sleep=2 ret=3\n"
+				+ "started 300000 300001\n"
+				+ "Function completed sleep=1 ret=2\n"
+				+ "Function completed sleep=2 ret=3\n"
+				;
+		String expectErr = "";
+		
+		String code = ""
+				//          sleep return
+				+ "my_function 1 2 &\n"
+				+ "pid1=$!\n"
+				+ "pid=$!\n"
+				+ "my_function 2 3 &\n"
+				+ "pid2=$!\n"
+				+ "pid=\"$pid1 $pid2\"\n"
+				+ "echo \"started $pid\"\n"
+				+ "wait -f -p var $pid1 $pid2"
+				;
+
+		Console.setNextPid(300000);
+		console.jobManager.clear();
+		ExecuteResult res = executeCommand(code, "");
+		
+		
+		
+		String out = res.getStdOut();
+		String err = res.getStdErr();
+		assertEquals(expectErr, err);
+		assertEquals(expectOut, out);
+		assertEquals(2, res.exitCode);
+		String val = ""+console.getVariable("var");
+		assertEquals("300000", val);
+	}
+
+	@Test
+	public void testWaitWithNoJobs() {
+		ExecuteResult res = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> executeCommand("wait; echo waited", ""));
+		assertEquals("", res.getStdErr());
+		assertEquals("waited\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
+	private static java.util.List<String> sorted(String [] lines, int from, int to) {
+		java.util.List<String> ret = new java.util.ArrayList<>(java.util.Arrays.asList(lines).subList(from, to));
+		java.util.Collections.sort(ret);
+		return ret;
+	}
+}
