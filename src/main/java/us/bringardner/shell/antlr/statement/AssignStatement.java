@@ -180,12 +180,38 @@ assignStatement
 			if( parts.size() == 1 ) {
 				val = typedValue(parts.get(0), ctx);
 			} else {
-				// several parts make text, as in bash
-				val = new Argument(actx.value).getValue(ctx);
+				// several parts make text, as in bash; in an assignment a ~ after : is $HOME too
+				// (PATH=a:~/bin)
+				StringBuilder text = new StringBuilder();
+				for (int idx = 0; idx < parts.size(); idx++) {
+					String home = Argument.tilde(parts, idx, ctx);
+					if( home == null && idx > 0 && isTilde(parts.get(idx)) && afterColon(parts.get(idx-1)) && beforeSlashOrColon(parts, idx+1)) {
+						Object h = ctx.getVariable("HOME");
+						home = h == null ? null : h.toString();
+					}
+					text.append(home != null ? home : Argument.getValue(parts.get(idx), ctx));
+				}
+				val = text.toString();
 			}
 		}
 
 		return val;
+	}
+
+	private static boolean isTilde(ArgumentPartContext part) {
+		return part.literal != null && part.literal.getType() == FileSourceShParser.TILDE;
+	}
+
+	private static boolean afterColon(ArgumentPartContext part) {
+		return part.literal != null && part.literal.getText().endsWith(":");
+	}
+
+	private static boolean beforeSlashOrColon(List<ArgumentPartContext> parts, int idx) {
+		if( idx >= parts.size()) {
+			return true;
+		}
+		ArgumentPartContext next = parts.get(idx);
+		return next.literal != null && (next.literal.getText().startsWith("/") || next.literal.getText().startsWith(":"));
 	}
 
 	/**

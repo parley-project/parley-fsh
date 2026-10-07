@@ -101,6 +101,10 @@ public class CommandSubstitutionStatement extends Statement{
 	
 		try {
 			saved = primary.console.snapshot();
+			// as in bash, set -e is off in $( ) (unless shopt -s inherit_errexit)
+			if( !us.bringardner.shell.Glob.option(primary, "inherit_errexit")) {
+				primary.console.setOption(Console.Option.ExitImediately, false);
+			}
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(code);
 			for(Statement s : stmts) {
 				exitCode = s.process(ctx);

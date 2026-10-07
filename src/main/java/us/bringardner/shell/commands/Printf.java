@@ -188,7 +188,9 @@ public class Printf extends ShellCommand{
 		case 'x':
 		case 'X':
 			return String.format(spec+conv, number(arg, ctx));
-		case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': {
+		case 'g': case 'G':
+			return formatG(spec, precision, decimal(arg, ctx), conv == 'G');
+		case 'f': case 'F': case 'e': case 'E': {
 			double d = decimal(arg, ctx);
 			return String.format(spec+(precision == null ? "" : prec)+(conv == 'F' ? 'f' : conv), d);
 		}
@@ -317,10 +319,86 @@ public class Printf extends ShellCommand{
 		}
 	}
 
+	/**
+	 * %g as C does it: %e when the exponent is below -4 or not below the precision, %f otherwise,
+	 * with no trailing zeros (unless #). Java's %g keeps them and never drops the exponent form.
+	 */
+	static String formatG(String spec, Integer precision, double d, boolean upper) {
+		String flags = "";
+		int at = 1;
+		while( at < spec.length() && "-+ #0".indexOf(spec.charAt(at)) >= 0 ) {
+			flags += spec.charAt(at++);
+		}
+		int width = at < spec.length() ? Integer.parseInt(spec.substring(at)) : 0;
+		int p = precision == null ? 6 : Math.max(precision, 1);
+		String body;
+		if( Double.isNaN(d) || Double.isInfinite(d)) {
+			body = Double.isNaN(d) ? "nan" : d > 0 ? "inf" : "-inf";
+		} else {
+			String sign = flags.indexOf('+') >= 0 ? "+" : flags.indexOf(' ') >= 0 ? " " : "";
+			// the exponent after rounding to p digits
+			String e = String.format("%."+(p-1)+"e", d);
+			int x = Integer.parseInt(e.substring(e.indexOf('e')+1));
+			body = x < -4 || x >= p ? e : String.format("%."+(p-1-x)+"f", d);
+			if( flags.indexOf('#') < 0 ) {
+				int ePos = body.indexOf('e');
+				String mantissa = ePos < 0 ? body : body.substring(0, ePos);
+				String exp = ePos < 0 ? "" : body.substring(ePos);
+				if( mantissa.indexOf('.') >= 0 ) {
+					mantissa = mantissa.replaceAll("0+$", "").replaceAll("\\.$", "");
+				}
+				body = mantissa+exp;
+			}
+			if( d >= 0 || body.charAt(0) != '-' ) {
+				body = sign+body;
+			}
+		}
+		if( upper ) {
+			body = body.toUpperCase();
+		}
+		if( body.length() < width ) {
+			String pad = " ".repeat(width-body.length());
+			if( flags.indexOf('-') >= 0 ) {
+				body = body+pad;
+			} else if( flags.indexOf('0') >= 0 && Character.isDigit(body.charAt(body.length()-1))) {
+				int digits = body.startsWith("-") || body.startsWith("+") || body.startsWith(" ") ? 1 : 0;
+				body = body.substring(0, digits)+pad.replace(' ', '0')+body.substring(digits);
+			} else {
+				body = pad+body;
+			}
+		}
+		return body;
+	}
+
 	/** %q: quoted so the shell reads it back as the same word */
 	static String quote(String s) {
 		if( s.isEmpty()) {
 			return "''";
+		}
+		if( s.chars().anyMatch(c -> c < ' ' || c == 0x7f)) {
+			// control characters: $'...', as bash does
+			StringBuilder ret = new StringBuilder("$'");
+			for(char c : s.toCharArray()) {
+				switch (c) {
+				case '\\': ret.append("\\\\"); break;
+				case '\'': ret.append("\\'"); break;
+				case '\t': ret.append("\\t"); break;
+				case '\n': ret.append("\\n"); break;
+				case '\r': ret.append("\\r"); break;
+				case 7: ret.append("\\a"); break;
+				case '\b': ret.append("\\b"); break;
+				case '\f': ret.append("\\f"); break;
+				case 11: ret.append("\\v"); break;
+				case 27: ret.append("\\E"); break;
+				default:
+					if( c < ' ' || c == 0x7f ) {
+						ret.append(String.format("\\%03o", (int) c));
+					} else {
+						ret.append(c);
+					}
+				}
+			}
+			return ret.append('\'').toString();
 		}
 		StringBuilder ret = new StringBuilder();
 		for(char c : s.toCharArray()) {

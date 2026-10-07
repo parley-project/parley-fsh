@@ -467,6 +467,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCmd_part(FileSourceShParser.Cmd_partContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#case_part}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCase_part(FileSourceShParser.Case_partContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#parameter}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -562,6 +568,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitAssociativeArrayElement(FileSourceShParser.AssociativeArrayElementContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#assocKey}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitAssocKey(FileSourceShParser.AssocKeyContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#associativeArrayValue}.
 	 * @param ctx the parse tree

@@ -55,6 +55,10 @@ public class Arithmetic {
 	 * Evaluate text, which has already been expanded. Empty text is 0.
 	 */
 	public static Number evaluate(String text, ShellContext ctx) {
+		// $(( "3" + 1 )): double quotes are removed, as in bash
+		if( text.indexOf('"') >= 0 ) {
+			text = text.replace("\"", "");
+		}
 		return evaluate(text, ctx, 0);
 	}
 
@@ -592,6 +596,30 @@ public class Arithmetic {
 			pos++;
 		}
 		String name = text.substring(start, pos);
+		if( pos < text.length() && text.charAt(pos) == '[' && ctx.getVariable(name) instanceof Map<?,?> ) {
+			// m[key] of an associative array: the key is text, not an expression
+			int end = text.indexOf(']', pos);
+			if( end < 0 ) {
+				throw error("missing `]'");
+			}
+			String key = text.substring(pos+1, end);
+			if( key.length() >= 2 && (key.startsWith("\"") && key.endsWith("\"") || key.startsWith("'") && key.endsWith("'"))) {
+				key = key.substring(1, key.length()-1);
+			}
+			pos = end+1;
+			String k = key;
+			return new Lvalue() {
+				@Override
+				public Number get() {
+					Object val = ctx.getVariable(name);
+					return valueOf(val instanceof Map<?,?> map ? map.get(k) : null, name);
+				}
+				@Override
+				public void set(Number value) {
+					ctx.setVariable(name, k, value);
+				}
+			};
+		}
 		if( pos < text.length() && text.charAt(pos) == '[' ) {
 			pos++;
 			long index = comma(eval).longValue();

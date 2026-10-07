@@ -768,6 +768,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitCmd_part(FileSourceShParser.Cmd_partContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#case_part}.
+	 * @param ctx the parse tree
+	 */
+	void enterCase_part(FileSourceShParser.Case_partContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#case_part}.
+	 * @param ctx the parse tree
+	 */
+	void exitCase_part(FileSourceShParser.Case_partContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#parameter}.
 	 * @param ctx the parse tree
 	 */
@@ -927,6 +937,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitAssociativeArrayElement(FileSourceShParser.AssociativeArrayElementContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#assocKey}.
+	 * @param ctx the parse tree
+	 */
+	void enterAssocKey(FileSourceShParser.AssocKeyContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#assocKey}.
+	 * @param ctx the parse tree
+	 */
+	void exitAssocKey(FileSourceShParser.AssocKeyContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#associativeArrayValue}.
 	 * @param ctx the parse tree

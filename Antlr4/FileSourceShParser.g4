@@ -183,6 +183,7 @@ pipeableStatement:
 		| forStatement (WS* redirect)? WS*
 		| ifStatement (WS* redirect)? WS*
 		| caseStatement (WS* redirect)? WS*
+		| selectStatement (WS* redirect)? WS*
 		;
 		    
 pipeOp:
@@ -449,7 +450,8 @@ statement_group1
 
 compoundCommand:
           redirect1=redirect?  LCURLY white* statement* white* RCURLY redirect1=redirect?
-        | redirect1=redirect? LPAREN white* statement* white* RPAREN redirect1=redirect?
+        // f() ( ... ): the body runs in a subshell, and its last command needs no ;
+        | subshell=LPAREN white* statement_or_statement1* white* RPAREN
         
         ;
 
@@ -460,9 +462,19 @@ arg_command_substitution:
 			;
 
 cmd_part:
-			~(DOLLAR_PAREM | LPAREN | RPAREN | DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN)
+			// $(case x in a) ...;; esac): the ) after a pattern does not end the $( )
+			CASE case_part* ESAC
+			| ~(DOLLAR_PAREM | LPAREN | RPAREN | DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN)
 			| (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN
 			| (DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN) cmd_part* RPAREN RPAREN
+			;
+
+// inside case ... esac in $( ): parentheses need not balance
+case_part:
+			CASE case_part* ESAC
+			| (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN
+			| (DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN) cmd_part* RPAREN RPAREN
+			| ~(ESAC | CASE | DOLLAR_PAREM | DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN)
 			;
 
 
@@ -524,8 +536,13 @@ braceRange: start=braceBound DOT_DOT end=braceBound (DOT_DOT incr=braceBound)?;
 braceBound: MINUS? associativeArrayValue;
 
 associativeArrayElement:
-    white* LSQUARE key=argument RSQUARE WS* EQ WS* value=argument white*
+    white* LSQUARE key+=argument RSQUARE WS* EQ WS* value=argument? white*
+    // [b c]=5: a key may have spaces
+    | white* LSQUARE keyText=assocKey RSQUARE WS* EQ WS* value=argument? white*
     ;
+
+// the text of a key up to ]: a b, "x y", $k
+assocKey: ~RSQUARE+;
 
 associativeArrayValue:
      string

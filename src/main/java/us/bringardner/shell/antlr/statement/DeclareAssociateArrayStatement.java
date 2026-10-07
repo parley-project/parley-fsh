@@ -126,7 +126,7 @@ associativeArrayElement
 			if( item.associativeArrayInitializer() != null ) {
 				Map<String,Object> map = new TreeMap<>();
 				for( AssociativeArrayElementContext e : item.associativeArrayInitializer().associativeArrayElement()) {
-					map.put(""+new Argument(e.key).getValue(sc), new Argument(e.value).getValue(sc));
+					map.put(key(e, sc), e.value == null ? "" : new Argument(e.value).getValue(sc));
 				}
 				val = map;
 			} else if( item.arrayInitializer() != null ) {
@@ -176,4 +176,29 @@ associativeArrayElement
 	}
 
 
+	/** the key of [key]=value; [a b]=v keeps the space */
+	static String key(AssociativeArrayElementContext e, ShellContext sc) {
+		if( e.keyText == null ) {
+			return ""+new Argument(e.key.get(0)).getValue(sc);
+		}
+		String text = e.keyText.getStart().getInputStream().getText(
+				org.antlr.v4.runtime.misc.Interval.of(e.keyText.getStart().getStartIndex(), e.keyText.getStop().getStopIndex()));
+		text = us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl.processString(text, sc);
+		// quote removal
+		StringBuilder ret = new StringBuilder();
+		char quote = 0;
+		for (int idx = 0; idx < text.length(); idx++) {
+			char c = text.charAt(idx);
+			if( quote == 0 && (c == '"' || c == '\'')) {
+				quote = c;
+			} else if( c == quote ) {
+				quote = 0;
+			} else if( c == '\\' && quote != '\'' && idx+1 < text.length()) {
+				ret.append(text.charAt(++idx));
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
+	}
 }

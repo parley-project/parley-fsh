@@ -91,11 +91,45 @@ argumentPart:
 	 * @return $HOME, or null if parts[idx] is not such a ~
 	 */
 	public static String tilde(List<ArgumentPartContext> parts, int idx, ShellContext ctx) {
+		if( idx > 0 ) {
+			return assignmentTilde(parts, idx, ctx);
+		}
 		if( idx != 0 || parts.get(0).literal == null || parts.get(0).literal.getType() != FileSourceShParser.TILDE ) {
 			return null;
 		}
 		if( parts.size() > 1 && !(""+parts.get(1).getText()).startsWith("/")) {
 			return null;
+		}
+		Object home = ctx.getVariable("HOME");
+		return home == null ? null : home.toString();
+	}
+
+	/**
+	 * In a word that looks like an assignment (PREFIX=~/x, P=a:~/b), a ~ after the = or a : is
+	 * the home directory too, as in bash.
+	 */
+	private static String assignmentTilde(List<ArgumentPartContext> parts, int idx, ShellContext ctx) {
+		ArgumentPartContext part = parts.get(idx);
+		if( part.literal == null || part.literal.getType() != FileSourceShParser.TILDE ) {
+			return null;
+		}
+		// only literal text before the ~: name= then anything, ending in = or :
+		StringBuilder prefix = new StringBuilder();
+		for (int i = 0; i < idx; i++) {
+			if( parts.get(i).literal == null ) {
+				return null;
+			}
+			prefix.append(parts.get(i).literal.getText());
+		}
+		String text = prefix.toString();
+		if( !text.matches("[a-zA-Z_][a-zA-Z_0-9]*=.*") || !(text.endsWith("=") || text.endsWith(":"))) {
+			return null;
+		}
+		if( idx+1 < parts.size()) {
+			ArgumentPartContext next = parts.get(idx+1);
+			if( next.literal == null || !(next.literal.getText().startsWith("/") || next.literal.getText().startsWith(":"))) {
+				return null;
+			}
 		}
 		Object home = ctx.getVariable("HOME");
 		return home == null ? null : home.toString();
@@ -236,9 +270,30 @@ argumentPart:
 				if( m.lookingAt()) {
 					return new int[] {idx, m.end()};
 				}
+				// ${@:2}, ${a[@]@Q}, ${a[@]/x/y} ...: one word per element too
+				int end = closingBrace(body, idx+2);
+				if( end > 0 && Parameter.isElementsForm(body.substring(idx+2, end))) {
+					return new int[] {idx, end+1};
+				}
 			}
 		}
 		return null;
+	}
+
+	/** the index of the } that closes the ${ whose text starts at start, or -1 */
+	private static int closingBrace(String body, int start) {
+		int depth = 1;
+		for (int idx = start; idx < body.length(); idx++) {
+			char c = body.charAt(idx);
+			if( c == '\\' ) {
+				idx++;
+			} else if( c == '{' ) {
+				depth++;
+			} else if( c == '}' && --depth == 0 ) {
+				return idx;
+			}
+		}
+		return -1;
 	}
 
 	private static boolean isExpansion(ArgumentPartContext part) {
@@ -271,12 +326,23 @@ argumentPart:
 		List<Argument> split(ArgumentContext word) {
 			List<ArgumentPartContext> parts = word.argumentPart();
 			for(ArgumentPartContext part : parts) {
-				String home = part == parts.get(0) ? tilde(parts, 0, ctx) : null;
+				String home = tilde(parts, parts.indexOf(part), ctx);
 				if( home != null ) {
 					current.append(home);
 					currentIsField = true;
 				} else if( isExpansion(part)) {
 					Object val = getValue(part, ctx);
+					if( val instanceof Parameter.Word w ) {
+						// ${y:-"1 2" 3}: the quoted parts are not split
+						for (int idx = 0; idx < w.texts.size(); idx++) {
+							if( w.quoted.get(idx)) {
+								appendQuoted(w.texts.get(idx));
+							} else {
+								addSplit(w.texts.get(idx));
+							}
+						}
+						continue;
+					}
 					String text = val instanceof List<?> ? join((List<?>) val) : ""+val;
 					addSplit(text);
 				} else if( quotedAt(part) != null ) {
@@ -317,10 +383,9 @@ argumentPart:
 			String prefix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(0, at[0]), ctx, Quoting.DOUBLE_QUOTED);
 			String suffix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(at[1]), ctx, Quoting.DOUBLE_QUOTED);
 			String atText = body.substring(at[0], at[1]);
-			java.util.regex.Matcher am = QUOTED_ARRAY.matcher(atText);
-			List<Object> params = !am.matches() ? ctx.getPositionalParameterValues()
-					: am.group(1).equals("!") ? Parameter.keys(ctx.getVariable(am.group(2)))
-					: Parameter.values(ctx.getVariable(am.group(2)));
+			List<Object> params = atText.startsWith("${")
+					? Parameter.elements(FileSourceShPreProcessorVisitorImpl.processString(atText.substring(2, atText.length()-1), ctx), ctx)
+					: ctx.getPositionalParameterValues();
 			if( params.isEmpty()) {
 				if( !prefix.isEmpty() || !suffix.isEmpty()) {
 					appendQuoted(prefix+suffix);

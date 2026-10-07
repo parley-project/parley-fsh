@@ -82,7 +82,132 @@ ${parameter:-word}
 	 * or keys), ${#a[@]} (how many), ${!ref} (the variable ref names) and ${10}.
 	 * @return the value, or null if text is none of these
 	 */
+	/** $@ or an array's elements, and what is done to each: ${@:2:3} ${a[@]@Q} ${!a[@]} ${@/x/y} */
+	private static final Pattern ELEMENTS = Pattern.compile("(!?)(?:([@*])|([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\])(.*)", Pattern.DOTALL);
+
+	/**
+	 * @return true if the text inside ${ } gives one word per element ("${@:2}" is several words)
+	 */
+	static boolean isElementsForm(String text) {
+		Matcher m = ELEMENTS.matcher(text);
+		if( !m.matches() || "*".equals(m.group(2)) || "*".equals(m.group(4))) {
+			return false;
+		}
+		String rest = m.group(5);
+		if( m.group(1).equals("!")) {
+			return rest.isEmpty() && m.group(3) != null;
+		}
+		return rest.isEmpty()
+				|| rest.length() > 1 && rest.charAt(0) == ':' && "-=+?".indexOf(rest.charAt(1)) < 0
+				|| rest.matches("@[QEUuLA]")
+				|| "/#%^,".indexOf(rest.charAt(0)) >= 0;
+	}
+
+	/**
+	 * The elements of $@ / $* or of an array, as ${...} with this text gives them: all of them, a
+	 * slice (${@:2:2}, ${a[@]: -1}), each transformed (@Q ...) or each with a pattern operation.
+	 * @return null if the text is not one of these
+	 */
+	static List<Object> elements(String text, ShellContext sc) {
+		Matcher m = ELEMENTS.matcher(text);
+		if( !m.matches()) {
+			return null;
+		}
+		boolean positional = m.group(2) != null;
+		String rest = m.group(5);
+		String name = positional ? "" : m.group(3);
+		// each element with its index: $0 is index 0 of $@ (only a slice from 0 includes it)
+		List<Object> indexes = new ArrayList<>();
+		List<Object> items = new ArrayList<>();
+		if( positional ) {
+			items.add(sc.getVariable("$0"));
+			items.addAll(sc.getPositionalParameterValues());
+			for (int idx = 0; idx < items.size(); idx++) {
+				indexes.add(idx);
+			}
+		} else {
+			Object val = sc.getVariable(name);
+			indexes.addAll(keys(val));
+			items.addAll(values(val));
+		}
+		if( m.group(1).equals("!")) {
+			if( positional || !rest.isEmpty()) {
+				return null;
+			}
+			return indexes;
+		}
+		if( rest.length() > 1 && rest.charAt(0) == ':' && "-=+?".indexOf(rest.charAt(1)) < 0 ) {
+			String[] parts = rest.substring(1).split(":", 2);
+			long offset = Arithmetic.evaluate(parts[0].isBlank() ? "0" : parts[0], sc).longValue();
+			Long length = parts.length > 1 ? Arithmetic.evaluate(parts[1].isBlank() ? "0" : parts[1], sc).longValue() : null;
+			if( offset < 0 ) {
+				// from the end: past the last index
+				long last = indexes.isEmpty() ? -1 : (indexes.get(indexes.size()-1) instanceof Number n ? n.longValue() : indexes.size()-1);
+				offset += last+1;
+			}
+			List<Object> ret = new ArrayList<>();
+			for (int idx = 0; idx < items.size(); idx++) {
+				Object key = indexes.get(idx);
+				long index = key instanceof Number n ? n.longValue() : idx;
+				if( index >= offset && items.get(idx) != null ) {
+					ret.add(items.get(idx));
+				}
+			}
+			if( length != null ) {
+				if( length < 0 ) {
+					throw new RuntimeException(text.substring(text.lastIndexOf(':')+1)+": substring expression < 0");
+				}
+				ret = new ArrayList<>(ret.subList(0, (int) Math.min(length, ret.size())));
+			}
+			return ret;
+		}
+		if( positional ) {
+			// $0 is not in $@
+			items.remove(0);
+		}
+		items.removeIf(o -> o == null);
+		if( rest.isEmpty()) {
+			return items;
+		}
+		if( rest.matches("@[QEUuLA]")) {
+			List<Object> ret = new ArrayList<>();
+			for(Object o : items) {
+				ret.add(transform(""+o, rest.charAt(1), name));
+			}
+			return ret;
+		}
+		if( "/#%^,".indexOf(rest.charAt(0)) >= 0 ) {
+			List<Object> ret = new ArrayList<>();
+			for(Object o : items) {
+				sc.setLocalVariable(ELEMENT, o);
+				ret.add(FileSourceShPreProcessorVisitorImpl.processString("${"+ELEMENT+rest+"}", sc));
+			}
+			sc.unSetVariable(ELEMENT);
+			return ret;
+		}
+		return null;
+	}
+
 	static Object arrayForms(String text, ShellContext sc) {
+		if( (text.startsWith("@") || text.startsWith("*")) && text.length() > 1 && text.charAt(1) != '}' ) {
+			// ${@:2} ${*@Q} ${@/a/b}: the elements, joined
+			List<Object> items = elements(text, sc);
+			if( items != null ) {
+				String sep = " ";
+				if( text.startsWith("*")) {
+					Object ifs = sc.getVariable(Console.IFS);
+					sep = ifs == null ? " " : ifs.toString().isEmpty() ? "" : ifs.toString().substring(0, 1);
+				}
+				StringBuilder ret = new StringBuilder();
+				for(Object o : items) {
+					if( ret.length() > 0 ) {
+						ret.append(sep);
+					}
+					ret.append(o);
+				}
+				return ret.toString();
+			}
+		}
 		Matcher m = ARRAY_ALL.matcher(text);
 		if( m.matches()) {
 			Object val = sc.getVariable(m.group(2));
@@ -532,6 +657,91 @@ ${parameter:-word}
 		return ret;
 	}
 
+	/**
+	 * The word of ${x:-word} (and = + ?) with its quotes, unquoted: quoted parts are not split or
+	 * globbed (${y:-"1 2" 3} is two words). toString is the text without the quotes.
+	 */
+	public static final class Word {
+		public final List<String> texts = new ArrayList<>();
+		public final List<Boolean> quoted = new ArrayList<>();
+
+		@Override
+		public String toString() {
+			return String.join("", texts);
+		}
+	}
+
+	/** how the ${ } is quoted: in "${x:-'a'}" the single quotes are text */
+	public FileSourceShPreProcessorVisitorImpl.Quoting quoting = FileSourceShPreProcessorVisitorImpl.Quoting.NONE;
+
+	/** the word after :- := :+ :? with its quotes removed (see Word) */
+	private Object word(String val) {
+		if( val == null || (val.indexOf('"') < 0 && val.indexOf('\'') < 0 && val.indexOf('\\') < 0)) {
+			return val;
+		}
+		if( quoting != FileSourceShPreProcessorVisitorImpl.Quoting.NONE ) {
+			// in double quotes only double quotes are quotes
+			StringBuilder ret = new StringBuilder();
+			for (int idx = 0; idx < val.length(); idx++) {
+				char c = val.charAt(idx);
+				if( c == '\\' && idx+1 < val.length()) {
+					// \" \\ \$ \` give the character; another backslash is kept
+					char next = val.charAt(++idx);
+					if( "\"\\$`".indexOf(next) < 0 ) {
+						ret.append(c);
+					}
+					ret.append(next);
+				} else if( c != '"' ) {
+					ret.append(c);
+				}
+			}
+			return ret.toString();
+		}
+		Word ret = new Word();
+		StringBuilder plain = new StringBuilder();
+		for (int idx = 0; idx < val.length(); idx++) {
+			char c = val.charAt(idx);
+			int end = c == '\'' ? val.indexOf('\'', idx+1) : c == '"' ? closingQuote(val, idx+1) : -1;
+			if( end < 0 && c != '\\' ) {
+				plain.append(c);
+				continue;
+			}
+			if( plain.length() > 0 ) {
+				ret.texts.add(plain.toString());
+				ret.quoted.add(false);
+				plain.setLength(0);
+			}
+			String text;
+			if( c == '\\' ) {
+				text = idx+1 < val.length() ? ""+val.charAt(++idx) : "\\";
+			} else {
+				text = val.substring(idx+1, end);
+				if( c == '"' ) {
+					text = text.replaceAll("\\\\([\"\\\\$`])", "$1");
+				}
+				idx = end;
+			}
+			ret.texts.add(text);
+			ret.quoted.add(true);
+		}
+		if( plain.length() > 0 ) {
+			ret.texts.add(plain.toString());
+			ret.quoted.add(false);
+		}
+		return ret;
+	}
+
+	private static int closingQuote(String text, int from) {
+		for (int idx = from; idx < text.length(); idx++) {
+			if( text.charAt(idx) == '\\' ) {
+				idx++;
+			} else if( text.charAt(idx) == '"' ) {
+				return idx;
+			}
+		}
+		return -1;
+	}
+
 	private Object evaluateNoRange(Matcher m, ShellContext sc)  {
 		String name = m.group("name");
 		String type = m.group("type");
@@ -552,7 +762,7 @@ ${parameter:-word}
 			The value of parameter is then substituted. Positional parameters and special parameters may not be assigned to in this way.
 			 */
 			if( missing ) {
-				ret = val;
+				ret = ""+word(val);
 				
 				sc.setVariable(name, ret);
 			}
@@ -567,7 +777,7 @@ ${parameter:-word}
 				if the colon is omitted, the operator tests only for existence.
 			 */
 			if( missing ) {
-				ret = val;
+				ret = word(val);
 			}
 			break;
 		case '+':
@@ -575,7 +785,7 @@ ${parameter:-word}
 			${parameter:+word}
 			If parameter is null or unset, nothing is substituted, otherwise the expansion of word is substituted.
 			 */		
-			ret = missing ? "" : val;
+			ret = missing ? "" : word(val);
 
 			break;
 		case '?':
@@ -589,7 +799,7 @@ ${parameter:-word}
 				if( val == null) {
 					val = ("parameter "+name+" is null");
 				} else {
-					val = name+": "+val;
+					val = name+": "+word(val);
 				}
 				if( !sc.console.isInteractive) {
 					// written here: a subshell that ends does not print the exit's message

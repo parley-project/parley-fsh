@@ -929,6 +929,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterCase_part(FileSourceShParser.Case_partContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCase_part(FileSourceShParser.Case_partContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterParameter(FileSourceShParser.ParameterContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1116,6 +1128,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitAssociativeArrayElement(FileSourceShParser.AssociativeArrayElementContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterAssocKey(FileSourceShParser.AssocKeyContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitAssocKey(FileSourceShParser.AssocKeyContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

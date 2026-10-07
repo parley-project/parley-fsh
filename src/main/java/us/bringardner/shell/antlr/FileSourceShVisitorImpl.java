@@ -261,6 +261,8 @@ statement
 			return visitIfStatement(ctx.ifStatement());
 		} else if( ctx.caseStatement() !=null ) {
 			return visitCaseStatement(ctx.caseStatement());
+		} else if( ctx.selectStatement() !=null ) {
+			return visitSelectStatement(ctx.selectStatement());
 		} else {
 			throw new RuntimeException("No option in pipable");
 		}		
@@ -660,6 +662,16 @@ forStatement
 	public Statement visitFunctionDefinition(FunctionDefinitionContext ctx) {
 		String name = ctx.fname.getText();
 		List<Statement> stmts = new ArrayList<>();
+		if( ctx.compoundCommand().subshell != null ) {
+			List<Statement> body = new ArrayList<>();
+			for(Statement_or_statement1Context s: ctx.compoundCommand().statement_or_statement1()) {
+				Statement tmp = visitStatement_or_statement1(s);
+				if( tmp != null) {
+					body.add(tmp);
+				}
+			}
+			stmts.add(new StatementGroup1(ctx.compoundCommand(), body, true));
+		}
 		for(StatementContext ss : ctx.compoundCommand().statement()) {
 			Statement tmp = visitStatement(ss);
 			if( tmp !=null ) {

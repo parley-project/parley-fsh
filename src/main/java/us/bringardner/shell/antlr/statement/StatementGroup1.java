@@ -22,16 +22,23 @@ Placing a list of commands between curly braces causes the list to be executed i
  */
 public class StatementGroup1 extends Statement{
 	List<Statement> stmts;
+	/** ( list ) rather than { list; } */
+	private final boolean subshell;
 
 	public StatementGroup1(Statement_group1Context context, List<Statement> stmts) {
+		this(context, stmts, context.LPAREN() != null);
+	}
+
+	/** a group from another rule: the ( ... ) body of f() ( ... ) */
+	public StatementGroup1(org.antlr.v4.runtime.ParserRuleContext context, List<Statement> stmts, boolean subshell) {
 		super(context);
-		this.stmts = stmts;		
+		this.stmts = stmts;
+		this.subshell = subshell;
 	}
 
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
-		Statement_group1Context ctx = (Statement_group1Context)getContext();
-		if(ctx.LPAREN()!=null) {
+		if( subshell ) {
 			// ( list ): a subshell, so its changes (x=1, cd, exit, set --, exec 3>f ...) stay inside
 			ShellContext sub = sc.subShell();
 			Console.Snapshot saved = sc.console.snapshot();

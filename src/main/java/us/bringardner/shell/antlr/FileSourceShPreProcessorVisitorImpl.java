@@ -241,6 +241,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(str));
 				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
 				Parameter p = new Parameter(FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::parameter));
+				p.quoting = quoting;
 
 				Object val = p.evaluate(sc);
 				chunks.add(sc.expand(val, str));
