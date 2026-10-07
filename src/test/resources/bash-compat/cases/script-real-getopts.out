@@ -1,0 +1,6 @@
+v=2 out=file level=3 args=a b
+unknown -x
+missing arg for -o
+help
+bad level
+rc=2

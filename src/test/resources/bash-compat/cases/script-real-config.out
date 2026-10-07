@@ -1,0 +1,5 @@
+debug=[true]
+empty=[]
+name=[My App]
+path=[/opt/app]
+port=[8080]

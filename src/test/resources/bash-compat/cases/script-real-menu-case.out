@@ -1,0 +1,8 @@
+starting
+stopping
+starting
+status: -x
+number 42
+empty
+unknown: bogus
+rc=1

@@ -1,0 +1,9 @@
+in subshell 2
+after 1
+y=3 x=1
+group x=4
+pipe got hi
+v=[]
+out err 
+status 7
+f says arg rc=4

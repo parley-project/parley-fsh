@@ -1,0 +1,6 @@
+plain X cmd $escaped
+literal $name $(echo no)
+tabs stripped X
+one-1
+two-2
+2

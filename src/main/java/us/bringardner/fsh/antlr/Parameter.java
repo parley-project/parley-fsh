@@ -576,6 +576,11 @@ ${parameter:-word}
 
 		if( name.equals("@") || name.equals("*")) {
 			ret = sc.console.getPositionalParameters();
+		} else if( name.matches("[0-9]+")) {
+			// ${1#*=}, ${1^^}: a positional parameter (unset is empty)
+			int n = Integer.parseInt(name);
+			List<Object> pos = sc.getPositionalParameterValues();
+			ret = n == 0 ? sc.getVariable("$0") : n <= pos.size() ? pos.get(n-1) : "";
 		} else {
 			ret = sc.getVariable(name);
 		}
