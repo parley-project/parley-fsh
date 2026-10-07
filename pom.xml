@@ -175,6 +175,14 @@
 		</dependency>
 
 		<!-- The parser in generated/ needs only the ANTLR runtime -->
+		<!-- Only for us.bringardner.fsh.ssh (fsh as the shell of a parley-ssh server). Optional: a
+		     program that runs an SshServer has parley-ssh already, and fsh itself doesn't need it. -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-ssh</artifactId>
+			<version>${parley.version}</version>
+			<optional>true</optional>
+		</dependency>
 		<dependency>
 			<groupId>org.antlr</groupId>
 			<artifactId>antlr4-runtime</artifactId>

@@ -1598,6 +1598,15 @@ delimiter
 
 	KeyboardReader keyboardReader;
 
+	/**
+	 * Use this keyboard instead of the one Console picks itself (a Swing window, or the
+	 * native terminal when headless), e.g. a remote terminal such as an SSH session. Set it
+	 * before the console starts reading.
+	 */
+	public void setKeyboardReader(KeyboardReader reader) {
+		this.keyboardReader = reader;
+	}
+
 	public KeyboardReader getKeyboadReader(boolean setVisible) {
 		if( keyboardReader==null ) {
 			synchronized (this) {
