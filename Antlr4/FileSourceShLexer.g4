@@ -203,7 +203,8 @@ POW:'**';
 DO: 'do' {atKeywordEnd()}?;
 EQ:'=';
 EQUALITY:'=='|'-eq';
-RX_EQUALITY:'=~';
+// only as a word of its own: x=~ is x = ~ (the home directory)
+RX_EQUALITY: {atWordStart()}? '=~';
 
 NOT_EQ:'!='|'-ne';
 // read as comparisons only in tests; elsewhere they are words (ls -lt). Before ARG_ID, which is as long.

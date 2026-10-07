@@ -185,6 +185,11 @@ assignStatement
 			case FileSourceShParser.NUMBER:
 				Number number = parseNumber(text);
 				return number == null ? text : number;
+			case FileSourceShParser.TILDE: {
+				// x=~ is the home directory
+				Object home = ctx.getVariable("HOME");
+				return home == null ? text : home;
+			}
 			case FileSourceShParser.TRUE: return true;
 			case FileSourceShParser.FALSE: return false;
 			default: return text;

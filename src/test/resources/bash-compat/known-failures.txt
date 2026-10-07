@@ -52,8 +52,6 @@ brace-step
 # negate
 
 # param
-param-case
-param-default
 
 # pipe
 
@@ -84,7 +82,6 @@ param-default
 # test
 
 # tilde
-tilde
 
 # trap
 

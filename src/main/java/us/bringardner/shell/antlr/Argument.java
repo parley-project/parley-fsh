@@ -72,13 +72,30 @@ argumentPart:
 
 		List<ArgumentPartContext> parts = context.argumentPart();
 		if( parts.size() == 1) {
-			return getValue(parts.get(0), ctx);
+			String home = tilde(parts, 0, ctx);
+			return home != null ? home : getValue(parts.get(0), ctx);
 		}
 		StringBuilder ret = new StringBuilder();
-		for(ArgumentPartContext part : parts) {
-			ret.append(getValue(part, ctx));
+		for (int idx = 0; idx < parts.size(); idx++) {
+			String home = tilde(parts, idx, ctx);
+			ret.append(home != null ? home : getValue(parts.get(idx), ctx));
 		}
 		return ret.toString();
+	}
+
+	/**
+	 * ~ at the start of a word, alone or before /, is the home directory, as in bash.
+	 * @return $HOME, or null if parts[idx] is not such a ~
+	 */
+	public static String tilde(List<ArgumentPartContext> parts, int idx, ShellContext ctx) {
+		if( idx != 0 || parts.get(0).literal == null || parts.get(0).literal.getType() != FileSourceShParser.TILDE ) {
+			return null;
+		}
+		if( parts.size() > 1 && !(""+parts.get(1).getText()).startsWith("/")) {
+			return null;
+		}
+		Object home = ctx.getVariable("HOME");
+		return home == null ? null : home.toString();
 	}
 
 	public static Object getValue(ArgumentPartContext part, ShellContext ctx)  {
@@ -247,8 +264,13 @@ argumentPart:
 		}
 
 		List<Argument> split(ArgumentContext word) {
-			for(ArgumentPartContext part : word.argumentPart()) {
-				if( isExpansion(part)) {
+			List<ArgumentPartContext> parts = word.argumentPart();
+			for(ArgumentPartContext part : parts) {
+				String home = part == parts.get(0) ? tilde(parts, 0, ctx) : null;
+				if( home != null ) {
+					current.append(home);
+					currentIsField = true;
+				} else if( isExpansion(part)) {
 					Object val = getValue(part, ctx);
 					String text = val instanceof List<?> ? join((List<?>) val) : ""+val;
 					addSplit(text);

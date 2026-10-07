@@ -52,6 +52,7 @@ ${parameter:-word}
 	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,})(?<colon>[:])?(?<type>[-=?+])(?<val>.*)");
 
 	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
+	private static final Pattern TOGGLE_CASE = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)(~~?)");
 	private static final Pattern SIMPLE_NAME = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
 	private static final Pattern MAP_ELEMENT = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]");
 	private static final Pattern INDIRECT = Pattern.compile("!([a-zA-Z_][a-zA-Z_0-9]*)");
@@ -97,6 +98,18 @@ ${parameter:-word}
 					ret.append(sep);
 				}
 				ret.append(o);
+			}
+			return ret.toString();
+		}
+		m = TOGGLE_CASE.matcher(text);
+		if( m.matches()) {
+			// ${x~} toggles the case of the first letter, ${x~~} of every letter
+			String val = ""+(sc.getVariable(m.group(1)) == null ? "" : sc.getVariable(m.group(1)));
+			StringBuilder ret = new StringBuilder();
+			for (int idx = 0; idx < val.length(); idx++) {
+				char c = val.charAt(idx);
+				boolean toggle = idx == 0 || m.group(2).length() == 2;
+				ret.append(!toggle ? c : Character.isUpperCase(c) ? Character.toLowerCase(c) : Character.toUpperCase(c));
 			}
 			return ret.toString();
 		}
@@ -435,6 +448,8 @@ ${parameter:-word}
 		String val = m.group("val");
 		String colon = m.group("colon");
 		Object ret = sc.getVariable(name);
+		// with the colon, an empty value counts as missing too (${e:-d} is d when e is empty)
+		boolean missing = ret == null || (colon != null && (""+ret).isEmpty());
 		switch(type.charAt(0)) {
 		case '=':
 			/*
@@ -442,7 +457,7 @@ ${parameter:-word}
 			If parameter is unset or null, the expansion of word is assigned to parameter. 
 			The value of parameter is then substituted. Positional parameters and special parameters may not be assigned to in this way.
 			 */
-			if( ret == null) {
+			if( missing ) {
 				ret = val;
 				
 				sc.setVariable(name, ret);
@@ -457,21 +472,16 @@ ${parameter:-word}
 				if the colon is included, the operator tests for both parameter’s existence and that its value is not null; 
 				if the colon is omitted, the operator tests only for existence.
 			 */
-			if( colon == null && ret == null) {
-				// TODO: requires revamp of variable management
+			if( missing ) {
 				ret = val;
-			} else if( ret == null ) {					
-					ret = val;
-				}
+			}
 			break;
 		case '+':
 			/*
 			${parameter:+word}
 			If parameter is null or unset, nothing is substituted, otherwise the expansion of word is substituted.
 			 */		
-			if( ret != null ) {
-				ret = val; 
-			}
+			ret = missing ? "" : val;
 
 			break;
 		case '?':
@@ -481,7 +491,7 @@ ${parameter:-word}
 				An interactive shell does not exit, but does not execute the command associated with the expansion. Otherwise, 
 				the value of parameter is substituted.
 			 */
-			if( ret == null) {
+			if( missing ) {
 				if( val == null) {
 					val = ("parameter "+name+" is null");
 				} else {
