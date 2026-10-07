@@ -846,13 +846,13 @@ $
 			if( console.isOptionEnabled(Option.PrintCommandTrace)) {
 				if (stmt instanceof CommandStatement) {
 					CommandStatement cmd = (CommandStatement) stmt;
+					// set -x: on standard error, as in bash
 					String ps4 = ""+console.getVariable(Console.VARIABLE_PS4);
-					stdout.print(ps4);
-					stdout.print(cmd.getName());
+					StringBuilder line = new StringBuilder(ps4).append(cmd.getName());
 					for(Argument a : cmd.getArgs()) {
-						stdout.print(" "+a.getValue(this));
+						line.append(' ').append(a.getValue(this));
 					}
-					stdout.println();
+					stderr.println(line);
 				}				
 			}
 		}

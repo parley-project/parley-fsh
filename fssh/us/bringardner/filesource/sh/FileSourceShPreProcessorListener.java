@@ -98,6 +98,16 @@ public interface FileSourceShPreProcessorListener extends ParseTreeListener {
 	 */
 	void exitPp_parameter(FileSourceShPreProcessorParser.Pp_parameterContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#pp_param}.
+	 * @param ctx the parse tree
+	 */
+	void enterPp_param(FileSourceShPreProcessorParser.Pp_paramContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_param}.
+	 * @param ctx the parse tree
+	 */
+	void exitPp_param(FileSourceShPreProcessorParser.Pp_paramContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShPreProcessorParser#ppvariable}.
 	 * @param ctx the parse tree
 	 */

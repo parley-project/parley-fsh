@@ -278,6 +278,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitCompareStatement(FileSourceShParser.CompareStatementContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#testWords}.
+	 * @param ctx the parse tree
+	 */
+	void enterTestWords(FileSourceShParser.TestWordsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#testWords}.
+	 * @param ctx the parse tree
+	 */
+	void exitTestWords(FileSourceShParser.TestWordsContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#mathStatement}.
 	 * @param ctx the parse tree
 	 */
@@ -657,6 +667,16 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitFunctionDefinition(FileSourceShParser.FunctionDefinitionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link FileSourceShParser#funcName}.
+	 * @param ctx the parse tree
+	 */
+	void enterFuncName(FileSourceShParser.FuncNameContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FileSourceShParser#funcName}.
+	 * @param ctx the parse tree
+	 */
+	void exitFuncName(FileSourceShParser.FuncNameContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#string}.
 	 * @param ctx the parse tree

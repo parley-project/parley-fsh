@@ -1,5 +1,6 @@
 package us.bringardner.shell.antlr.statement;
 
+import us.bringardner.filesource.sh.FileSourceShParser.ArgumentPartContext;
 import java.io.IOException;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -82,10 +83,9 @@ pattern: argument ;
 
 	private int execute(List<Statement> stmts, ShellContext sc) throws IOException {
 		int ret = 0;
+		// as in bash, a failed command does not stop the rest
 		for(Statement s : stmts) {
-			if((ret=s.process(sc))!=0) {
-				break;
-			}
+			ret = s.process(sc);
 		}
 		return ret;
 	}
@@ -108,11 +108,23 @@ pattern: argument ;
 pattern: argument ;
 	 */
 	private boolean matches(String val,PatternContext p, ShellContext sc) throws IOException {
-		// the pattern is a word: variables are expanded, then it is matched as a glob
-		String pat = ""+new Argument(p.argument()).getValue(sc);
-		String preped = ShellCommand.prepWildCards(pat,false);
-		Pattern rx = Pattern.compile(preped);
-		Matcher m = rx.matcher(val);
+		// the pattern is a word: its quoted parts are text, the rest ($x too) is a glob
+		StringBuilder rx = new StringBuilder();
+		StringBuilder glob = new StringBuilder();
+		for(ArgumentPartContext part : p.argument().argumentPart()) {
+			if( part.string() != null ) {
+				rx.append(ShellCommand.prepWildCards(glob.toString(), true));
+				glob.setLength(0);
+				rx.append(Pattern.quote(sc.expandString(part.string())));
+			} else {
+				// the unquoted parts together ([A-Z] is several parts)
+				glob.append(Argument.getValue(part, sc));
+			}
+		}
+		rx.append(ShellCommand.prepWildCards(glob.toString(), true));
+		Boolean nocase = sc.console.getShellOptions().get("nocasematch");
+		Pattern pattern = Pattern.compile(rx.toString(), Pattern.DOTALL | (Boolean.TRUE.equals(nocase) ? Pattern.CASE_INSENSITIVE : 0));
+		Matcher m = pattern.matcher(val);
 
 		return m.matches();
 	}

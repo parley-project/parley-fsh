@@ -1877,20 +1877,33 @@ delimiter
 			+ "[^\\}]*"
 			+ "\\}");
 
+	/**
+	 * Inside ${ }, # is written as | (Parameter reads ${|x} as ${#x}: parsed by itself, # would
+	 * start a comment). Only the #s of each ${ } itself, not of one nested in it, and the braces
+	 * nest (${s#"${s%%x}"}).
+	 */
 	public String convertHash(String code) {
-		Matcher m = convertHashRx.matcher(code);
-
-		while( m.find()) {
-			int start = m.start();
-			int end = m.end();
-			String str = code.substring(start, end).replaceAll("#", "|");
-			String left = code.substring(0,start);
-			String right = code.substring(end);
-			code = left+str+right;
+		if( code.indexOf("${") < 0 ) {
+			return code;
 		}
-
-		return code;
+		StringBuilder ret = new StringBuilder(code);
+		java.util.Deque<Integer> open = new java.util.ArrayDeque<>();
+		for (int idx = 0; idx < ret.length(); idx++) {
+			char c = ret.charAt(idx);
+			if( c == '\\' ) {
+				idx++;
+			} else if( c == '$' && idx+1 < ret.length() && ret.charAt(idx+1) == '{' ) {
+				open.push(idx);
+				idx++;
+			} else if( c == '}' && !open.isEmpty()) {
+				open.pop();
+			} else if( c == '#' && !open.isEmpty()) {
+				ret.setCharAt(idx, '|');
+			}
+		}
+		return ret.toString();
 	}
+
 
 	public static String [] splitForArgs(String line) {
 		List<String> ret = new ArrayList<>();
@@ -2455,9 +2468,7 @@ delimiter
 
 			code = code.trim();
 			String ppCode = preProcess(code, sc);
-			if( isOptionEnabled(Option.PrintCommandTrace)) {
-				sc.stdout.println(ppCode);
-			}
+			// (set -x traces each command as it runs; the code is not printed here)
 
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
 			for(int idx=0, sz=stmts.size(); idx < sz; idx++ ) {
@@ -2547,9 +2558,7 @@ delimiter
 
 			code = code.trim();
 			String ppCode = preProcess(code, sc);
-			if( isOptionEnabled(Option.PrintCommandTrace)) {
-				sc.stdout.println(ppCode);
-			}
+			// (set -x traces each command as it runs; the code is not printed here)
 
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
 			for(int idx=0, sz=stmts.size(); idx < sz; idx++ ) {

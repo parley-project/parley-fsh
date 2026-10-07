@@ -20,11 +20,8 @@ array-replace-all
 assoc-test-key
 
 # background
-background-wait-status
 
 # case
-case-glob-chars
-case-quoted-pattern
 
 # command
 command-builtin
@@ -36,14 +33,12 @@ dbl-pattern-class
 declare-p
 
 # func
-func-name-with-dash
 func-return-no-arg
 
 # mapfile
 mapfile-callback-free
 
 # param
-param-default-nested
 param-error-message
 param-indirect-array
 param-length-array
@@ -61,14 +56,11 @@ redir-close
 # script
 script-default-args
 script-join-array
-script-parse-kv
-script-trim-whitespace
 
 # select
 select-noninteractive
 
 # semicolon
-semicolon-amp
 
 # set
 set-u-default
@@ -84,8 +76,6 @@ shopt-nullglob
 source-return
 
 # test
-test-file-ops
-test-numeric-errors
 
 # trap
 trap-exit-status
@@ -97,4 +87,3 @@ type-function
 unset-function-var
 
 # wait
-wait-all

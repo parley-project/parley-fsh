@@ -173,6 +173,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCompareStatement(FileSourceShParser.CompareStatementContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#testWords}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTestWords(FileSourceShParser.TestWordsContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#mathStatement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -400,6 +406,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitFunctionDefinition(FileSourceShParser.FunctionDefinitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#funcName}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFuncName(FileSourceShParser.FuncNameContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#string}.
 	 * @param ctx the parse tree

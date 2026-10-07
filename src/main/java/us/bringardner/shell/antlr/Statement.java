@@ -72,6 +72,19 @@ public abstract class Statement {
 	 * they follow earlier redirects and subshells); others are the console's (exec 3>file).
 	 */
 	private void redirect(ShellContext ctx, Redirect_oneContext r, Integer fd, List<Closeable> opened) throws IOException {
+		if( r.hereId != null ) {
+			// a here-document after a loop or other compound command: done <<EOF
+			String id = r.hereId.getText();
+			String body = ctx.console.getHereDocument(id);
+			if( body == null ) {
+				throw new IOException("here-document "+id+" not found");
+			}
+			if( !ctx.console.isHereDocumentQuoted(id)) {
+				body = FileSourceShPreProcessorVisitorImpl.processString(body, ctx, FileSourceShPreProcessorVisitorImpl.Quoting.HERE_DOC);
+			}
+			setIn(ctx, r.fd == null ? (fd == null ? 0 : fd) : Integer.parseInt(r.fd.getText()), new ByteArrayInputStream(body.getBytes()), null, opened);
+			return;
+		}
 		String op = r.redirectionOperator().getText();
 		if( r.fd != null ) {
 			fd = Integer.parseInt(r.fd.getText());

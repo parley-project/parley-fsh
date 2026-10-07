@@ -28,14 +28,16 @@ pp_dq
     | '$(' pp_nested* ')'
     | '$((' pp_nested* ')' ')'
     ;
-pp_parameter:'${' ~'}'* '}';
+// ${ } nests: ${a:-${b}}
+pp_parameter:'${' pp_param* '}';
+pp_param: ~('${' | '{' | '}') | ('${' | '{') pp_param* '}' ;
 
 ppvariable: 
 			'$' ('?'|'*'|'$'|PPTAG|PPDIGIT)
     		| '$' PPID 
     		;
 
-pptext:  (PPTEXT|PPNL|'('|')'|'"'|'\'')+ ;
+pptext:  (PPTEXT|PPNL|'('|')'|'"'|'\''|'{'|'}')+ ;
 
     
 PPID      :   [a-zA-Z_][a-zA-Z_0-9.]* ;

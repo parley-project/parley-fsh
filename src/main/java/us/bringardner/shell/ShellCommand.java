@@ -215,31 +215,92 @@ public abstract class ShellCommand {
 		return prepWildCards(cleanPath, true);
 	}
 
+	/**
+	 * A pattern (* ? [...]) as a regular expression, as bash reads it: quoted text ('...' "...")
+	 * and a backslashed character are literal, [!...] and [^...] negate, [:alpha:] classes, and
+	 * every other character is itself (+ ( . are not regular expression operators here).
+	 * @param greedy false: * and ? match as little as they can (for # and % in ${x#pat})
+	 */
 	public static String prepWildCards(String cleanPath,boolean greedy) {
-		String ret1 = posixToJava(cleanPath);
-
 		StringBuilder ret = new StringBuilder();
-		char [] data = ret1.toCharArray();
-		for (char c : data) {
+		String lazy = greedy ? "" : "?";
+		int n = cleanPath.length();
+		for (int idx = 0; idx < n; idx++) {
+			char c = cleanPath.charAt(idx);
 			switch (c) {
-			case '?': ret.append('.');
-			if( !greedy) {
-				ret.append('?');
+			case '*': ret.append(".*").append(lazy); break;
+			case '?': ret.append('.'); break;
+			case '\\':
+				if( idx+1 < n ) {
+					ret.append(java.util.regex.Pattern.quote(""+cleanPath.charAt(++idx)));
+				} else {
+					ret.append("\\\\");
+				}
+				break;
+			case '\'':
+			case '"': {
+				int end = cleanPath.indexOf(c, idx+1);
+				if( end < 0 ) {
+					ret.append(java.util.regex.Pattern.quote(""+c));
+					break;
+				}
+				if( end > idx+1 ) {
+					ret.append(java.util.regex.Pattern.quote(cleanPath.substring(idx+1, end)));
+				}
+				idx = end;
+				break;
 			}
-			break;
-			case '.':ret.append("[.]");break;
-			case '*':ret.append(".*");
-			if( !greedy) {
-				ret.append('?');
+			case '[': {
+				// the closing ]: one right after [ or [! is in the set, and [:alpha:] is one unit
+				int end = idx+1;
+				if( end < n && (cleanPath.charAt(end) == '!' || cleanPath.charAt(end) == '^')) {
+					end++;
+				}
+				if( end < n && cleanPath.charAt(end) == ']' ) {
+					end++;
+				}
+				while( end < n && cleanPath.charAt(end) != ']' ) {
+					int close = cleanPath.startsWith("[:", end) ? cleanPath.indexOf(":]", end+2) : -1;
+					end = close > 0 ? close+2 : end+1;
+				}
+				if( end >= n ) {
+					ret.append("\\[");
+					break;
+				}
+				String body = cleanPath.substring(idx+1, end);
+				idx = end;
+				ret.append('[');
+				int b = 0;
+				if( body.startsWith("!") || body.startsWith("^")) {
+					ret.append('^');
+					b = 1;
+				}
+				for (; b < body.length(); b++) {
+					char d = body.charAt(b);
+					int close = body.startsWith("[:", b) ? body.indexOf(":]", b+2) : -1;
+					if( close > 0 ) {
+						ret.append(posixToJava(body.substring(b, close+2)));
+						b = close+1;
+					} else {
+						if( "[]\\^&".indexOf(d) >= 0 ) {
+							ret.append('\\');
+						}
+						ret.append(d);
+					}
+				}
+				ret.append(']');
+				break;
 			}
-			break;
 			default:
+				if( "\\.^$|+(){}".indexOf(c) >= 0 ) {
+					ret.append('\\');
+				}
 				ret.append(c);
 			}
 		}
 		return ret.toString();
-
 	}
+
 
 	public static String posixToJava(String cleanPath) {
 		String ret = cleanPath;

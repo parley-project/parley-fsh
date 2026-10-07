@@ -219,6 +219,12 @@ statement
 		// [ words ]: test's arguments (unless a [ inside groups)
 		String text = Compare.bracketText(ctx.LSQUARE(), ctx.RSQUARE());
 		Compare compare = text != null ? new Compare(ctx.compare(), text) : new Compare(ctx.compare());
+		if( ctx.redirect() != null ) {
+			// [ ... ] 2>/dev/null
+			List<List<Statement>> none = new ArrayList<>();
+			IfStatement test = new IfStatement(ctx, Arrays.asList(compare), none);
+			return new RedirectedStatement(ctx, test, RerdirectImpl.find(ctx.children));
+		}
 		List<List<Statement>> stmts = new ArrayList<>();
 		if( ctx.statement()!=null) {
 			List<Statement> list = new ArrayList<>();
@@ -652,7 +658,7 @@ forStatement
 
 	@Override
 	public Statement visitFunctionDefinition(FunctionDefinitionContext ctx) {
-		String name = ctx.ID().getText();
+		String name = ctx.fname.getText();
 		List<Statement> stmts = new ArrayList<>();
 		for(StatementContext ss : ctx.compoundCommand().statement()) {
 			Statement tmp = visitStatement(ss);

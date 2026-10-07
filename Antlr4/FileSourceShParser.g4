@@ -18,7 +18,8 @@ conditionalStatement:
 // a trailing & runs the statement in the background. (A separate rule that repeated the whole
 // command before the & made the fast SLL parse fail on every command.)
 statement:
-	  white* statement1 (WS* bg=AMP)? WS* (NL|SEMI|EOF)
+	  // & ends a statement too: cmd & next
+	  white* statement1 (WS* bg=AMP WS* | WS* (NL|SEMI|EOF))
 	| conditionalStatement  (NL|SEMI|EOF)
 	;
 	
@@ -81,6 +82,7 @@ path_segment: TILDE
         | NUMBER
         | LOCAL        
         | COLON
+        | SPECIAL_UNIX
 		;
 
 path_segment_list: path_segment +;
@@ -111,7 +113,9 @@ argumentPart:
              | PLUS_PLUS | PLUS_EQ | MINUS_ASSIGN | STAR_ASSIGN | MOD_ASSIGN | POW | EQUALITY | NOT_EQ
              | TEST_OP
              // # in a word is text (a#b); at the start of a word it begins a comment
-             | HASH)
+             | HASH
+             // a lone - _ + = or ~ ( _* )
+             | SPECIAL_UNIX)
     | string
     | argVariable
     | parameter
@@ -137,8 +141,11 @@ commandStatement:
     
 redirect: (redirect_one WS*)+;
  
- // [n]op word: 2>file, >>log, <in, 2>&1, >&2, 3<&-, &>out
- redirect_one: fd=IO_NUMBER? redirectionOperator WS* target=argument ;
+ // [n]op word: 2>file, >>log, <in, 2>&1, >&2, 3<&-, &>out; or a here-document (done <<EOF)
+ redirect_one:
+      fd=IO_NUMBER? redirectionOperator WS* target=argument
+    | fd=IO_NUMBER? HERE_START WS* hereId=ID
+    ;
 
 
 
@@ -178,7 +185,13 @@ pipeOp:
 	PIPE white* AMP?
 	;    
 
-compareStatement:  LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* statement?;
+// [ words ] (test's arguments, then a redirect may follow); the second form is this shell's grouping
+compareStatement:
+      LSQUARE testWords RSQUARE (WS* redirect)? WS* statement?
+    | LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* statement?
+    ;
+
+testWords: (WS+ argument)* WS+ ;
 
 // (( x > 3 )): status 0 if the value is not 0
 mathStatement:
@@ -193,7 +206,8 @@ mathExpression: ARITH_EXPANSION ;
 boolean_statement: boolean;
 
 compare : 
-		  WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
+		  WS* LSQUARE testWords RSQUARE (';' WS*)?   // if [ -e f -a -d d ]
+		| WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
 		| WS* DBL_TEST (';' WS*)?        // if [[ $x == a* ]]
 		| WS* compare_prime (';' WS*)?
         | WS* LSQUARE WS* compare_prime WS* RSQUARE
@@ -398,9 +412,12 @@ array_index:
 hereDocument: HERE_START WS* ID;
 
 functionDefinition:
-     white* (FUNCTION white*)? ID white* (LPAREN white* RPAREN white*)? compoundCommand
+     white* (FUNCTION white*)? fname=funcName white* (LPAREN white* RPAREN white*)? compoundCommand
     
     ;
+
+// my-func, lib.init, ns::f
+funcName: ID ((MINUS | DOT | COLON | ID | NUMBER)* ID)? ;
 
 string : DQ_STRING | SQ_STRING | ANSI_STRING | ESC;
 
@@ -435,15 +452,13 @@ compoundCommand:
 // parentheses nest: $(echo $(date)). The lexer reads )) as one token, so it may close two levels.
 arg_command_substitution:
 			DOLLAR_PAREM cmd_part* RPAREN
-			| DOLLAR_PAREM cmd_part* (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN_RPAREN
 			| '`' ~'`'* '`'
 			;
 
 cmd_part:
-			~(DOLLAR_PAREM | LPAREN | RPAREN | DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN | RPAREN_RPAREN)
+			~(DOLLAR_PAREM | LPAREN | RPAREN | DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN)
 			| (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN
-			| (DOLLAR_PAREM | LPAREN) cmd_part* (DOLLAR_PAREM | LPAREN) cmd_part* RPAREN_RPAREN
-			| (DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN) cmd_part* RPAREN_RPAREN
+			| (DOLLAR_LPAREN_LPAREN | LPAREN_LPAREN) cmd_part* RPAREN RPAREN
 			;
 
 

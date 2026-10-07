@@ -13,13 +13,31 @@ lexer grammar FileSourceShLexer;
   }
 
 	
+	// the } that ends ${...}: not one that closes a ${ inside it (${a:-${b}})
 	boolean parameterEndAhead() {
-		 char nx =  (char)_input.LA(1);
-		 if( nx == '}') {
-			 return true;
-		 }		 
-	    return false;
-	  }
+		if( _input.LA(1) != '}') {
+			return false;
+		}
+		int start = _tokenStartCharIndex;
+		int stop = _input.index()-1;
+		if( stop < start ) {
+			return true;
+		}
+		String text = _input.getText(org.antlr.v4.runtime.misc.Interval.of(start, stop));
+		int depth = 0;
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if( c == '\\' ) {
+				i++;
+			} else if( c == '$' && i+1 < text.length() && text.charAt(i+1) == '{' ) {
+				depth++;
+				i++;
+			} else if( c == '}' && depth > 0 ) {
+				depth--;
+			}
+		}
+		return depth == 0;
+	}
 	  
 	// an option like -la only starts a word: at the start of input or after whitespace,
 	// so x-y in $((x-y)) stays x MINUS y
@@ -117,7 +135,12 @@ DQ_STRING
     ;
 
 fragment DQ_PART
-    : ~["\\$] | '\\' . | '$(' CMD_PART* ')' | '$'
+    : ~["\\$] | '\\' . | '$(' CMD_PART* ')' | '${' PARAM_PART* '}' | '$'
+    ;
+
+// inside ${ } in double quotes: quotes and ${ } nest ("${s#"${s%%x}"}")
+fragment PARAM_PART
+    : ~["'{}\\] | '\\' . | '{' PARAM_PART* '}' | '"' DQ_PART* '"' | '\'' ~[']* '\''
     ;
 
 fragment CMD_PART
@@ -262,7 +285,7 @@ ARITH_COMMAND: '((' ARITH_BODY '))';
 fragment ARITH_BODY: ( ~[()] | '(' ARITH_BODY ')' )* ;
 
 DOLLAR_LPAREN_LPAREN: '$((';
-RPAREN_RPAREN:  '))';
+// (no )) token: ) ) closes $(( or (( that is not arithmetic, and a=($(cmd)) is two )s)
 LPAREN_LPAREN: '((';
 
 NOT_CURLY: [ \t]|~[}];
