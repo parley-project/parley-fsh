@@ -8,6 +8,7 @@ import java.util.List;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 
+import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.FileSourceShVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
@@ -67,8 +68,11 @@ public class CommandSubstitutionStatement extends Statement{
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
 		
 		ctx.stdout = new PrintStream(bao);
+		// a subshell: x=$(cd /; y=1) changes neither the directory nor y
+		Console.Snapshot saved = null;
 	
 		try {
+			saved = primary.console.snapshot();
 			List<Statement> stmts = FileSourceShVisitorImpl.parse(code);
 			for(Statement s : stmts) {
 				exitCode = s.process(ctx);
@@ -81,6 +85,13 @@ public class CommandSubstitutionStatement extends Statement{
 			String msg = e.getMessage();
 			primary.stderr.println(msg != null ? msg : e.toString());
 		} finally {
+			if( saved != null ) {
+				try {
+					primary.console.restore(saved);
+				} catch (IOException e) {
+					primary.stderr.println(e.getMessage());
+				}
+			}
 			stdout = new String(bao.toByteArray());
 			//Bash performs command substitution by executing command in a subshell environment and replacing the command substitution with the standard output of the command, 
 			//with any trailing newlines deleted

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import us.bringardner.filesource.sh.FileSourceShParser.Statement_group1Context;
+import us.bringardner.shell.Console;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.signal.ExitException;
@@ -31,13 +32,15 @@ public class StatementGroup1 extends Statement{
 	protected int execute(ShellContext sc) throws IOException {
 		Statement_group1Context ctx = (Statement_group1Context)getContext();
 		if(ctx.LPAREN()!=null) {
-			// ( list ): a subshell, so exit, set -- and local variables stay inside. (Global variables
-			// and the directory are the console's, so x=1 and cd still leak out.)
+			// ( list ): a subshell, so its changes (x=1, cd, exit, set --, exec 3>f ...) stay inside
 			ShellContext sub = sc.subShell();
+			Console.Snapshot saved = sc.console.snapshot();
 			try {
 				return run(sub);
 			} catch (ExitException e) {
 				return e.exitCode;
+			} finally {
+				sc.console.restore(saved);
 			}
 		}
 		return run(sc);

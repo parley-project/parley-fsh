@@ -1942,6 +1942,67 @@ delimiter
 
 
 
+	/**
+	 * What a subshell may change: variables, the environment, positional parameters, options,
+	 * aliases, functions, the current directory and file descriptors above 2. ( ... ) and $( )
+	 * take one before they run and restore it after, so their changes do not reach the shell, as
+	 * in bash. ($? is not part of it: the subshell's status is the status of ( ... ).)
+	 */
+	public static final class Snapshot {
+		private final Map<String,Object> variables;
+		private final Map<String,Object> environment;
+		private final List<Object> positional;
+		private final List<Option> options;
+		private final Map<String,Object> alias;
+		private final Map<String,FunctionDefStatement> functions;
+		private final FileSource cwd;
+		private final Map<Integer,FileDiscriptor> files;
+
+		private Snapshot(Console c) throws IOException {
+			variables = new TreeMap<>(c.variables);
+			environment = new TreeMap<>(c.environmentVariables);
+			positional = new ArrayList<>(c.positionalParameters);
+			options = new ArrayList<>(c.options);
+			alias = new TreeMap<>(c.alias);
+			functions = new TreeMap<>(c.functions);
+			cwd = c.getCurrentDirectory();
+			files = new TreeMap<>(c.getFiles());
+		}
+	}
+
+	public Snapshot snapshot() throws IOException {
+		return new Snapshot(this);
+	}
+
+	public void restore(Snapshot s) throws IOException {
+		variables.clear();
+		variables.putAll(s.variables);
+		environmentVariables.clear();
+		environmentVariables.putAll(s.environment);
+		positionalParameters.clear();
+		positionalParameters.addAll(s.positional);
+		options.clear();
+		options.addAll(s.options);
+		alias.clear();
+		alias.putAll(s.alias);
+		functions.clear();
+		functions.putAll(s.functions);
+		mountFactory.setCurrentDirectory(s.cwd);
+		synchronized (this) {
+			// close what the subshell opened (exec 3>file) and put back what it closed or replaced
+			for(Integer id : new ArrayList<>(files.keySet())) {
+				if( id > 2 && files.get(id) != s.files.get(id)) {
+					closeFileDistcriptor(id);
+				}
+			}
+			for(Map.Entry<Integer,FileDiscriptor> e : s.files.entrySet()) {
+				if( e.getKey() > 2 ) {
+					files.put(e.getKey(), e.getValue());
+				}
+			}
+		}
+	}
+
 	public FileSource getCurrentDirectory() throws IOException {
 
 		return mountFactory.getCurrentDirectory();

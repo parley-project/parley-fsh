@@ -117,7 +117,8 @@ public class TestWords extends AbstractConsoleTest {
 
 	@Test
 	public void testUnsetVariableWithSetU() throws IOException {
-		ExecuteResult res = executeCommand("set -u; echo :$nope:", "");
+		// in a subshell, so set -u does not reach the tests that run after this one
+		ExecuteResult res = executeCommand("( set -u; echo :$nope: )", "");
 		assertEquals("", res.getStdOut());
 		assertEquals("nope: unbound variable", res.getStdErr().trim());
 		assertEquals(1, res.exitCode);
@@ -325,5 +326,22 @@ public class TestWords extends AbstractConsoleTest {
 		expect("f() { ( set -- z; echo $1 ); echo $1; }; f a", "z\na\n");
 		// a failed command does not stop the rest
 		expect("{ false; echo hi; }; ( false; echo there )", "hi\nthere\n");
+	}
+
+	@Test
+	public void testSubshellChangesStayInside() throws IOException {
+		String d = path("");
+		String sub = path("sub-dir");
+		// ( ... ) and $( ) are subshells: the directory, variables, functions ... are put back after
+		expect("cd "+d+"; ( cd "+sub+" ); pwd", d+"\n");
+		expect("cd "+d+"; x=$(cd "+sub+"; pwd); echo $x; pwd", sub+"\n"+d+"\n");
+		expect("y27=1; ( y27=2; echo in $y27 ); echo $y27; x=$(y27=3; echo $y27); echo $x $y27", "in 2\n1\n3 1\n");
+		expect("( export Q27=1 ); echo \":$Q27:\"", "::\n");
+		expect("( f27() { echo f; } ); type f27 >/dev/null 2>&1 || echo gone", "gone\n");
+		expect("( alias a27=ls ); alias a27", "alias: a27: not found\n");
+		expect("set -- p q; ( set -- z ); echo $1", "p\n");
+		expect("z27=0; ( z27=1; ( z27=2 ); echo $z27 ); echo $z27", "1\n0\n");
+		// the status still comes out
+		expect("( exit 4 ); echo $?; x=$(exit 5); echo $?", "4\n5\n");
 	}
 }
