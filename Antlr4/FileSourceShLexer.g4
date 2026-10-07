@@ -39,6 +39,11 @@ lexer grammar FileSourceShLexer;
 		return next == '<' || next == '>';
 	}
 
+	boolean atCommentStart() {
+		int prev = _input.LA(-1);
+		return prev == org.antlr.v4.runtime.IntStream.EOF || " \t\r\n;&|(){}".indexOf(prev) >= 0;
+	}
+
 	// a keyword stands alone: done-now and if.txt are words
 	boolean atKeywordEnd() {
 		int next = _input.LA(1);
@@ -123,6 +128,8 @@ SQ_STRING
     : '\'' ( ~['\\] | '\\' . )* '\''
     ;
 
+// backslash-newline joins lines (echo a \<newline> b is echo a b)
+LINE_CONTINUATION: '\\' '\r'? '\n' -> skip;
 ESC: '\\' .;
 
 
@@ -135,7 +142,9 @@ FALSE: 'false' {atKeywordEnd()}?;
 COMMENT: '/*' .*? '*/' -> skip;
 
 
-LINE_COMMENT: '#'  ~[\r\n]* (EOF | NL) -> skip;
+// # starts a comment only at the start of a word (a#b and $# are not comments); the newline after
+// it is kept, so the next line stays a separate command
+LINE_COMMENT: {atCommentStart()}? '#' ~[\r\n]* -> skip;
 
 
 

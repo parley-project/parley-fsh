@@ -33,7 +33,6 @@ break-n
 colon-builtin
 
 # comments
-comments
 
 # dbl
 dbl-and-or
@@ -65,11 +64,8 @@ glob-question
 glob-star
 
 # heredoc
-heredoc-dash
-heredoc-quoted
 
 # line
-line-continuation
 
 # lineno
 lineno

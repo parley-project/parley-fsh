@@ -26,10 +26,10 @@ public class TestPreProsess {
 
 	@Test
 	public void testHere_01() {
-		
+		// as in bash: the body is the lines up to the word; <<- removes leading tabs (from the body and
+		// the word's line); without -, a line with a tab before the word does not end the body
 		Console console = new Console();
 		ShellContext ctx = new ShellContext(console);
-		ctx.enterCommand();
 		String code1 = "cat <<-EOT \n"
 				+ "\tline 1\n"
 				+ "\t  line2\n"
@@ -38,36 +38,26 @@ public class TestPreProsess {
 				+ "cat <<EOT \n"
 				+ "\tline 1\n"
 				+ "\t  line2\n"
-				+ "    line3\n"
-				+ "\tEOT\nls -ltr"
+				+ "\tEOT\n"
+				+ "EOT\nls -ltr"
 				;
 		String code = console.preProcess(code1,ctx);
-		//System.out.println(code1);
 		String[] parts = code.split("\n");
-		assertEquals(4, parts.length);
-		assertTrue(parts[0].startsWith("cat <<EOT"));
-		assertTrue(parts[2].startsWith("cat <<EOT"));
-		assertEquals(parts[1], "ls -ltr");
-		assertEquals(parts[3], "ls -ltr");
-		String expect = "line 1\n"
-				+ "  line2\n"
-				+ "    line3\n\n"
-				;
+		assertEquals(4, parts.length, code);
+		assertTrue(parts[0].startsWith("cat <<"));
+		assertTrue(parts[2].startsWith("cat <<"));
+		assertEquals("ls -ltr", parts[1]);
+		assertEquals("ls -ltr", parts[3]);
 		String id = parts[0].substring(6).trim();
-		String val = (String) ctx.getValue(id);
-		assertEquals(expect, val);
-		expect = "\tline 1\n"
-				+ "\t  line2\n"
-				+ "    line3\n\t"
-				;
+		assertEquals("line 1\n  line2\n    line3\n", console.getHereDocument(id));
 		id = parts[2].substring(6).trim();
-		val = (String) ctx.getValue(id);
-		assertEquals(expect, val);
-		ctx.exitCommand();
-		//  id should be gone now
-		val = (String) ctx.getValue(id);
-		assertNull(val);
+		assertEquals("\tline 1\n\t  line2\n\tEOT\n", console.getHereDocument(id));
+
+		// no line with the word: the body runs to the end
+		code = console.preProcess("cat <<EOT\na\nb", ctx);
+		assertEquals("a\nb\n", console.getHereDocument(code.substring(6).trim()));
 	}
+
 	
 
 	@Test

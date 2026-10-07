@@ -481,10 +481,15 @@ public class CommandStatement extends Statement{
 			redirected = configureRedirect(ctx,redirect,firstFd);				
 		
 			if( hereId !=null ) {
-				Object obj = ctx.getValue(hereId);
-				String val = (""+obj);
-				String val2 = FileSourceShPreProcessorVisitorImpl.processString(val, ctx, FileSourceShPreProcessorVisitorImpl.Quoting.HERE_DOC);
-				ctx.stdin = new ByteArrayInputStream(val2.getBytes());				
+				String val = ctx.console.getHereDocument(hereId);
+				if( val == null ) {
+					throw new IOException("here-document "+hereId+" not found");
+				}
+				// <<'EOF': the body as written; <<EOF: expanded as in double quotes
+				if( !ctx.console.isHereDocumentQuoted(hereId)) {
+					val = FileSourceShPreProcessorVisitorImpl.processString(val, ctx, FileSourceShPreProcessorVisitorImpl.Quoting.HERE_DOC);
+				}
+				ctx.stdin = new ByteArrayInputStream(val.getBytes());				
 			}
 
 			/*

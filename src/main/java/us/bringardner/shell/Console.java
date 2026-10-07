@@ -303,8 +303,6 @@ public class Console extends SignalEnabledThread {
         here-document
 delimiter
 	 */
-	// << but not <<< (a here-string: cat <<<word)
-	private static final Pattern hereRx = Pattern.compile("(?<id>[123])?\\s?(?<!<)<<(?!<)\\s?(?<dash>[-])?\\s?(?<word>([']?[a-zA-Z_][a-zA-Z_0-9]*[']?\\s?[\n]))");
 	public static boolean debugPositional = false;
 	//terminal used for debugging
 	public static PrintStream System_out = System.out;
@@ -1745,57 +1743,109 @@ delimiter
 		// (-eq -ne -lt ... were rewritten as == != < ... everywhere, so echo -ne printed != and
 		// ls -lt dir read from dir; the grammar reads them in tests)
 		String ret00 = convertHash(code);
-		String ret1 = ret00;//expandBrace(ret00,ctx);
-		int start = code.indexOf("<<");
-		List<String> ids = new ArrayList<>();
+		return hereDocuments(ret00);
+	}
 
-		while( start >=0 ) {
-			Matcher m = hereRx.matcher(code);
-			if( m.find()) {
-				String word = m.group("word").trim();
-				String dash = m.group("dash");
-				int idx0 = dash == null?m.start("word"):m.start("dash");
+	/** here-document bodies by the id that replaces their word (<<EOF becomes <<HEREDOC12) */
+	private final Map<String,String> hereBodies = new ConcurrentHashMap<>();
+	private final java.util.Set<String> quotedHere = ConcurrentHashMap.newKeySet();
+	private static final java.util.concurrent.atomic.AtomicLong hereCount = new java.util.concurrent.atomic.AtomicLong();
+	private static final Pattern HERE_START = Pattern.compile("(?<!<)<<(?!<)(-?)[ \\t]*('[^'\\n]*'|\"[^\"\\n]*\"|[^\\s;&|<>()]+)");
 
-				int idx1 = m.end("word");
-				int idx2 = code.indexOf(word.trim(), idx1);
+	/**
+	 * @return the body of a here-document, or null
+	 */
+	public String getHereDocument(String id) {
+		return hereBodies.get(id);
+	}
 
-				if( idx2 >  0) {
-					String here = code.substring(idx1, idx2);
-					if( dash != null ) {
-						String [] lines = here.split("\n");
-						StringBuilder buf = new StringBuilder();
-						for(String line : lines) {
-							if( line.startsWith("\t")) {
-								line = line.substring(1);
-							}
-							buf.append(line);
-							buf.append('\n');
-						}
-						here = buf.toString();
+	/**
+	 * @return true if the word was quoted (<<'EOF'): the body is used as written, with no expansion
+	 */
+	public boolean isHereDocumentQuoted(String id) {
+		return quotedHere.contains(id);
+	}
+
+	/**
+	 * Take the bodies of here-documents out of the code, as bash reads them: the lines after the
+	 * command, up to a line that is the word (with <<- leading tabs are removed, from the body and
+	 * from that line). A quoted word ('EOF', "EOF", \EOF) means the body is not expanded.
+	 */
+	String hereDocuments(String code) {
+		if( code.indexOf("<<") < 0 ) {
+			return code;
+		}
+		String [] lines = code.split("\n", -1);
+		StringBuilder ret = new StringBuilder();
+		for (int idx = 0; idx < lines.length; idx++) {
+			String line = lines[idx];
+			Matcher m = HERE_START.matcher(line);
+			StringBuilder out = new StringBuilder();
+			int last = 0;
+			List<String[]> pending = new ArrayList<>();
+			while( m.find()) {
+				String before = line.substring(0, m.start());
+				if( inArithmeticOrQuotes(before)) {
+					continue;
+				}
+				String word = m.group(2);
+				boolean quoted = word.indexOf('\'') >= 0 || word.indexOf('"') >= 0 || word.indexOf('\\') >= 0;
+				String delim = word.replace("'", "").replace("\"", "").replace("\\", "");
+				String id = "HEREDOC"+hereCount.incrementAndGet();
+				out.append(line, last, m.start()).append("<<").append(id);
+				last = m.end();
+				pending.add(new String[] {id, delim, m.group(1), quoted ? "q" : ""});
+			}
+			out.append(line.substring(last));
+			ret.append(out);
+			// the bodies follow, in order
+			for(String [] here : pending) {
+				boolean dash = here[2].equals("-");
+				StringBuilder body = new StringBuilder();
+				while( ++idx < lines.length ) {
+					String bl = lines[idx];
+					if( dash ) {
+						bl = bl.replaceFirst("^\t+", "");
 					}
-					Random r = new Random();
-					long herePointer = r.nextLong();
-					if( herePointer<0) {
-						herePointer *= -1;
-
+					if( bl.equals(here[1])) {
+						break;
 					}
-					String word2 = word+herePointer;
-					ids.add(word2);
-					String left = code.substring(0,idx0-2);
-					String right = code.substring(idx2+word.length(),code.length());
-					ret1 = left+word2+" "+right;
-					ctx.setValue(word2, here);
-					code = ret1;
+					body.append(bl).append('\n');
+				}
+				hereBodies.put(here[0], body.toString());
+				if( !here[3].isEmpty()) {
+					quotedHere.add(here[0]);
 				}
 			}
-			start = code.indexOf("<<",start+1);
+			if( idx < lines.length-1 ) {
+				ret.append('\n');
+			}
 		}
+		return ret.toString();
+	}
 
-		for(String id : ids) {
-			ret1 = ret1.replaceAll(id, "<<"+id);
+	/** true if text ends inside quotes or inside (( )), where << is not a here-document */
+	private static boolean inArithmeticOrQuotes(String text) {
+		boolean single = false;
+		boolean dbl = false;
+		int depth = 0;
+		for (int idx = 0; idx < text.length(); idx++) {
+			char c = text.charAt(idx);
+			if( c == '\\' && !single ) {
+				idx++;
+			} else if( c == '\'' && !dbl ) {
+				single = !single;
+			} else if( c == '"' && !single ) {
+				dbl = !dbl;
+			} else if( !single && !dbl && text.startsWith("((", idx)) {
+				depth++;
+				idx++;
+			} else if( !single && !dbl && text.startsWith("))", idx) && depth > 0 ) {
+				depth--;
+				idx++;
+			}
 		}
-
-		return ret1;
+		return single || dbl || depth > 0;
 	}
 
 

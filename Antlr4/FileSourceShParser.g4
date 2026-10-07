@@ -103,7 +103,9 @@ argumentPart:
              | DO | TIME | FUNCTION | CONTINUE | BREAK | LSQUARE | RSQUARE | NOT
              // arithmetic operators, for let x++ and let x+=2
              | PLUS_PLUS | PLUS_EQ | MINUS_ASSIGN | STAR_ASSIGN | MOD_ASSIGN | POW | EQUALITY | NOT_EQ
-             | TEST_OP)
+             | TEST_OP
+             // # in a word is text (a#b); at the start of a word it begins a comment
+             | HASH)
     | string
     | argVariable
     | parameter
