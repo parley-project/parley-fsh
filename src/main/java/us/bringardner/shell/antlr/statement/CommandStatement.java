@@ -465,12 +465,13 @@ public class CommandStatement extends Statement{
 		List<Argument> all = new ArrayList<>(words.subList(1, words.size()));
 		all.addAll(List.of(args));
 		args = all.toArray(new Argument[all.size()]);
+		// (put back after: a run of this statement may be going on outside this one, in recursion)
+		String outerName = name;
 		try {
 			setName(""+words.get(0).getValue(ctx));
 			return runCommand(ctx);
 		} finally {
-			// the statement is run again (in a loop) with a new expansion
-			name = null;
+			name = outerName;
 		}
 	}
 

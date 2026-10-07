@@ -294,6 +294,11 @@ public abstract class Statement {
 
 	protected ParserRuleContext context;
 	protected Argument [] args=new Argument[0];
+	/**
+	 * The words as parsed. Each run expands these (not args, which a run that is still going
+	 * replaced: a function that calls itself runs the same statement again inside the first run).
+	 */
+	private Argument [] parsedArgs = args;
 	private List<ArgumentContext> argCtx;
 
 
@@ -325,6 +330,7 @@ public abstract class Statement {
 	}
 
 	public void setArgs(Argument[] args, List<ArgumentContext> argCtx) {
+		this.parsedArgs = args;
 		this.args = args;
 		this.argCtx = argCtx;
 	}
@@ -336,6 +342,7 @@ public abstract class Statement {
 		// brace expansion and word splitting replace args for this run only; the tree (and these
 		// args) are shared by every run of the statement
 		Argument [] savedArgs = args;
+		args = parsedArgs;
 		// entered first, so $LINENO in its words is this statement's line
 		ctx.enterStatement(this);
 

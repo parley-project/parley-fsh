@@ -162,6 +162,10 @@ public class TestBashCompat extends AbstractConsoleTest {
 			} catch (TimeoutException e) {
 				f.cancel(true);
 				return null;
+			} catch (java.util.concurrent.ExecutionException e) {
+				// the shell crashed (a StackOverflowError ...): the case fails, with the reason on stderr
+				new PrintStream(ret.getBae()).println("crashed: "+e.getCause());
+				ret.exitCode = -1;
 			}
 			return ret;
 		} finally {
