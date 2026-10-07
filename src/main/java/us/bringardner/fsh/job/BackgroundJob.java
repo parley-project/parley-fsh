@@ -54,6 +54,8 @@ public class BackgroundJob extends AbstractJob{
 			case Interupt:
 			case Terminate:
 			case Kill: 				
+				// the job's status is 128 + the signal (143 for TERM); JobManager stops the command
+				terminatedBy = signal.value;
 				setState(JobState.Termnated);
 				break;
 			case Suspend:
@@ -89,11 +91,17 @@ public class BackgroundJob extends AbstractJob{
 			}
 		}
 		
-		return child.exitCode;
+		return terminatedBy != null ? 128+terminatedBy : child.exitCode;
 	}
+
+	/** the signal that ended this job (kill), or null */
+	private volatile Integer terminatedBy;
 	
 	@Override
 	public int getExitCode() {
+		if( terminatedBy != null ) {
+			return 128+terminatedBy;
+		}
 		//if( started && running) {
 		//	System.out.println("asking at wrong time started="+started+"running="+running+" isRunning="+isRunning()+" child="+child.isRunning());
 		//}

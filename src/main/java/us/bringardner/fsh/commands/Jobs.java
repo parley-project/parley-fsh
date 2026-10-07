@@ -92,10 +92,19 @@ public class Jobs extends ShellCommand{
 				if( show ) {
 					int jobSize = jm.getJobs().size();
 					String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
-					if(options.options.contains(Options.l)) {
-						ctx.stdout.println("["+((idx+1))+"] "+flag+" "+job.getPid()+" "+state+" "+job.toString());
+					// as bash shows it: [1]+  Running                    sleep 10 &
+					String status = switch (state) {
+					case Running -> "Running";
+					case Suspended -> "Stopped";
+					default -> job.getExitCode() == 0 ? "Done" : job.getExitCode() > 128 ? "Terminated" : "Exit "+job.getExitCode();
+					};
+					String text = job.toString()+(state == JobState.Running ? " &" : "");
+					if(options.options.contains(Options.p)) {
+						ctx.stdout.println(job.getPid());
+					} else if(options.options.contains(Options.l)) {
+						ctx.stdout.println(String.format("[%d]%s %d %-27s%s", idx+1, flag, job.getPid(), status, text));
 					} else {
-						ctx.stdout.println("["+((idx+1))+"] "+flag+" "+state+" "+job.toString());
+						ctx.stdout.println(String.format("[%d]%s  %-27s%s", idx+1, flag, status, text));
 					}
 				}
 			}

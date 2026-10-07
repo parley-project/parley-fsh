@@ -67,7 +67,16 @@ public class Unset extends ShellCommand{
 				if( val instanceof java.util.Map<?,?> ) {
 					((java.util.Map<?,?>) val).remove(m.group(2));
 				} else if( val instanceof java.util.List<?> ) {
-					((java.util.List<?>) val).remove(us.bringardner.fsh.antlr.Arithmetic.expandAndEvaluate(m.group(2), ctx).intValue());
+					int index = us.bringardner.fsh.antlr.Arithmetic.expandAndEvaluate(m.group(2), ctx).intValue();
+					if( index < 0 ) {
+						// unset 'a[-1]': from the end, past the highest index
+						java.util.List<Object> keys = us.bringardner.fsh.antlr.Parameter.keys(val);
+						int last = keys.isEmpty() ? -1 : ((Number) keys.get(keys.size()-1)).intValue();
+						index += last+1;
+					}
+					if( index >= 0 ) {
+						((java.util.List<?>) val).remove(index);
+					}
 				}
 			} else if( functions ) {
 				ctx.removeFunction(text);

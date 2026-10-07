@@ -54,7 +54,8 @@ loop_controll_statement:
             ;
 
 // a=1 b=2: one or more assignments with no command
-assignStatement: assignment (WS+ assignment)* WS*
+// x=$(cmd) 2>/dev/null: an assignment may take redirects
+assignStatement: assignment (WS+ assignment)* (WS* redirect)? WS*
 		;
 		
 // the value is a word, like a command argument: x=sub-dir and y=$x$x are text, x=$((1+2)) is a number
@@ -118,7 +119,9 @@ argumentPart:
              // a lone - _ + = or ~ ( _* )
              | SPECIAL_UNIX
              // !(*.o), @(a|b) ...
-             | EXTGLOB)
+             | EXTGLOB
+             // [[:alpha:]]*: a character class in a pattern
+             | POSIX_CHAR_CLASS)
     | string
     | argVariable
     | parameter
@@ -449,9 +452,10 @@ statement_group1
 
 
 compoundCommand:
-          redirect1=redirect?  LCURLY white* statement* white* RCURLY redirect1=redirect?
+          // f() { ...; } > file: the redirect applies each time f runs
+          redirect1=redirect?  LCURLY white* statement* white* RCURLY (WS* redirect2=redirect)?
         // f() ( ... ): the body runs in a subshell, and its last command needs no ;
-        | subshell=LPAREN white* statement_or_statement1* white* RPAREN
+        | subshell=LPAREN white* statement_or_statement1* white* RPAREN (WS* redirect2=redirect)?
         
         ;
 
@@ -510,9 +514,9 @@ pbody: ~RCURLY*;
 // New rule to support 'declare -A my_array' and 'declare -A my_array=([key1]=value1 [key2]=value2)'
 // declare -opts name[=value] ...: -A and -a arrays, -i integer, -x export
 declareAssociativeArrayStatement:
-     white* DECLARE_A (WS+ declareItem)* WS*
+     white* DECLARE_A (WS+ declareItem)* (WS* redirect)? WS*
     // local -n r=$1, local -a arr=(1 2), local x y=2 (local x=1 is an assignStatement)
-    | white* LOCAL (WS+ localOpts+=ARG_ID)* (WS+ declareItem)+ WS*
+    | white* LOCAL (WS+ localOpts+=ARG_ID)* (WS+ declareItem)+ (WS* redirect)? WS*
     ;
 
 declareItem: id1=ID (EQ (associativeArrayInitializer | arrayInitializer | value=argument)?)? 

@@ -102,6 +102,9 @@ import us.bringardner.fsh.job.JobState;
 
 public class Console extends SignalEnabledThread {
 
+	/** $_: the last argument of the last simple command */
+	public volatile String lastArgument = "";
+
 	public static class FileDiscriptor {
 
 		/** the source of a copy of another descriptor (exec 3>&1): closing the copy leaves the stream open */
@@ -426,6 +429,8 @@ delimiter
 		registerCommand(new Unset());
 
 		registerCommand(new Wait());
+		registerCommand(new us.bringardner.fsh.commands.Compgen());
+		registerCommand(new us.bringardner.fsh.commands.Times());
 		registerCommand(new Wc());
 
 		registerSignals();
@@ -545,13 +550,18 @@ delimiter
 		}
 
 		public String toString() {
+			// the command as written (joining the tokens gave sleep   1)
 			ParserRuleContext p = cmd.getContext();
+			if( p.start != null && p.stop != null && p.stop.getStopIndex() >= p.start.getStartIndex()) {
+				return p.start.getInputStream().getText(
+						org.antlr.v4.runtime.misc.Interval.of(p.start.getStartIndex(), p.stop.getStopIndex())).trim();
+			}
 			StringBuilder ret = new StringBuilder();
 			for(ParseTree pp : p.children) {
 				ret.append(pp.getText()+" ");
 			}
 
-			return ret.toString();
+			return ret.toString().trim();
 		} 
 
 		@Override
@@ -566,6 +576,12 @@ delimiter
 				exitCode = cmd.process(ctx);
 			} catch (Exception e) {
 				error = e;
+				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
+				exitCode = e instanceof ExitException ? ((ExitException) e).exitCode : 1;
+			}
+			if( terminatedBy != null ) {
+				// ended by kill: 128 + the signal, as in bash (143 for TERM)
+				exitCode = 128+terminatedBy;
 			}
 			ctx.stdout.flush();
 			close(ctx.console,ctx.stdout);
@@ -581,9 +597,22 @@ delimiter
 			super.stop();
 		}
 
+		/** the signal that ended this (kill), or null */
+		private volatile Integer terminatedBy;
+
 		@Override
 		public void handleSignal(ConsoleSignal signal)  {
 			//throw new RuntimeException("CommandThread Not implemented");
+			switch (signal) {
+			case Hup:
+			case Interupt:
+			case Terminate:
+			case Kill:
+				terminatedBy = signal.value;
+				break;
+			default:
+				break;
+			}
 			if (cmd instanceof PipeStatement) {
 				PipeStatement stmt = (PipeStatement) cmd;
 				CommandThread[] kids = stmt.getCommandThreads();
@@ -2323,6 +2352,21 @@ delimiter
 
 	public void setReadonly(String name) {
 		readonlyVariables.add(name);
+	}
+
+	/** declare -l (l) and -u (u): an assigned value is made lower or upper case */
+	private final Map<String,Character> caseVariables = new ConcurrentHashMap<>();
+
+	public Character getCaseAttribute(String name) {
+		return caseVariables.get(name);
+	}
+
+	public void setCaseAttribute(String name, Character attr) {
+		if( attr == null ) {
+			caseVariables.remove(name);
+		} else {
+			caseVariables.put(name, attr);
+		}
 	}
 
 	/** variables declared with declare -i: an assignment's value is arithmetic */

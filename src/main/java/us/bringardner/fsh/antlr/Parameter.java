@@ -53,7 +53,7 @@ ${parameter:-word}
 
 	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
 	private static final Pattern ANSI = Pattern.compile("\\$'((?:[^'\\\\]|\\\\.)*)'");
-	private static final Pattern TRANSFORM = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)(\\[[@*]\\])?@([QEUuLA])");
+	private static final Pattern TRANSFORM = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)(\\[[@*]\\])?@([QEUuLAaK])");
 
 	/** ${x@op}: Q quoted for the shell, E with $'...' escapes done, U u L case, A as an assignment */
 	static String transform(String s, char op, String name) {
@@ -188,6 +188,33 @@ ${parameter:-word}
 		return null;
 	}
 
+	/** ${x@a}: a A i n r u l x, in bash's order */
+	private static String attributes(String name, Object val, ShellContext sc) {
+		StringBuilder ret = new StringBuilder();
+		if( val instanceof Map<?,?> ) {
+			ret.append('A');
+		} else if( val instanceof List<?> ) {
+			ret.append('a');
+		}
+		if( sc.console.isInteger(name)) {
+			ret.append('i');
+		}
+		if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
+			ret.append('n');
+		}
+		if( sc.console.isReadonly(name)) {
+			ret.append('r');
+		}
+		Character c = sc.caseAttribute(name);
+		if( c != null ) {
+			ret.append(c);
+		}
+		if( sc.getEvironmentVariable(name) != null ) {
+			ret.append('x');
+		}
+		return ret.toString();
+	}
+
 	static Object arrayForms(String text, ShellContext sc) {
 		if( (text.startsWith("@") || text.startsWith("*")) && text.length() > 1 && text.charAt(1) != '}' ) {
 			// ${@:2} ${*@Q} ${@/a/b}: the elements, joined
@@ -239,6 +266,27 @@ ${parameter:-word}
 		if( m.matches()) {
 			// ${x@Q} ${x@E} ${x@U} ${x@u} ${x@L} ${x@A}; ${a[@]@Q} each element
 			Object val = sc.getVariable(m.group(1));
+			char op = m.group(3).charAt(0);
+			if( op == 'a' ) {
+				// the attributes, as declare would set them: ir, a, A, x ...
+				return attributes(m.group(1), val, sc);
+			}
+			if( op == 'K' && (val instanceof List<?> || val instanceof Map<?,?>) && (m.group(2) != null || val instanceof Map<?,?>)) {
+				// ${m[@]@K}: key "value" pairs
+				List<Object> keys = keys(val);
+				List<Object> vals = values(val);
+				StringBuilder ret = new StringBuilder();
+				for (int idx = 0; idx < keys.size(); idx++) {
+					if( ret.length() > 0 ) {
+						ret.append(' ');
+					}
+					ret.append(keys.get(idx)).append(" \"").append((""+vals.get(idx)).replaceAll("([\"\\\\$`])", "\\\\$1")).append('"');
+				}
+				return ret.toString();
+			}
+			if( op == 'K' ) {
+				op = 'Q';
+			}
 			java.util.List<Object> items = m.group(2) != null ? values(val) : new java.util.ArrayList<>(java.util.Arrays.asList(ShellContext.firstElement(val)));
 			StringBuilder ret = new StringBuilder();
 			for(Object o : items) {
@@ -248,7 +296,7 @@ ${parameter:-word}
 				if( ret.length() > 0 ) {
 					ret.append(' ');
 				}
-				ret.append(transform(""+o, m.group(3).charAt(0), m.group(1)));
+				ret.append(transform(""+o, op, m.group(1)));
 			}
 			return ret.toString();
 		}
@@ -379,6 +427,21 @@ ${parameter:-word}
 			}
 			ansi.appendTail(buf);
 			fullText = buf.toString();
+		}
+		if( quoting == FileSourceShPreProcessorVisitorImpl.Quoting.NONE ) {
+			// ${y:-"$@"} unquoted: a word per parameter ("$@" quoted keeps each one whole)
+			List<Object> at = defaultAt(fullText, sc);
+			if( at != null ) {
+				Matcher dm = DEFAULT_AT.matcher(fullText);
+				dm.matches();
+				// "$@" keeps each parameter whole; y's own value (when it is used) is split
+				boolean quotedAt = !dm.group(4).isEmpty() && defaultAtUsesWord(fullText, sc);
+				Word w = new Word();
+				for (int idx = 0; idx < at.size(); idx++) {
+					w.add(""+at.get(idx), quotedAt, idx > 0);
+				}
+				return w;
+			}
 		}
 		fullText = FileSourceShPreProcessorVisitorImpl.processString(fullText, sc);
 
@@ -664,11 +727,79 @@ ${parameter:-word}
 	public static final class Word {
 		public final List<String> texts = new ArrayList<>();
 		public final List<Boolean> quoted = new ArrayList<>();
+		/** a new word starts at this part (${y:-"$@"} is a word per parameter) */
+		public final List<Boolean> breakBefore = new ArrayList<>();
+
+		void add(String text, boolean isQuoted, boolean newWord) {
+			texts.add(text);
+			quoted.add(isQuoted);
+			breakBefore.add(newWord);
+		}
 
 		@Override
 		public String toString() {
-			return String.join("", texts);
+			StringBuilder ret = new StringBuilder();
+			for (int idx = 0; idx < texts.size(); idx++) {
+				if( idx > 0 && breakBefore.get(idx)) {
+					ret.append(' ');
+				}
+				ret.append(texts.get(idx));
+			}
+			return ret.toString();
 		}
+	}
+
+	/** ${y:-"$@"}, ${y:+$@}, ${1-"${@}"}: a default (or alternate) that is $@ */
+	private static final Pattern DEFAULT_AT = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*|[0-9]+)(:?)([-+])(\"?)(\\$@|\\$\\{@\\})\\4");
+
+	/** ${y:-$@} uses its word ($@) when y is missing; ${y:+$@} when y is set */
+	private static boolean defaultAtUsesWord(String text, ShellContext sc) {
+		Matcher m = DEFAULT_AT.matcher(text);
+		if( !m.matches()) {
+			return false;
+		}
+		String name = m.group(1);
+		Object val;
+		if( Character.isDigit(name.charAt(0))) {
+			int n = Integer.parseInt(name);
+			List<Object> pos = sc.getPositionalParameterValues();
+			val = n == 0 ? sc.getVariable("$0") : n <= pos.size() ? pos.get(n-1) : null;
+		} else {
+			val = ShellContext.firstElement(sc.getVariable(name));
+		}
+		boolean missing = val == null || (!m.group(2).isEmpty() && (""+val).isEmpty());
+		return m.group(3).equals("-") ? missing : !missing;
+	}
+
+	/** true if the text inside ${ } is ${y:-$@} or the like (see defaultAt) */
+	static boolean isDefaultAt(String text) {
+		return DEFAULT_AT.matcher(text).matches();
+	}
+
+	/**
+	 * ${y:-"$@"}: the positional parameters when the word is used, else y's value (or nothing
+	 * for :+). null if text is not this form.
+	 */
+	static List<Object> defaultAt(String text, ShellContext sc) {
+		Matcher m = DEFAULT_AT.matcher(text);
+		if( !m.matches()) {
+			return null;
+		}
+		String name = m.group(1);
+		Object val;
+		if( Character.isDigit(name.charAt(0))) {
+			int n = Integer.parseInt(name);
+			List<Object> pos = sc.getPositionalParameterValues();
+			val = n == 0 ? sc.getVariable("$0") : n <= pos.size() ? pos.get(n-1) : null;
+		} else {
+			val = ShellContext.firstElement(sc.getVariable(name));
+		}
+		if( defaultAtUsesWord(text, sc)) {
+			return sc.getPositionalParameterValues();
+		}
+		List<Object> ret = new ArrayList<>();
+		ret.add(m.group(3).equals("-") ? val : "");
+		return ret;
 	}
 
 	/** how the ${ } is quoted: in "${x:-'a'}" the single quotes are text */
@@ -707,8 +838,7 @@ ${parameter:-word}
 				continue;
 			}
 			if( plain.length() > 0 ) {
-				ret.texts.add(plain.toString());
-				ret.quoted.add(false);
+				ret.add(plain.toString(), false, false);
 				plain.setLength(0);
 			}
 			String text;
@@ -721,12 +851,10 @@ ${parameter:-word}
 				}
 				idx = end;
 			}
-			ret.texts.add(text);
-			ret.quoted.add(true);
+			ret.add(text, true, false);
 		}
 		if( plain.length() > 0 ) {
-			ret.texts.add(plain.toString());
-			ret.quoted.add(false);
+			ret.add(plain.toString(), false, false);
 		}
 		return ret;
 	}

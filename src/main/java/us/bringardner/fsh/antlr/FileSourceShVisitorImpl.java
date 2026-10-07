@@ -185,8 +185,17 @@ statement
 			ret = visitUntil_statement(ctx.until_statement());
 		}else if(ctx.assignStatement()!=null ) {
 			ret = visitAssignStatement(ctx.assignStatement());
+			// x=$(cmd) 2>/dev/null
+			RerdirectImpl r = RerdirectImpl.find(ctx.assignStatement().children);
+			if( r != null ) {
+				ret = new RedirectedStatement(ctx.assignStatement(), ret, r);
+			}
 		}else if(ctx.declareAssociativeArrayStatement()!=null ) {
 			ret = new DeclareAssociateArrayStatement(ctx.declareAssociativeArrayStatement());
+			RerdirectImpl r = RerdirectImpl.find(ctx.declareAssociativeArrayStatement().children);
+			if( r != null ) {
+				ret = new RedirectedStatement(ctx.declareAssociativeArrayStatement(), ret, r);
+			}
 		} else if(ctx.functionDefinition()!=null ) {
 			ret = visitFunctionDefinition(ctx.functionDefinition());		
 		} else if(ctx.loop_controll_statement()!=null  ) {
@@ -677,6 +686,13 @@ forStatement
 			if( tmp !=null ) {
 				stmts.add(tmp);
 			}
+		}
+		RerdirectImpl redirect = RerdirectImpl.find(ctx.compoundCommand().children);
+		if( redirect != null ) {
+			// f() { ...; } > file: the body's output goes to file each time f runs
+			Statement body = new StatementGroup1(ctx.compoundCommand(), stmts, false);
+			stmts = new ArrayList<>();
+			stmts.add(new RedirectedStatement(ctx.compoundCommand(), body, redirect));
 		}
 
 		return new FunctionDefStatement(ctx,name,stmts);

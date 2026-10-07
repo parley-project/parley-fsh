@@ -421,6 +421,17 @@ public class CommandStatement extends Statement{
 
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
+		try {
+			return execute0(ctx);
+		} finally {
+			// $_: the last argument of this command (its name if it has none)
+			String last = args != null && args.length > 0 ? ""+args[args.length-1].getValue(ctx)
+					: commandWord == null ? "" : commandWord.getText();
+			ctx.console.lastArgument = last;
+		}
+	}
+
+	private int execute0(ShellContext ctx) throws IOException {
 		if( prefixAssignments == null ) {
 			return expandAndRun(ctx);
 		}
@@ -615,6 +626,10 @@ public class CommandStatement extends Statement{
 			returnStatus = e.exitCode;
 			
 			throw e;
+		} catch (NotExecutableException e) {
+			// as in bash: found, but not executable
+			returnStatus = 126;
+			ctx.stderr.println(e.getMessage()+": Permission denied");
 		} catch (Exception e) {
 			//e.printStackTrace();
 			returnStatus = 1;
@@ -733,6 +748,14 @@ public class CommandStatement extends Statement{
 		return null;
 	}
 
+	/** a command file that exists but may not be run (status 126) */
+	static class NotExecutableException extends IOException {
+		private static final long serialVersionUID = 1L;
+		NotExecutableException(String name) {
+			super(name);
+		}
+	}
+
 	private FileSource findExecutable(String execName, ShellContext ctx) throws IOException {
 
 		FileSource file = executables.get(execName);
@@ -763,7 +786,7 @@ public class CommandStatement extends Statement{
 		}
 
 		if( !file.canExecute()) {
-			throw new IOException("execute permission denied: "+execName);
+			throw new NotExecutableException(execName);
 		}
 
 

@@ -59,6 +59,7 @@ public class Read extends ShellCommand{
 		int timeout = -1;
 		timeoutSeconds = -1;
 		timedOut = false;
+		int fromFd = 0;
 		
 		/*
 		 * e & i are for command line editing
@@ -72,7 +73,12 @@ public class Read extends ShellCommand{
 					char c = tmp.charAt(idx2);
 					switch (c) {
 					case 'a':arrayName = ""+args[++idx1].getValue(ctx); break;
-					case 'd':lineDelim = (""+args[++idx1].getValue(ctx)).charAt(0); break;
+					case 'd': {
+						// -d '': up to a NUL (find -print0)
+						String d = ""+args[++idx1].getValue(ctx);
+						lineDelim = d.isEmpty() ? '\0' : d.charAt(0);
+						break;
+					}
 					case 'e':options.add(Options.e);break;
 					case 'i':editLineText = ""+args[++idx1].getValue(ctx); break;
 					case 'n':n = Integer.parseInt(""+args[++idx1].getValue(ctx));break;
@@ -90,12 +96,17 @@ public class Read extends ShellCommand{
 						}
 						timeout = (int) Math.ceil(timeoutSeconds);
 						break;
-					case 'u':int fd = Integer.parseInt(""+args[++idx1].getValue(ctx));
-					// TODO: Set input from fd
-						if( fd !=0) {
-							throw new IOException("fd other than stdin is not implemented. fd="+fd);
+					case 'u': {
+						// read -u 3: from descriptor 3 (exec 3<file, {fd}<file, done 3<file)
+						String text = ""+args[++idx1].getValue(ctx);
+						try {
+							fromFd = Integer.parseInt(text.trim());
+						} catch (NumberFormatException e) {
+							ctx.stderr.println("read: "+text+": invalid file descriptor specification");
+							return 1;
 						}
-					break;
+						break;
+					}
 					default:
 						throw new IllegalArgumentException("Unexpected value: " + c);
 					}
@@ -108,6 +119,25 @@ public class Read extends ShellCommand{
 		
 
 		
+		java.io.InputStream callerIn = ctx.stdin;
+		if( fromFd != 0 ) {
+			Console.FileDiscriptor fd = ctx.console.getFileDistcriptor(fromFd);
+			if( fd == null || fd.getIn() == null ) {
+				ctx.stderr.println("read: "+fromFd+": invalid file descriptor: Bad file descriptor");
+				return 1;
+			}
+			ctx.stdin = fd.getIn();
+		}
+		try {
+			return read(ctx, prompt, lineDelim, timeout, editLineText, n, N, options, arrayName, names);
+		} finally {
+			ctx.stdin = callerIn;
+		}
+	}
+
+	private int read(ShellContext ctx, String prompt, char lineDelim, int timeout, String editLineText, int n, int N,
+			List<Options> options, String arrayName, List<String> names) throws IOException {
+		int ret = 0;
 		String line = "";
 		if( timeoutSeconds == 0 ) {
 			// read -t 0: whether there is input, without reading it
@@ -116,7 +146,9 @@ public class Read extends ShellCommand{
 		try {
 			line = readLine(ctx,prompt,lineDelim,timeout,editLineText,n, N, options);	
 		} catch (EOFException e2) {
-			return 1;
+			// nothing left: as in bash the names are set to empty (so read x || [ -n "$x" ] ends)
+			line = "";
+			eof = true;
 		}
 		if( timedOut ) {
 			// as in bash: what was read is kept, and the status is 128+SIGALRM

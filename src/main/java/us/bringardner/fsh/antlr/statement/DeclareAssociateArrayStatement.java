@@ -87,6 +87,11 @@ associativeArrayElement
 		DeclareAssociativeArrayStatementContext ctx = (DeclareAssociativeArrayStatementContext) getContext();
 		// declare -opts, or local [-opts]: local makes the names the function's
 		boolean local = ctx.LOCAL() != null;
+		boolean remove = false;
+		if( local && !sc.isInFunction()) {
+			sc.stderr.println("local: can only be used in a function");
+			return 1;
+		}
 		String opts = "";
 		if( local ) {
 			for(org.antlr.v4.runtime.Token t : ctx.localOpts) {
@@ -94,7 +99,10 @@ associativeArrayElement
 			}
 		} else {
 			opts = ctx.DECLARE_A().getText();
-			opts = opts.substring(opts.indexOf('-')+1);
+			// declare +l x: take attributes away
+			int sign = Math.max(opts.indexOf('-'), opts.indexOf('+'));
+			remove = opts.charAt(sign) == '+';
+			opts = opts.substring(sign+1);
 		}
 		if( opts.indexOf('p') >= 0 ) {
 			// declare -p name ...: as declarations the shell can read back
@@ -114,7 +122,16 @@ associativeArrayElement
 		for(DeclareItemContext item : ctx.declareItem()) {
 			String name = item.id1.getText();
 			if( opts.indexOf('i') >= 0 ) {
-				sc.console.setInteger(name, true);
+				sc.console.setInteger(name, !remove);
+			}
+			// -l -u: lower or upper case (set before the value, which they change)
+			if( opts.indexOf('l') >= 0 || opts.indexOf('u') >= 0 ) {
+				sc.setCaseAttribute(name, remove ? null : opts.lastIndexOf('l') > opts.lastIndexOf('u') ? 'l' : 'u', local);
+			}
+			if( remove ) {
+				if( item.value == null && item.associativeArrayInitializer() == null && item.arrayInitializer() == null ) {
+					continue;
+				}
 			}
 			if( opts.indexOf('n') >= 0 ) {
 				// a reference: the variable named by the value (declare -n ref=target, local -n r=$1)

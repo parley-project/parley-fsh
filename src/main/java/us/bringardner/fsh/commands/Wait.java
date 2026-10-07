@@ -142,6 +142,12 @@ public class Wait extends ShellCommand{
 		if( varName !=null) {
 			ctx.setVariable(varName, jobId);
 		}
+		// as in bash, a job that was waited for leaves the job table (jobs no longer lists it)
+		for(IJob job : jobs) {
+			if( job.hasStarted() && !job.isRunning()) {
+				jm.remove(job);
+			}
+		}
 
 		return ret;
 	}

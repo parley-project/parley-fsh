@@ -35,6 +35,9 @@ public class Glob {
 			String value = ""+a.getValue(ctx);
 			List<String> matches = a.hasUnquotedWildcard() ? expand(value, ctx) : List.of();
 			if( matches.isEmpty()) {
+				if( a.hasUnquotedWildcard()) {
+					failglob(value, ctx);
+				}
 				if( !(a.hasUnquotedWildcard() && option(ctx, "nullglob"))) {
 					ret.add(value);
 				}
@@ -43,6 +46,20 @@ public class Glob {
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * shopt -s failglob: a pattern that matches nothing is an error. As in bash it ends a script
+	 * (or the subshell it is in) with status 1; at a prompt only the command fails.
+	 */
+	public static void failglob(String pattern, ShellContext ctx) {
+		if( option(ctx, "failglob")) {
+			ctx.stderr.println("no match: "+pattern);
+			if( ctx.console.isInteractive ) {
+				throw new RuntimeException("no match: "+pattern);
+			}
+			throw new us.bringardner.fsh.antlr.signal.ExitException(ctx, 1);
+		}
 	}
 
 	/** true if text has *, ? or [ (a word that is a pattern) */

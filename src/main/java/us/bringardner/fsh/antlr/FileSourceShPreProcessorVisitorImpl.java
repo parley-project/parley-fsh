@@ -199,7 +199,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 				PpcommandContext v = (PpcommandContext) rule;
 				String cmd = originalText(code1, rule);
 				if(v.pp_backtick_command()!=null) {
-					cmd = cmd.substring(1,cmd.length()-1);
+					cmd = CommandSubstitutionStatement.backtickCode(cmd.substring(1,cmd.length()-1));
 				} else if(v.pp_dollar_command()!=null) {
 					cmd = cmd.substring(2,cmd.length()-1);
 				} else {

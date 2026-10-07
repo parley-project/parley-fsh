@@ -53,11 +53,34 @@ public class CommandSubstitutionStatement extends Statement{
 		if( stop >= start ) {
 			code = context.getStart().getInputStream().getText(Interval.of(start, stop)).trim();
 		}
+		if( context.getStart().getText().equals("`")) {
+			code = backtickCode(code);
+		}
 		exitCode =execute(code,primary);
 			
 		return exitCode;
 	}
 
+
+	/**
+	 * The command in `...`: as in bash, \` \\ and \$ there stand for the character (so
+	 * `echo \`date\`` nests); another backslash is kept.
+	 */
+	public static String backtickCode(String code) {
+		if( code.indexOf('\\') < 0 ) {
+			return code;
+		}
+		StringBuilder ret = new StringBuilder();
+		for (int idx = 0; idx < code.length(); idx++) {
+			char c = code.charAt(idx);
+			if( c == '\\' && idx+1 < code.length() && "`\\$".indexOf(code.charAt(idx+1)) >= 0 ) {
+				ret.append(code.charAt(++idx));
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
+	}
 
 	/** $(< file): the file's text, without running anything */
 	private static final java.util.regex.Pattern READ_FILE = java.util.regex.Pattern.compile("<\\s*([^<>|&;\\s]+|\"[^\"]*\"|'[^']*')");

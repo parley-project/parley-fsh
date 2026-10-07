@@ -500,6 +500,7 @@ $
 	public void setVariable(String name, Object value) {
 		if( !(value instanceof NameRef)) {
 			name = resolveName(name);
+			value = withCase(name, value);
 		}
 		if( console.isReadonly(name)) {
 			throw new ReadonlyException(name);
@@ -561,7 +562,7 @@ $
 	}
 
 	/** a variable's own value (a NameRef stays one) */
-	private Object rawVariable(String name) {
+	public Object rawVariable(String name) {
 		FunctionInvocation scope = localScope(name);
 		if( scope != null ) {
 			Object v = scope.local.get(name);
@@ -657,6 +658,10 @@ $
 			}
 			names.add("main");
 			return names;
+		}
+		if( name.equals("_")) {
+			// the last argument of the last command (not the _ the JVM was started with)
+			return console.lastArgument;
 		}
 		if( name.equals("BASHPID")) {
 			return ProcessHandle.current().pid();
@@ -821,6 +826,7 @@ $
 	}
 
 	public void setLocalVariable(String name, Object val) {
+		val = withCase(name, val);
 		if( !functionStack.isEmpty()) {
 			FunctionInvocation inv = functionStack.peek();
 			inv.local.put(name, val);
@@ -935,6 +941,8 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
+		/** local -l / -u attributes of this function's variables */
+		final Map<String,Character> caseAttributes = new java.util.HashMap<>();
 		/** set -E is off: the ERR trap does not run in this function */
 		boolean errBlocked;
 		/** trap ... RETURN was set while this ran: it runs when this returns */
@@ -995,6 +1003,46 @@ $
 	 * (they do not inherit it): above 0 it is off.
 	 */
 	public int errTrapBlocked;
+
+	/** l (declare -l), u (declare -u) or null: the case attribute of the variable name refers to */
+	public Character caseAttribute(String name) {
+		// the innermost function with the attribute or a local of that name decides
+		for (int idx = functionStack.size()-1; idx >= 0; idx--) {
+			FunctionInvocation inv = functionStack.get(idx);
+			if( inv.caseAttributes.containsKey(name)) {
+				return inv.caseAttributes.get(name);
+			}
+			if( inv.local.containsKey(name)) {
+				return null;
+			}
+		}
+		return console.getCaseAttribute(name);
+	}
+
+	/** declare -l/-u name, or +l/+u (attr null); local: the running function's variable */
+	public void setCaseAttribute(String name, Character attr, boolean local) {
+		if( local && !functionStack.isEmpty()) {
+			if( attr == null ) {
+				functionStack.peek().caseAttributes.remove(name);
+			} else {
+				functionStack.peek().caseAttributes.put(name, attr);
+			}
+		} else {
+			console.setCaseAttribute(name, attr);
+		}
+	}
+
+	/** a scalar value as the variable's case attribute makes it */
+	private Object withCase(String name, Object value) {
+		if( value == null || value instanceof List<?> || value instanceof Map<?,?> ) {
+			return value;
+		}
+		Character attr = caseAttribute(name);
+		if( attr == null ) {
+			return value;
+		}
+		return attr == 'u' ? value.toString().toUpperCase() : value.toString().toLowerCase();
+	}
 
 	/** trap ... RETURN in a function: it runs when that function returns */
 	public void returnTrapSet() {

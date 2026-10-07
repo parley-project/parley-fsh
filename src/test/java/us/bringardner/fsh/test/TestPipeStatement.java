@@ -215,25 +215,25 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				"[1] 100000\n"
 				+ "[2] 100001\n"
 				+ "[3] 100002\n"
-				+ "[1]   Running sleep   1000   \n"
-				+ "[2] - Running sleep   2000   \n"
-				+ "[3] + Running sleep   3000"
+				+ "[1]   Running                    sleep 1000 &\n"
+				+ "[2]-  Running                    sleep 2000 &\n"
+				+ "[3]+  Running                    sleep 3000 &"
 				;
 		
 		String expect2 = 
 				"[1] 100000\n"
 				+ "[2] 100001\n"
 				+ "[3] 100002\n"
-				+ "[1]   Running sleep   1000   \n"
-				+ "[2] - Running sleep   2000"
+				+ "[1]   Running                    sleep 1000 &\n"
+				+ "[2]-  Running                    sleep 2000 &"
 				;
 		
 		if( !interactive) {
 			 expect1 = 
 						""
-						+ "[1]   Running sleep   1000   \n"
-						+ "[2] - Running sleep   2000   \n"
-						+ "[3] + Running sleep   3000"
+						+ "[1]   Running                    sleep 1000 &\n"
+						+ "[2]-  Running                    sleep 2000 &\n"
+						+ "[3]+  Running                    sleep 3000 &"
 						;
 			 expect2 = expect1;
 		}
@@ -262,7 +262,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %3\n";
-		String expect = "[3] + Running sleep   3000   \n";
+		String expect = "[3]+  Running                    sleep 3000 &\n";
 		res = executeCommand(cmd,"");
 		out = res.getStdOut();
 		err = res.getStdErr();		
@@ -271,7 +271,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %1\n";
-		expect = "[1]   Running sleep   1000   \n";
+		expect = "[1]   Running                    sleep 1000 &\n";
 		res = executeCommand(cmd,"");
 		out = res.getStdOut();
 		err = res.getStdErr();		
@@ -280,7 +280,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %-\n";
-		expect = "[2] - Running sleep   2000   \n";
+		expect = "[2]-  Running                    sleep 2000 &\n";
 		res = executeCommand(cmd,"");
 		out = res.getStdOut();
 		err = res.getStdErr();		
@@ -289,7 +289,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %+\n";
-		expect = "[3] + Running sleep   3000   \n";
+		expect = "[3]+  Running                    sleep 3000 &\n";
 		res = executeCommand(cmd,"");
 		out = res.getStdOut();
 		err = res.getStdErr();		
@@ -298,7 +298,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode);
 
 		cmd = "jobs %%\n";
-		expect = "[3] + Running sleep   3000   \n";
+		expect = "[3]+  Running                    sleep 3000 &\n";
 		res = executeCommand(cmd,"");
 		out = res.getStdOut();
 		err = res.getStdErr();		

@@ -43,48 +43,41 @@ public class Sleep extends ShellCommand{
 			ret = 1;
 		} else {
 			long timeToSleep = 0;
-			Integer ival = null;
-			Long multiplyer=null;
-
+			boolean any = false;
+			// the last number and unit (for -db)
+			String ival = null;
+			long multiplyer = Second;
 			for(Argument a :args) {
 				String val = (""+a.getValue(ctx)).trim();
 				if(val.isEmpty()) {
 					continue;
 				}
-				if( Character.isDigit(val.charAt(0))) {
-					// a number with an optional unit: 10, 1d, 2M
-					int end = 0;
-					while( end < val.length() && Character.isDigit(val.charAt(end))) {
-						end++;
-					}
-					ival = Integer.parseInt(val.substring(0, end));
-					val = val.substring(end);
+				if( val.equals("-db")) {
+					debug = true;
+					continue;
 				}
-				if( val.isEmpty()) {
-					// the number had no unit
-				} else if( val.equals("s")) {
-					multiplyer = Second;
-				} else if( val.equals("m")) {
-					multiplyer = Minute;
-				} else if( val.equals("h")) {
-					multiplyer = Hour;
-				} else if( val.equals("d")) {
-					multiplyer = Day;
-				} else if( val.equals("M")) {
-					multiplyer = MilliSecond;
-				} else if( val.equals("-db")) {
-					debug = true;											
-				} 
+				// a number, maybe with a fraction (0.5), and an optional unit; several add up
+				java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+\\.?\\d*|\\.\\d+)([smhdM]?)").matcher(val);
+				if( !m.matches()) {
+					ctx.stderr.println("sleep: invalid time interval '"+val+"'");
+					return 1;
+				}
+				ival = m.group(1);
+				multiplyer = switch (m.group(2)) {
+				case "m" -> Minute;
+				case "h" -> Hour;
+				case "d" -> Day;
+				case "M" -> MilliSecond;
+				default -> Second;
+				};
+				timeToSleep += Math.round(Double.parseDouble(m.group(1)) * multiplyer);
+				any = true;
 			}
 			
-			if( ival == null ) {
-				ctx.stderr.println("No valid tiem ");
+			if( !any ) {
+				ctx.stderr.println("sleep: missing operand");
 				return 1;
 			}
-			if( multiplyer==null) {
-				multiplyer = Second;
-			}
-			timeToSleep = ival.longValue() * multiplyer;
 			if( debug ) {
 				//System.out.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
 				ctx.stdout.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);

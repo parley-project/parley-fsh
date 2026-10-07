@@ -159,7 +159,8 @@ argumentPart:
 		} else if( part.procSubstOut != null ) {
 			ret = CommandSubstitutionStatement.outputSubstitution(part.procSubstOut.getText(), ctx);
 		} else if( part.braceExpansion()!=null) {
-			throw new RuntimeException("brace expantion must be done before calling getValue");
+			// where words are not brace-expanded (x={a,b}, a case word) it is text
+			ret = part.getText();
 		} else {
 			throw new RuntimeException("Not a valid argument "+part.getText());
 		}
@@ -274,14 +275,33 @@ argumentPart:
 				if( m.lookingAt()) {
 					return new int[] {idx, m.end()};
 				}
-				// ${@:2}, ${a[@]@Q}, ${a[@]/x/y} ...: one word per element too
+				// ${@:2}, ${a[@]@Q}, ${a[@]/x/y}, ${y:-$@} ...: one word per element too
 				int end = closingBrace(body, idx+2);
-				if( end > 0 && Parameter.isElementsForm(body.substring(idx+2, end))) {
+				if( end > 0 && (Parameter.isElementsForm(body.substring(idx+2, end)) || Parameter.isDefaultAt(body.substring(idx+2, end)))) {
 					return new int[] {idx, end+1};
+				}
+				if( end > 0 ) {
+					// a $@ inside another ${ } is part of it
+					idx = end;
 				}
 			}
 		}
 		return null;
+	}
+
+	private static final java.util.regex.Pattern ALL_ELEMENTS = java.util.regex.Pattern.compile("[@*]|[a-zA-Z_][a-zA-Z_0-9]*\\[[@*]\\]");
+
+	/** "*" for $*, "a[@]" for ${a[@]} ...: an unquoted expansion of all the elements; null if not one */
+	private static String unquotedElements(ArgumentPartContext part) {
+		String inner = null;
+		if( part.argVariable() != null ) {
+			String t = part.argVariable().getText();
+			inner = t.length() == 2 ? t.substring(1) : null;
+		} else if( part.parameter() != null ) {
+			String t = part.parameter().getText();
+			inner = t.startsWith("${") && t.endsWith("}") ? t.substring(2, t.length()-1) : null;
+		}
+		return inner != null && ALL_ELEMENTS.matcher(inner).matches() ? inner : null;
 	}
 
 	/** the index of the } that closes the ${ whose text starts at start, or -1 */
@@ -334,11 +354,24 @@ argumentPart:
 				if( home != null ) {
 					current.append(home);
 					currentIsField = true;
+				} else if( unquotedElements(part) != null ) {
+					// unquoted $* $@ ${a[*]}: each element is split on its own, and elements are
+					// separate words even when IFS is empty
+					List<Object> items = Parameter.elements(unquotedElements(part), ctx);
+					for (int idx = 0; idx < items.size(); idx++) {
+						if( idx > 0 ) {
+							finish();
+						}
+						addSplit(""+items.get(idx));
+					}
 				} else if( isExpansion(part)) {
 					Object val = getValue(part, ctx);
 					if( val instanceof Parameter.Word w ) {
 						// ${y:-"1 2" 3}: the quoted parts are not split
 						for (int idx = 0; idx < w.texts.size(); idx++) {
+							if( w.breakBefore.get(idx)) {
+								finish();
+							}
 							if( w.quoted.get(idx)) {
 								appendQuoted(w.texts.get(idx));
 							} else {
@@ -387,9 +420,10 @@ argumentPart:
 			String prefix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(0, at[0]), ctx, Quoting.DOUBLE_QUOTED);
 			String suffix = FileSourceShPreProcessorVisitorImpl.processString(body.substring(at[1]), ctx, Quoting.DOUBLE_QUOTED);
 			String atText = body.substring(at[0], at[1]);
-			List<Object> params = atText.startsWith("${")
-					? Parameter.elements(FileSourceShPreProcessorVisitorImpl.processString(atText.substring(2, atText.length()-1), ctx), ctx)
-					: ctx.getPositionalParameterValues();
+			String inner = atText.startsWith("${") ? atText.substring(2, atText.length()-1) : null;
+			List<Object> params = inner == null ? ctx.getPositionalParameterValues()
+					: Parameter.isDefaultAt(inner) ? Parameter.defaultAt(inner, ctx)
+					: Parameter.elements(FileSourceShPreProcessorVisitorImpl.processString(inner, ctx), ctx);
 			if( params.isEmpty()) {
 				if( !prefix.isEmpty() || !suffix.isEmpty()) {
 					appendQuoted(prefix+suffix);

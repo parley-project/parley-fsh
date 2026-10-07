@@ -268,12 +268,13 @@ public class TestExternal extends AbstractConsoleTest {
 		String cmd = "test02.sh dude\n";
 		
 		
-		String expectErr = "execute permission denied: test02.sh\n"
+		// as in bash: found but not executable is status 126
+		String expectErr = "test02.sh: Permission denied\n"
 				+ "";
 
 		String stdIn = "";
 		String expectOut = "";
-		int exitCode = 1;
+		int exitCode = 126;
 		boolean tmp = showError;
 		showError = false;
 		executeCommand(cmd,stdIn,exitCode,expectOut,expectErr);

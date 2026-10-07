@@ -307,7 +307,8 @@ DOLLAR_LPAREN_LPAREN: '$((';
 LPAREN_LPAREN: '((';
 
 NOT_CURLY: [ \t]|~[}];
-DECLARE_A : 'declare' WS* '-' DECLARE_OP+;
+// declare -l x, declare +l x (+ takes the attribute away)
+DECLARE_A : 'declare' WS* [-+] DECLARE_OP+;
 fragment DECLARE_OP:[aAfFgiIlnrtuxp];
 DIVIDE: ':^:' ;
 RX_CHAR:[!@#$%^&*()_+~];

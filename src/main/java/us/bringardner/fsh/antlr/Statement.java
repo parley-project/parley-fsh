@@ -490,6 +490,9 @@ public abstract class Statement {
 			if( allowed && globWords() && w.hasUnquotedWildcard()) {
 				String pattern = ""+w.getValue(ctx);
 				List<String> matches = Glob.expand(pattern, ctx);
+				if( matches.isEmpty()) {
+					Glob.failglob(pattern, ctx);
+				}
 				if( !matches.isEmpty() || Glob.option(ctx, "nullglob")) {
 					// (with shopt -s nullglob a pattern that matches nothing is removed)
 					for(String m : matches) {

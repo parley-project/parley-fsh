@@ -47,7 +47,17 @@ assignStatement
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
 		int ret = 0;
+		// an assignment alone leaves $_ empty, as in bash
+		ctx.console.lastArgument = "";
 		AssignStatementContext actx = (AssignStatementContext) getContext();
+		if( !ctx.isInFunction()) {
+			for(AssignmentContext a : actx.assignment()) {
+				if( a.LOCAL() != null ) {
+					ctx.stderr.println("local: can only be used in a function");
+					return 1;
+				}
+			}
+		}
 		// the status is that of the last $( ) in the values (x=$(false) is 1), or 0 (a value may
 		// read $?, so it is not reset first)
 		long before = ctx.console.substitutionCount();
