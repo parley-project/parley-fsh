@@ -18,7 +18,6 @@ brace-pad
 brace-step
 
 # break
-break-continue
 
 # colon
 
@@ -31,12 +30,10 @@ break-continue
 # export
 
 # for
-for-no-in
 
 # func
 
 # funcname
-funcname
 
 # getopts
 getopts
@@ -48,10 +45,8 @@ getopts
 # line
 
 # lineno
-lineno
 
 # local
-local-dynamic
 
 # mapfile
 mapfile
@@ -80,7 +75,6 @@ printf-v
 # read
 
 # readonly
-readonly
 
 # redir
 
@@ -100,4 +94,3 @@ tilde
 trap-exit
 
 # until
-until-loop

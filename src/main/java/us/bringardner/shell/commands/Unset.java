@@ -52,8 +52,14 @@ public class Unset extends ShellCommand{
 			return 1;
 		}
 
+		int ret = 0;
 		for(; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
+			if( ctx.console.isReadonly(text) && !functions ) {
+				ctx.stderr.println("unset: "+text+": cannot unset: readonly variable");
+				ret = 1;
+				continue;
+			}
 			java.util.regex.Matcher m = ELEMENT.matcher(text);
 			if( !functions && m.matches()) {
 				// unset 'a[1]' or 'm[key]': one element
@@ -70,7 +76,7 @@ public class Unset extends ShellCommand{
 				ctx.removeFunction(text);
 			}
 		}
-		// an unset name is not an error
-		return 0;
+		// an unset name is not an error (a readonly one is)
+		return ret;
 	}
 }

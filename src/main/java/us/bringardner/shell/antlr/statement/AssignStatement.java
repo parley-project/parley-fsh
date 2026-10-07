@@ -17,6 +17,7 @@ import us.bringardner.shell.antlr.Arithmetic;
 import us.bringardner.shell.antlr.Expression;
 import us.bringardner.shell.antlr.FileSourceShPreProcessorVisitorImpl;
 import us.bringardner.shell.antlr.Statement;
+import us.bringardner.shell.antlr.signal.ExitException;
 
 public class AssignStatement extends Statement{
 
@@ -51,6 +52,14 @@ assignStatement
 		long before = ctx.console.substitutionCount();
 		for(AssignmentContext assignment : actx.assignment()) {
 			name = assignment.id1.getText();
+			if( ctx.console.isReadonly(name)) {
+				// as in bash: an error, which ends a script
+				ctx.stderr.println(name+": readonly variable");
+				if( !ctx.console.isInteractive ) {
+					throw new ExitException(ctx, 1);
+				}
+				return 1;
+			}
 			Object val = valueOf(assignment, ctx);
 			boolean append = assignment.op != null && assignment.op.getType() == FileSourceShParser.PLUS_EQ;
 			ParserRuleContext index = assignment.associative_index() != null ? assignment.associative_index() : assignment.array_index();

@@ -53,6 +53,8 @@ public class WhileStatement extends LoopStatement{
 				try {
 					ret = stmt.process(sc);
 				} catch(LoopControlException e) {
+					// break and continue have status 0
+					ret = 0;
 					if(e.howFar>1) {
 						throw new LoopControlException(e.type, e.howFar-1);
 					}

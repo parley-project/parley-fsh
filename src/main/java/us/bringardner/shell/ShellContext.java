@@ -349,7 +349,22 @@ $
 	 * A variable that is part of a word ($name, $1, $? ... with an optional index).
 	 */
 	public Object getVariable(ArgVariableContext ctx)  {
-		return index(getVariable(ctx.VARIABLE().getText()), ctx.associative_index(), ctx.array_index());
+		Object ret = getVariable(ctx.VARIABLE().getText());
+		if( ctx.associative_index() == null && ctx.array_index() == null ) {
+			// $a of an array is its element 0, as in bash
+			return firstElement(ret);
+		}
+		return index(ret, ctx.associative_index(), ctx.array_index());
+	}
+
+	/** an array's element 0 (a map's "0"); anything else as it is */
+	public static Object firstElement(Object val) {
+		if( val instanceof List<?> ) {
+			return ((List<?>) val).isEmpty() ? null : ((List<?>) val).get(0);
+		} else if( val instanceof Map<?,?> ) {
+			return ((Map<?,?>) val).get("0");
+		}
+		return val;
 	}
 
 	private Object index(Object ret, Associative_indexContext associativeIndex, Array_indexContext arrayIndex) {
@@ -451,9 +466,14 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
-		if( !functionStack.isEmpty() && functionStack.peek().local.containsKey(name)) {
-			// name=value sets the function's local variable
-			functionStack.peek().local.put(name, value);
+		if( console.isReadonly(name)) {
+			throw new ReadonlyException(name);
+		}
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			// name=value sets the local variable of the nearest function that has one (bash's
+			// dynamic scope: a function sees, and sets, its caller's locals)
+			scope.local.put(name, value);
 		} else {
 			setGlobalVariable(name, value);
 		}
@@ -463,12 +483,13 @@ $
 	private static final Object UNSET_LOCAL = new Object();
 
 	public boolean unSetVariable(String name) {
-		if( !functionStack.isEmpty()) {
-			FunctionInvocation inv = functionStack.peek();
-			if( inv.local.containsKey(name)) {
-				inv.local.put(name, UNSET_LOCAL);
-				return true;
-			}
+		if( console.isReadonly(name)) {
+			throw new ReadonlyException(name);
+		}
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			scope.local.put(name, UNSET_LOCAL);
+			return true;
 		}
 
 		Map<Object, Object> map = commandStack.peek();
@@ -517,8 +538,24 @@ $
 			}
 		}
 
-		if( !functionStack.isEmpty() && functionStack.peek().local.get(name) == UNSET_LOCAL ) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null && scope.local.get(name) == UNSET_LOCAL ) {
 			return null;
+		}
+		if( name.equals("FUNCNAME")) {
+			// the running functions, innermost first, then main
+			if( functionStack.isEmpty()) {
+				return null;
+			}
+			FsshList names = new FsshList();
+			for (int idx = functionStack.size()-1; idx >= 0; idx--) {
+				names.add(functionStack.get(idx).function.getName());
+			}
+			names.add("main");
+			return names;
+		}
+		if( name.equals("LINENO")) {
+			return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
 		}
 		Object ret = getLocalVariable(name);
 		if( ret == null ) {
@@ -553,9 +590,27 @@ $
 	}
 
 	@SuppressWarnings("unchecked")
+	/** the innermost running function with a local variable name, or null */
+	private FunctionInvocation localScope(String name) {
+		for (int idx = functionStack.size()-1; idx >= 0; idx--) {
+			if( functionStack.get(idx).local.containsKey(name)) {
+				return functionStack.get(idx);
+			}
+		}
+		return null;
+	}
+
+	/** an assignment to a readonly variable */
+	public static class ReadonlyException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+		public ReadonlyException(String name) {
+			super(name+": readonly variable");
+		}
+	}
+
 	public Object getLocalVariable(String name) {
-		if( !functionStack.isEmpty()) {
-			FunctionInvocation inv = functionStack.peek();
+		FunctionInvocation inv = localScope(name);
+		if( inv != null ) {
 			Object tmp = inv.local.get(name);
 			if( tmp == UNSET_LOCAL ) {
 				return null;

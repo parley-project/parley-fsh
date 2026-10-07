@@ -52,6 +52,7 @@ ${parameter:-word}
 	public static final Pattern NO_RANGE = Pattern.compile("(?<name>[a-zA-Z_]{1,}[a-zA-Z0-9_]{0,})(?<colon>[:])?(?<type>[-=?+])(?<val>.*)");
 
 	private static final Pattern ARRAY_ALL = Pattern.compile("([!#|]?)([a-zA-Z_][a-zA-Z_0-9]*)\\[([@*])\\]");
+	private static final Pattern SIMPLE_NAME = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
 	private static final Pattern MAP_ELEMENT = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]");
 	private static final Pattern INDIRECT = Pattern.compile("!([a-zA-Z_][a-zA-Z_0-9]*)");
 	private static final Pattern POSITIONAL = Pattern.compile("[0-9]+");
@@ -98,6 +99,14 @@ ${parameter:-word}
 				ret.append(o);
 			}
 			return ret.toString();
+		}
+		if( SIMPLE_NAME.matcher(text).matches()) {
+			// ${a} of an array is its element 0, as in bash
+			Object val = sc.getVariable(text);
+			if( val instanceof List<?> || val instanceof Map<?,?> ) {
+				Object first = ShellContext.firstElement(val);
+				return first == null ? "" : first;
+			}
 		}
 		m = MAP_ELEMENT.matcher(text);
 		if( m.matches() && sc.getVariable(m.group(1)) instanceof Map<?,?> ) {

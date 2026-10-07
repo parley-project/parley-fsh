@@ -358,7 +358,7 @@ whileStatement:
     ;
 
 until_statement:
-     white* UNTIL white* compare white*  doStatement
+     white* UNTIL white* compare white* (';' white*)? doStatement
     ;
 
 doStatement:
@@ -367,6 +367,8 @@ doStatement:
 
 forStatement:
      white* FOR white* ID white* IN white* list white* SEMI? doStatement
+    // for x; do ... done: the positional parameters
+    | white* FOR white* ID white* SEMI? white* doStatement
     | white* FOR white* for_loop_control white* SEMI? doStatement
     ;
 

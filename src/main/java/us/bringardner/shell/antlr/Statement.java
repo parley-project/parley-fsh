@@ -335,11 +335,11 @@ public abstract class Statement {
 		// brace expansion and word splitting replace args for this run only; the tree (and these
 		// args) are shared by every run of the statement
 		Argument [] savedArgs = args;
-		expandWords(ctx);
-
+		// entered first, so $LINENO in its words is this statement's line
 		ctx.enterStatement(this);
 
 		try {
+			expandWords(ctx);
 			ret = execute(ctx);
 			// $? is the status of the last statement, whatever kind it is (if, [ ], a loop, a group ...)
 			ctx.console.setLastExitCode(ret);

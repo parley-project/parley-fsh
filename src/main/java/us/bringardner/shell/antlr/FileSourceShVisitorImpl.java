@@ -602,6 +602,8 @@ forStatement
 			ret.setLoopControl(Arithmetic.body(ctx.for_loop_control().ARITH_COMMAND().getText()));
 		} else if( ctx.ID() !=null){
 			ret.setVarName(ctx.ID().getText());
+			// for x; do ...: the positional parameters
+			ret.setPositional(ctx.IN() == null);
 		} else {
 			throw new RuntimeException("Invalid for statement");
 		}

@@ -13,6 +13,12 @@ import us.bringardner.shell.antlr.Statement;
 public class ForStatement extends LoopStatement{
 	//   : FOR ID IN argument+ SEMI? DO loop_statement+ DONE
 	String varName;
+	/** for x; do ... (no in): loop over the positional parameters */
+	boolean positional;
+
+	public void setPositional(boolean positional) {
+		this.positional = positional;
+	}
 	List<Statement> stmts;
 	/** for (( init; condition; step )): arithmetic, each may be empty; null for for name in ... */
 	String init;
@@ -77,7 +83,14 @@ public class ForStatement extends LoopStatement{
 	protected int executeShellStyle(ShellContext sc) throws IOException {
 		int ret = 0;
 		ShellContext.LoopControl tmp = null;
-		List<String> sargs = argsToString(sc);
+		List<String> sargs = new ArrayList<>();
+		if( positional ) {
+			for(Object o : sc.getPositionalParameterValues()) {
+				sargs.add(""+o);
+			}
+		} else {
+			sargs = argsToString(sc);
+		}
 		for(String arg : sargs ) {
 			if(ShellContext.LoopControl.Break.equals(tmp)) {
 				break;
@@ -90,6 +103,8 @@ public class ForStatement extends LoopStatement{
 				try {
 					ret = stmt.process(sc);
 				} catch(LoopControlException e) {
+					// break and continue have status 0
+					ret = 0;
 					if(e.howFar>1) {
 						throw new LoopControlException(e.type, e.howFar-1);
 					}
@@ -124,6 +139,8 @@ public class ForStatement extends LoopStatement{
 					try {
 						ret = stmt.process(sc);
 					} catch(LoopControlException e) {
+						// break and continue have status 0
+						ret = 0;
 						if(e.howFar>1) {
 							throw new LoopControlException(e.type, e.howFar-1);
 						}

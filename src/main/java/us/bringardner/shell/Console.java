@@ -407,6 +407,7 @@ delimiter
 		registerCommand(new us.bringardner.shell.commands.False());
 		registerCommand(new us.bringardner.shell.commands.Colon());
 		registerCommand(new us.bringardner.shell.commands.Test());
+		registerCommand(new us.bringardner.shell.commands.Readonly());
 		registerCommand(new us.bringardner.shell.commands.BracketTest());
 		registerCommand(new Unmount());
 		registerCommand(new Unset());
@@ -2179,6 +2180,17 @@ delimiter
 
 	public void setLastExitCode(int code) {
 		lastExitCode = code;
+	}
+
+	/** readonly variables: they cannot be set or unset */
+	private final java.util.Set<String> readonlyVariables = ConcurrentHashMap.newKeySet();
+
+	public boolean isReadonly(String name) {
+		return readonlyVariables.contains(name);
+	}
+
+	public void setReadonly(String name) {
+		readonlyVariables.add(name);
 	}
 
 	/** variables declared with declare -i: an assignment's value is arithmetic */
