@@ -10,36 +10,31 @@ options {
 script: SHEBANG? statement* white* EOF;
 
 	
+// one command, or an && || list of them (a newline may follow && or ||). One rule for both:
+// choosing between a command and a list meant reading the whole command to see whether && came
+// next, which made the fast (SLL) parse give up and the full one slow.
 conditionalStatement:
-	  white* left=statement1 white* op=(OR|AND) white* right=statement1 white*
-	| conditionalStatement white* op=(OR|AND) white* right=statement1 white*
+	  parts+=statement1 (WS* ops+=(OR|AND) white* parts+=statement1)*
 	;
 	
 		
-// a trailing & runs the statement in the background. (A separate rule that repeated the whole
-// command before the & made the fast SLL parse fail on every command.)
+// a trailing & runs the statement (the whole && || list) in the background
 statement:
 	  // & ends a statement too: cmd & next
-	  white* statement1 (WS* bg=AMP WS* | WS* (NL|SEMI|EOF))
-	| conditionalStatement  (NL|SEMI|EOF)
+	  white* conditionalStatement (WS* bg=AMP WS* | WS* (NL|SEMI|EOF))
 	;
 	
+// if, while, for, until, case, select and declare are reached through pipeStatement only (a
+// pipeline of one). Listed here too, telling them apart meant reading to the fi or done to see
+// whether a | followed: the fast (SLL) parse gave up on most scripts and the full one was slow.
 statement1:
       // ! before any command or pipeline inverts its status
       NOT WS+ negated=statement1
     | DBL_TEST
-    | ifStatement
     | mathStatement
-    | whileStatement
-    | forStatement
-    | selectStatement
-    | caseStatement
     | assignStatement
     | functionDefinition
-    | until_statement
     | doStatement
-    // before pipeStatement, which would take local as a command name
-    | declareAssociativeArrayStatement
     // after assignments and function definitions, which also start with a name (where commandStatement was)
     | pipeStatement
     | loop_controll_statement
@@ -183,7 +178,12 @@ pipeStatement:
     ;
     
 pipeableStatement:
-		commandStatement
+		// only redirects: > file (empties it), <<EOF ... EOF (a block comment). First, so > out.txt
+		// is not read as the redirect > out. and the command txt
+		bareRedirect=redirect
+		// before commandStatement, which would take local as a command name
+		| declareAssociativeArrayStatement
+		| commandStatement
 		| statement_group WS*  // a command takes the spaces before | itself; a group did not, so "{ ...; } | x" failed
 		// loops and other compound commands: ... | while read x; do ...; done
 		// ... and they take redirects: while read l; do ...; done < file
@@ -193,8 +193,6 @@ pipeableStatement:
 		| ifStatement (WS* redirect)? WS*
 		| caseStatement (WS* redirect)? WS*
 		| selectStatement (WS* redirect)? WS*
-		// declare -f f | head, declare -p x | cat
-		| declareAssociativeArrayStatement
 		;
 		    
 pipeOp:
@@ -209,7 +207,7 @@ compareStatement:
     | LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* (then=bracketGroup WS*)?
     ;
 
-bracketGroup: LCURLY white* (statement_or_statement1 white*)* RCURLY;
+bracketGroup: LCURLY body=statement_block RCURLY;
 
 testWords: (WS+ argument)* WS+ ;
 
@@ -300,14 +298,14 @@ term:
 
 // case word in [(]pattern [| pattern]...) commands ;; ... esac  (on one line or several)
 caseStatement:
-       CASE WS+ subject=argument white+ IN white+ (caseClause white*)* ESAC
+       CASE WS+ subject=argument white+ IN white+ caseClause* ESAC
     ;
 
 
 
 // the last clause may leave out ;;
 caseClause:
-        (LPAREN WS*)? patternList WS* RPAREN white* statement_block white* op=(SEMI_SEMI|SEMI_AMP|SEMI_SEMI_AMP)?
+        (LPAREN WS*)? patternList WS* RPAREN statement_block (op=(SEMI_SEMI|SEMI_AMP|SEMI_SEMI_AMP) white*)?
     ;
 
 
@@ -388,15 +386,21 @@ redirectionOperator:
 white: NL | WS;			
 
 ifStatement:
-	IF white* compare white* (SEMI|NL) white* THEN white* statement_block white* 
-           (ELIF white* compare white* (SEMI|NL) white* THEN white* statement_block)*
-        (white* ELSE white* statement_block)?
-      white* FI white*
+	// (statement_block takes the white space around its statements: more white* here, and after
+	// fi, gave the parser several ways to place a newline, which the fast parse got wrong)
+	IF white* compare white* (SEMI|NL) white* THEN statement_block
+           (ELIF white* compare white* (SEMI|NL) white* THEN statement_block)*
+        (ELSE statement_block)?
+      FI
     ;
 
+// statements separated by ; & or newlines; the last needs no separator ({ a; b }, x) a && b;;).
+// (With every separator optional, local IFS=_ parts was local IFS=_ and then a command parts.)
 statement_block:
-		 (white* statement_or_statement1 white*)*
+		 white* (statement_or_statement1 (sep statement_or_statement1)* sep?)? WS*
 		;
+
+sep: WS* (bg=AMP | NL | SEMI) white* ;
 
 
 whileStatement:
@@ -408,7 +412,7 @@ until_statement:
     ;
 
 doStatement:
-     white* DO white* statement* white* DONE
+     white* DO body=statement_block DONE
     ;
 
 forStatement:
@@ -443,7 +447,10 @@ array_index:
 hereDocument: HERE_START WS* ID;
 
 functionDefinition:
-     white* (FUNCTION white*)? fname=funcName white* (LPAREN white* RPAREN white*)? compoundCommand
+     // function f { ...; }, function f() ..., f() ...: as in bash, function or () is needed (with
+     // neither, echo {1..4} was the function echo)
+     white* FUNCTION white+ fname=funcName white* (LPAREN white* RPAREN white*)? compoundCommand
+   | white* fname=funcName white* LPAREN white* RPAREN white* compoundCommand
     
     ;
 
@@ -466,24 +473,26 @@ list:
     ;
 
 // an && || list needs no ; before ;; or ) (case x in x) true && echo a;; esac)
-statement_or_statement1: (statement|conditionalStatement|statement1);
+// in a block the last statement needs no terminator: { a; b }, case x in y) a && b;; esac
+// a statement of a block (statement_block takes the separators and white space between them)
+statement_or_statement1: conditionalStatement ;
 
 statement_group: redirect1=redirect? statement_group1 redirect2=redirect? 
     	;
 		
 // the redirects apply to the whole group: { ...; } 2>/dev/null, ( ... ) > out
 statement_group1
- 		: redirect1=redirect?  LCURLY white* statement_or_statement1* white* RCURLY (WS* redirect2=redirect)?
-        | redirect1=redirect?  LPAREN white* statement_or_statement1* white* RPAREN (WS* redirect2=redirect)?
+ 		: redirect1=redirect?  LCURLY body=statement_block RCURLY (WS* redirect2=redirect)?
+        | redirect1=redirect?  LPAREN body=statement_block RPAREN (WS* redirect2=redirect)?
 		;
 
 
 
 compoundCommand:
           // f() { ...; } > file: the redirect applies each time f runs
-          redirect1=redirect?  LCURLY white* statement* white* RCURLY (WS* redirect2=redirect)?
+          redirect1=redirect?  LCURLY body=statement_block RCURLY (WS* redirect2=redirect)?
         // f() ( ... ): the body runs in a subshell, and its last command needs no ;
-        | subshell=LPAREN white* statement_or_statement1* white* RPAREN (WS* redirect2=redirect)?
+        | subshell=LPAREN body=statement_block RPAREN (WS* redirect2=redirect)?
         
         ;
 

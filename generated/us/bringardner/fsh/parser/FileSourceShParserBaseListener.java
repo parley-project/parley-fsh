@@ -701,6 +701,18 @@ public class FileSourceShParserBaseListener implements FileSourceShParserListene
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterSep(FileSourceShParser.SepContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSep(FileSourceShParser.SepContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterWhileStatement(FileSourceShParser.WhileStatementContext ctx) { }
 	/**
 	 * {@inheritDoc}

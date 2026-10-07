@@ -42,7 +42,7 @@ public class FunctionDefStatement extends Statement{
 		if( cc.subshell != null ) {
 			lines.add(text(cc.subshell, cc.RPAREN().getSymbol()));
 		} else {
-			for(us.bringardner.fsh.parser.FileSourceShParser.StatementContext s : cc.statement()) {
+			for(us.bringardner.fsh.parser.FileSourceShParser.Statement_or_statement1Context s : cc.body.statement_or_statement1()) {
 				String t = text(s.getStart(), s.getStop()).trim();
 				while( t.endsWith(";")) {
 					t = t.substring(0, t.length()-1).trim();

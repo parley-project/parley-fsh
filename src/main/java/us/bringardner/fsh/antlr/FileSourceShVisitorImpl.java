@@ -132,33 +132,20 @@ statement
 
 	@Override
 	public Statement visitStatement(StatementContext ctx) {
-		Statement ret = null;
-		if( ctx.statement1()!=null ) {
-			ret = visitStatement1(ctx.statement1());
-			if( ctx.bg != null ) {
-				ret = new BackgroundStatement(ctx, ret);
-			}
-		} else if( ctx.conditionalStatement()!=null) {
-			ret = visitConditionalStatement(ctx.conditionalStatement());
+		Statement ret = visitConditionalStatement(ctx.conditionalStatement());
+		if( ctx.bg != null ) {
+			ret = new BackgroundStatement(ctx, ret);
 		}
-
 		return ret;
 	}
 
 	@Override
 	public Statement visitConditionalStatement(ConditionalStatementContext ctx) {
-		Statement ret = null;
-		Statement left = null;
-		if( ctx.left!=null  ) {
-			left = visitStatement1(ctx.left);
-		} else {
-			left = visitConditionalStatement(ctx.conditionalStatement());			
+		// a && b || c is (a && b) || c
+		Statement ret = visitStatement1(ctx.parts.get(0));
+		for (int idx = 0; idx < ctx.ops.size(); idx++) {
+			ret = new LogicStatement(ctx, ret, ctx.ops.get(idx), visitStatement1(ctx.parts.get(idx+1)));
 		}
-
-		Statement right = visitStatement1(ctx.right);
-
-		ret = new LogicStatement(ctx,left,ctx.op,right);
-
 		return ret;
 	}
 
@@ -175,26 +162,12 @@ statement
 			ret = visitPipeStatement(ctx.pipeStatement());
 		} else if(ctx.mathStatement()!=null ) {
 			ret = visitMathStatement(ctx.mathStatement());
-		}else if(ctx.ifStatement()!=null ) {
-			ret = visitIfStatement(ctx.ifStatement());
-		}else if(ctx.whileStatement()!=null ) {
-			ret = visitWhileStatement(ctx.whileStatement());
-		}else if(ctx.forStatement()!=null ) {
-			ret = visitForStatement(ctx.forStatement());
-		}else if(ctx.until_statement()!=null ) {
-			ret = visitUntil_statement(ctx.until_statement());
 		}else if(ctx.assignStatement()!=null ) {
 			ret = visitAssignStatement(ctx.assignStatement());
 			// x=$(cmd) 2>/dev/null
 			RerdirectImpl r = RerdirectImpl.find(ctx.assignStatement().children);
 			if( r != null ) {
 				ret = new RedirectedStatement(ctx.assignStatement(), ret, r);
-			}
-		}else if(ctx.declareAssociativeArrayStatement()!=null ) {
-			ret = new DeclareAssociateArrayStatement(ctx.declareAssociativeArrayStatement());
-			RerdirectImpl r = RerdirectImpl.find(ctx.declareAssociativeArrayStatement().children);
-			if( r != null ) {
-				ret = new RedirectedStatement(ctx.declareAssociativeArrayStatement(), ret, r);
 			}
 		} else if(ctx.functionDefinition()!=null ) {
 			ret = visitFunctionDefinition(ctx.functionDefinition());		
@@ -208,12 +181,8 @@ statement
 			}
 		}  else if (ctx.boolean_statement()!=null) {
 			ret = new LogicStatement(ctx,ctx.boolean_statement());
-		} else if (ctx.caseStatement()!=null) {
-			ret = visitCaseStatement(ctx.caseStatement());
 		} else if (ctx.compareStatement()!=null) {			
 			ret = visitCompareStatement(ctx.compareStatement());
-		}else if(ctx.selectStatement()!=null ) {
-			ret = visitSelectStatement(ctx.selectStatement());
 		} else if(ctx.job_control_statement() !=null) {
 			ret = visitJob_control_statement(ctx.job_control_statement());
 		}  else  {
@@ -238,7 +207,7 @@ statement
 		if( ctx.then != null ) {
 			// [ test ] { cmds }: the group runs if the test passes
 			List<Statement> list = new ArrayList<>();
-			for(Statement_or_statement1Context s : ctx.then.statement_or_statement1()) {
+			for(Statement_or_statement1Context s : ctx.then.body.statement_or_statement1()) {
 				Statement tmp = visitStatement_or_statement1(s);
 				if( tmp != null ) {
 					list.add(tmp);
@@ -262,6 +231,15 @@ statement
 	}
 
 	private Statement visitPipeable(PipeableStatementContext ctx) {
+		if( ctx.bareRedirect != null ) {
+			// > file: nothing runs; visitPipeableStatement puts the redirect around it
+			return new Statement(ctx) {
+				@Override
+				protected int execute(ShellContext sc) throws java.io.IOException {
+					return 0;
+				}
+			};
+		}
 		if( ctx.commandStatement() !=null ) {
 			return visitCommandStatement(ctx.commandStatement());
 		} else if( ctx.statement_group() !=null ) {
@@ -520,31 +498,22 @@ ifStatement
 
 	@Override
 	public Statement visitStatement_or_statement1(Statement_or_statement1Context ctx) {
-		if( ctx.statement()!=null) {
-			return visitStatement(ctx.statement());
+		Statement ret = visitConditionalStatement(ctx.conditionalStatement());
+		// a & after it (the block's separator) runs it in the background
+		if( ctx.getParent() != null && ctx.getParent().children != null ) {
+			List<ParseTree> kids = ctx.getParent().children;
+			int at = kids.indexOf(ctx);
+			if( at >= 0 && at+1 < kids.size() && kids.get(at+1) instanceof us.bringardner.fsh.parser.FileSourceShParser.SepContext sep && sep.bg != null ) {
+				ret = new BackgroundStatement(ctx, ret);
+			}
 		}
-		if( ctx.conditionalStatement()!=null) {
-			return visitConditionalStatement(ctx.conditionalStatement());
-		}
-		if( ctx.statement1()!=null) {
-			return visitStatement1(ctx.statement1());
-		}
-
-		return null;
+		return ret;
 	}
 
 	@Override
 	public StatementGroup1 visitStatement_group1(Statement_group1Context ctx) {
 
-		List<Statement> ret = new ArrayList<>();
-		for(Statement_or_statement1Context s: ctx.statement_or_statement1()) {
-			Statement tmp = visitStatement_or_statement1(s);
-			if( tmp != null) {
-				ret.add(tmp);
-			}
-		}
-
-		return new StatementGroup1(ctx, ret);
+		return new StatementGroup1(ctx, visitStatement_block(ctx.body));
 	}
 
 	@Override
@@ -599,15 +568,7 @@ caseClause
 
 	@Override
 	public List<Statement> visitDoStatement(DoStatementContext ctx) {
-		List<Statement> ret = new ArrayList<>();
-		for(StatementContext s:ctx.statement()) {
-			Statement stmt = visitStatement(s);
-			if( stmt !=null) {
-				ret.add(stmt);	
-			}			
-		}
-
-		return ret;
+		return visitStatement_block(ctx.body);
 	}
 
 	@Override
@@ -686,7 +647,7 @@ forStatement
 		List<Statement> stmts = new ArrayList<>();
 		if( ctx.compoundCommand().subshell != null ) {
 			List<Statement> body = new ArrayList<>();
-			for(Statement_or_statement1Context s: ctx.compoundCommand().statement_or_statement1()) {
+			for(Statement_or_statement1Context s: ctx.compoundCommand().body.statement_or_statement1()) {
 				Statement tmp = visitStatement_or_statement1(s);
 				if( tmp != null) {
 					body.add(tmp);
@@ -694,8 +655,8 @@ forStatement
 			}
 			stmts.add(new StatementGroup1(ctx.compoundCommand(), body, true));
 		}
-		for(StatementContext ss : ctx.compoundCommand().statement()) {
-			Statement tmp = visitStatement(ss);
+		for(Statement_or_statement1Context ss : ctx.compoundCommand().subshell == null ? ctx.compoundCommand().body.statement_or_statement1() : List.<Statement_or_statement1Context>of()) {
+			Statement tmp = visitStatement_or_statement1(ss);
 			if( tmp !=null ) {
 				stmts.add(tmp);
 			}

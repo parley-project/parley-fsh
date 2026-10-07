@@ -353,6 +353,12 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitStatement_block(FileSourceShParser.Statement_blockContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShParser#sep}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSep(FileSourceShParser.SepContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#whileStatement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
