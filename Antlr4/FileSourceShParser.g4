@@ -23,7 +23,9 @@ statement:
 	;
 	
 statement1:
-      ifStatement
+      // ! before any command or pipeline inverts its status
+      NOT WS+ negated=statement1
+    | ifStatement
     | mathStatement
     | whileStatement
     | forStatement
@@ -48,7 +50,8 @@ loop_controll_statement:
             | CONTINUE WS* NUMBER?
             ;
 
-assignStatement: assignment WS*
+// a=1 b=2: one or more assignments with no command
+assignStatement: assignment (WS+ assignment)* WS*
 		;
 		
 // the value is a word, like a command argument: x=sub-dir and y=$x$x are text, x=$((1+2)) is a number
@@ -123,7 +126,8 @@ signed_number: (MINUS|PLUS|PERC)? NUMBER;
 // one alternative: with two that differ only at the end, the parser had to read the whole
 // command before it could choose (seconds for a long path)
 commandStatement:
-      WS*	redirect1=redirect? WS* command (WS+ argument)* WS* (hereDocument WS*)? redirect2=redirect?
+      // VAR=value cmd: the assignments are for this command only
+      WS*	redirect1=redirect? WS* (prefix+=assignment WS+)* command (WS+ argument)* WS* (hereDocument WS*)? redirect2=redirect?
     ;
     
     
@@ -139,6 +143,8 @@ redirect: (redirect_one WS*)+;
 command: cmdWord=commandWord
 		| path
 		| ID
+		| TRUE   // builtins, so ! false and false | true work
+		| FALSE
 		;
 
 commandWord: commandWordStart argumentPart* ;

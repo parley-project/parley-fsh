@@ -107,32 +107,16 @@ public class Read extends ShellCommand{
 		if(arrayName == null &&  names.size()==0) {
 			ctx.setVariable("REPLY", line);
 		} else { 
-			StringBuilder buf = new StringBuilder();
-
-			char[] chars = (""+ctx.getVariable(Console.IFS)).toCharArray();
-			buf.setLength(0);
-			for(char c : chars) {
-				if( buf.length()>0) {
-					buf.append('|');
-				}
-				buf.append(c);
-			}
-
-			String [] words = line.split(buf.toString());
+			Object tmp = ctx.getVariable(Console.IFS);
+			String ifs = tmp == null ? " \t\n" : tmp.toString();
 			if( arrayName !=null ) {
-				for(int idx=0; idx < words.length; idx++ ) {
-					ctx.setVariable(arrayName, idx, words[idx]);
+				ctx.setVariable(arrayName, null);
+				List<String> words = split(line, ifs, Integer.MAX_VALUE);
+				for(int idx=0; idx < words.size(); idx++ ) {
+					ctx.setVariable(arrayName, idx, words.get(idx));
 				}
 			} else {
-				List<String> values = new ArrayList<>();
-				for(int idx=0; idx < words.length; idx++ ) {
-					if(names.size()> idx) {
-						values.add(words[idx]);
-					} else {
-						String val = values.getLast()+" "+words[idx];
-						values.set(values.size()-1, val);
-					}
-				}
+				List<String> values = split(line, ifs, names.size());
 				for(int idx=0; idx < names.size(); idx++ ) {
 					if( values.size()>idx) {
 						ctx.setVariable(names.get(idx), values.get(idx));
@@ -144,6 +128,55 @@ public class Read extends ShellCommand{
 		}
 		
 		return ret;
+	}
+
+	/**
+	 * Split a line into at most max fields as bash's read does: IFS whitespace at the ends is
+	 * dropped, runs of it separate fields, each other IFS character ends one field (a::b has an
+	 * empty field), and the last field is the rest of the line as written (a:b:c into two names
+	 * gives a and b:c).
+	 */
+	static List<String> split(String line, String ifs, int max) {
+		List<String> ret = new ArrayList<>();
+		if( ifs.isEmpty()) {
+			ret.add(line);
+			return ret;
+		}
+		int n = line.length();
+		int pos = 0;
+		while( pos < n && isIfsSpace(line.charAt(pos), ifs)) {
+			pos++;
+		}
+		while( pos < n ) {
+			if( ret.size() == max-1 ) {
+				// the rest, without trailing IFS whitespace
+				int end = n;
+				while( end > pos && isIfsSpace(line.charAt(end-1), ifs)) {
+					end--;
+				}
+				ret.add(line.substring(pos, end));
+				return ret;
+			}
+			int start = pos;
+			while( pos < n && ifs.indexOf(line.charAt(pos)) < 0 ) {
+				pos++;
+			}
+			ret.add(line.substring(start, pos));
+			while( pos < n && isIfsSpace(line.charAt(pos), ifs)) {
+				pos++;
+			}
+			if( pos < n && ifs.indexOf(line.charAt(pos)) >= 0 && !Character.isWhitespace(line.charAt(pos))) {
+				pos++;
+				while( pos < n && isIfsSpace(line.charAt(pos), ifs)) {
+					pos++;
+				}
+			}
+		}
+		return ret;
+	}
+
+	private static boolean isIfsSpace(char c, String ifs) {
+		return ifs.indexOf(c) >= 0 && Character.isWhitespace(c);
 	}
 
 	public String readLine(ShellContext ctx,String prompt) throws IOException {

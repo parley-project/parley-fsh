@@ -44,26 +44,27 @@ assignStatement
 	protected int execute(ShellContext ctx) throws IOException {
 		int ret = 0;
 		AssignStatementContext actx = (AssignStatementContext) getContext();
-		AssignmentContext assignment = actx.assignment();
-		name = assignment.id1.getText();
-		// the status is that of the last $( ) in the value (x=$(false) is 1), or 0 (the value may
+		// the status is that of the last $( ) in the values (x=$(false) is 1), or 0 (a value may
 		// read $?, so it is not reset first)
 		long before = ctx.console.substitutionCount();
-		Object val = getValue(ctx);
-		ret = ctx.console.substitutionCount() != before ? ctx.console.getLastExitCode() : 0;
-		
-		if( assignment.LOCAL()!=null) {
-			ctx.setLocalVariable(name, val);
-		} else {
-			ctx.setVariable(name, val);
+		for(AssignmentContext assignment : actx.assignment()) {
+			name = assignment.id1.getText();
+			Object val = valueOf(assignment, ctx);
+			if( assignment.LOCAL()!=null) {
+				ctx.setLocalVariable(name, val);
+			} else {
+				ctx.setVariable(name, val);
+			}
 		}
+		ret = ctx.console.substitutionCount() != before ? ctx.console.getLastExitCode() : 0;
 		return ret;
 	}
 
-	public Object getValue(ShellContext ctx) throws IOException {
-		AssignStatementContext aactx = (AssignStatementContext) getContext();
-		AssignmentContext actx = aactx.assignment();
-		
+	/**
+	 * The value of one assignment: a=(...) is a list, a= is empty, and a value with one part keeps its type.
+	 */
+	public static Object valueOf(AssignmentContext actx, ShellContext ctx) throws IOException {
+
 		Object val = null;
 		
 		if( actx.arrayInitializer()!=null) {

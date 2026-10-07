@@ -394,6 +394,9 @@ delimiter
 		registerCommand(new Trap());
 
 		registerCommand(new Unalias());
+		registerCommand(new us.bringardner.shell.commands.True());
+		registerCommand(new us.bringardner.shell.commands.False());
+		registerCommand(new us.bringardner.shell.commands.Colon());
 		registerCommand(new Unmount());
 		registerCommand(new Unset());
 

@@ -30,7 +30,6 @@ break-continue
 break-n
 
 # colon
-colon-builtin
 
 # comments
 
@@ -44,7 +43,6 @@ dbl-regex
 declare-int
 
 # export
-export-env
 
 # for
 for-no-in
@@ -77,7 +75,6 @@ local-dynamic
 mapfile
 
 # negate
-negate-pipeline
 
 # param
 param-case
@@ -106,7 +103,6 @@ quote-ansi-c
 # random
 
 # read
-read-ifs
 
 # readonly
 readonly
@@ -121,12 +117,10 @@ redir-out-append
 set-e
 
 # special
-special-dollar-question-after-pipe
 
 # test
 test-and-or
 test-nonempty-word
-test-not
 test-strings
 
 # tilde

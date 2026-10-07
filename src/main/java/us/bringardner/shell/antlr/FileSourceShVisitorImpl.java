@@ -81,6 +81,7 @@ import us.bringardner.shell.antlr.statement.IfStatement;
 import us.bringardner.shell.antlr.statement.JobControlStatement;
 import us.bringardner.shell.antlr.statement.LogicStatement;
 import us.bringardner.shell.antlr.statement.MathStatement;
+import us.bringardner.shell.antlr.statement.NegateStatement;
 import us.bringardner.shell.antlr.statement.PipeStatement;
 import us.bringardner.shell.antlr.statement.SelectStatement;
 import us.bringardner.shell.antlr.statement.StatementGroup;
@@ -161,6 +162,9 @@ statement
 
 	@Override
 	public Statement visitStatement1(Statement1Context ctx) {
+		if( ctx.negated != null ) {
+			return new NegateStatement(ctx, visitStatement1(ctx.negated));
+		}
 		Statement ret = null;
 		//String txt = ctx.getText();
 		if(ctx.pipeStatement()!=null ) {
@@ -288,6 +292,7 @@ commandStatement
 		} else {
 			ret.setName(visitCommand(ctx.command()));
 		}
+		ret.setPrefixAssignments(ctx.prefix);
 		Argument[] args = null;
 		if( ctx.argument()!=null) {
 			
@@ -688,6 +693,8 @@ argument
 		//		command: ID ;
 		if( ctx.ID()!=null ) {
 			return ctx.ID().getText();
+		} else if( ctx.TRUE()!=null || ctx.FALSE()!=null ) {
+			return ctx.getText();
 		} else if( ctx.path()!=null ) {
 			return ctx.path().getText();
 		} else {

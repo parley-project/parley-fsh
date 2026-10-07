@@ -18,6 +18,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.core.BaseThread;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
+import us.bringardner.filesource.sh.FileSourceShParser.AssignmentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.HereDocumentContext;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.FileSourceFactory;
@@ -221,6 +222,14 @@ public class CommandStatement extends Statement{
 			try {
 				String name = cmd.get(0);
 				ProcessBuilder builder = new ProcessBuilder(cmd);
+				// the shell's exported variables, not the JVM's (export X=1 and X=1 cmd reach the program)
+				Map<String,String> env = builder.environment();
+				env.clear();
+				for(Map.Entry<String,Object> e : ctx.getEnvironmentVariables().entrySet()) {
+					if( e.getValue() != null ) {
+						env.put(e.getKey(), ""+e.getValue());
+					}
+				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
 				if (dir instanceof FileProxy) {
@@ -427,8 +436,39 @@ public class CommandStatement extends Statement{
 	}
 
 
+	/** VAR=value before the command: set (and exported) for this command only */
+	List<AssignmentContext> prefixAssignments;
+
+	public void setPrefixAssignments(List<AssignmentContext> prefix) {
+		prefixAssignments = prefix == null || prefix.isEmpty() ? null : prefix;
+	}
+
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
+		if( prefixAssignments == null ) {
+			return expandAndRun(ctx);
+		}
+		// IFS=: read a b: set them for the command, then put back what was there
+		List<Object[]> saved = new ArrayList<>();
+		try {
+			for(AssignmentContext a : prefixAssignments) {
+				String var = a.id1.getText();
+				Object val = AssignStatement.valueOf(a, ctx);
+				saved.add(new Object[] {var, ctx.console.getVariable(var), ctx.getEvironmentVariable(var)});
+				ctx.setVariable(var, val);
+				ctx.setEnvironmentVariable(var, ""+val);
+			}
+			return expandAndRun(ctx);
+		} finally {
+			for (int idx = saved.size()-1; idx >= 0; idx--) {
+				Object [] s = saved.get(idx);
+				ctx.setVariable((String) s[0], s[1]);
+				ctx.setEnvironmentVariable((String) s[0], s[2]);
+			}
+		}
+	}
+
+	private int expandAndRun(ShellContext ctx) throws IOException {
 		if( commandWord == null ) {
 			return runCommand(ctx);
 		}
