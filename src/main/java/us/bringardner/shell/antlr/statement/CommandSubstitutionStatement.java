@@ -170,4 +170,46 @@ public class CommandSubstitutionStatement extends Statement{
 			throw new RuntimeException("process substitution: "+e.getMessage(), e);
 		}
 	}
+	/**
+	 * >(cmd): the name of a temporary file; once the statement that uses it is done, cmd runs in a
+	 * subshell with the file as its input (bash runs it at the same time, on a pipe; what cmd
+	 * reads is the same). See ShellContext.runOutputSubstitutions.
+	 */
+	public static String outputSubstitution(String token, ShellContext primary) {
+		String code = token.substring(2, token.length()-1);
+		try {
+			java.io.File file = java.io.File.createTempFile("bjlshell-", ".fifo");
+			file.deleteOnExit();
+			primary.pendingOutputSubstitutions.add(new String[] {code, file.getAbsolutePath()});
+			return file.getAbsolutePath();
+		} catch (IOException e) {
+			throw new RuntimeException("process substitution: "+e.getMessage(), e);
+		}
+	}
+
+	/** run cmd of >(cmd) on what was written to file */
+	public static void runOutputSubstitution(String code, String file, ShellContext primary) {
+		ShellContext ctx = primary.subShell();
+		Console.Snapshot saved = null;
+		try (java.io.InputStream in = new java.io.FileInputStream(file)) {
+			ctx.stdin = in;
+			saved = primary.console.snapshot();
+			for(Statement s : FileSourceShVisitorImpl.parse(code)) {
+				s.process(ctx);
+			}
+		} catch (ExitException e) {
+		} catch (Exception e) {
+			String msg = e.getMessage();
+			primary.stderr.println(msg != null ? msg : e.toString());
+		} finally {
+			if( saved != null ) {
+				try {
+					primary.console.restore(saved);
+				} catch (IOException e) {
+				}
+			}
+			ctx.stdout.flush();
+			new java.io.File(file).delete();
+		}
+	}
 }

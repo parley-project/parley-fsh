@@ -9,8 +9,3 @@ alias-expand
 
 
 # long tail
-local-options
-named-fd
-nameref-declare
-nameref-local
-procsub-output

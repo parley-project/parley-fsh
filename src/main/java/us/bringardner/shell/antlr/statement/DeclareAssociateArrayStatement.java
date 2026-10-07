@@ -85,8 +85,17 @@ associativeArrayElement
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
 		DeclareAssociativeArrayStatementContext ctx = (DeclareAssociativeArrayStatementContext) getContext();
-		String opts = ctx.DECLARE_A().getText();
-		opts = opts.substring(opts.indexOf('-')+1);
+		// declare -opts, or local [-opts]: local makes the names the function's
+		boolean local = ctx.LOCAL() != null;
+		String opts = "";
+		if( local ) {
+			for(org.antlr.v4.runtime.Token t : ctx.localOpts) {
+				opts += t.getText().substring(1);
+			}
+		} else {
+			opts = ctx.DECLARE_A().getText();
+			opts = opts.substring(opts.indexOf('-')+1);
+		}
 		if( opts.indexOf('p') >= 0 ) {
 			// declare -p name ...: as declarations the shell can read back
 			int ret = 0;
@@ -107,6 +116,12 @@ associativeArrayElement
 			if( opts.indexOf('i') >= 0 ) {
 				sc.console.setInteger(name, true);
 			}
+			if( opts.indexOf('n') >= 0 ) {
+				// a reference: the variable named by the value (declare -n ref=target, local -n r=$1)
+				String target = item.value == null ? "" : ""+new Argument(item.value).getValue(sc);
+				sc.setNameRef(name, target, local);
+				continue;
+			}
 			Object val = null;
 			if( item.associativeArrayInitializer() != null ) {
 				Map<String,Object> map = new TreeMap<>();
@@ -117,7 +132,9 @@ associativeArrayElement
 			} else if( item.arrayInitializer() != null ) {
 				FsshList list = new FsshList();
 				for(ArgumentContext ac : item.arrayInitializer().argument_list().argument()) {
-					list.add(new Argument(ac).getValue(sc));
+					for(String w : us.bringardner.shell.Glob.expandWord(ac, sc)) {
+						list.add(w);
+					}
 				}
 				val = list;
 			} else if( item.value != null ) {
@@ -128,7 +145,7 @@ associativeArrayElement
 			} else if( item.EQ() != null ) {
 				val = "";
 			}
-			Object old = sc.getVariable(name);
+			Object old = local ? null : sc.getVariable(name);
 			if( val == null ) {
 				// declare -A m, declare -a a: an empty array (an existing one stays)
 				if( opts.indexOf('A') >= 0 && !(old instanceof Map<?,?>)) {
@@ -137,8 +154,18 @@ associativeArrayElement
 					val = new FsshList();
 				}
 			}
-			if( val != null ) {
+			if( local ) {
+				// local x: the function's, and unset until it is given a value
+				if( val == null ) {
+					sc.declareLocal(name);
+				} else {
+					sc.setLocalVariable(name, val);
+				}
+			} else if( val != null ) {
 				sc.setVariable(name, val);
+			}
+			if( opts.indexOf('r') >= 0 ) {
+				sc.console.setReadonly(name);
 			}
 			if( opts.indexOf('x') >= 0 ) {
 				Object v = sc.getVariable(name);

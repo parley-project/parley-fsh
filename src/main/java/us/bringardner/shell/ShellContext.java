@@ -460,6 +460,7 @@ $
 
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
+		name = resolveName(name);
 		Object val = globalVariable(name);
 		if( isolated != null && !isolated.containsKey(name)) {
 			// the shell's array: change a copy
@@ -497,6 +498,9 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
+		if( !(value instanceof NameRef)) {
+			name = resolveName(name);
+		}
 		if( console.isReadonly(name)) {
 			throw new ReadonlyException(name);
 		}
@@ -513,7 +517,66 @@ $
 	/** a function's local variable after unset: it stays unset (the global is not seen) until the function returns */
 	private static final Object UNSET_LOCAL = new Object();
 
+	/** a nameref's value (declare -n): the name of the variable it stands for */
+	public static final class NameRef {
+		final String target;
+		NameRef(String target) {
+			this.target = target;
+		}
+	}
+
+	/**
+	 * declare -n name=target (local: the function's).
+	 */
+	public void setNameRef(String name, String target, boolean local) {
+		NameRef ref = new NameRef(target);
+		if( local && !functionStack.isEmpty()) {
+			functionStack.peek().local.put(name, ref);
+		} else if( local ) {
+			setLocalVariable(name, ref);
+		} else {
+			setGlobalVariable(name, ref);
+		}
+	}
+
+	/**
+	 * local x with no value: the function's, unset until it is given one.
+	 */
+	public void declareLocal(String name) {
+		if( !functionStack.isEmpty()) {
+			functionStack.peek().local.put(name, UNSET_LOCAL);
+		}
+	}
+
+	/** the variable a name stands for: itself, or what its nameref names (a few levels deep) */
+	public String resolveName(String name) {
+		for (int depth = 0; depth < 8; depth++) {
+			Object raw = rawVariable(name);
+			if( !(raw instanceof NameRef) || ((NameRef) raw).target.isEmpty()) {
+				return name;
+			}
+			name = ((NameRef) raw).target;
+		}
+		return name;
+	}
+
+	/** a variable's own value (a NameRef stays one) */
+	private Object rawVariable(String name) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			Object v = scope.local.get(name);
+			return v == UNSET_LOCAL ? null : v;
+		}
+		@SuppressWarnings("unchecked")
+		Map<String,Object> l = commandStack.isEmpty() ? null : (Map<String, Object>) commandStack.peek().get(LOCAL_VARIABLES);
+		if( l != null && l.containsKey(name)) {
+			return l.get(name);
+		}
+		return globalVariable(name);
+	}
+
 	public boolean unSetVariable(String name) {
+		name = resolveName(name);
 		if( console.isReadonly(name)) {
 			throw new ReadonlyException(name);
 		}
@@ -551,6 +614,16 @@ $
 	}
 
 	public Object getVariable(String name) {
+		Object ret = getVariable0(name);
+		// a nameref stands for the variable it names
+		for (int depth = 0; depth < 8 && ret instanceof NameRef; depth++) {
+			String target = ((NameRef) ret).target;
+			ret = target.isEmpty() ? null : getVariable0(target);
+		}
+		return ret;
+	}
+
+	private Object getVariable0(String name) {
 		if( name.charAt(0)=='$') {
 			char c = name.charAt(1);
 			if( c=='_' || Character.isLetterOrDigit(c)) {
@@ -739,6 +812,9 @@ $
 		}
 		return ret;
 	}
+
+	/** >(cmd) of the running statements: {cmd, file}, run when the statement that made them is done */
+	public final List<String[]> pendingOutputSubstitutions = new ArrayList<>();
 
 	/** how many sourced files are running (return ends the innermost) */
 	public int sourceDepth;

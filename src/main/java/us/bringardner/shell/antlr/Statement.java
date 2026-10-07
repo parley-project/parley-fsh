@@ -13,6 +13,7 @@ import java.util.List;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ArgumentContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ListContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Redirect_oneContext;
@@ -82,11 +83,14 @@ public abstract class Statement {
 			if( !ctx.console.isHereDocumentQuoted(id)) {
 				body = FileSourceShPreProcessorVisitorImpl.processString(body, ctx, FileSourceShPreProcessorVisitorImpl.Quoting.HERE_DOC);
 			}
-			setIn(ctx, r.fd == null ? (fd == null ? 0 : fd) : Integer.parseInt(r.fd.getText()), new ByteArrayInputStream(body.getBytes()), null, opened);
+			int n = r.fd == null ? (fd == null ? 0 : fd) : r.fd.getType() == FileSourceShParser.VARFD ? variableFd(ctx, r.fd.getText(), r) : Integer.parseInt(r.fd.getText());
+			setIn(ctx, n, new ByteArrayInputStream(body.getBytes()), null, opened);
 			return;
 		}
 		String op = r.redirectionOperator().getText();
-		if( r.fd != null ) {
+		if( r.fd != null && r.fd.getType() == FileSourceShParser.VARFD ) {
+			fd = variableFd(ctx, r.fd.getText(), r);
+		} else if( r.fd != null ) {
 			fd = Integer.parseInt(r.fd.getText());
 		}
 		String word = ""+new Argument(r.target).getValue(ctx);
@@ -144,6 +148,27 @@ public abstract class Statement {
 		default:
 			throw new IOException("unknown redirect "+op);
 		}
+	}
+
+	/**
+	 * {name}>file: a new descriptor (10 or more, the first free one) whose number is put in name;
+	 * {name}>&- closes the one name holds.
+	 */
+	private static int variableFd(ShellContext ctx, String token, Redirect_oneContext r) {
+		String name = token.substring(1, token.length()-1);
+		if( r.target != null && r.target.getText().equals("-")) {
+			try {
+				return Integer.parseInt((""+ctx.getVariable(name)).trim());
+			} catch (NumberFormatException e) {
+				throw new RuntimeException(name+": not a file descriptor");
+			}
+		}
+		int fd = 10;
+		while( ctx.console.getFileDistcriptor(fd) != null ) {
+			fd++;
+		}
+		ctx.setVariable(name, fd);
+		return fd;
 	}
 
 	private static boolean isDescriptor(String word) {
@@ -368,6 +393,8 @@ public abstract class Statement {
 		// args) are shared by every run of the statement
 		Argument [] savedArgs = args;
 		args = parsedArgs;
+		// >(cmd) made by this statement's words run when it is done
+		int outputSubstitutions = ctx.pendingOutputSubstitutions.size();
 		// entered first, so $LINENO in its words is this statement's line
 		ctx.enterStatement(this);
 
@@ -382,6 +409,10 @@ public abstract class Statement {
 			}
 		} finally {
 			args = savedArgs;
+			while( ctx.pendingOutputSubstitutions.size() > outputSubstitutions ) {
+				String [] p = ctx.pendingOutputSubstitutions.remove(outputSubstitutions);
+				us.bringardner.shell.antlr.statement.CommandSubstitutionStatement.runOutputSubstitution(p[0], p[1], ctx);
+			}
 			ctx.exitStatement(ret,this);
 		}
 		return ret;

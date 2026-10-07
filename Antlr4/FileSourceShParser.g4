@@ -37,10 +37,11 @@ statement1:
     | functionDefinition
     | until_statement
     | doStatement
+    // before pipeStatement, which would take local as a command name
+    | declareAssociativeArrayStatement
     // after assignments and function definitions, which also start with a name (where commandStatement was)
     | pipeStatement
     | loop_controll_statement
-    | declareAssociativeArrayStatement
     | boolean_statement
     | compareStatement
     | job_control_statement
@@ -125,6 +126,7 @@ argumentPart:
     | arg_command_substitution
     | braceExpansion
     | procSubst=PROC_SUBST
+    | procSubstOut=PROC_SUBST_OUT
     ;
 
 // $name, $1, $? ... (a bare name is a literal part of the word); $name[index] indexes an array
@@ -145,8 +147,8 @@ redirect: (redirect_one WS*)+;
  
  // [n]op word: 2>file, >>log, <in, 2>&1, >&2, 3<&-, &>out; or a here-document (done <<EOF)
  redirect_one:
-      fd=IO_NUMBER? redirectionOperator WS* target=argument
-    | fd=IO_NUMBER? HERE_START WS* hereId=ID
+      fd=(IO_NUMBER|VARFD)? redirectionOperator WS* target=argument
+    | fd=(IO_NUMBER|VARFD)? HERE_START WS* hereId=ID
     ;
 
 
@@ -497,6 +499,8 @@ pbody: ~RCURLY*;
 // declare -opts name[=value] ...: -A and -a arrays, -i integer, -x export
 declareAssociativeArrayStatement:
      white* DECLARE_A (WS+ declareItem)* WS*
+    // local -n r=$1, local -a arr=(1 2), local x y=2 (local x=1 is an assignStatement)
+    | white* LOCAL (WS+ localOpts+=ARG_ID)* (WS+ declareItem)+ WS*
     ;
 
 declareItem: id1=ID (EQ (associativeArrayInitializer | arrayInitializer | value=argument)?)? 

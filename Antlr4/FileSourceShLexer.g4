@@ -103,6 +103,9 @@ ESC_OR:  '\\||';
 
 
 
+// exec {fd}>file: the shell picks a descriptor and puts its number in fd
+VARFD: {atRedirectStart()}? '{' [a-zA-Z_] [a-zA-Z_0-9]* '}' {redirectAhead()}? ;
+
 // the file descriptor of a redirect: digits right before < or >, as in 2>file, 2>&1, 3<file.
 // With a space (echo 2 > f) the digits are a word.
 IO_NUMBER: {atRedirectStart()}? [0-9]+ {redirectAhead()}? ;
@@ -159,6 +162,11 @@ ANSI_STRING
 // <(cmd): the command's output, as a file name
 PROC_SUBST
     : '<(' CMD_PART* ')'
+    ;
+
+// >(cmd): a file name; what is written to it is the command's input
+PROC_SUBST_OUT
+    : '>(' CMD_PART* ')'
     ;
 
 // everything between single quotes is as written, backslashes too ('a\' is a\), as in bash
