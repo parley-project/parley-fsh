@@ -19,7 +19,6 @@ brace-step
 
 # break
 break-continue
-break-n
 
 # colon
 
@@ -96,9 +95,6 @@ set-e
 # special
 
 # test
-test-and-or
-test-nonempty-word
-test-strings
 
 # tilde
 tilde

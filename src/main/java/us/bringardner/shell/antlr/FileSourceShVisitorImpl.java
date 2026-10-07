@@ -216,7 +216,9 @@ statement
 	//compareStatement:  LSQUARE simpleCompare=compare RSQUARE statement?;
 	@Override
 	public Statement visitCompareStatement(CompareStatementContext ctx) {
-		Compare compare = new Compare(ctx.compare());
+		// [ words ]: test's arguments (unless a [ inside groups)
+		String text = Compare.bracketText(ctx.LSQUARE(), ctx.RSQUARE());
+		Compare compare = text != null ? new Compare(ctx.compare(), text) : new Compare(ctx.compare());
 		List<List<Statement>> stmts = new ArrayList<>();
 		if( ctx.statement()!=null) {
 			List<Statement> list = new ArrayList<>();

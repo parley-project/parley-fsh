@@ -289,7 +289,11 @@ public class DoubleBracket {
 	// ---------------------------------------------------------------- tests
 
 	private boolean unary(String op, Token arg) {
-		String val = expand(arg.text);
+		return unaryTest(op, expand(arg.text), ctx);
+	}
+
+	/** -n -z -v and the file tests (also used by test and [ ]) */
+	public static boolean unaryTest(String op, String val, ShellContext ctx) {
 		switch (op) {
 		case "-n": return !val.isEmpty();
 		case "-z": return val.isEmpty();
@@ -334,7 +338,7 @@ public class DoubleBracket {
 		case "-nt":
 		case "-ot":
 		case "-ef":
-			return files(l, op, expand(right.text));
+			return fileCompare(l, op, expand(right.text), ctx);
 		default:
 			Number a = Arithmetic.evaluate(l, ctx);
 			Number b = Arithmetic.evaluate(expand(right.text), ctx);
@@ -350,7 +354,8 @@ public class DoubleBracket {
 		}
 	}
 
-	private boolean files(String a, String op, String b) {
+	/** f1 -nt -ot -ef f2 (also used by test and [ ]) */
+	public static boolean fileCompare(String a, String op, String b, ShellContext ctx) {
 		try {
 			FileSource f1 = ctx.getFileSource(a);
 			FileSource f2 = ctx.getFileSource(b);

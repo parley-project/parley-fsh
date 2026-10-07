@@ -44,7 +44,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 
 	@Test
 	public void testIfStatent01_2() throws Exception{
-		String cmd = "if [ false ] ; then\n"
+		String cmd = "if false ; then\n"
 				+ "		echo one\n"
 				+ "fi\n"
 				;
@@ -61,7 +61,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 
 	@Test
 	public void testIfStatent01_3() throws Exception{
-		String cmd = "if [ false ] ; then\n"
+		String cmd = "if false ; then\n"
 				+ "		echo one\n"
 				+ "else \n"
 				+ "		echo two\n"

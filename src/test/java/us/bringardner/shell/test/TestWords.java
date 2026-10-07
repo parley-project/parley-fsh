@@ -376,7 +376,8 @@ public class TestWords extends AbstractConsoleTest {
 		assertEquals("n\n", res.getStdOut());
 		// $? after any statement
 		expect("[ 1 == 2 ]; echo $?; [ 1 == 1 ]; echo $?; [ \"\" ]; echo $?", "1\n0\n1\n");
-		expect("x=true; [ $x ]; echo $?; x=0; [ $x ]; echo $?; [ $nope ]; echo $?", "0\n1\n1\n");
+		// one word is true if it is not empty (0 and false too), as in bash
+		expect("x=true; [ $x ]; echo $?; x=0; [ $x ]; echo $?; [ $nope ]; echo $?; [ false ]; echo $?", "0\n0\n1\n0\n");
 		expect("for i in 1; do false; done; echo $?; { false; }; echo $?", "1\n1\n");
 		expect("x=1; echo $?; false; x=2; echo $?; false; y=$?; echo $y", "0\n0\n1\n");
 		expect("echo a | grep -q b; echo $?", "1\n");

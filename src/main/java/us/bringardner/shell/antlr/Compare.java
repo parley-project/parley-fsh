@@ -1,6 +1,10 @@
 package us.bringardner.shell.antlr;
 
 import java.io.IOException;
+import java.util.List;
+
+import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import us.bringardner.filesource.sh.FileSourceShParser.CompareContext;
 import us.bringardner.shell.ShellContext;
@@ -11,6 +15,52 @@ public class Compare {
 
 	public Compare(CompareContext ctx) {
 		this.ctx = ctx;
+	}
+
+	/** [ words ]: the text between the brackets, run as test's arguments */
+	private String bracketText;
+	private Statement bracketTest;
+
+	/**
+	 * A compare that is [ text ]: the words of text are expanded like any command's and tested by
+	 * test, as in bash (where [ is a command).
+	 */
+	public Compare(CompareContext ctx, String bracketText) {
+		this.ctx = ctx;
+		this.bracketText = bracketText;
+	}
+
+	/**
+	 * @return the text between [ and ] (in the source), or null if it is not a plain [ words ]
+	 * (a [ inside it groups, which is this shell's own syntax: [ [ a ] || [ b ] ])
+	 */
+	public static String bracketText(TerminalNode open, TerminalNode close) {
+		if( open == null || close == null ) {
+			return null;
+		}
+		int start = open.getSymbol().getStopIndex()+1;
+		int stop = close.getSymbol().getStartIndex()-1;
+		String text = stop >= start ? open.getSymbol().getInputStream().getText(Interval.of(start, stop)) : "";
+		return text.trim().startsWith("[") || text.trim().endsWith("]") ? null : text;
+	}
+
+	private boolean bracketTest(ShellContext sc) throws IOException {
+		if( bracketTest == null ) {
+			List<Statement> stmts;
+			try {
+				stmts = FileSourceShVisitorImpl.parse("__bracket_test "+bracketText);
+			} catch (Exception e) {
+				throw new TestSyntaxException("syntax error in [ "+bracketText+" ]");
+			}
+			if( stmts.size() != 1 ) {
+				throw new TestSyntaxException("syntax error in [ "+bracketText+" ]");
+			}
+			bracketTest = stmts.get(0);
+		}
+		int status = bracketTest.process(sc);
+		// 2: not a valid test (the status of [ ] is 2)
+		failed |= status == 2;
+		return status == 0;
 	}
 
 	/*
@@ -44,6 +94,18 @@ compare : LSQUARE compare_prime RSQUARE
 	}
 
 	private boolean evaluate0(ShellContext sc) throws IOException {
+		if( bracketText != null ) {
+			return bracketTest(sc);
+		}
+		if( ctx.LSQUARE() != null ) {
+			String text = bracketText(ctx.LSQUARE(), ctx.RSQUARE());
+			if( text != null ) {
+				Compare c = new Compare(ctx, text);
+				boolean ret = c.bracketTest(sc);
+				failed |= c.failed;
+				return ret;
+			}
+		}
 		if( ctx.DBL_TEST() != null ) {
 			return DoubleBracket.test(ctx.DBL_TEST().getText(), sc) == 0;
 		}

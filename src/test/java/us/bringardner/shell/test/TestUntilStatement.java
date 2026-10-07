@@ -49,7 +49,7 @@ public class TestUntilStatement extends AbstractConsoleTest {
 	public void testUntilStatent01_2() throws Exception{
 		String cmd = 
 				  "i=0\n"
-				+ "until [ false ]\n"
+				+ "until false\n"
 				+ "do\n"
 				+ "  echo Number: $i\n"
 				+ "  ((i++))\n"
@@ -76,7 +76,7 @@ public class TestUntilStatement extends AbstractConsoleTest {
 	public void testUntilStatent01_3() throws Exception{
 		String cmd = 
 				  "i=0\n"
-				+ "until [ false ]\n"
+				+ "until false\n"
 				+ "do\n"
 				+ "  ((i++))\n"
 				+ "	 if [ $i == 2 ] ; then\n"
