@@ -83,8 +83,9 @@ public class ManageTestFiles {
 		//5 permissions=OWNER_READ:GROUP_READ:OWNER_WRITE:OTHERS_READ:OWNER_EXECUTE:GROUP_EXECUTE:OTHERS_EXECUTE:
 
 		String []parts = line.split("[,]");
-		int idx = parts[0].indexOf("BjlShell");
-		String fileName = parts[0].substring(idx+9).trim();
+		// the path after the project directory (/.../fsh/TestFiles/... gives TestFiles/...)
+		int idx = parts[0].indexOf("/fsh/");
+		String fileName = parts[0].substring(idx+5).trim();
 		
 		File file = new File(fileName);
 		

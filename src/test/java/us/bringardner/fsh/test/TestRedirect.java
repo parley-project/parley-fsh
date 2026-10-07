@@ -435,7 +435,7 @@ exec 3>&- #close fd 3.
 				+ "step3\n").split("\n");
 		
 		if( getOs()==OperatingSystem.Windows) {
-			expectErr = "'C:\\Git\\BjlShell\\target\\logdir\\output.txt' is not recognized as an internal or external command,\n"
+			expectErr = "'C:\\Git\\fsh\\target\\logdir\\output.txt' is not recognized as an internal or external command,\n"
 					+ "operable program or batch file.\n";
 		} else {
 			expectErr = "external command failed. cmd=[/Volumes/Data/eclipse-git/fsh/target/logdir/output.txt] exit=1\n"
