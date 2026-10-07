@@ -407,9 +407,10 @@ True if the length of string is non-zero.
 			double d1 = toDouble(left);
 			double d2 = toDouble(right);
 			ret = d1 > d2;
-		} else if (left instanceof Integer) {
-			int i1 = (Integer) left;
-			int i2 = toInt(right);
+		} else if (left instanceof Integer || left instanceof Long) {
+			// whole numbers: arithmetic gives Long, literals Integer
+			long i1 = ((Number) left).longValue();
+			long i2 = toLong(right);
 			ret = i1 > i2;
 		}  else if (left instanceof String) {
 			String s1 = (String)left;
@@ -435,12 +436,12 @@ True if the length of string is non-zero.
 		return false;
 	}
 
-	private int toInt(Object right) {
+	private long toLong(Object right) {
 		if (right instanceof Number) {
 			Number n = (Number) right;
-			return n.intValue();
+			return n.longValue();
 		} else if (right instanceof String) {			
-			return Integer.parseInt(((String)right));
+			return Long.parseLong(((String)right).trim());
 		} else if (right instanceof Boolean) {			
 			return ((Boolean)right)?1:0;
 		} else {
@@ -468,9 +469,10 @@ True if the length of string is non-zero.
 			double d1 = toDouble(left);
 			double d2 = toDouble(right);
 			ret = d1 < d2;
-		} else if (left instanceof Integer) {
-			int i1 = (Integer) left;
-			int i2 = toInt(right);
+		} else if (left instanceof Integer || left instanceof Long) {
+			// whole numbers: arithmetic gives Long, literals Integer
+			long i1 = ((Number) left).longValue();
+			long i2 = toLong(right);
 			ret = i1 < i2;
 		}  else if (left instanceof String) {
 			String s1 = (String)left;
@@ -492,9 +494,10 @@ True if the length of string is non-zero.
 			double d1 = toDouble(left);
 			double d2 = toDouble(right);
 			ret = d1 >= d2;
-		} else if (left instanceof Integer) {
-			int i1 = (Integer) left;
-			int i2 = toInt(right);
+		} else if (left instanceof Integer || left instanceof Long) {
+			// whole numbers: arithmetic gives Long, literals Integer
+			long i1 = ((Number) left).longValue();
+			long i2 = toLong(right);
 			ret = i1 >= i2;
 		}  else if (left instanceof String) {
 			String s1 = (String)left;
@@ -516,9 +519,10 @@ True if the length of string is non-zero.
 			double d1 = toDouble(left);
 			double d2 = toDouble(right);
 			ret = d1 <= d2;
-		} else if (left instanceof Integer) {
-			int i1 = (Integer) left;
-			int i2 = toInt(right);
+		} else if (left instanceof Integer || left instanceof Long) {
+			// whole numbers: arithmetic gives Long, literals Integer
+			long i1 = ((Number) left).longValue();
+			long i2 = toLong(right);
 			ret = i1 <= i2;
 		}  else if (left instanceof String) {
 			String s1 = (String)left;
@@ -541,9 +545,10 @@ True if the length of string is non-zero.
 			double d1 = toDouble(left);
 			double d2 = toDouble(right);
 			ret = d1 != d2;
-		} else if (left instanceof Integer) {
-			int i1 = (Integer) left;
-			int i2 = toInt(right);
+		} else if (left instanceof Integer || left instanceof Long) {
+			// whole numbers: arithmetic gives Long, literals Integer
+			long i1 = ((Number) left).longValue();
+			long i2 = toLong(right);
 			ret = i1 != i2;
 		}  else if (left instanceof String) {
 			String s1 = (String)left;
@@ -566,9 +571,10 @@ True if the length of string is non-zero.
 			double d1 = toDouble(left);
 			double d2 = toDouble(right);
 			ret = d1 == d2;
-		} else if (left instanceof Integer) {
-			int i1 = (Integer) left;
-			int i2 = toInt(right);
+		} else if (left instanceof Integer || left instanceof Long) {
+			// whole numbers: arithmetic gives Long, literals Integer
+			long i1 = ((Number) left).longValue();
+			long i2 = toLong(right);
 			ret = i1 == i2;
 		}  else if (left instanceof String) {
 			String s1 = (String)left;

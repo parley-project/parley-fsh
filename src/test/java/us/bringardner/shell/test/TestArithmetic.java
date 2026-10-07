@@ -88,4 +88,46 @@ public class TestArithmetic extends AbstractConsoleTest {
 		expect("arr=(a b c); i=1; echo :${arr[i]}:", ":b:\n");
 		expect("arr=(a b c); echo ${#arr[5]}", "0\n");
 	}
+
+	@Test
+	public void testBashOperators() throws IOException {
+		expect("echo $((3>2)) $((2==2)) $((1&&0)) $((1||0)) $((!0)) $((5>3 ? 10 : 20))", "1 1 0 1 1 10\n");
+		expect("echo $((2**10)) $((2**3**2)) $((-2**2)) $((6&3)) $((6|3)) $((6^3)) $((~0)) $((1<<4))", "1024 512 4 2 7 5 -1 16\n");
+		expect("echo $((16#ff)) $((2#1010)) $((0x1F)) $((010)) $((64#_))", "255 10 31 8 63\n");
+		expect("echo $((a=1, b=2, a+b)) $a $b", "3 1 2\n");
+		// the side not taken is not evaluated
+		expect("x=0; echo $((1 || (x=5))) $((0 && (x=6))) $((1 ? 2 : (x=7))) $x", "1 0 2 0\n");
+		// a[i++] runs i++ once
+		expect("i=0; a=(0 0 0); (( a[i++] = 9 )); echo $i ${a[0]}", "1 9\n");
+		// a variable holding an expression is evaluated
+		expect("e='2+3'; echo $((e*2))", "10\n");
+	}
+
+	@Test
+	public void testArithmeticStatusAndErrors() throws IOException {
+		expect("(( 0 )); echo $?; (( 5 )); echo $?; (( x = 0 )); echo $?", "1\n0\n1\n");
+		ExecuteResult res = executeCommand("(( 1/0 )); echo after $?", "");
+		assertEquals("after 1\n", res.getStdOut());
+		assertTrue(res.getStdErr().contains("division by 0"), res.getStdErr());
+		res = executeCommand("let 'x = 1 +'; echo $?", "");
+		assertEquals("1\n", res.getStdOut());
+		assertTrue(res.getStdErr().startsWith("let:"), res.getStdErr());
+		// in $(( )) an error ends the script, as in bash
+		res = executeCommand("echo $((1/0)); echo after", "");
+		assertEquals("", res.getStdOut());
+		assertEquals(1, res.exitCode);
+	}
+
+	@Test
+	public void testArithmeticInOtherPlaces() throws IOException {
+		expect("for (( i=0, j=3; i<j; i++, j-- )); do echo $i$j; done", "03\n12\n");
+		expect("for (( i=0; ; i++ )); do (( i == 2 )) && break; echo $i; done", "0\n1\n");
+		expect("for (( i=0; i<4; i++ )); do (( i == 1 )) && continue; echo $i; done", "0\n2\n3\n");
+		expect("s=hello; n=1; echo ${s:n:2} ${s:n+1} ${s:(-2)}", "el llo lo\n");
+		expect("x=$((5)); [ $x -gt 4 ] && echo gt; a=(p q r); i=$((1)); echo ${a[i+1]}", "gt\nr\n");
+		expect("echo \"sum=$((2+3)) $(( (1+2)*3 ))\"", "sum=5 9\n");
+		// (( )) as a condition
+		expect("i=0; while (( i < 3 )); do echo $i; (( i++ )); done", "0\n1\n2\n");
+		expect("x=5; if (( x > 3 && x < 10 )); then echo in; else echo out; fi", "in\n");
+	}
 }

@@ -37,6 +37,7 @@ import us.bringardner.shell.antlr.Statement;
 import us.bringardner.shell.antlr.statement.AssignStatement;
 import us.bringardner.shell.antlr.statement.CommandStatement;
 import us.bringardner.shell.antlr.statement.ForStatement;
+import us.bringardner.shell.antlr.statement.MathStatement;
 import us.bringardner.shell.antlr.statement.FunctionDefStatement;
 import us.bringardner.shell.antlr.statement.IfStatement;
 import us.bringardner.shell.antlr.statement.UntilStatement;
@@ -107,7 +108,7 @@ public class TestVisitor {
 
 	@Test
 	@Order(1)
-	public void testArgs() {
+	public void testArgs() throws Exception {
 		/*
 
     : STRING
@@ -167,11 +168,10 @@ $((12+32))
 		assertNotNull(ctx4, "math exp1");
 		assertEquals(string, ctx4.getText());
 
-		string = "((12+32))";
-		a = parseAurgument(string);
-		ctx4 = onlyPart(a).mathExpression();
-		assertNotNull(ctx4, "math exp2");
-		assertEquals(string, ctx4.getText());
+		// (( )) is a command, as in bash, not part of a word
+		List<Statement> stmts = parse("((12+32))");
+		assertEquals(1, stmts.size());
+		assertEquals(MathStatement.class, stmts.get(0).getClass());
 
 	}
 
@@ -567,9 +567,9 @@ $((12+32))
 			ForStatement ifs = (ForStatement) stmt;
 
 			assertEquals(1, ifs.getStmts().size());
-			assertNotNull(ifs.getAssign());
-			assertNotNull(ifs.getCompare());
-			assertNotNull(ifs.getExpr());
+			assertEquals("i=1", ifs.getInit().trim());
+			assertEquals("i<=10", ifs.getCondition().trim());
+			assertEquals("i++", ifs.getStep().trim());
 		}	
 
 

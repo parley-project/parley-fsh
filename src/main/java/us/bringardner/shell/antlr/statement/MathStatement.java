@@ -6,22 +6,16 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.filesource.sh.FileSourceShParser.MathStatementContext;
 import us.bringardner.shell.ShellContext;
-import us.bringardner.shell.antlr.Expression;
+import us.bringardner.shell.antlr.Arithmetic;
 import us.bringardner.shell.antlr.Parameter;
 import us.bringardner.shell.antlr.Statement;
 
 public class MathStatement extends Statement{
 
-	Expression expr;
 	Parameter  parameter;
 	
 	public MathStatement(ParserRuleContext context) {
 		super(context);
-	}
-
-	public MathStatement(MathStatementContext ctx, Expression expr) {
-		this(ctx);
-		this.expr = expr;
 	}
 
 	public MathStatement(MathStatementContext ctx, Parameter pp) {
@@ -31,22 +25,23 @@ public class MathStatement extends Statement{
 
 	@Override
 	protected int execute(ShellContext sc) throws IOException {
-		int ret = 0;
 		MathStatementContext ctx = ((MathStatementContext)getContext());
-		if( parameter != null ) {
+		if( ctx.ARITH_COMMAND() != null ) {
+			// (( expression )): 0 if the value is not 0, 1 if it is (or the expression is invalid)
+			try {
+				return Arithmetic.isTrue(Arithmetic.expandAndEvaluate(Arithmetic.body(ctx.ARITH_COMMAND().getText()), sc)) ? 0 : 1;
+			} catch (Arithmetic.ArithmeticError e) {
+				sc.stderr.println("((: "+e.getMessage());
+				return 1;
+			}
+		} else if( ctx.mathExpression() != null ) {
+			Arithmetic.expansion(ctx.mathExpression().getText(), sc);
+			return 0;
+		} else if( parameter != null ) {
 			parameter.evaluate(sc);
-		} else if( expr != null ) {
-			expr.evaluate(sc);
-		} else if(ctx.mathExpression()!=null ) {
-			expr = new Expression(ctx.mathExpression().expression());
-			expr.evaluate(sc);
-		} else {
-			throw new RuntimeException("Invalide math expression "+ctx.getText());
+			return 0;
 		}
-
-
-		return ret;
+		throw new RuntimeException("Invalide math statement "+ctx.getText());
 	}
-
 
 }

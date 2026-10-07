@@ -167,22 +167,21 @@ pipeOp:
 
 compareStatement:  LSQUARE WS* simpleCompare=compare WS* RSQUARE WS* statement?;
 
+// (( x > 3 )): status 0 if the value is not 0
 mathStatement:
-     mathExpression
+      ARITH_COMMAND
+    | mathExpression
     | parameter
-    
     ;
 
-// spaces are allowed around operators: $(( x * 2 ))
-mathExpression:
-      DOLLAR_LPAREN_LPAREN WS* expression WS* RPAREN_RPAREN
-    | LPAREN_LPAREN WS* expression WS* RPAREN_RPAREN
-    ;
+// $(( x * 2 )): the text between the parentheses is evaluated by Arithmetic
+mathExpression: ARITH_EXPANSION ;
 
 boolean_statement: boolean;
 
 compare : 
-		  WS* compare_prime (';' WS*)?
+		  WS* ARITH_COMMAND (';' WS*)?   // if (( x > 3 )); while (( i < 10 ))
+		| WS* compare_prime (';' WS*)?
         | WS* LSQUARE WS* compare_prime WS* RSQUARE
         | WS* LSQUARE WS* simpleCompare=compare WS* RSQUARE
         | WS* NOT notCompare=compare
@@ -362,9 +361,8 @@ selectStatement:
     |white* SELECT white* ID white* (IN white* list)? white* SEMI? white*  NL?white*  doStatement
      ;
 
-for_loop_control: LPAREN_LPAREN white* assignStatement white* SEMI white* for_compare white* SEMI white* expression white* RPAREN_RPAREN;
-
-for_compare: compare;
+// for (( init; condition; step )): each part is arithmetic and may be empty
+for_loop_control: ARITH_COMMAND ;
 
 variable:
         idOnly=ID ( associative_index | array_index)?

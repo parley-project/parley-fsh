@@ -1,16 +1,8 @@
 package us.bringardner.shell.antlr;
 
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.Token;
 
-import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
 import us.bringardner.filesource.sh.FileSourceShParser.ExpressionContext;
-import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.FactorContext;
 import us.bringardner.filesource.sh.FileSourceShParser.TermContext;
 import us.bringardner.filesource.sh.FileSourceShParser.VariableContext;
@@ -179,30 +171,6 @@ expression
 	}
 
 	/**
-	 * Evaluate text as $((text)) would (used by let).
-	 * 
-	 * @return a number
-	 */
-	public static Object evaluate(String text, ShellContext sc) {
-		// the lexer's divide operator is :^: (/ is a path separator), as in FileSourceShPreProcessorVisitorImpl
-		String code = "$(("+text.replace("/", ":^:")+"))";
-		FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(code));
-		FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-		parser.removeErrorListeners();
-		parser.addErrorListener(new BaseErrorListener() {
-			@Override
-			public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
-				throw new RuntimeException(text+": syntax error in expression");
-			}
-		});
-		MathExpressionContext me = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::mathExpression);
-		if( parser.getCurrentToken().getType() != Token.EOF ) {
-			throw new RuntimeException(text+": syntax error in expression");
-		}
-		return toNumber(new Expression(me.expression()).evaluate(sc), sc);
-	}
-
-	/**
 	 * An operand of arithmetic, as bash reads it: unset or empty is 0, numeric text is a number,
 	 * and a name is that variable's value (so $((x+1)) works when x is unset or was read as text).
 	 */
@@ -213,6 +181,10 @@ expression
 	private static Object toNumber(Object v, ShellContext ctx, int depth) {
 		if( v == null ) {
 			return 0;
+		}
+		if( v instanceof Long && (Long) v == ((Long) v).intValue() ) {
+			// Arithmetic gives Long; this evaluator works with Integer (array indexes, [ ])
+			return ((Long) v).intValue();
 		}
 		if( v instanceof Number ) {
 			return v;

@@ -377,12 +377,6 @@ public interface FileSourceShParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFor_loop_control(FileSourceShParser.For_loop_controlContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link FileSourceShParser#for_compare}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitFor_compare(FileSourceShParser.For_compareContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link FileSourceShParser#variable}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

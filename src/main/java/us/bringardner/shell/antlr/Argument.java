@@ -489,9 +489,7 @@ argumentPart:
 	}
 
 	public static Object visit(MathExpressionContext mathExpression, ShellContext ctx)  {
-		Expression expr = new Expression(mathExpression.expression());
-		return expr.evaluate(ctx);
-		
+		return Arithmetic.expansion(mathExpression.getText(), ctx);
 	}
 
 	//path:  (path_segment| SLASH)+

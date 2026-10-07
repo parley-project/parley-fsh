@@ -44,6 +44,14 @@ compare : LSQUARE compare_prime RSQUARE
 	}
 
 	private boolean evaluate0(ShellContext sc) throws IOException {
+		if( ctx.ARITH_COMMAND() != null ) {
+			try {
+				return Arithmetic.isTrue(Arithmetic.expandAndEvaluate(Arithmetic.body(ctx.ARITH_COMMAND().getText()), sc));
+			} catch (Arithmetic.ArithmeticError e) {
+				sc.stderr.println("((: "+e.getMessage());
+				return false;
+			}
+		}
 		if( ctx.simpleCompare!=null) {
 			return new Compare(ctx.simpleCompare).evaluate0(sc);
 		}

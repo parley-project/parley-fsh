@@ -1,13 +1,11 @@
 package us.bringardner.shell.commands;
 
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
-import us.bringardner.shell.antlr.Expression;
+import us.bringardner.shell.antlr.Arithmetic;
 
 public class Let extends ShellCommand{
 	static String name = "let";
@@ -16,9 +14,6 @@ public class Let extends ShellCommand{
 			+ "	assigns the value to name. Quote an arg that has spaces: let \"x = 2 * 3\".\n"
 			+ "	The return status is 1 if the last arg evaluates to 0, otherwise 0."
 			;
-
-	/** name=expression, but not name==value */
-	private static final Pattern ASSIGNMENT = Pattern.compile("\\s*([a-zA-Z_][a-zA-Z_0-9]*)\\s*=(?!=)(.*)", Pattern.DOTALL);
 
 	public Let() {
 		super(name, help);
@@ -30,22 +25,16 @@ public class Let extends ShellCommand{
 			ctx.stderr.println("let: expression expected");
 			return 1;
 		}
-		Object last = null;
+		Number last = 0L;
 		for(Argument arg : args) {
-			String text = ""+arg.getValue(ctx);
+			// each argument is one expression (already expanded): let x=2+3 "y = x * 2"
 			try {
-				Matcher m = ASSIGNMENT.matcher(text);
-				if( m.matches()) {
-					last = Expression.evaluate(m.group(2), ctx);
-					ctx.setVariable(m.group(1), last);
-				} else {
-					last = Expression.evaluate(text, ctx);
-				}
-			} catch (RuntimeException e) {
+				last = Arithmetic.evaluate(""+arg.getValue(ctx), ctx);
+			} catch (Arithmetic.ArithmeticError e) {
 				ctx.stderr.println("let: "+e.getMessage());
 				return 1;
 			}
 		}
-		return ((Number)last).doubleValue() == 0 ? 1 : 0;
+		return Arithmetic.isTrue(last) ? 0 : 1;
 	}
 }

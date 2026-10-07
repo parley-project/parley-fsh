@@ -254,6 +254,10 @@ ${parameter:-word}
 		if( body.startsWith(":") ) {
 			if( ret !=null ) {
 				m = RANGE1.matcher(body);
+				if( !m.matches()) {
+					// the offset and length are arithmetic: ${s:n:2}, ${s:i+1}
+					m = RANGE1.matcher(arithmeticRange(body, sc));
+				}
 
 				if( m.matches()) {
 					String n1 = m.group("number1");
@@ -658,5 +662,33 @@ ${parameter##word}
 			}
 		}
 		return text.substring(offset, end);
+	}
+	/**
+	 * :offset[:length] with each part evaluated as arithmetic (blank parts stay blank)
+	 */
+	private static String arithmeticRange(String body, ShellContext sc) {
+		String rest = body.substring(1);
+		int depth = 0;
+		int colon = -1;
+		for (int idx = 0; idx < rest.length() && colon < 0; idx++) {
+			char c = rest.charAt(idx);
+			if( c == '(' ) {
+				depth++;
+			} else if( c == ')' ) {
+				depth--;
+			} else if( c == ':' && depth == 0 ) {
+				colon = idx;
+			}
+		}
+		String offset = colon < 0 ? rest : rest.substring(0, colon);
+		String ret = ":"+arithmetic(offset, sc);
+		if( colon >= 0 ) {
+			ret += ":"+arithmetic(rest.substring(colon+1), sc);
+		}
+		return ret;
+	}
+
+	private static String arithmetic(String text, ShellContext sc) {
+		return text.isBlank() ? text : ""+Arithmetic.expandAndEvaluate(text, sc);
 	}
 }

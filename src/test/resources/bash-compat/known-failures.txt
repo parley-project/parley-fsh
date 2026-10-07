@@ -6,20 +6,6 @@
 alias-expand
 
 # arith
-arith-assign-ops
-arith-bases
-arith-bitwise
-arith-c-for-two
-arith-comma
-arith-compare
-arith-let-compare
-arith-logic
-arith-nested
-arith-paren-cmd
-arith-paren-status
-arith-power
-arith-recursive
-arith-ternary
 
 # array
 array-append
@@ -65,7 +51,6 @@ export-env
 for-no-in
 
 # func
-func-recursion
 
 # funcname
 funcname
@@ -123,7 +108,6 @@ process-substitution
 quote-ansi-c
 
 # random
-random-range
 
 # read
 read-ifs
@@ -136,7 +120,6 @@ redir-both
 redir-out-append
 
 # seconds
-seconds
 
 # set
 set-e

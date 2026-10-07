@@ -35,9 +35,9 @@ public class ExprParser extends Parser {
 		DIV_ASSIGN=96, MOD_ASSIGN=97, DIGIT=98, SPECIAL_UNIX=99, SPECIAL_WINDOWS=100, 
 		POS=101, PERC_PERC=102, PERC_MINUS=103, PERC_PLUS=104, PERC_QUESTION=105, 
 		ARG_ID=106, ID=107, LETTER_OR_DIGIT=108, COLON=109, AT=110, TEXT=111, 
-		DOLLAR_LPAREN_LPAREN=112, RPAREN_RPAREN=113, LPAREN_LPAREN=114, NOT_CURLY=115, 
-		DECLARE_A=116, DIVIDE=117, RX_CHAR=118, POSIX_CHAR_CLASS=119, CHAR_CLASS=120, 
-		PARAMETER_BODY=121, PARAMETER_END=122;
+		ARITH_EXPANSION=112, ARITH_COMMAND=113, DOLLAR_LPAREN_LPAREN=114, RPAREN_RPAREN=115, 
+		LPAREN_LPAREN=116, NOT_CURLY=117, DECLARE_A=118, DIVIDE=119, RX_CHAR=120, 
+		POSIX_CHAR_CLASS=121, CHAR_CLASS=122, PARAMETER_BODY=123, PARAMETER_END=124;
 	public static final int
 		RULE_expr = 0, RULE_array_element = 1, RULE_constant = 2, RULE_function_call = 3, 
 		RULE_arguments = 4;
@@ -62,7 +62,8 @@ public class ExprParser extends Parser {
 			"'&'", "'~'", "'?'", "'time'", "'('", "')'", "'['", "']'", "'&>>'", "'>>'", 
 			"'<>'", "'>&'", "'&>'", "'<&'", "','", "'-='", "'*='", "':^:='", "'%='", 
 			null, null, null, "'^'", "'%%'", "'%-'", "'%+'", "'%?'", null, null, 
-			null, "':'", "'@'", null, "'$(('", "'))'", "'(('", null, null, "':^:'"
+			null, "':'", "'@'", null, null, null, "'$(('", "'))'", "'(('", null, 
+			null, "':^:'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
@@ -84,9 +85,9 @@ public class ExprParser extends Parser {
 			"REDIRECT_INPUT_FROM_FID", "COMMA", "MINUS_ASSIGN", "STAR_ASSIGN", "DIV_ASSIGN", 
 			"MOD_ASSIGN", "DIGIT", "SPECIAL_UNIX", "SPECIAL_WINDOWS", "POS", "PERC_PERC", 
 			"PERC_MINUS", "PERC_PLUS", "PERC_QUESTION", "ARG_ID", "ID", "LETTER_OR_DIGIT", 
-			"COLON", "AT", "TEXT", "DOLLAR_LPAREN_LPAREN", "RPAREN_RPAREN", "LPAREN_LPAREN", 
-			"NOT_CURLY", "DECLARE_A", "DIVIDE", "RX_CHAR", "POSIX_CHAR_CLASS", "CHAR_CLASS", 
-			"PARAMETER_BODY", "PARAMETER_END"
+			"COLON", "AT", "TEXT", "ARITH_EXPANSION", "ARITH_COMMAND", "DOLLAR_LPAREN_LPAREN", 
+			"RPAREN_RPAREN", "LPAREN_LPAREN", "NOT_CURLY", "DECLARE_A", "DIVIDE", 
+			"RX_CHAR", "POSIX_CHAR_CLASS", "CHAR_CLASS", "PARAMETER_BODY", "PARAMETER_END"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -810,7 +811,7 @@ public class ExprParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001zh\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002\u0002"+
+		"\u0004\u0001|h\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002\u0002"+
 		"\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0001\u0000"+
 		"\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000"+
 		"\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000\u0001\u0000"+

@@ -47,7 +47,8 @@ public class UntilStatement extends Statement{
 		Until_statementContext ctx = ((Until_statementContext)getContext());
 		Compare test = new Compare(ctx.compare());
 		ShellContext.LoopControl trigger = null;
-		while( !test.evaluate(sc) && !ShellContext.LoopControl.Break.equals(trigger)) {
+		// (break is checked first: the condition is not evaluated again after it)
+		while( !ShellContext.LoopControl.Break.equals(trigger) && !test.evaluate(sc)) {
 
 			for(Statement stmt : stmts) {
 				try {
@@ -59,9 +60,7 @@ public class UntilStatement extends Statement{
 					trigger = e.type;
 					break;
 				}
-				if( ret != 0 ) {
-					return ret;
-				}
+				// as in bash, a failed command does not end the loop; the status is the last command's
 
 			}						
 		}

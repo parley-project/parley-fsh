@@ -45,7 +45,6 @@ import us.bringardner.filesource.sh.FileSourceShParser.IfStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Job_control_statementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.JobspecContext;
 import us.bringardner.filesource.sh.FileSourceShParser.ListContext;
-import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShParser.MathStatementContext;
 import us.bringardner.filesource.sh.FileSourceShParser.Parameter1Context;
 import us.bringardner.filesource.sh.FileSourceShParser.ParameterContext;
@@ -391,10 +390,8 @@ pipeOp:
 
 	@Override
 	public Statement visitMathStatement(MathStatementContext ctx) {
-		MathExpressionContext mx = ctx.mathExpression();
-		if( mx !=null && mx.expression()!=null) {
-			Expression ret = visitExpression(mx.expression());
-			return new MathStatement(ctx,ret);
+		if( ctx.ARITH_COMMAND() != null || ctx.mathExpression() != null ) {
+			return new MathStatement(ctx);
 		}
 		ParameterContext p = ctx.parameter();
 		if( p != null ) {
@@ -402,11 +399,6 @@ pipeOp:
 			return new MathStatement(ctx,pp);
 		}
 		throw new RuntimeException("Invalie math statement");
-	}
-
-	@Override
-	public Expression visitMathExpression(MathExpressionContext ctx) {
-		return visitExpression(ctx.expression());
 	}
 
 	@Override
@@ -589,12 +581,7 @@ forStatement
 	public Statement visitForStatement(ForStatementContext ctx) {
 		ForStatement ret = new ForStatement(ctx);
 		if( ctx.for_loop_control() !=null ) {
-			Compare fc =visitCompare(ctx.for_loop_control().for_compare().compare());
-			ret.setLoopControl(
-					visitAssignStatement(ctx.for_loop_control().assignStatement()),
-					fc,
-					visitExpression(ctx.for_loop_control().expression())
-					);
+			ret.setLoopControl(Arithmetic.body(ctx.for_loop_control().ARITH_COMMAND().getText()));
 		} else if( ctx.ID() !=null){
 			ret.setVarName(ctx.ID().getText());
 		} else {

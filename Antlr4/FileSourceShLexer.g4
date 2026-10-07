@@ -231,6 +231,12 @@ COLON: ':';
 AT:'@';
 TEXT:~[ \t\r\n];
 
+// $(( expression )) and (( expression )): Arithmetic evaluates the text. Parentheses inside nest.
+// (The three tokens after them are left for text that is not balanced.)
+ARITH_EXPANSION: '$((' ARITH_BODY '))';
+ARITH_COMMAND: '((' ARITH_BODY '))';
+fragment ARITH_BODY: ( ~[()] | '(' ARITH_BODY ')' )* ;
+
 DOLLAR_LPAREN_LPAREN: '$((';
 RPAREN_RPAREN:  '))';
 LPAREN_LPAREN: '((';

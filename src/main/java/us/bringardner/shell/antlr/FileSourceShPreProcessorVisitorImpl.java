@@ -15,7 +15,6 @@ import org.antlr.v4.runtime.Recognizer;
 
 import us.bringardner.filesource.sh.FileSourceShLexer;
 import us.bringardner.filesource.sh.FileSourceShParser;
-import us.bringardner.filesource.sh.FileSourceShParser.MathExpressionContext;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorBaseVisitor;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorLexer;
 import us.bringardner.filesource.sh.FileSourceShPreProcessorParser;
@@ -218,15 +217,7 @@ public class FileSourceShPreProcessorVisitorImpl extends FileSourceShPreProcesso
 			} else if (rule instanceof PpexprContext) {
 				items.add(rule);
 				PpexprContext v = (PpexprContext) rule;
-				String expStr = originalText(code1, v);
-				expStr = expStr.replaceAll("[/]", ":^:");
-				FileSourceShLexer lexer = new FileSourceShLexer(CharStreams.fromString(expStr));
-				FileSourceShParser parser = new FileSourceShParser(new CommonTokenStream(lexer));
-				FileSourceShVisitorImpl visitor = new FileSourceShVisitorImpl();
-				MathExpressionContext me = FileSourceShVisitorImpl.parseFast(parser, FileSourceShParser::mathExpression);
-				Expression exprCtx = visitor.visitMathExpression(me);
-
-				Object val = exprCtx.evaluate(sc);
+				Number val = Arithmetic.expansion(originalText(code1, v), sc);
 				chunks.add(""+val);
 			} else if (rule instanceof PpvariableContext && rule.getChildCount() < 2) {
 				// a $ with no name after it ("costs $ 5", "ends in $") is just a $

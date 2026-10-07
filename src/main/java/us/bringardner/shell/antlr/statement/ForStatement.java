@@ -10,42 +10,31 @@ import us.bringardner.io.filesource.FileSource;
 import us.bringardner.shell.ShellCommand;
 import us.bringardner.shell.ShellContext;
 import us.bringardner.shell.antlr.Argument;
-import us.bringardner.shell.antlr.Compare;
-import us.bringardner.shell.antlr.Expression;
+import us.bringardner.shell.antlr.Arithmetic;
 import us.bringardner.shell.antlr.Statement;
 
 public class ForStatement extends LoopStatement{
 	//   : FOR ID IN argument+ SEMI? DO loop_statement+ DONE
 	String varName;
 	List<Statement> stmts;
-	AssignStatement assign;
-	Compare compare;
-	Expression expr;
+	/** for (( init; condition; step )): arithmetic, each may be empty; null for for name in ... */
+	String init;
+	String condition;
+	String step;
 
-
-	public AssignStatement getAssign() {
-		return assign;
+	public String getInit() {
+		return init;
 	}
 
-	public void setAssign(AssignStatement assign) {
-		this.assign = assign;
+	public String getCondition() {
+		return condition;
 	}
 
-	public Compare getCompare() {
-		return compare;
+	public String getStep() {
+		return step;
 	}
 
-	public void setCompare(Compare compare) {
-		this.compare = compare;
-	}
 
-	public Expression getExpr() {
-		return expr;
-	}
-
-	public void setExpr(Expression expr) {
-		this.expr = expr;
-	}
 
 	public String getVarName() {
 		return varName;
@@ -70,7 +59,7 @@ public class ForStatement extends LoopStatement{
 	}
 
 	protected int execute(ShellContext sc) throws IOException {
-		if( assign == null) {
+		if( condition == null) {
 			return executeShellStyle(sc);
 		} else {
 			return executeCStyle(sc);
@@ -130,33 +119,44 @@ public class ForStatement extends LoopStatement{
 		return ret;
 	}
 
-	public void setLoopControl(AssignStatement assign,Compare compare,Expression expr) {
-		this.assign = assign;
-		this.compare = compare;
-		this.expr = expr;
+	public void setLoopControl(String control) {
+		String [] parts = Arithmetic.forParts(control);
+		init = parts[0];
+		condition = parts[1];
+		step = parts[2];
 	}
 
 	protected int executeCStyle(ShellContext sc) throws IOException {
 		int ret = 0;
 		ShellContext.LoopControl tmp = null;
-		assign.execute(sc);
-		while(compare.evaluate(sc)) {
-			if(ShellContext.LoopControl.Break.equals(tmp)) {
-				break;
-			}
-
-			for(Statement stmt : stmts) {
-				try {
-					ret = stmt.process(sc);
-				} catch(LoopControlException e) {
-					if(e.howFar>1) {
-						throw new LoopControlException(e.type, e.howFar-1);
-					}
-					tmp = e.type;
+		try {
+			Arithmetic.expandAndEvaluate(init, sc);
+			// an empty condition is true
+			while(condition.isBlank() || Arithmetic.isTrue(Arithmetic.expandAndEvaluate(condition, sc))) {
+				if(ShellContext.LoopControl.Break.equals(tmp)) {
 					break;
-				}					 				
+				}
+
+				for(Statement stmt : stmts) {
+					try {
+						ret = stmt.process(sc);
+					} catch(LoopControlException e) {
+						if(e.howFar>1) {
+							throw new LoopControlException(e.type, e.howFar-1);
+						}
+						tmp = e.type;
+						break;
+					}					 				
+				}
+				if(ShellContext.LoopControl.Break.equals(tmp)) {
+					break;
+				}
+				tmp = null;
+				Arithmetic.expandAndEvaluate(step, sc);
 			}
-			expr.evaluate(sc);
+		} catch (Arithmetic.ArithmeticError e) {
+			sc.stderr.println("((: "+e.getMessage());
+			return 1;
 		}
 
 		return ret;

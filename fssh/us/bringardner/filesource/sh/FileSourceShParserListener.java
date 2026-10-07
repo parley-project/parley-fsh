@@ -618,16 +618,6 @@ public interface FileSourceShParserListener extends ParseTreeListener {
 	 */
 	void exitFor_loop_control(FileSourceShParser.For_loop_controlContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link FileSourceShParser#for_compare}.
-	 * @param ctx the parse tree
-	 */
-	void enterFor_compare(FileSourceShParser.For_compareContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link FileSourceShParser#for_compare}.
-	 * @param ctx the parse tree
-	 */
-	void exitFor_compare(FileSourceShParser.For_compareContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link FileSourceShParser#variable}.
 	 * @param ctx the parse tree
 	 */
