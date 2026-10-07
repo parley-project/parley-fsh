@@ -37,7 +37,14 @@ public class LogicStatement extends Statement{
 			return ret;
 		}
 		
-		int ret = left.process(sc);
+		// the left side of && and || is a condition (set -e does not stop on it)
+		int ret;
+		sc.conditionDepth++;
+		try {
+			ret = left.process(sc);
+		} finally {
+			sc.conditionDepth--;
+		}
 		
 		if( op.getText().equals("||")) {
 			if( ret!=0) {

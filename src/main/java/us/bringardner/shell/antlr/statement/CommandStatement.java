@@ -796,4 +796,8 @@ public class CommandStatement extends Statement{
 	protected boolean globWords() {
 		return true;
 	}
+	@Override
+	protected boolean errexitApplies() {
+		return true;
+	}
 }

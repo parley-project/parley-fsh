@@ -408,6 +408,12 @@ $
 	 * do not reach the shell, as in bash where each stage is a subshell. UNSET marks an unset one.
 	 */
 	private Map<String,Object> isolated;
+
+	/**
+	 * How many conditions are being evaluated (an if or while test, the left side of && or ||, a
+	 * command after !): set -e does not end the script for a command that fails there.
+	 */
+	public int conditionDepth;
 	private static final Object UNSET = new Object();
 
 	/** a variable outside any function: the stage's own, or the shell's */

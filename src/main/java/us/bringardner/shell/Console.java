@@ -2461,7 +2461,38 @@ delimiter
 		return ret;
 	}
 
+	/** how deep executeUsingAntlr is (eval and source call it too): the EXIT trap runs at the end of the outermost */
+	private int executeDepth = 0;
+
+	/**
+	 * Run the EXIT trap, once (when a script ends or exits).
+	 */
+	private void runExitTrap() {
+		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
+		if( actions != null ) {
+			for(String action : actions) {
+				try {
+					executeUsingAntlr(action);
+				} catch (Exception e) {
+					getStdErr().println(e.getMessage());
+				}
+			}
+		}
+	}
+
 	public int executeUsingAntlr(String code)  {
+		executeDepth++;
+		try {
+			return executeUsingAntlr0(code);
+		} finally {
+			if( --executeDepth == 0 && !isInteractive ) {
+				// the script has ended
+				runExitTrap();
+			}
+		}
+	}
+
+	private int executeUsingAntlr0(String code)  {
 		int ret = 0;
 		ShellContext sc = new ShellContext(this);
 
@@ -2498,7 +2529,7 @@ delimiter
 				}
 			}		
 			if( ret!=0) {
-				handleMetaSignal(ConsoleMetaSignal.Err);
+				// (ERR ran after the failed statement)
 				if(isInteractive && options.contains(Option.ExitImediately)) {
 					Console.exit(sc.console,ret);
 				}
@@ -2507,8 +2538,7 @@ delimiter
 
 		} catch(ExitException e) {
 			ret = e.exitCode;
-			handleMetaSignal(ConsoleMetaSignal.Exit);
-			ret = e.exitCode;
+			runExitTrap();
 			if(e.message!=null) {
 				sc.stderr.println(e.message);
 			}

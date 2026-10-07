@@ -153,4 +153,8 @@ public class PipeStatement extends Statement{
 		return ret;
 	}
 
+	@Override
+	protected boolean errexitApplies() {
+		return true;
+	}
 }

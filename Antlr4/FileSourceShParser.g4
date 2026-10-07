@@ -218,8 +218,9 @@ compare_prime:
     // they are ordinary words (ls -lt, echo -ne)
     | left=compare_prime WS* TEST_OP WS* right=compare_prime
     | left=compare_prime WS* RX_EQUALITY WS* regular_expression    
-    | expression
+    // before expression: if f; then runs the command f (it was read as the variable f)
     | commandStatement
+    | expression
     ;
 
 // -f file, -d dir ... (the operator is an option, so [ and ] are not taken for one)

@@ -4364,11 +4364,11 @@ public class FileSourceShParser extends Parser {
 		public File_testContext file_test() {
 			return getRuleContext(File_testContext.class,0);
 		}
-		public ExpressionContext expression() {
-			return getRuleContext(ExpressionContext.class,0);
-		}
 		public CommandStatementContext commandStatement() {
 			return getRuleContext(CommandStatementContext.class,0);
+		}
+		public ExpressionContext expression() {
+			return getRuleContext(ExpressionContext.class,0);
 		}
 		public TerminalNode EQUALITY() { return getToken(FileSourceShParser.EQUALITY, 0); }
 		public List<Compare_primeContext> compare_prime() {
@@ -4456,13 +4456,13 @@ public class FileSourceShParser extends Parser {
 			case 5:
 				{
 				setState(924);
-				expression(0);
+				commandStatement();
 				}
 				break;
 			case 6:
 				{
 				setState(925);
-				commandStatement();
+				expression(0);
 				}
 				break;
 			}
@@ -12679,7 +12679,7 @@ public class FileSourceShParser extends Parser {
 		"\u0394\u0001\u0000\u0000\u0000\u0397\u0398\u0006\u001f\uffff\uffff\u0000"+
 		"\u0398\u039f\u0003\u000e\u0007\u0000\u0399\u039f\u0005\u0016\u0000\u0000"+
 		"\u039a\u039f\u0003\u0082A\u0000\u039b\u039f\u0003@ \u0000\u039c\u039f"+
-		"\u0003F#\u0000\u039d\u039f\u0003\"\u0011\u0000\u039e\u0397\u0001\u0000"+
+		"\u0003\"\u0011\u0000\u039d\u039f\u0003F#\u0000\u039e\u0397\u0001\u0000"+
 		"\u0000\u0000\u039e\u0399\u0001\u0000\u0000\u0000\u039e\u039a\u0001\u0000"+
 		"\u0000\u0000\u039e\u039b\u0001\u0000\u0000\u0000\u039e\u039c\u0001\u0000"+
 		"\u0000\u0000\u039e\u039d\u0001\u0000\u0000\u0000\u039f\u041a\u0001\u0000"+

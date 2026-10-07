@@ -206,4 +206,8 @@ assignStatement
 		}
 	}
 
+	@Override
+	protected boolean errexitApplies() {
+		return true;
+	}
 }

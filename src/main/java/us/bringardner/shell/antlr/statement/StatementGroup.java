@@ -53,4 +53,9 @@ public class StatementGroup extends Statement{
 		return ret;
 	}
 
+	@Override
+	protected boolean errexitApplies() {
+		// ( ... ) is a command; { ...; } failed through its last command
+		return getContext().getText().trim().startsWith("(");
+	}
 }

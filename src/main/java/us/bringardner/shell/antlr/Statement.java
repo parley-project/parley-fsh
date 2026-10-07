@@ -22,6 +22,7 @@ import us.bringardner.shell.Console.FileDiscriptor;
 import us.bringardner.shell.Console.Option;
 import us.bringardner.shell.Glob;
 import us.bringardner.shell.ShellContext;
+import us.bringardner.shell.antlr.signal.ExitException;
 
 public abstract class Statement {
 
@@ -343,6 +344,10 @@ public abstract class Statement {
 			ret = execute(ctx);
 			// $? is the status of the last statement, whatever kind it is (if, [ ], a loop, a group ...)
 			ctx.console.setLastExitCode(ret);
+			if( ret != 0 && errexitApplies() && ctx.conditionDepth == 0 && ctx.console.isOptionEnabled(Option.ExitImediately)) {
+				// set -e: a failed command ends the script
+				throw new ExitException(ctx, ret);
+			}
 		} finally {
 			args = savedArgs;
 			ctx.exitStatement(ret,this);
@@ -355,6 +360,15 @@ public abstract class Statement {
 	 */
 	protected boolean splitWords(ArgumentContext word) {
 		return true;
+	}
+
+	/**
+	 * Whether set -e ends the script when this statement fails: true for a command, a pipeline, an
+	 * assignment, (( )), [ ], [[ ]] and a subshell; a compound command (if, a loop, a group) fails
+	 * only through the command that failed in it, which was already checked.
+	 */
+	protected boolean errexitApplies() {
+		return false;
 	}
 
 	/**

@@ -21,6 +21,11 @@ public class NegateStatement extends Statement {
 
 	@Override
 	protected int execute(ShellContext ctx) throws IOException {
-		return statement.process(ctx) == 0 ? 1 : 0;
+		ctx.conditionDepth++;
+		try {
+			return statement.process(ctx) == 0 ? 1 : 0;
+		} finally {
+			ctx.conditionDepth--;
+		}
 	}
 }

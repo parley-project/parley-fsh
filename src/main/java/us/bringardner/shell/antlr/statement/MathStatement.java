@@ -44,4 +44,8 @@ public class MathStatement extends Statement{
 		throw new RuntimeException("Invalide math statement "+ctx.getText());
 	}
 
+	@Override
+	protected boolean errexitApplies() {
+		return true;
+	}
 }

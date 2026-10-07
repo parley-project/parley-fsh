@@ -84,12 +84,15 @@ compare : LSQUARE compare_prime RSQUARE
 
 	public boolean evaluate(ShellContext sc) throws IOException {
 		failed = false;
+		sc.conditionDepth++;
 		try {
 			return evaluate0(sc);
 		} catch (TestSyntaxException e) {
 			sc.stderr.println("[: "+e.getMessage());
 			failed = true;
 			return false;
+		} finally {
+			sc.conditionDepth--;
 		}
 	}
 

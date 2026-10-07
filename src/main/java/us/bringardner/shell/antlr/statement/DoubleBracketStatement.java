@@ -20,4 +20,8 @@ public class DoubleBracketStatement extends Statement {
 	protected int execute(ShellContext ctx) throws IOException {
 		return DoubleBracket.test(((Statement1Context) getContext()).DBL_TEST().getText(), ctx);
 	}
+	@Override
+	protected boolean errexitApplies() {
+		return true;
+	}
 }

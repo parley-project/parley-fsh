@@ -80,4 +80,9 @@ ifStatement
 	}
 
 
+	@Override
+	protected boolean errexitApplies() {
+		// [ test ] alone is a command
+		return getContext() instanceof CompareStatementContext;
+	}
 }
