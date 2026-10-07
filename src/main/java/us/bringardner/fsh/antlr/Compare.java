@@ -136,6 +136,25 @@ compare : LSQUARE compare_prime RSQUARE
 			return new Compare(ctx.simpleCompare).evaluate0(sc);
 		}
 		
+		if( ctx.compare_prime()!=null && ctx.compare_prime().string() != null && ctx.LSQUARE() == null
+				&& !(ctx.getParent() instanceof CompareContext && ((CompareContext) ctx.getParent()).LSQUARE() != null) ) {
+			// if "$@"; then, while "$cmd"; do: a quoted word is a command (not a [ ] test)
+			String code = ctx.compare_prime().getStart().getInputStream().getText(
+					org.antlr.v4.runtime.misc.Interval.of(ctx.compare_prime().getStart().getStartIndex(), ctx.compare_prime().getStop().getStopIndex()));
+			int ret = 1;
+			try {
+				for(Statement s : FileSourceShVisitorImpl.parse(code)) {
+					ret = s.process(sc);
+				}
+			} catch (IOException e) {
+				throw e;
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new IOException(e.getMessage(), e);
+			}
+			return ret == 0;
+		}
 		if( ctx.compare_prime()!=null) {
 			ComparePrime tmp = new ComparePrime(ctx.compare_prime());
 			return tmp.evaluate(sc);

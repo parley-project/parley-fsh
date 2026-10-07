@@ -254,7 +254,79 @@ ${parameter:-word}
 		return FileSourceShPreProcessorVisitorImpl.processString("${"+target+rest+"}", sc);
 	}
 
+	/** ${a[i]:-x} ${m[k]=x} ${a[i]:+x} ${a[i]?msg}: the operations on an element */
+	private static final Pattern ELEMENT_DEFAULT = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[([^\\]]*)\\](:?)([-=?+])(.*)", Pattern.DOTALL);
+
+	private Object elementDefault(Matcher m, ShellContext sc) {
+		String name = m.group(1);
+		String sub = m.group(2);
+		if( sub.equals("@") || sub.equals("*")) {
+			// ${a[@]:-x}: all the elements, or the word if there are none
+			List<Object> all = values(sc.getVariable(name));
+			String joined = all.stream().map(o -> ""+o).reduce((a, b) -> a+" "+b).orElse("");
+			boolean missing = all.isEmpty() || (!m.group(3).isEmpty() && joined.isEmpty());
+			return useWord(m.group(4), missing) ? word(m.group(5)) : m.group(4).equals("+") ? "" : joined;
+		}
+		Object var = sc.getVariable(name);
+		Object key;
+		Object val;
+		if( var instanceof Map<?,?> map ) {
+			key = sub.length() >= 2 && (sub.startsWith("\"") && sub.endsWith("\"") || sub.startsWith("'") && sub.endsWith("'")) ? sub.substring(1, sub.length()-1) : sub;
+			val = map.get(key);
+		} else {
+			int idx = Arithmetic.evaluate(sub, sc).intValue();
+			if( var instanceof List<?> list ) {
+				if( idx < 0 ) {
+					idx += list.size();
+				}
+				val = idx >= 0 && idx < list.size() ? list.get(idx) : null;
+			} else {
+				val = idx == 0 ? var : null;
+			}
+			key = idx;
+		}
+		boolean missing = val == null || (!m.group(3).isEmpty() && (""+val).isEmpty());
+		String op = m.group(4);
+		switch (op) {
+		case "-":
+			return missing ? word(m.group(5)) : val;
+		case "+":
+			return missing ? "" : word(m.group(5));
+		case "=":
+			if( missing ) {
+				val = ""+word(m.group(5));
+				sc.setVariable(name, key, val);
+			}
+			return val;
+		default:
+			if( missing ) {
+				String msg = m.group(5).isEmpty() ? "parameter null or not set" : ""+word(m.group(5));
+				sc.stderr.println(name+"["+sub+"]: "+msg);
+				throw new ExitException(sc, 1);
+			}
+			return val;
+		}
+	}
+
+	private static boolean useWord(String op, boolean missing) {
+		return op.equals("+") ? !missing : missing;
+	}
+
+	/** ${#1} (a positional parameter's length), ${#@} ${#*} (how many there are) */
+	private static final Pattern POSITIONAL_LENGTH = Pattern.compile("[#|]([0-9]+|[@*])");
+
 	static Object arrayForms(String text, ShellContext sc) {
+		Matcher pl = POSITIONAL_LENGTH.matcher(text);
+		if( pl.matches()) {
+			List<Object> pos = sc.getPositionalParameterValues();
+			String n = pl.group(1);
+			if( n.equals("@") || n.equals("*")) {
+				return pos.size();
+			}
+			int i = Integer.parseInt(n);
+			Object v = i == 0 ? sc.getVariable("$0") : i <= pos.size() ? pos.get(i-1) : "";
+			return v == null ? 0 : (""+v).length();
+		}
 		if( text.startsWith("!")) {
 			Object ind = indirect(text, sc);
 			if( ind != null ) {
@@ -490,6 +562,11 @@ ${parameter:-word}
 		}
 		fullText = FileSourceShPreProcessorVisitorImpl.processString(fullText, sc);
 
+		Matcher em = ELEMENT_DEFAULT.matcher(fullText);
+		if( em.matches()) {
+			return elementDefault(em, sc);
+		}
+
 		Object array = arrayForms(fullText, sc);
 		if( array != null ) {
 			return array;
@@ -663,6 +740,13 @@ ${parameter:-word}
 		
 		StringBuilder buf = new StringBuilder();
 		PbodyContext bc = ctx.parameter_body().pbody();
+		if( ret == null && !isRange && bc != null ) {
+			// ${u#a} ${u//x/y} ${u^^} of an unset u: as empty (it printed null)
+			if( sc.console.isOptionEnabled(Console.Option.NullParameterIsError)) {
+				sc.unbound(name);
+			}
+			ret = "";
+		}
 		if(!isRange && bc !=null ) {
 			body = bc.getText();
 			if( bc.children !=null) {
@@ -1182,20 +1266,23 @@ ${parameter:-word}
 		}
 		String preped = ShellCommand.prepWildCards(pat,false);
 
-		Pattern rx = Pattern.compile(preped);
-		Matcher m = rx.matcher(ret);
-		int start = -1;
-		while(m.find()) {
-			start = m.start();
-			if( isLong) {
-				break;
+		// the shortest (%) or longest (%%) suffix the whole pattern matches (it took the
+		// first or last match anywhere, so ${x%/} of /a/b cut /b)
+		Pattern rx = Pattern.compile(preped, Pattern.DOTALL);
+		int n = ret.length();
+		if( isLong ) {
+			for (int start = 0; start <= n; start++) {
+				if( rx.matcher(ret.substring(start)).matches()) {
+					return ret.substring(0, start);
+				}
+			}
+		} else {
+			for (int start = n; start >= 0; start--) {
+				if( rx.matcher(ret.substring(start)).matches()) {
+					return ret.substring(0, start);
+				}
 			}
 		}
-
-		if( start>=0) {
-			ret = ret.substring(0,start);
-		} 
-
 		return ret;
 	}
 
@@ -1241,20 +1328,23 @@ ${parameter##word}
 
 		String preped = ShellCommand.prepWildCards(pat,false);
 
-		Pattern rx = Pattern.compile(preped);
-		Matcher m = rx.matcher(ret);
-		int end = -1;
-		while(m.find()) {
-			end = m.end();
-			if( !isLong) {
-				break;
+		// the shortest (#) or longest (##) prefix the whole pattern matches (it took a match
+		// anywhere, so ${x#a} of /a/b cut /a)
+		Pattern rx = Pattern.compile(preped, Pattern.DOTALL);
+		int n = ret.length();
+		if( isLong ) {
+			for (int end = n; end >= 0; end--) {
+				if( rx.matcher(ret.substring(0, end)).matches()) {
+					return ret.substring(end);
+				}
+			}
+		} else {
+			for (int end = 0; end <= n; end++) {
+				if( rx.matcher(ret.substring(0, end)).matches()) {
+					return ret.substring(end);
+				}
 			}
 		}
-
-		if( end>=0) {
-			ret = ret.substring(end);
-		} 
-
 		return ret;
 	}
 

@@ -25,10 +25,20 @@ lexer grammar FileSourceShLexer;
 		}
 		String text = _input.getText(org.antlr.v4.runtime.misc.Interval.of(start, stop));
 		int depth = 0;
+		// a } in quotes is text: ${x:-"}"}, ${s//"{{k}}"/v}
+		char quote = 0;
 		for (int i = 0; i < text.length(); i++) {
 			char c = text.charAt(i);
-			if( c == '\\' ) {
+			if( quote == '\'' ) {
+				if( c == '\'' ) {
+					quote = 0;
+				}
+			} else if( c == '\\' ) {
 				i++;
+			} else if( c == '"' ) {
+				quote = quote == '"' ? 0 : '"';
+			} else if( c == '\'' && quote == 0 ) {
+				quote = '\'';
 			} else if( c == '$' && i+1 < text.length() && text.charAt(i+1) == '{' ) {
 				depth++;
 				i++;
@@ -36,7 +46,7 @@ lexer grammar FileSourceShLexer;
 				depth--;
 			}
 		}
-		return depth == 0;
+		return depth == 0 && quote == 0;
 	}
 	  
 	// an option like -la only starts a word: at the start of input or after whitespace,

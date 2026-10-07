@@ -137,6 +137,18 @@ public class FileSourceShPreProcessorBaseListener implements FileSourceShPreProc
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterPp_param_dq(FileSourceShPreProcessorParser.Pp_param_dqContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPp_param_dq(FileSourceShPreProcessorParser.Pp_param_dqContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPpvariable(FileSourceShPreProcessorParser.PpvariableContext ctx) { }
 	/**
 	 * {@inheritDoc}

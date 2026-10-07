@@ -461,6 +461,20 @@ public class CommandStatement extends Statement{
 	}
 
 	private int expandAndRun(ShellContext ctx) throws IOException {
+		// every word is expanded before the command runs, once, as in bash: : "${A:=1}" sets A
+		// even though : never reads its arguments
+		if( args != null ) {
+			Argument [] values = new Argument[args.length];
+			for (int idx = 0; idx < args.length; idx++) {
+				if( args[idx].getContext() == null ) {
+					values[idx] = args[idx];
+				} else {
+					Object v = args[idx].getValue(ctx);
+					values[idx] = new Argument(args[idx].getContext(), v instanceof List<?> list ? list.stream().map(o -> ""+o).collect(java.util.stream.Collectors.joining(" ")) : ""+v);
+				}
+			}
+			args = values;
+		}
 		if( commandWord == null ) {
 			return runCommand(ctx);
 		}

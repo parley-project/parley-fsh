@@ -2128,7 +2128,12 @@ delimiter
 		private final Map<Integer,FileDiscriptor> files;
 
 		private Snapshot(Console c) throws IOException {
-			variables = new TreeMap<>(c.variables);
+			// arrays by value: a subshell's a[1]=x or m[k]=v changes the arrays it shares with
+			// the shell, and restore puts these copies back
+			variables = new TreeMap<>();
+			for(Map.Entry<String,Object> e : c.variables.entrySet()) {
+				variables.put(e.getKey(), ShellContext.copyValue(e.getValue()));
+			}
 			environment = new TreeMap<>(c.environmentVariables);
 			positional = new ArrayList<>(c.positionalParameters);
 			options = new ArrayList<>(c.optionList());

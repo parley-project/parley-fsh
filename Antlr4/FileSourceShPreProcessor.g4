@@ -30,7 +30,9 @@ pp_dq
     ;
 // ${ } nests: ${a:-${b}}
 pp_parameter:'${' pp_param* '}';
-pp_param: ~('${' | '{' | '}') | ('${' | '{') pp_param* '}' ;
+// a } in quotes is text: "${y:-"}"}"
+pp_param: '"' pp_param_dq* '"' | '\'' ~'\''* '\'' | ~('${' | '{' | '}') | ('${' | '{') pp_param* '}' ;
+pp_param_dq: ~('"' | '${') | '${' pp_param* '}' ;
 
 ppvariable: 
 			'$' ('?'|'*'|'$'|PPTAG|PPDIGIT)

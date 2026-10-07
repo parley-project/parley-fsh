@@ -1,0 +1,2 @@
+build order: core lib util app test
+nodes: 5 roots: core 

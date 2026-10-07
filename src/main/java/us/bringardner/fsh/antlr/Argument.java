@@ -47,6 +47,12 @@ public class Argument {
 		context = ctx;
 	}
 
+	/** a word already expanded: its value, and where it was written (for messages) */
+	public Argument(ArgumentContext ctx, String value) {
+		context = ctx;
+		this.value = value;
+	}
+
 	/*
 argument: argumentPart+ ;
 

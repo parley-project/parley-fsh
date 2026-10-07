@@ -518,6 +518,9 @@ ifStatement
 		if( ctx.statement()!=null) {
 			return visitStatement(ctx.statement());
 		}
+		if( ctx.conditionalStatement()!=null) {
+			return visitConditionalStatement(ctx.conditionalStatement());
+		}
 		if( ctx.statement1()!=null) {
 			return visitStatement1(ctx.statement1());
 		}

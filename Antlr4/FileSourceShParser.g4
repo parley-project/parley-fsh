@@ -446,7 +446,8 @@ list:
 	  argument (WS+ argument)* WS*
     ;
 
-statement_or_statement1: (statement|statement1);
+// an && || list needs no ; before ;; or ) (case x in x) true && echo a;; esac)
+statement_or_statement1: (statement|conditionalStatement|statement1);
 
 statement_group: redirect1=redirect? statement_group1 redirect2=redirect? 
     	;

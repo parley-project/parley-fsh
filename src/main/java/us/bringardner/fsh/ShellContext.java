@@ -382,6 +382,24 @@ $
 		return index(ret, ctx.associative_index(), ctx.array_index());
 	}
 
+	/** an array or map copied (so changing one does not change the other); anything else as it is */
+	public static Object copyValue(Object val) {
+		if( val instanceof FshList list ) {
+			FshList ret = new FshList();
+			for(int idx : list.getIndexes()) {
+				ret.set(idx, list.get(idx));
+			}
+			return ret;
+		} else if( val instanceof List<?> list ) {
+			return new ArrayList<Object>(list);
+		} else if( val instanceof TreeMap<?,?> map ) {
+			return new TreeMap<Object,Object>(map);
+		} else if( val instanceof Map<?,?> map ) {
+			return new java.util.LinkedHashMap<Object,Object>(map);
+		}
+		return val;
+	}
+
 	/** an array's element 0 (a map's "0"); anything else as it is */
 	public static Object firstElement(Object val) {
 		if( val instanceof List<?> ) {
@@ -994,7 +1012,10 @@ $
 		private FunctionInvocation(FunctionInvocation other) {
 			function = other.function;
 			args.addAll(other.args);
-			local.putAll(other.local);
+			// a subshell's copy: its local arrays are its own
+			for(Map.Entry<String,Object> e : other.local.entrySet()) {
+				local.put(e.getKey(), copyValue(e.getValue()));
+			}
 		}
 
 		FunctionInvocation copy() {

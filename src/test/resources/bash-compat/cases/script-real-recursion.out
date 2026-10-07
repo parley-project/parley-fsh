@@ -1,0 +1,5 @@
+move disk 3 A->B
+move disk 3 B->C
+moves=15
+abc acb bac bca cab cba 
+4! = 24

@@ -1,0 +1,4 @@
+FAIL deliberate: expected [Y] got [X]
+FAIL: false
+passed=4 failed=2
+expected failures

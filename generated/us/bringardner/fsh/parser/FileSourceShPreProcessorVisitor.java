@@ -71,6 +71,12 @@ public interface FileSourceShPreProcessorVisitor<T> extends ParseTreeVisitor<T> 
 	 */
 	T visitPp_param(FileSourceShPreProcessorParser.Pp_paramContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#pp_param_dq}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPp_param_dq(FileSourceShPreProcessorParser.Pp_param_dqContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FileSourceShPreProcessorParser#ppvariable}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

@@ -50,6 +50,8 @@ assignStatement
 		// an assignment alone leaves $_ empty, as in bash
 		ctx.console.lastArgument = "";
 		AssignStatementContext actx = (AssignStatementContext) getContext();
+		// local a=1 b=2: local applies to every name (the grammar puts it on the first)
+		boolean local = !actx.assignment().isEmpty() && actx.assignment(0).LOCAL() != null;
 		if( !ctx.isInFunction()) {
 			for(AssignmentContext a : actx.assignment()) {
 				if( a.LOCAL() != null ) {
@@ -61,6 +63,16 @@ assignStatement
 		// the status is that of the last $( ) in the values (x=$(false) is 1), or 0 (a value may
 		// read $?, so it is not reset first)
 		long before = ctx.console.substitutionCount();
+		// local is a command: all its words are expanded before any is assigned (local w=1
+		// p=$w gives p the old w); a=1 b=$a assigns as it goes
+		java.util.List<Object> localValues = null;
+		if( local ) {
+			localValues = new java.util.ArrayList<>();
+			for(AssignmentContext assignment : actx.assignment()) {
+				localValues.add(valueOf(assignment, ctx));
+			}
+		}
+		int position = 0;
 		for(AssignmentContext assignment : actx.assignment()) {
 			name = assignment.id1.getText();
 			if( ctx.console.isReadonly(name)) {
@@ -71,7 +83,7 @@ assignStatement
 				}
 				return 1;
 			}
-			Object val = valueOf(assignment, ctx);
+			Object val = localValues != null ? localValues.get(position++) : valueOf(assignment, ctx);
 			boolean append = assignment.op != null && assignment.op.getType() == FileSourceShParser.PLUS_EQ;
 			ParserRuleContext index = assignment.associative_index() != null ? assignment.associative_index() : assignment.array_index();
 			if( index != null ) {
@@ -79,7 +91,7 @@ assignStatement
 				continue;
 			}
 			val = combine(ctx, name, ctx.getVariable(name), val, append);
-			if( assignment.LOCAL()!=null) {
+			if( local ) {
 				ctx.setLocalVariable(name, val);
 			} else {
 				ctx.setVariable(name, val);
