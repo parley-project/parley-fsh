@@ -1,0 +1,1 @@
+echo $(( SECONDS >= 0 ))

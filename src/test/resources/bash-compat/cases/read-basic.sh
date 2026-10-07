@@ -1,0 +1,1 @@
+read a b <<< "one two three"; echo "$a|$b"

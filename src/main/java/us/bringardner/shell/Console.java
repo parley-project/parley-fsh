@@ -596,6 +596,9 @@ delimiter
 
 
 
+	/** false when the shell runs inside another program (such as a test): exit then ends the console, not the JVM */
+	public static volatile boolean exitJvm = true;
+
 	public static void exit(Console console,int exitCode) {
 		if( console.isRunning()) {
 			console.stop();
@@ -605,7 +608,7 @@ delimiter
 			ConsoleFrame cf = (ConsoleFrame) kb;
 			cf.dispose();
 		}
-		if( !console.isInteractive) {
+		if( !console.isInteractive && exitJvm ) {
 			StackTraceElement[] trace = Thread.currentThread().getStackTrace();
 			for(StackTraceElement t  : trace) {
 				if( t.getClassName().startsWith("org.junit")) {

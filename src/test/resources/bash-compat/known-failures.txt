@@ -1,0 +1,160 @@
+# Bash compatibility cases that do not match bash yet (see TestBashCompat).
+# One name per line; "NAME hang" for a case that does not finish (it is not run).
+# Remove a name when its case passes: the test fails until you do.
+
+# alias
+alias-expand
+
+# arith
+arith-assign-ops
+arith-bases
+arith-bitwise
+arith-c-for-two
+arith-comma
+arith-compare
+arith-let-compare
+arith-logic
+arith-nested
+arith-paren-cmd
+arith-paren-status
+arith-power
+arith-recursive
+arith-ternary
+
+# array
+array-append
+array-assign-index
+array-indices
+array-quoted-at
+array-star-join
+array-unset-element
+
+# assoc
+assoc-basic
+assoc-keys
+
+# brace
+brace-list
+brace-nested
+brace-pad
+brace-step
+
+# break
+break-continue
+break-n
+
+# colon
+colon-builtin
+
+# comments
+comments
+
+# dbl
+dbl-and-or
+dbl-numbers
+dbl-pattern
+dbl-regex
+
+# declare
+declare-int
+
+# export
+export-env
+
+# for
+for-no-in
+
+# func
+func-recursion
+
+# funcname
+funcname
+
+# getopts
+getopts
+
+# glob
+glob-class
+glob-in-var
+glob-question
+glob-star
+
+# heredoc
+heredoc-dash
+heredoc-quoted
+
+# line
+line-continuation
+
+# lineno
+lineno
+
+# local
+local-dynamic
+
+# mapfile
+mapfile
+
+# negate
+negate-pipeline
+
+# param
+param-case
+param-default
+param-indirect
+param-positional-10
+
+# pipe
+pipe-subshell-var
+
+# pipefail
+pipefail
+
+# pipestatus
+pipestatus
+
+# printf
+printf-v
+
+# process
+process-substitution
+
+# quote
+quote-ansi-c
+
+# random
+random-range
+
+# read
+read-ifs
+
+# readonly
+readonly
+
+# redir
+redir-both
+redir-out-append
+
+# seconds
+seconds
+
+# set
+set-e
+
+# special
+special-dollar-question-after-pipe
+
+# test
+test-and-or
+test-nonempty-word
+test-not
+test-strings
+
+# tilde
+tilde
+
+# trap
+trap-exit
+
+# until
+until-loop
