@@ -109,13 +109,21 @@ public class Type extends ShellCommand{
 				}
 			}
 			ShellFunction function = noFunctions ? null : ctx.getFunction(n);
+			boolean posix = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix);
+			if( posix && SPECIAL.contains(n) && (ctx.console.builtin(n) != null || SHELL_BUILTINS.contains(n))) {
+				// posix mode: a special builtin before a function of its name
+				ret.add(new String[] {"builtin", n+" is a special shell builtin", null});
+				if( !all ) {
+					return ret;
+				}
+			}
 			if( function != null ) {
 				ret.add(new String[] {"function", n+" is a function\n"+function.declaration(), null});
 				if( !all ) {
 					return ret;
 				}
 			}
-			if( ctx.console.builtin(n) != null && !n.startsWith("__") || SHELL_BUILTINS.contains(n)) {
+			if( (ctx.console.builtin(n) != null && !n.startsWith("__") || SHELL_BUILTINS.contains(n)) && !(posix && SPECIAL.contains(n))) {
 				// (posix mode names its special builtins so)
 				boolean special = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && SPECIAL.contains(n);
 				ret.add(new String[] {"builtin", n+" is a "+(special ? "special " : "")+"shell builtin", null});

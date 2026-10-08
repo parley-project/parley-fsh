@@ -1840,6 +1840,7 @@ public final class Parser {
 		}
 		f.line = lineOf(f.start);
 		f.name = name.raw;
+		f.quotedName = !name.isPlain();
 		skipNewlines();
 		Token t = peek();
 		boolean compound = isOp(t, "(") || (t.kind == Kind.WORD && Set.of("{", "if", "while", "until", "for", "select", "case", "[[").contains(plain(t)));

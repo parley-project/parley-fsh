@@ -164,11 +164,11 @@ public final class Executor {
 	}
 
 	/** an error after which bash does not run the rest of the line (x=1 of a readonly x) */
-	static final class AbandonLine extends us.bringardner.fsh.signal.FshException {
+	public static final class AbandonLine extends us.bringardner.fsh.signal.FshException {
 		private static final long serialVersionUID = 1L;
 		final int line;
 
-		AbandonLine(int line) {
+		public AbandonLine(int line) {
 			this.line = line;
 		}
 	}
@@ -675,6 +675,9 @@ public final class Executor {
 			ret = list(body, sub);
 		} catch (ExitException e) {
 			ret = e.exitCode;
+		} catch (us.bringardner.fsh.signal.ReturnException e) {
+			// ( return 5 ) in a function: the subshell ends with 5, the function goes on
+			ret = e.exitCode;
 		} catch (AbandonLine e) {
 			// (an error that ends the line ends the subshell, as bash's)
 			ret = 1;
@@ -1153,6 +1156,24 @@ public final class Executor {
 	// ------------------------------------------------------------------ functions
 
 	private int define(Ast.FunctionDef f, ShellContext sc) {
+		if( sc.console.isOptionEnabled(Option.Posix) && SPECIAL_BUILTINS.contains(f.name)) {
+			// posix mode: not the name of a special builtin (and the shell ends, as bash's), said at
+			// the line it ends on
+			sc.line = f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+			error(sc, "`"+f.name+"': is a special builtin");
+			throw new ExitException(sc, 2);
+		}
+		if( f.quotedName ) {
+			// as bash: a quoted or expanded name, said at the line it ends on
+			int saved = sc.line;
+			sc.line = f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+			try {
+				error(sc, "`"+f.name+"': not a valid identifier");
+			} finally {
+				sc.line = saved;
+			}
+			return 1;
+		}
 		if( sc.console.isReadonlyFunction(f.name)) {
 			error(sc, f.name+": readonly function");
 			return 1;
@@ -1513,6 +1534,11 @@ public final class Executor {
 
 	private int dispatch(String name, List<Object> args, ShellContext sc, Expander ex) throws IOException {
 		// (aliases are expanded when the command is read: see Parser.aliases)
+		// a function comes before a builtin of its name, but in posix mode not before a special builtin
+		ShellFunction fn = sc.getFunction(name);
+		if( fn != null && !(sc.console.isOptionEnabled(Option.Posix) && SPECIAL_BUILTINS.contains(name))) {
+			return fn.invoke(arguments(strings(args)), sc);
+		}
 		switch (name) {
 		case "[": {
 			// [ expr ]: test, which needs the ]
@@ -1562,7 +1588,7 @@ public final class Executor {
 		default:
 		}
 		ShellFunction f = sc.getFunction(name);
-		if( f != null ) {
+		if( f != null && !(sc.console.isOptionEnabled(Option.Posix) && SPECIAL_BUILTINS.contains(name))) {
 			return f.invoke(arguments(strings(args)), sc);
 		}
 		if( name.equals("export") || name.equals("readonly")) {
@@ -1634,7 +1660,10 @@ public final class Executor {
 			}
 		}
 		if( sc.loopDepth == 0 ) {
-			error(sc, name+": only meaningful in a `for', `while', or `until' loop");
+			if( !sc.console.isOptionEnabled(Option.Posix)) {
+				// (posix mode says nothing)
+				error(sc, name+": only meaningful in a `for', `while', or `until' loop");
+			}
 			return 0;
 		}
 		throw new LoopControlException(name.equals("break") ? LoopControl.Break : LoopControl.Continue, Math.min(n, sc.loopDepth));

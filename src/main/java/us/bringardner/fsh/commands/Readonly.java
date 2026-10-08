@@ -55,6 +55,16 @@ public class Readonly extends ShellCommand{
 			}
 			ctx.console.setReadonly(var);
 		}
+		if( !any && functions ) {
+			// readonly -f: the readonly functions, as bash prints them
+			for(String n : new java.util.TreeSet<>(ctx.console.getFunctions().keySet())) {
+				if( ctx.console.isReadonlyFunction(n)) {
+					ctx.stdout.println(ctx.console.getFunctions().get(n).declaration());
+					ctx.stdout.println("declare -fr "+n);
+				}
+			}
+			return ret;
+		}
 		if( !any ) {
 			for(String var : ctx.console.getVariables().keySet()) {
 				if( ctx.console.isReadonly(var)) {

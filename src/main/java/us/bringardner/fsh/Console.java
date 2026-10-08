@@ -702,7 +702,9 @@ delimiter
 			} catch (Exception e) {
 				error = e;
 				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
+				// (return in a pipe stage ends that stage with its status, as in bash)
 				exitCode = e instanceof ExitException ? ((ExitException) e).exitCode
+						: e instanceof us.bringardner.fsh.signal.ReturnException r ? r.exitCode
 						: e instanceof us.bringardner.fsh.signal.SignalException ? ((us.bringardner.fsh.signal.SignalException) e).exitCode() : 1;
 			}
 			if( terminatedBy != null ) {

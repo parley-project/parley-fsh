@@ -177,6 +177,8 @@ public class Wait extends ShellCommand{
 		}
 		if( !ids && !n ) {
 			jm.forgetFinished();
+			// (wait with no ids: status 0, as bash's)
+			ret = 0;
 		}
 
 		return ret;

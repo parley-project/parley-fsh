@@ -57,7 +57,7 @@ public final class Declarations {
 		boolean local = isLocal || (sc.isInFunction() && o.indexOf('g') < 0);
 
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
-			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0);
+			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0);
 		}
 		if( o.indexOf('p') >= 0 || (items.isEmpty() && !remove)) {
 			return print(command, items, remove ? "" : o);
@@ -287,13 +287,18 @@ public final class Declarations {
 	}
 
 	/** declare -f [name ...]: functions as code; -F: their names */
-	private int functions(String command, List<Object> items, boolean names, boolean p) {
+	private int functions(String command, List<Object> items, boolean names, boolean p, boolean exported) {
 		List<String> wanted = new ArrayList<>();
 		for(Object item : items) {
 			wanted.add(item instanceof Ast.Assignment a ? a.name : String.valueOf(item));
 		}
 		if( wanted.isEmpty()) {
-			wanted.addAll(new TreeSet<>(sc.console.getFunctions().keySet()));
+			for(String n : new TreeSet<>(sc.console.getFunctions().keySet())) {
+				// (declare -xf: the exported ones)
+				if( !exported || sc.console.getFunctions().get(n).isExported()) {
+					wanted.add(n);
+				}
+			}
 		}
 		int ret = 0;
 		for(String name : wanted) {

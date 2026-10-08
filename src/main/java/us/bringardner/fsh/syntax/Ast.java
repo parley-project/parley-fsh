@@ -176,6 +176,8 @@ public final class Ast {
 		public Command body;
 		/** written with the function keyword */
 		public boolean keyword;
+		/** the name has quotes, \ or an expansion in it (bash: not a valid identifier) */
+		public boolean quotedName;
 	}
 
 	/**

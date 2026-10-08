@@ -1124,15 +1124,15 @@ $
 	Stack<FunctionInvocation> functionStack = new Stack<>();
 
 	public void enterFunction(Object[] args, ShellFunction function) throws IOException {
-		Object tmp = getEvironmentVariable("FUNCNEST");
-		if( tmp != null ) {
-			try {
-				int max = Integer.parseInt(tmp.toString());
-				if( max >0 && max > functionStack.size()) {
-					throw new RuntimeException("Max function deepth (FUNCNEST) exceeded. max="+max+" size="+functionStack.size());
-					//line 4: f: maximum function nesting level exceeded (4)
-				}
-			} catch (Exception e) {
+		// FUNCNEST: how deep functions may call (bash's message, and the command line is given up)
+		Object tmp = getVariable("FUNCNEST");
+		if( tmp != null && tmp.toString().trim().matches("[0-9]{1,9}")) {
+			int max = Integer.parseInt(tmp.toString().trim());
+			int depth = (int) functionStack.stream().filter(f -> f.function != null).count();
+			if( max > 0 && depth >= max ) {
+				error(function.getName()+": maximum function nesting level exceeded ("+max+")");
+				console.setLastExitCode(1);
+				throw new us.bringardner.fsh.exec.Executor.AbandonLine(currentLine());
 			}
 		}
 
