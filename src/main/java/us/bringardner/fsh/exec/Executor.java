@@ -81,6 +81,9 @@ public final class Executor {
 				seq = reader.next();
 			} catch (SyntaxError e) {
 				syntaxError(sc, e, code, firstLine, who);
+				if( e.fatal ) {
+					throw new ExitException(sc, 2);
+				}
 				if( e.recoverable ) {
 					reader.skipLine();
 					ret = 1;
@@ -120,6 +123,9 @@ public final class Executor {
 				seq = reader.next();
 			} catch (SyntaxError e) {
 				syntaxError(sc, e, code, firstLine);
+				if( e.fatal ) {
+					throw new ExitException(sc, 2);
+				}
 				if( e.recoverable ) {
 					// x=(a & b): said, and the next line runs
 					reader.skipLine();

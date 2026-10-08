@@ -1699,6 +1699,12 @@ public final class Parser {
 				h.delimiter = h.delimiter.replaceFirst("^\t+", "");
 			}
 			r.hereDoc = h;
+			if( pendingHereDocs.size() >= 16 ) {
+				// bash's HEREDOC_MAX: said, and the shell ends (status 2)
+				SyntaxError e = new SyntaxError(lineOf(Math.min(pos, src.length())), "maximum here-document count exceeded");
+				e.fatal = true;
+				throw e;
+			}
 			pendingHereDocs.add(r);
 		} else {
 			r.target = target.word;

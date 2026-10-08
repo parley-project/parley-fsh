@@ -12,6 +12,9 @@ public class SyntaxError extends RuntimeException {
 	/** the text ended before the command did (an interactive shell reads another line then) */
 	public final boolean endOfInput;
 
+	/** the shell ends after saying it (status 2) */
+	public boolean fatal;
+
 	/** bash reports it and goes on with the next command (an operator in x=( )) */
 	public boolean recoverable;
 
