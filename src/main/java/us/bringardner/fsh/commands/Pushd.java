@@ -93,7 +93,7 @@ public class Pushd extends DirStack {
 					// change stack but not cwd
 					List<FileSource> dirs = getFiles(ctx, a);
 					if( dirs==null || dirs.size()==0) {
-						ctx.stderr.println("cd: no such file or directory: "+a);
+						ctx.error("pushd: "+a+": No such file or directory");
 						return -1;
 					}
 					FileSource dir = dirs.get(0);

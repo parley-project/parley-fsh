@@ -23,7 +23,7 @@ public class Getopts extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		if( args.length < 2 ) {
-			ctx.stderr.println("getopts: usage: getopts optstring name [arg ...]");
+			ctx.error("getopts: usage: getopts optstring name [arg ...]");
 			return 2;
 		}
 		String optstring = ""+args[0].getValue(ctx);

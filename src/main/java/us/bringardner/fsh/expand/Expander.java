@@ -152,12 +152,18 @@ public final class Expander {
 
 	/** an arithmetic expression ($(( )), (( )), the parts of for (( ))): expanded, then evaluated */
 	public Number arithmetic(Word w) {
-		List<Piece> pieces = new ArrayList<>();
-		word(w, pieces, TILDE_NONE);
-		return evaluate(join(pieces));
+		return evaluate(arithmeticText(w));
 	}
 
-	private Number evaluate(String text) {
+	/** an arithmetic expression expanded ($x, $( ) ...), not yet evaluated (what set -x shows) */
+	public String arithmeticText(Word w) {
+		List<Piece> pieces = new ArrayList<>();
+		word(w, pieces, TILDE_NONE);
+		return join(pieces);
+	}
+
+	/** evaluate an expanded arithmetic expression; an error is an ExpansionError */
+	public Number evaluate(String text) {
 		try {
 			return Arithmetic.evaluate(text, sc);
 		} catch (Arithmetic.ArithmeticError e) {

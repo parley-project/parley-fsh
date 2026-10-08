@@ -80,7 +80,7 @@ public class Kill extends ShellCommand{
 				int id = JobSpecs.parse(jm, val);
 				IJob job = jm.getJob(id);
 				if( job==null) {
-					ctx.stderr.println("kill: ("+val+") - No such process");
+					ctx.error("kill: ("+val+") - No such process");
 					return 1;
 				}
 				jobs.add(job);
@@ -94,14 +94,14 @@ public class Kill extends ShellCommand{
 				// kill -l TERM: the number
 				int number = signalNumber(listName);
 				if( number < 0 ) {
-					ctx.stderr.println("kill: "+listName+": invalid signal specification");
+					ctx.error("kill: "+listName+": invalid signal specification");
 					return 1;
 				}
 				ctx.stdout.println(""+number);
 			} else if( exitStatus!=null) {
 				String name = signals.get(exitStatus > 128 ? exitStatus-128 : exitStatus);
 				if(name == null) {
-					ctx.stderr.println("kill: ("+exitStatus+") - No such signal");
+					ctx.error("kill: ("+exitStatus+") - No such signal");
 				} else {
 					ctx.stdout.println(""+name);
 				}
@@ -125,7 +125,7 @@ public class Kill extends ShellCommand{
 				return ret;
 			}
 			if( jobs.size()==0) {
-				ctx.stderr.println("kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]");
+				ctx.error("kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]");
 				return 1;
 			}
 			for(IJob job: jobs) {
@@ -198,7 +198,7 @@ public class Kill extends ShellCommand{
 		}
 		java.util.Optional<ProcessHandle> p = ProcessHandle.of(pid);
 		if( p.isEmpty() || !p.get().isAlive()) {
-			ctx.stderr.println("kill: ("+pid+") - No such process");
+			ctx.error("kill: ("+pid+") - No such process");
 			return 1;
 		}
 		if( signum == 0 ) {
@@ -211,7 +211,7 @@ public class Kill extends ShellCommand{
 		try {
 			return new ProcessBuilder("kill", "-"+signum, ""+pid).inheritIO().start().waitFor() == 0 ? 0 : 1;
 		} catch (Exception e) {
-			ctx.stderr.println("kill: "+e.getMessage());
+			ctx.error("kill: "+e.getMessage());
 			return 1;
 		}
 	}

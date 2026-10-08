@@ -96,7 +96,6 @@ public final class Executor {
 			if( item.command.line == abandoned ) {
 				continue;
 			}
-			sc.console.handleMetaSignal(ConsoleMetaSignal.Debug);
 			try {
 				ret = ex.item(item, sc);
 			} catch (AbandonLine e) {
@@ -131,16 +130,19 @@ public final class Executor {
 
 	// ------------------------------------------------------------------ messages
 
-	/**
-	 * What comes before an error message. bash puts "script: line 3: " there; fsh shows the
-	 * message alone, as it always has.
-	 */
+	/** what comes before an error message found on line (see ShellContext.errorPrefix) */
 	static String prefix(ShellContext sc, int line) {
-		return "";
+		int saved = sc.line;
+		sc.line = line;
+		try {
+			return sc.errorPrefix();
+		} finally {
+			sc.line = saved;
+		}
 	}
 
 	private static void error(ShellContext sc, String message) {
-		sc.stderr.println(prefix(sc, sc.currentLine())+message);
+		sc.error(message);
 	}
 
 	/** an expansion error: a script that is not interactive ends (as in bash); otherwise status 1 */
@@ -430,7 +432,7 @@ public final class Executor {
 			// set -n: nothing runs any more (not even set +n), as in bash
 			return 0;
 		}
-		int outputSubstitutions = sc.pendingOutputSubstitutions.size();
+		int afterCommand = sc.afterCommand.size();
 		try {
 			// a debugger stops here; a stop or suspend of the job takes effect
 			sc.enterNode(c, source);
@@ -461,10 +463,9 @@ public final class Executor {
 			}
 		} finally {
 			sc.exitNode(c, source);
-			// >(cmd) in its words: cmd reads what was written
-			while( sc.pendingOutputSubstitutions.size() > outputSubstitutions ) {
-				String [] p = sc.pendingOutputSubstitutions.remove(outputSubstitutions);
-				outputSubstitution(p[0], p[1], sc);
+			// its <(cmd) and >(cmd) end
+			while( sc.afterCommand.size() > afterCommand ) {
+				sc.afterCommand.remove(afterCommand).run();
 			}
 		}
 	}
@@ -593,10 +594,26 @@ public final class Executor {
 			error(sc, "`"+f.variable+"': not a valid identifier");
 			return 1;
 		}
+		StringBuilder header = new StringBuilder("for "+f.variable);
+		StringBuilder shown = new StringBuilder(header);
+		if( f.words != null ) {
+			header.append(" in");
+			shown.append(" in");
+			for(Word w : f.words) {
+				header.append(' ').append(w.raw);
+			}
+			// (set -x shows the words as written, as bash does)
+			shown = header;
+		}
 		int [] status = {0};
 		sc.loopDepth++;
 		try {
 			for(String v : values) {
+				sc.line = f.line;
+				debugTrap(sc, header.toString());
+				if( tracing(sc)) {
+					trace(sc, sc.stderr, shown.toString());
+				}
 				sc.setVariable(f.variable, v);
 				if( body(f.body, sc, status) == LoopControl.Break ) {
 					break;
@@ -614,12 +631,14 @@ public final class Executor {
 		int [] status = {0};
 		sc.loopDepth++;
 		try {
-			arithmetic(f.init, ex);
-			while( f.condition.raw.isBlank() || Arithmetic.isTrue(arithmetic(f.condition, ex))) {
+			sc.line = f.line;
+			arithmetic(f.init, ex, sc);
+			while( f.condition.raw.isBlank() || Arithmetic.isTrue(arithmetic(f.condition, ex, sc))) {
 				if( body(f.body, sc, status) == LoopControl.Break ) {
 					break;
 				}
-				arithmetic(f.step, ex);
+				sc.line = f.line;
+				arithmetic(f.step, ex, sc);
 			}
 			return status[0];
 		} catch (ExpansionError e) {
@@ -630,8 +649,17 @@ public final class Executor {
 		}
 	}
 
-	private static Number arithmetic(Word w, Expander ex) {
-		return w.raw.isBlank() ? 0L : ex.arithmetic(w);
+	/** a part of for (( ; ; )): the DEBUG trap and set -x see it as (( part )) */
+	private static Number arithmetic(Word w, Expander ex, ShellContext sc) {
+		if( w.raw.isBlank()) {
+			return 0L;
+		}
+		debugTrap(sc, "(("+w.raw+"))");
+		String text = ex.arithmeticText(w);
+		if( tracing(sc)) {
+			trace(sc, sc.stderr, "(( "+text.trim()+" ))");
+		}
+		return ex.evaluate(text);
 	}
 
 	/** select name in words: a numbered menu on standard error, a choice read from standard input */
@@ -728,6 +756,11 @@ public final class Executor {
 	/** case word in pattern) ...: ;; ends it, ;& runs the next list too, ;;& tests the next patterns */
 	private int caseCommand(Ast.Case k, ShellContext sc) throws IOException {
 		Expander ex = expander(sc);
+		String header = "case "+k.subject.raw+" in";
+		debugTrap(sc, header+" ");
+		if( tracing(sc)) {
+			trace(sc, sc.stderr, header);
+		}
 		String subject;
 		try {
 			subject = ex.string(k.subject);
@@ -768,8 +801,19 @@ public final class Executor {
 
 	/** (( expression )): 0 if it is not 0 */
 	private int arith(Ast.Arith a, ShellContext sc) {
+		debugTrap(sc, text(a).trim());
 		try {
-			return Arithmetic.isTrue(expander(sc).arithmetic(a.expression)) ? 0 : 1;
+			Expander ex = expander(sc);
+			String expr = ex.arithmeticText(a.expression);
+			if( tracing(sc)) {
+				// the spaces inside (( )) as written
+				String inner = text(a).trim();
+				inner = inner.substring(2, inner.length()-2);
+				String lead = inner.substring(0, inner.length()-inner.stripLeading().length());
+				String trail = inner.substring(inner.stripTrailing().length());
+				trace(sc, sc.stderr, "(( "+lead+expr+trail+" ))");
+			}
+			return Arithmetic.isTrue(ex.evaluate(expr)) ? 0 : 1;
 		} catch (ExpansionError e) {
 			error(sc, "((: "+e.getMessage());
 			return 1;
@@ -784,6 +828,7 @@ public final class Executor {
 	}
 
 	private int cond(Ast.Cond c, ShellContext sc) {
+		debugTrap(sc, text(c).trim());
 		try {
 			return test(c.expression, sc, expander(sc)) ? 0 : 1;
 		} catch (BadRegex e) {
@@ -808,14 +853,28 @@ public final class Executor {
 			return !test(n.expression(), sc, ex);
 		}
 		case Ast.CondWord w -> {
-			return !ex.string(w.word()).isEmpty();
+			String v = ex.string(w.word());
+			traceTest(sc, v);
+			return !v.isEmpty();
 		}
 		case Ast.CondUnary u -> {
-			return us.bringardner.fsh.commands.Test.unaryTest(u.op(), ex.string(u.operand()), sc);
+			String v = ex.string(u.operand());
+			traceTest(sc, u.op()+" "+v);
+			return us.bringardner.fsh.commands.Test.unaryTest(u.op(), v, sc);
 		}
 		case Ast.CondBinary b -> {
+			if( tracing(sc)) {
+				traceTest(sc, ex.string(b.left())+" "+b.op()+" "+ex.string(b.right()));
+			}
 			return binary(b, sc, ex);
 		}
+		}
+	}
+
+	/** set -x: each test of [[ ]] as it is made, its words expanded */
+	private static void traceTest(ShellContext sc, String text) {
+		if( tracing(sc)) {
+			trace(sc, sc.stderr, "[[ "+text+" ]]");
 		}
 	}
 
@@ -913,9 +972,11 @@ public final class Executor {
 	 */
 	private int simple(Ast.SimpleCommand c, ShellContext sc) throws IOException {
 		sc.line = c.line;
+		String text = commandText(c);
 		if( sc.trapLine == null ) {
-			sc.currentCommand = commandText(c);
+			sc.currentCommand = text;
 		}
+		debugTrap(sc, text);
 		Expander ex = expander(sc);
 		long substitutions = sc.console.substitutionCount();
 		List<Object> args = new ArrayList<>();
@@ -947,6 +1008,9 @@ public final class Executor {
 			try {
 				for(Ast.Assignment a : c.assignments) {
 					String v = a.value == null ? "" : ex.assignment(a.value);
+					if( tracing(sc)) {
+						trace(sc, sc.stderr, a.name+"="+assigned(v));
+					}
 					saved.add(new Object[] {a.name, sc.console.getVariable(a.name), sc.getEvironmentVariable(a.name)});
 					sc.setVariable(a.name, v);
 					sc.setEnvironmentVariable(a.name, v);
@@ -989,6 +1053,8 @@ public final class Executor {
 		List<Closeable> opened = null;
 		try {
 			opened = Redirects.apply(c.redirects, sc, ex);
+			// (traced with PS4 as it was before: PS4=... shows the old one, as in bash)
+			String prefix = tracing(sc) ? ps4(sc) : null;
 			for(Ast.Assignment a : c.assignments) {
 				if( sc.console.isReadonly(a.name)) {
 					error(sc, a.name+": readonly variable");
@@ -998,12 +1064,13 @@ public final class Executor {
 				}
 				assign(a, sc, ex, false);
 			}
-			if( sc.console.isOptionEnabled(Option.PrintCommandTrace) && !c.assignments.isEmpty()) {
-				StringBuilder t = new StringBuilder(ps4(sc));
+			if( prefix != null && !expandingPs4.get()) {
 				for(Ast.Assignment a : c.assignments) {
-					t.append(t.length() > ps4(sc).length() ? " " : "").append(a.name).append('=').append(quote(String.valueOf(sc.getVariable(a.name))));
+					Object v = sc.getVariable(a.name);
+					String shown = a.array != null ? "("+(v instanceof List<?> l ? String.join(" ", strings(new ArrayList<>(l))) : "")+")"
+							: assigned(String.valueOf(ShellContext.firstElement(v) == null ? "" : ShellContext.firstElement(v)));
+					streams.err().println(prefix+a.name+(a.append ? "+=" : "=")+shown);
 				}
-				sc.stderr.println(t);
 			}
 		} catch (ExpansionError e) {
 			return expansionError(sc, e);
@@ -1025,10 +1092,11 @@ public final class Executor {
 		Integer status = null;
 		int ret = 0;
 		try {
-			opened = Redirects.apply(c.redirects, sc, ex);
-			if( sc.console.isOptionEnabled(Option.PrintCommandTrace)) {
+			if( tracing(sc)) {
+				// on the shell's standard error, not the command's (2>&1 does not take it)
 				trace(name, args, sc);
 			}
+			opened = Redirects.apply(c.redirects, sc, ex);
 			ret = dispatch(name, args, sc, ex);
 		} catch (ReturnException e) {
 			status = e.exitCode;
@@ -1077,26 +1145,81 @@ public final class Executor {
 		return msg;
 	}
 
-	private static String ps4(ShellContext sc) {
-		Object ps4 = sc.getVariable("PS4");
-		return ps4 == null ? "+ " : ps4.toString();
+	private static boolean tracing(ShellContext sc) {
+		return sc.console.isOptionEnabled(Option.PrintCommandTrace);
 	}
 
-	/** set -x: the command as it runs, on standard error */
+	/** PS4 is being expanded (a $( ) in it is not traced) */
+	private static final ThreadLocal<Boolean> expandingPs4 = ThreadLocal.withInitial(() -> false);
+
+	/**
+	 * What comes before a set -x line: PS4 expanded ("+ " if it is unset), its first character
+	 * repeated once more for each $( ) this is in.
+	 */
+	private static String ps4(ShellContext sc) {
+		Object raw = sc.getVariable("PS4");
+		String ps4 = raw == null ? "+ " : raw.toString();
+		if( ps4.indexOf('$') >= 0 || ps4.indexOf('`') >= 0 ) {
+			expandingPs4.set(true);
+			try {
+				ps4 = expanderFor(sc).string(Parser.fragment(ps4, Parser.Fragment.QUOTED));
+			} catch (RuntimeException e) {
+				// as written
+			} finally {
+				expandingPs4.set(false);
+			}
+		}
+		if( ps4.isEmpty() || sc.substitutionLevel == 0 ) {
+			return ps4;
+		}
+		return String.valueOf(ps4.charAt(0)).repeat(sc.substitutionLevel)+ps4;
+	}
+
+	/** set -x: a line on err (the shell's standard error) */
+	private static void trace(ShellContext sc, PrintStream err, String text) {
+		if( !expandingPs4.get()) {
+			err.println(ps4(sc)+text);
+		}
+	}
+
+	/** set -x: the command as it runs */
 	private void trace(String name, List<Object> args, ShellContext sc) {
-		StringBuilder line = new StringBuilder(ps4(sc)).append(quote(name));
+		StringBuilder line = new StringBuilder(quote(name));
 		for(Object a : args) {
 			line.append(' ').append(a instanceof Ast.Assignment as ? text(as) : quote(String.valueOf(a)));
 		}
-		sc.stderr.println(line);
+		trace(sc, sc.stderr, line.toString());
 	}
 
-	/** a word as set -x shows it: 'quoted' if it has blanks or special characters */
-	private static String quote(String s) {
-		if( !s.isEmpty() && s.matches("[A-Za-z0-9_./:=+,@%^-]+")) {
-			return s;
+	/**
+	 * The DEBUG trap, before a command (text is $BASH_COMMAND): not in a function, ( ) or $( )
+	 * unless set -T.
+	 */
+	private static void debugTrap(ShellContext sc, String text) {
+		if( sc.debugBlocked > 0 && !sc.console.isOptionEnabled(Option.FuncTrace)) {
+			return;
 		}
-		return "'"+s.replace("'", "'\\''")+"'";
+		if( sc.trapLine == null ) {
+			sc.currentCommand = text;
+		}
+		sc.console.runTrap(ConsoleMetaSignal.Debug, sc);
+	}
+
+	/** a value as set -x shows it after name= (an empty one is nothing) */
+	private static String assigned(String v) {
+		return v.isEmpty() ? "" : quote(v);
+	}
+
+	/**
+	 * A word as set -x shows it (and as the shell reads it back): 'quoted' if it is empty, has
+	 * blanks or special characters, or starts with ~ or #.
+	 */
+	private static String quote(String s) {
+		boolean plain = !s.isEmpty() && !s.startsWith("~") && !s.startsWith("#");
+		for (int i = 0; plain && i < s.length(); i++) {
+			plain = " \t\n'\"\\|&;()<>!{}*[?]$`".indexOf(s.charAt(i)) < 0;
+		}
+		return plain ? s : "'"+s.replace("'", "'\\''")+"'";
 	}
 
 	private int dispatch(String name, List<Object> args, ShellContext sc, Expander ex) throws IOException {
@@ -1440,7 +1563,7 @@ public final class Executor {
 	// ------------------------------------------------------------------ substitutions
 
 	/** >(cmd): cmd runs in a subshell, reading what was written to the file */
-	private static void outputSubstitution(String code, String file, ShellContext primary) {
+	static void outputSubstitution(String code, String file, ShellContext primary) {
 		ShellContext ctx = primary.subShell();
 		Console.Snapshot saved = null;
 		try (InputStream in = new java.io.FileInputStream(file)) {
@@ -1529,21 +1652,13 @@ public final class Executor {
 		@Override
 		public String processSubstitution(char direction, Ast.Sequence body, String text) {
 			try {
-				java.io.File file = java.io.File.createTempFile("fsh-", ".fifo");
-				file.deleteOnExit();
-				if( direction == '>' ) {
-					sc.pendingOutputSubstitutions.add(new String[] {text, file.getAbsolutePath()});
-					return file.getAbsolutePath();
-				}
 				Ast.Sequence seq = body;
 				Executor ex = Executor.this;
 				if( seq == null ) {
 					seq = Parser.parse(text);
 					ex = new Executor(text);
 				}
-				String out = ex.capture(seq, sc);
-				java.nio.file.Files.writeString(file.toPath(), out);
-				return file.getAbsolutePath();
+				return ProcessSubstitutions.start(direction, seq, ex, text, sc);
 			} catch (IOException | SyntaxError e) {
 				throw new ExpansionError("process substitution: "+e.getMessage());
 			}
@@ -1608,6 +1723,7 @@ public final class Executor {
 	String capture(Ast.Sequence seq, ShellContext primary) {
 		ShellContext ctx = primary.subShell();
 		ctx.errTrapBlocked++;
+		ctx.substitutionLevel++;
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
 		ctx.stdout = new PrintStream(bao, true);
 		Console.Snapshot saved = null;

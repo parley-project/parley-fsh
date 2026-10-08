@@ -91,7 +91,7 @@ public class Read extends ShellCommand{
 						try {
 							timeoutSeconds = Double.parseDouble(""+args[++idx1].getValue(ctx));
 						} catch (NumberFormatException e) {
-							ctx.stderr.println("read: "+args[idx1].getValue(ctx)+": invalid timeout specification");
+							ctx.error("read: "+args[idx1].getValue(ctx)+": invalid timeout specification");
 							return 1;
 						}
 						timeout = (int) Math.ceil(timeoutSeconds);
@@ -102,7 +102,7 @@ public class Read extends ShellCommand{
 						try {
 							fromFd = Integer.parseInt(text.trim());
 						} catch (NumberFormatException e) {
-							ctx.stderr.println("read: "+text+": invalid file descriptor specification");
+							ctx.error("read: "+text+": invalid file descriptor specification");
 							return 1;
 						}
 						break;
@@ -123,7 +123,7 @@ public class Read extends ShellCommand{
 		if( fromFd != 0 ) {
 			Console.FileDiscriptor fd = ctx.console.getFileDistcriptor(fromFd);
 			if( fd == null || fd.getIn() == null ) {
-				ctx.stderr.println("read: "+fromFd+": invalid file descriptor: Bad file descriptor");
+				ctx.error("read: "+fromFd+": invalid file descriptor: Bad file descriptor");
 				return 1;
 			}
 			ctx.stdin = fd.getIn();

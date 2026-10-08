@@ -24,7 +24,7 @@ public class Caller extends ShellCommand{
 			try {
 				n = Integer.parseInt((""+args[0].getValue(ctx)).trim());
 			} catch (NumberFormatException e) {
-				ctx.stderr.println("caller: "+args[0].getValue(ctx)+": invalid number");
+				ctx.error("caller: "+args[0].getValue(ctx)+": invalid number");
 				return 2;
 			}
 		}

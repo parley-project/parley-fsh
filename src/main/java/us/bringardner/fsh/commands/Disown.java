@@ -57,7 +57,7 @@ public class Disown extends ShellCommand{
 						jobs.add(job);
 					}
 				} else {
-					ctx.stderr.println("disown: "+val+": no such job");
+					ctx.error("disown: "+val+": no such job");
 					return 1;
 				}
 			}

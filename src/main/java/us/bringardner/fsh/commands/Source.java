@@ -31,7 +31,7 @@ public class Source extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx)  {
 		if(args.length==0) {
-			ctx.stderr.println("source: usage: source filename [arguments]");
+			ctx.error("source: usage: source filename [arguments]");
 			return 1;
 		}
 
@@ -61,8 +61,8 @@ public class Source extends ShellCommand{
 			}
 			
 			if( !file.exists()) {
-				ctx.stderr.println("source: "+path+"  not found");
-				ctx.stderr.println("source: usage: source filename [arguments]");
+				// as bash says it
+				ctx.error(path+": No such file or directory");
 				return 1;
 
 			}
@@ -97,7 +97,7 @@ public class Source extends ShellCommand{
 		} catch (ExitException e) {
 			throw e;
 		} catch (Exception e) {
-			ctx.stderr.println("source: "+(e.getMessage() != null ? e.getMessage() : e));
+			ctx.error("source: "+(e.getMessage() != null ? e.getMessage() : e));
 			return 1;
 		}
 				

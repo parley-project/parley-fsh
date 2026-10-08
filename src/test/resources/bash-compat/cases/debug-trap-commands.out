@@ -1,0 +1,17 @@
+D[x=1]
+D[f]
+in f
+D[true]
+D[echo t]
+t
+D[[[ 1 == 1 ]]]
+D[for i in a]
+D[echo $i]
+a
+D[case a in ]
+D[echo c]
+c
+D[(( 2 > 1 ))]
+D[y=$(echo s)]
+D[trap - DEBUG]
+off

@@ -48,14 +48,21 @@ final class AstFunction implements ShellFunction {
 		int ret = 0;
 		int loops = sc.loopDepth;
 		sc.enterFunction(values, this);
-		// break and continue do not reach the caller's loops
+		// break and continue do not reach the caller's loops; the DEBUG trap does not run in
+		// it (unless set -T)
 		sc.loopDepth = 0;
+		sc.debugBlocked++;
+		if( sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.FuncTrace)) {
+			// with set -T the DEBUG trap runs as the function starts, as in bash
+			sc.console.runTrap(us.bringardner.fsh.Console.ConsoleMetaSignal.Debug, sc);
+		}
 		try {
 			ret = executor.command(def.body, sc);
 		} catch (ReturnException e) {
 			ret = e.exitCode;
 		} finally {
 			sc.loopDepth = loops;
+			sc.debugBlocked--;
 			try {
 				sc.console.setLastExitCode(ret);
 				sc.functionReturning();

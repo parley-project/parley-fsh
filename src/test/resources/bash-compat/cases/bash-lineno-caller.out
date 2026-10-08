@@ -1,0 +1,4 @@
+f called from 9 main
+g called from 3, f from 9
+3 g f main
+outside: [0]

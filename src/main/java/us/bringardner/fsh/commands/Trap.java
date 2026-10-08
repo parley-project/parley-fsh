@@ -85,8 +85,8 @@ public class Trap extends ShellCommand implements SignalHandler {
 				} else if( c == 'l' ) {
 					list = true;
 				} else {
-					ctx.stderr.println("trap: -"+c+": invalid option");
-					ctx.stderr.println("trap: usage: trap [-lp] [[action] signal_spec ...]");
+					ctx.error("trap: -"+c+": invalid option");
+					ctx.error("trap: usage: trap [-lp] [[action] signal_spec ...]");
 					return 2;
 				}
 			}
@@ -127,7 +127,7 @@ public class Trap extends ShellCommand implements SignalHandler {
 			try {
 				ctx.console.setTrap(ctx, new Signal(n.substring(3)), a);
 			} catch (Exception e) {
-				ctx.stderr.println("trap: "+w+": invalid signal specification");
+				ctx.error("trap: "+w+": invalid signal specification");
 				ret = 1;
 			}
 		}

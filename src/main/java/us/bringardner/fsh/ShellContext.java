@@ -598,6 +598,16 @@ $
 			names.add("main");
 			return names;
 		}
+		if( name.equals("BASH_LINENO")) {
+			// the line each running function was called from, innermost first, then 0 (main; outside
+			// a function that is all)
+			FshList lines = new FshList();
+			for (int idx = functionStack.size()-1; idx >= 0; idx--) {
+				lines.add(String.valueOf(functionStack.get(idx).callLine));
+			}
+			lines.add("0");
+			return lines;
+		}
 		if( name.equals("_")) {
 			// the last argument of the last command (not the _ the JVM was started with)
 			return console.lastArgument;
@@ -803,6 +813,8 @@ $
 		ShellContext ret = new ShellContext(console);
 		ret.line = line;
 		ret.loopDepth = loopDepth;
+		ret.substitutionLevel = substitutionLevel;
+		ret.debugBlocked = debugBlocked + (console.isOptionEnabled(Console.Option.FuncTrace) ? 0 : 1);
 		ret.stdout = stdout;
 		ret.stdin = stdin;
 		ret.stderr = stderr;
@@ -855,8 +867,11 @@ $
 		return ret;
 	}
 
-	/** >(cmd) of the running statements: {cmd, file}, run when the statement that made them is done */
-	public final List<String[]> pendingOutputSubstitutions = new ArrayList<>();
+	/**
+	 * What is left to do when the running command is done (its <(cmd) and >(cmd)), in order; the
+	 * executor runs what a command added once that command ends.
+	 */
+	public final List<Runnable> afterCommand = new ArrayList<>();
 
 	/** how many sourced files are running (return ends the innermost) */
 	public int sourceDepth;
@@ -1016,11 +1031,37 @@ $
 		return nodeStack.isEmpty() ? 0 : nodeStack.peek().line;
 	}
 
+	/**
+	 * What comes before an error message, as bash writes it: "script: line 3: " in a script
+	 * (script is $0), "fsh: " in an interactive shell.
+	 */
+	public String errorPrefix() {
+		if( console != null && console.isInteractive ) {
+			return "fsh: ";
+		}
+		Object zero = getVariable("$0");
+		return (zero == null || zero.toString().isEmpty() ? "fsh" : zero)+": line "+currentLine()+": ";
+	}
+
+	/** an error message, on standard error, after errorPrefix ("cd: x: No such file or directory") */
+	public void error(String message) {
+		stderr.println(errorPrefix()+message);
+	}
+
 	/** the line the new executor is running (0: none, the statement stack says) */
 	public int line;
 
 	/** how many loops the new executor is in (in this function): break and continue need one */
 	public int loopDepth;
+
+	/** how many $( ) deep this is: set -x repeats the first character of PS4 once more for each */
+	public int substitutionLevel;
+
+	/**
+	 * The DEBUG trap does not run here when above 0: in a function, ( ) or $( ), unless set -T
+	 * (functrace) is on, as in bash.
+	 */
+	public int debugBlocked;
 
 	/** trap ... RETURN in a function: it runs when that function returns */
 	public void returnTrapSet() {

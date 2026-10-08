@@ -30,7 +30,7 @@ final class Declarations {
 	}
 
 	private void error(String command, String message) {
-		sc.stderr.println(Executor.prefix(sc, sc.currentLine())+command+": "+message);
+		sc.error(command+": "+message);
 	}
 
 	/** args: words (String) and name=value words (Ast.Assignment) */

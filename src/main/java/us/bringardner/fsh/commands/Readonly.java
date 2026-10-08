@@ -35,7 +35,7 @@ public class Readonly extends ShellCommand{
 			if( functions ) {
 				any = true;
 				if( !ctx.console.getFunctions().containsKey(text)) {
-					ctx.stderr.println("readonly: "+text+": not a function");
+					ctx.error("readonly: "+text+": not a function");
 					ret = 1;
 				} else {
 					ctx.console.setReadonlyFunction(text);
@@ -47,7 +47,7 @@ public class Readonly extends ShellCommand{
 			String var = eq < 0 ? text : text.substring(0, eq);
 			if( eq >= 0 ) {
 				if( ctx.console.isReadonly(var)) {
-					ctx.stderr.println("readonly: "+var+": readonly variable");
+					ctx.error("readonly: "+var+": readonly variable");
 					ret = 1;
 					continue;
 				}

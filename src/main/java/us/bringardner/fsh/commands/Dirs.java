@@ -78,7 +78,7 @@ public class Dirs extends DirStack{
 		}
 		if( N != null ) {
 			if( N<0 || N>=tmp.size()) {
-				ctx.stderr.println("dirs: "+N+": directory stack index out of range");
+				ctx.error("dirs: "+N+": directory stack index out of range");
 				ret = 1;
 			} else {
 				print(tmp, ctx, onePerLine, showIndex, fullPath,N);

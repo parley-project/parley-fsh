@@ -61,7 +61,7 @@ public class Type extends ShellCommand{
 			}
 			if( kind == null ) {
 				if( !terse && !path ) {
-					ctx.stderr.println("type: "+n+": not found");
+					ctx.error("type: "+n+": not found");
 				}
 				ret = 1;
 			} else {

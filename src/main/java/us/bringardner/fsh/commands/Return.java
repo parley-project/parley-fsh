@@ -18,7 +18,7 @@ public class Return extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		if( !ctx.isInFunction() && ctx.sourceDepth == 0 ) {
-			ctx.stderr.println("return: can only `return' from a function or sourced script");
+			ctx.error("return: can only `return' from a function or sourced script");
 			return 2;
 		}
 		// with no number, the status of the last command (as in bash)

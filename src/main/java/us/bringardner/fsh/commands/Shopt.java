@@ -35,7 +35,7 @@ public class Shopt extends ShellCommand{
 			case "-q": quiet = true; break;
 			default:
 				if( text.startsWith("-")) {
-					ctx.stderr.println("shopt: "+text+": invalid option");
+					ctx.error("shopt: "+text+": invalid option");
 					return 2;
 				}
 				names.add(text);
@@ -45,7 +45,7 @@ public class Shopt extends ShellCommand{
 		if( set != null ) {
 			for(String n : names) {
 				if( !options.containsKey(n)) {
-					ctx.stderr.println("shopt: "+n+": invalid shell option name");
+					ctx.error("shopt: "+n+": invalid shell option name");
 					ret = 1;
 					continue;
 				}
@@ -60,7 +60,7 @@ public class Shopt extends ShellCommand{
 		} else {
 			for(String n : names) {
 				if( !options.containsKey(n)) {
-					ctx.stderr.println("shopt: "+n+": invalid shell option name");
+					ctx.error("shopt: "+n+": invalid shell option name");
 					ret = 1;
 				} else {
 					show.put(n, options.get(n));

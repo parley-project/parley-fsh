@@ -72,7 +72,7 @@ public class Compgen extends ShellCommand{
 					case 'k': actions.add("keyword"); break;
 					case 'v': actions.add("variable"); break;
 					default:
-						ctx.stderr.println("compgen: -"+op+": invalid option");
+						ctx.error("compgen: -"+op+": invalid option");
 						return 2;
 					}
 				}
@@ -116,7 +116,7 @@ public class Compgen extends ShellCommand{
 				}
 				break;
 			default:
-				ctx.stderr.println("compgen: "+action+": invalid action name");
+				ctx.error("compgen: "+action+": invalid action name");
 				return 2;
 			}
 			for(String n : names) {

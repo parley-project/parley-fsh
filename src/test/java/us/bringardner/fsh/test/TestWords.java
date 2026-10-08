@@ -120,7 +120,7 @@ public class TestWords extends AbstractConsoleTest {
 		// in a subshell, so set -u does not reach the tests that run after this one
 		ExecuteResult res = executeCommand("( set -u; echo :$nope: )", "");
 		assertEquals("", res.getStdOut());
-		assertEquals("nope: unbound variable", res.getStdErr().trim());
+		assertEquals("fsh: line 1: nope: unbound variable", res.getStdErr().trim());
 		assertEquals(1, res.exitCode);
 	}
 
@@ -280,7 +280,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("h() { local z=in; unset z; echo \":$z:\"; }; z=out; h; echo \":$z:\"", "::\n:out:\n");
 		ExecuteResult res = executeCommand("f() { echo f; }; unset -f f; f", "");
 		assertEquals("", res.getStdOut());
-		assertEquals("f: command not found", res.getStdErr().trim());
+		assertEquals("fsh: line 1: f: command not found", res.getStdErr().trim());
 		assertEquals(127, res.exitCode);
 		res = executeCommand("g() { echo g; }; unset g; g", "");
 		assertEquals(127, res.exitCode);
@@ -314,7 +314,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("exec 4>&1; echo four >&4; exec 4>&-; echo still", "four\nstill\n");
 		expect("echo line > "+f+"; exec 5<"+f+"; read v <&5; echo \"$v\"; exec 5<&-", "line\n");
 		res = executeCommand("echo bad >&7", "");
-		assertEquals("7: Bad file descriptor", res.getStdErr().trim());
+		assertEquals("fsh: line 1: 7: Bad file descriptor", res.getStdErr().trim());
 	}
 
 	@Test
@@ -372,7 +372,7 @@ public class TestWords extends AbstractConsoleTest {
 		// [ ] tests its words; it does not run them
 		ExecuteResult res = executeCommand("[ 3 -xx 4 ]; echo $?; [ a b ]; echo $?; [ a b c d ]; echo $?", "");
 		assertEquals("2\n2\n2\n", res.getStdOut());
-		assertEquals("[: -xx: binary operator expected\n[: a: unary operator expected\n[: too many arguments", res.getStdErr().trim());
+		assertEquals("fsh: line 1: [: -xx: binary operator expected\nfsh: line 1: [: a: unary operator expected\nfsh: line 1: [: too many arguments", res.getStdErr().trim());
 		res = executeCommand("if [ 3 -xx 4 ]; then echo y; else echo n; fi", "");
 		assertEquals("n\n", res.getStdOut());
 		// $? after any statement

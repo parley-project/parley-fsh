@@ -1,0 +1,12 @@
+line 3: cd: /nonexistent: No such file or directory
+line 4: nosuchcommand: command not found
+line 5: /nonexistent/x: No such file or directory
+line 6: 1/0: division by 0 (error token is "0")
+line 7: [: a: unary operator expected
+line 8: read: x: invalid timeout specification
+line 9: printf: abc: invalid number
+0
+line 10: ${x y}: bad substitution
+line 11: shopt: nosuchopt: invalid shell option name
+line 12: undefined_var: unbound variable
+line 13: ro: readonly variable

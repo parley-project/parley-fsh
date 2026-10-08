@@ -1,0 +1,14 @@
++ x=1
++ y='a b'
++ x=2
++ echo hi
+hi
++ echo '*' 'it'\''s' '' a=b '~x' 'a b'
+* it's  a=b ~x a b
++ f 'q r'
++ echo 'in f' 'q r'
+in f q r
+++ true
++ y=
++ set +x
+done

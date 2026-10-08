@@ -1,0 +1,12 @@
+++ echo inner
++ echo inner
+inner
+++ echo sub
++ x=sub
++ PS4='+${LINENO}> '
++6> echo after
+after
+++7> echo nested
++7> echo nested
+nested
++8> set +x

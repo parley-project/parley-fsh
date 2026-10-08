@@ -64,7 +64,7 @@ public final class Programs {
 			return execute(cmd, sc);
 		}
 		if( name.contains("/")) {
-			sc.stderr.println(name+": No such file or directory");
+			sc.error(name+": No such file or directory");
 			return 127;
 		}
 
@@ -390,10 +390,10 @@ public final class Programs {
 				String msg = ""+ep.error.getMessage();
 				if( msg.contains("error=2,") || msg.contains("error: 2 ")) {
 					// as in bash
-					ctx.stderr.println(cmd.get(0)+": command not found");
+					ctx.error(cmd.get(0)+": command not found");
 					ret = 127;
 				} else {
-					ctx.stderr.println(cmd.get(0)+": "+msg);
+					ctx.error(cmd.get(0)+": "+msg);
 				}
 			}
 		} 

@@ -44,14 +44,14 @@ public class Unset extends ShellCommand{
 					variables = true;
 					reference |= c == 'n';
 				} else {
-					ctx.stderr.println("unset: -"+c+": invalid option");
-					ctx.stderr.println("unset: usage: unset [-f] [-v] [name ...]");
+					ctx.error("unset: -"+c+": invalid option");
+					ctx.error("unset: usage: unset [-f] [-v] [name ...]");
 					return 2;
 				}
 			}
 		}
 		if( functions && variables ) {
-			ctx.stderr.println("unset: cannot simultaneously unset a function and a variable");
+			ctx.error("unset: cannot simultaneously unset a function and a variable");
 			return 1;
 		}
 
@@ -59,7 +59,7 @@ public class Unset extends ShellCommand{
 		for(; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
 			if( ctx.console.isReadonly(text) && !functions ) {
-				ctx.stderr.println("unset: "+text+": cannot unset: readonly variable");
+				ctx.error("unset: "+text+": cannot unset: readonly variable");
 				ret = 1;
 				continue;
 			}

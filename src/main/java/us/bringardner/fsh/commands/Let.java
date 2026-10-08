@@ -22,7 +22,7 @@ public class Let extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		if( args.length == 0 ) {
-			ctx.stderr.println("let: expression expected");
+			ctx.error("let: expression expected");
 			return 1;
 		}
 		Number last = 0L;
@@ -31,7 +31,7 @@ public class Let extends ShellCommand{
 			try {
 				last = Arithmetic.evaluate(""+arg.getValue(ctx), ctx);
 			} catch (Arithmetic.ArithmeticError e) {
-				ctx.stderr.println("let: "+e.getMessage());
+				ctx.error("let: "+e.getMessage());
 				return 1;
 			}
 		}

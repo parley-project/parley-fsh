@@ -49,7 +49,7 @@ public class Printf extends ShellCommand{
 			}
 		}
 		if( idx >= words.size()) {
-			ctx.stderr.println("printf: usage: printf [-v var] format [arguments]");
+			ctx.error("printf: usage: printf [-v var] format [arguments]");
 			return 2;
 		}
 		String format = words.get(idx++);
@@ -204,7 +204,7 @@ public class Printf extends ShellCommand{
 			return String.format(spec+(precision == null ? "" : prec)+(conv == 'F' ? 'f' : conv), d);
 		}
 		default:
-			ctx.stderr.println("printf: %"+conv+": invalid format character");
+			ctx.error("printf: %"+conv+": invalid format character");
 			failed = true;
 			return "";
 		}
@@ -306,7 +306,7 @@ public class Printf extends ShellCommand{
 			}
 			return Long.parseLong(s);
 		} catch (NumberFormatException e) {
-			ctx.stderr.println("printf: "+arg+": invalid number");
+			ctx.error("printf: "+arg+": invalid number");
 			failed = true;
 			// as in bash, the number it starts with (3.7 is 3)
 			java.util.regex.Matcher m = java.util.regex.Pattern.compile("^[-+]?\\d+").matcher(s);
@@ -324,7 +324,7 @@ public class Printf extends ShellCommand{
 		try {
 			return Double.parseDouble(arg.trim());
 		} catch (NumberFormatException e) {
-			ctx.stderr.println("printf: "+arg+": invalid number");
+			ctx.error("printf: "+arg+": invalid number");
 			failed = true;
 			return 0;
 		}

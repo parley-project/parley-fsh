@@ -68,7 +68,7 @@ public class Bg extends ShellCommand{
 
 		IJob job = jm.getJob(jobs.get(0));
 		if( job == null ) {
-			ctx.stderr.println("No such job "+jobs.get(0));
+			ctx.error("No such job "+jobs.get(0));
 			return 3;
 		}
 		

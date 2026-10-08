@@ -37,7 +37,7 @@ public class Cd extends ShellCommand{
 			}
 		}
 		if( sargs.size() > 1 ) {
-			ctx.stderr.println("cd: too many arguments");
+			ctx.error("cd: too many arguments");
 			return 1;
 		}
 		String path;
@@ -46,14 +46,14 @@ public class Cd extends ShellCommand{
 		if( sargs.isEmpty()) {
 			Object home = ctx.getVariable("HOME");
 			if( home == null || home.toString().isEmpty()) {
-				ctx.stderr.println("cd: HOME not set");
+				ctx.error("cd: HOME not set");
 				return 1;
 			}
 			path = home.toString();
 		} else if( sargs.get(0).equals("-")) {
 			Object old = ctx.getVariable(Console.VARIABLE_OLDPWD);
 			if( old == null || old.toString().isEmpty()) {
-				ctx.stderr.println("cd: OLDPWD not set");
+				ctx.error("cd: OLDPWD not set");
 				return 1;
 			}
 			path = old.toString();
@@ -81,7 +81,7 @@ public class Cd extends ShellCommand{
 		if( dir == null ) {
 			List<FileSource> dirs = getFiles(ctx, path);
 			if( dirs==null || dirs.size()==0 || !dirs.get(0).exists()) {
-				ctx.stderr.println("cd: "+path+": No such file or directory");
+				ctx.error("cd: "+path+": No such file or directory");
 				return 1;
 			}
 			dir = dirs.get(0);
@@ -95,7 +95,7 @@ public class Cd extends ShellCommand{
 			}
 		}
 		if( !dir.isDirectory()) {
-			ctx.stderr.println("cd: "+path+": Not a directory");
+			ctx.error("cd: "+path+": Not a directory");
 			return 1;
 		}
 		//  PWD and OLD_PWD variables are managed by console (in a pipe stage, set here: the stage's own)

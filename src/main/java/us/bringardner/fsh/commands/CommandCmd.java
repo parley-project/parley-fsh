@@ -60,7 +60,7 @@ public class CommandCmd extends ShellCommand{
 			}
 			if( out == null ) {
 				if( mode.equals("-V")) {
-					ctx.stderr.println("command: "+n+": not found");
+					ctx.error("command: "+n+": not found");
 				}
 				return 1;
 			}

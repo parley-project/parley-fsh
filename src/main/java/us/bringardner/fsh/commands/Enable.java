@@ -38,7 +38,7 @@ public class Enable extends ShellCommand{
 					case 'a': all = true; break;
 					case 'p': break;
 					default:
-						ctx.stderr.println("enable: -"+c+": invalid option");
+						ctx.error("enable: -"+c+": invalid option");
 						return 2;
 					}
 				}
@@ -61,7 +61,7 @@ public class Enable extends ShellCommand{
 		int ret = 0;
 		for(String n : names) {
 			if( !Console.commands.containsKey(n)) {
-				ctx.stderr.println("enable: "+n+": not a shell builtin");
+				ctx.error("enable: "+n+": not a shell builtin");
 				ret = 1;
 			} else if( disable ) {
 				ctx.console.disabledBuiltins.add(n);

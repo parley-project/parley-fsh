@@ -50,13 +50,13 @@ public class Mapfile extends ShellCommand{
 				}
 				default:
 					if( text.startsWith("-")) {
-						ctx.stderr.println(getName()+": "+text+": invalid option");
+						ctx.error(getName()+": "+text+": invalid option");
 						return 2;
 					}
 					var = text;
 				}
 			} catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
-				ctx.stderr.println(getName()+": "+text+": option requires a number");
+				ctx.error(getName()+": "+text+": option requires a number");
 				return 2;
 			}
 		}
@@ -65,7 +65,7 @@ public class Mapfile extends ShellCommand{
 		if( fromFd != 0 ) {
 			us.bringardner.fsh.Console.FileDiscriptor fd = ctx.console.getFileDistcriptor(fromFd);
 			if( fd == null || fd.getIn() == null ) {
-				ctx.stderr.println(getName()+": "+fromFd+": invalid file descriptor: Bad file descriptor");
+				ctx.error(getName()+": "+fromFd+": invalid file descriptor: Bad file descriptor");
 				return 1;
 			}
 			in = fd.getIn();

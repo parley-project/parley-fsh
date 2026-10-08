@@ -111,7 +111,7 @@ public class TestArithmetic extends AbstractConsoleTest {
 		assertTrue(res.getStdErr().contains("division by 0"), res.getStdErr());
 		res = executeCommand("let 'x = 1 +'; echo $?", "");
 		assertEquals("1\n", res.getStdOut());
-		assertTrue(res.getStdErr().startsWith("let:"), res.getStdErr());
+		assertTrue(res.getStdErr().startsWith("fsh: line 1: let:"), res.getStdErr());
 		// in $(( )) an error ends the script, as in bash
 		res = executeCommand("echo $((1/0)); echo after", "");
 		assertEquals("", res.getStdOut());

@@ -104,7 +104,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//System.out.println("err = "+err);
 		//System.out.println("out = "+out);
 		assertEquals(expect, out);
-		assertEquals("name: "+expectErr, err.trim());
+		assertEquals("fsh: line 1: name: "+expectErr, err.trim());
 		assertEquals(1, exitCode);
 	}
 
@@ -309,7 +309,7 @@ public class TestParameter extends AbstractConsoleTest {
 	public void testParameter21() throws IOException {
 		AbstractConsoleTest.console = new Console();
 
-		String expect = "-2: substring expression < 0\n";
+		String expect = "fsh: line 2: -2: substring expression < 0\n";
 		String code = ""
 				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:-2}\n";

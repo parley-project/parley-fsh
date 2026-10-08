@@ -190,7 +190,8 @@ public class TestExternal extends AbstractConsoleTest {
 
 		String expectOut = "\n";
 		String stdIn = "";
-		String expectErr = "set: -O: invalid option\n";
+		// as bash says it in a script ($0 is fsh here): the line, then the builtin
+		String expectErr = "fsh: line 1: set: -O: invalid option\n";
 		int exitCode = 0;
 		boolean tmp = showError;
 		showError = false;
@@ -266,7 +267,7 @@ public class TestExternal extends AbstractConsoleTest {
 		
 		
 		// as in bash: found but not executable is status 126
-		String expectErr = "test02.sh: Permission denied\n"
+		String expectErr = "fsh: line 1: test02.sh: Permission denied\n"
 				+ "";
 
 		String stdIn = "";

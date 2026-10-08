@@ -61,7 +61,7 @@ public class Test extends ShellCommand{
 		try {
 			return evaluate(words) ? 0 : 1;
 		} catch (TestError e) {
-			ctx.stderr.println(label+": "+e.getMessage());
+			ctx.error(label+": "+e.getMessage());
 			return 2;
 		}
 	}
@@ -77,7 +77,7 @@ public class Test extends ShellCommand{
 		try {
 			return t.evaluate(words) ? 0 : 1;
 		} catch (TestError e) {
-			ctx.stderr.println(label+": "+e.getMessage());
+			ctx.error(label+": "+e.getMessage());
 			return 2;
 		}
 	}

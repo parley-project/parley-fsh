@@ -29,7 +29,7 @@ public class Builtin extends ShellCommand{
 		String n = ""+args[0].getValue(ctx);
 		Constructor<? extends ShellCommand> con = ctx.console.builtin(n);
 		if( con == null ) {
-			ctx.stderr.println("builtin: "+n+": not a shell builtin");
+			ctx.error("builtin: "+n+": not a shell builtin");
 			return 1;
 		}
 		return run(con, Arrays.copyOfRange(args, 1, args.length), ctx);

@@ -86,7 +86,7 @@ public class Set extends ShellCommand{
 						if( o == Option.Unsupported) {
 							// as bash says it
 							String tmp = "set: "+(set?"-":"+")+c+": invalid option";
-							ctx.stderr.println(tmp);
+							ctx.error(tmp);
 							return 1;
 						}
 						if( o == Option.Option) {
@@ -95,7 +95,7 @@ public class Set extends ShellCommand{
 								val = ""+a2.getValue(ctx);
 								Option o2 = Option.find(val);
 								if( o2 == null || o2 == Option.Unsupported || o2 == Option.Option ) {
-									ctx.stderr.println("set: "+val+": invalid option name");
+									ctx.error("set: "+val+": invalid option name");
 									return 2;
 								}
 								ctx.console.setOption(o2, set);							
