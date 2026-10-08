@@ -414,6 +414,7 @@ $
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
 		name = resolveName(name);
+		console.declaredUnset.remove(name);
 		Object val = globalVariable(name);
 		if( isolated != null && !isolated.containsKey(name)) {
 			// the shell's array: change a copy
@@ -469,6 +470,9 @@ $
 		}
 		if( name.equals("OPTIND")) {
 			optindAssigned(value);
+		}
+		if( value != null && !(value instanceof List<?> l && l.isEmpty()) && !(value instanceof Map<?,?> m && m.isEmpty())) {
+			console.declaredUnset.remove(name);
 		}
 		if( name.equals("POSIXLY_CORRECT") && value != null ) {
 			// as bash: setting it turns on posix mode

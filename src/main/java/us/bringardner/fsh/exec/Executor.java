@@ -1449,6 +1449,14 @@ public final class Executor {
 				return new Declarations(this, sc, ex).declare(name, all);
 			}
 			break;
+		case "export":
+			if( args.stream().anyMatch(a -> a instanceof String o && o.startsWith("-") && o.matches("-[aAilu]+"))) {
+				// export -a x=(..): declare -gx
+				List<Object> all = new ArrayList<>(args);
+				all.add(0, "-gx");
+				return new Declarations(this, sc, ex).declare(name, all);
+			}
+			break;
 		case "exec":
 			if( args.isEmpty()) {
 				// exec >file: the redirects stay

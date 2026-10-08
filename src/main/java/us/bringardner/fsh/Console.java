@@ -2422,7 +2422,9 @@ delimiter
 	 * Read history... any errors are ignored.
 	 */
 	public void readHistory() {
-		if( environmentVariables.get(VARIABLE_HISTFILE) == null ) {
+		Object histfile = environmentVariables.get(VARIABLE_HISTFILE);
+		if( histfile == null || histfile.toString().isEmpty() ) {
+			// (as bash: no HISTFILE, no history file)
 			return;
 		}
 		String fileName = ""+environmentVariables.get(VARIABLE_HISTFILE);
@@ -2506,7 +2508,9 @@ delimiter
 	 * Save history ... any errors are ignored
 	 */
 	public void saveHistory() {
-		if( environmentVariables.get(VARIABLE_HISTFILE) == null ) {
+		Object histfile = environmentVariables.get(VARIABLE_HISTFILE);
+		if( histfile == null || histfile.toString().isEmpty() ) {
+			// (as bash: no HISTFILE, no history file)
 			return;
 		}
 		String fileName = ""+environmentVariables.get(VARIABLE_HISTFILE);

@@ -149,7 +149,19 @@ final class Declarations {
 				}
 			}
 			if( (assignment != null || text != null) && sc.console.isReadonly(name) && !remove ) {
-				error(command, name+": readonly variable");
+				boolean hasA = o.indexOf('a') >= 0 || o.indexOf('A') >= 0;
+				if( (command.equals("readonly") || command.equals("export")) && (!hasA || assignment != null && assignment.array != null)) {
+					// as bash says it: readonly -a x=(1) in function f is "f: x: ...", readonly x=1
+					// and readonly 'x=(1)' just "x: ...", readonly -a 'x=(1)' "readonly: x: ..."
+					Object function = sc.isInFunction() ? ShellContext.firstElement(sc.getVariable("FUNCNAME")) : null;
+					if( assignment != null && assignment.array != null && hasA ) {
+						error(function != null ? function.toString() : command, name+": readonly variable");
+					} else {
+						sc.error(name+": readonly variable");
+					}
+				} else {
+					error(command, name+": readonly variable");
+				}
 				status = 1;
 				continue;
 			}
@@ -198,6 +210,12 @@ final class Declarations {
 				}
 			} else if( text != null ) {
 				val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(text, sc)) : text;
+				if( !local && sc.getVariable(name) instanceof FshList f ) {
+					// readonly 'a=(3)' of an array: its element 0
+					FshList list = copyOf(f);
+					list.set(0, val);
+					val = list;
+				}
 			}
 			Object old = local ? null : sc.getVariable(name);
 			if( arrays && val instanceof String v && o.indexOf('A') < 0 && !(old instanceof Map<?,?>)) {
@@ -351,7 +369,7 @@ final class Declarations {
 		if( val instanceof Map<?,?> m ) {
 			value.append('(');
 			for(Map.Entry<?,?> e : m.entrySet()) {
-				value.append('[').append(e.getKey()).append("]=").append(quote(e.getValue())).append(' ');
+				value.append('[').append(key(String.valueOf(e.getKey()))).append("]=").append(quote(e.getValue())).append(' ');
 			}
 			value.append(')');
 		} else if( val instanceof FshList list ) {
@@ -388,6 +406,25 @@ final class Declarations {
 			flags += "x";
 		}
 		return flags;
+	}
+
+	/** an associative array's key: "quoted" if the shell would read it differently (as bash's) */
+	static String key(String k) {
+		boolean quote = k.startsWith("~") || k.startsWith("#");
+		for (int i = 0; i < k.length() && !quote; i++) {
+			quote = " \t\n'\"\\|&;()<>!{}*[?]^$`".indexOf(k.charAt(i)) >= 0;
+		}
+		if( !quote ) {
+			return k;
+		}
+		StringBuilder ret = new StringBuilder("\"");
+		for(char c : k.toCharArray()) {
+			if( "$`\"\\".indexOf(c) >= 0 ) {
+				ret.append('\\');
+			}
+			ret.append(c);
+		}
+		return ret.append('"').toString();
 	}
 
 	/** "v", or $'v' when v has a character that does not print (as bash's ansic_quote) */

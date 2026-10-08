@@ -383,7 +383,7 @@ public final class Parser {
 		boolean atStart = commandStart;
 		afterRedirect = false;
 		Token t = scanToken();
-		if( t.kind == Kind.WORD && aliasing && !redirectTarget ) {
+		if( t.kind == Kind.WORD && aliasing && !redirectTarget && !casePattern ) {
 			boolean next = aliasNextAt >= 0 && t.start >= aliasNextAt;
 			if( next ) {
 				aliasNextAt = -1;
