@@ -1250,7 +1250,9 @@ delimiter
 	 */
 	private int runStandardInput() {
 		InputStream in = stdIn;
-		return runCommands(() -> readRawLine(in));
+		// (from the shell's standard input as it is now: after exec 0<file the commands come from
+		// file, as in bash)
+		return runCommands(() -> readRawLine(commandsContext != null && commandsContext.stdin != null ? commandsContext.stdin : in));
 	}
 
 	/** -c's command, or a script's text: a command at a time, as bash runs them */

@@ -605,7 +605,12 @@ public final class Executor {
 	private void background(Ast.AndOr ao, ShellContext sc) {
 		try {
 			ShellContext ctx = sc.subShell();
-			ctx.stdin = new ByteArrayInputStream(new byte[0]);
+			// with no input: the shell's own (bash's /dev/null); input a command around it redirected
+			// it keeps (while read l; do { read x; } & done < file reads the file)
+			if( sc.stdin == sc.console.getStdIn() || sc.stdin instanceof us.bringardner.fsh.ProcessStdin
+					|| sc.stdin instanceof us.bringardner.fsh.NativeKeyboard || sc.stdin == Console.System_in ) {
+				ctx.stdin = new ByteArrayInputStream(new byte[0]);
+			}
 			String text = text(ao).trim();
 			CommandThread thread = new CommandThread(ctx, new ShellTask() {
 				@Override
