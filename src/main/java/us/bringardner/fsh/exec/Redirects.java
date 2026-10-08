@@ -84,10 +84,34 @@ final class Redirects {
 	}
 
 	private static void redirect(Ast.Redirect r, ShellContext sc, Expander ex, List<Closeable> opened) throws IOException {
-		Integer fd = r.fd;
-		if( r.fdVariable != null ) {
-			fd = variableFd(sc, r);
+		if( r.fdVariable == null ) {
+			redirectTo(r, sc, ex, opened, r.fd);
+			return;
 		}
+		boolean closing = r.target != null && "-".equals(r.target.raw);
+		int fd = variableFd(sc, r);
+		redirectTo(r, sc, ex, opened, fd);
+		if( !closing ) {
+			// {name}>file: the descriptor is opened, then its number is put in name (one that cannot
+			// be set: said, and the descriptor is closed again)
+			try {
+				assignFd(sc, r.fdVariable, fd, Executor.expanderFor(sc));
+			} catch (ShellContext.ReadonlyException e) {
+				sc.error(e.getMessage());
+				close(sc, fd);
+				throw new RuntimeException(r.fdVariable+": cannot assign fd to variable");
+			} catch (RuntimeException e) {
+				close(sc, fd);
+				throw e;
+			}
+			if( us.bringardner.fsh.Glob.option(sc, "varredir_close")) {
+				// shopt -s varredir_close: closed when the command is done (exec keeps it)
+				opened.add(() -> close(sc, fd));
+			}
+		}
+	}
+
+	private static void redirectTo(Ast.Redirect r, ShellContext sc, Expander ex, List<Closeable> opened, Integer fd) throws IOException {
 		if( r.hereDoc != null ) {
 			String body = r.hereDoc.body == null ? "" : r.hereDoc.body;
 			if( !r.hereDoc.quoted ) {
@@ -155,12 +179,12 @@ final class Redirects {
 				setOut(sc, 1, out, file, opened);
 				sc.stderr = out;
 			} else {
-				duplicate(sc, fd == null ? 1 : fd, word, true);
+				duplicate(sc, fd == null ? 1 : fd, word, true, r.target.raw);
 			}
 			break;
 		}
 		case "<&":
-			duplicate(sc, fd == null ? 0 : fd, target(r, ex), false);
+			duplicate(sc, fd == null ? 0 : fd, target(r, ex), false, r.target.raw);
 			break;
 		case "<>":
 			openReadWrite(sc, fd == null ? 0 : fd, target(r, ex));
@@ -195,17 +219,24 @@ final class Redirects {
 		Expander ex = Executor.expanderFor(sc);
 		if( r.target != null && "-".equals(r.target.raw)) {
 			// {name}>&-, {a[1]}>&-: the descriptor the variable holds
-			String value = ex.string(us.bringardner.fsh.syntax.Parser.fragment("${"+name+"}", us.bringardner.fsh.syntax.Parser.Fragment.WORD));
+			// (set -u does not apply: an unset one is an ambiguous redirect, as bash's)
+			Object v = sc.getVariable(name.indexOf('[') < 0 ? name : name.substring(0, name.indexOf('[')));
+			String value = v == null ? "" : ex.string(us.bringardner.fsh.syntax.Parser.fragment("${"+name+"}", us.bringardner.fsh.syntax.Parser.Fragment.WORD));
 			try {
 				return Integer.parseInt(value.trim());
 			} catch (NumberFormatException e) {
-				throw new RuntimeException(name+": not a file descriptor");
+				throw new RuntimeException(name+": ambiguous redirect");
 			}
 		}
 		int fd = 10;
 		while( sc.console.getFileDistcriptor(fd) != null ) {
 			fd++;
 		}
+		return fd;
+	}
+
+	/** name (or name[sub]) = fd */
+	private static void assignFd(ShellContext sc, String name, int fd, Expander ex) {
 		int bracket = name.indexOf('[');
 		if( bracket < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef nr && nr.target().isEmpty()) {
 			// a nameref with no value: a number is no name for it (said, and the redirect fails)
@@ -213,9 +244,15 @@ final class Redirects {
 			throw new RuntimeException(name+": cannot assign fd to variable");
 		}
 		if( bracket < 0 ) {
+			if( sc.console.isReadonly(sc.readonlyName(name))) {
+				throw new ShellContext.ReadonlyException(sc.readonlyName(name));
+			}
 			sc.setVariable(name, String.valueOf(fd));
 		} else {
 			String array = name.substring(0, bracket);
+			if( sc.console.isReadonly(sc.readonlyName(array))) {
+				throw new ShellContext.ReadonlyException(sc.readonlyName(array));
+			}
 			us.bringardner.fsh.syntax.Word sub = us.bringardner.fsh.syntax.Parser.fragment(name.substring(bracket+1, name.length()-1), us.bringardner.fsh.syntax.Parser.Fragment.WORD);
 			if( sc.getVariable(array) instanceof java.util.Map<?,?> ) {
 				sc.setVariable(array, ex.string(sub), String.valueOf(fd));
@@ -223,7 +260,6 @@ final class Redirects {
 				sc.setVariable(array, (int) ex.arithmetic(sub).longValue(), String.valueOf(fd));
 			}
 		}
-		return fd;
 	}
 
 	private static boolean isDescriptor(String word) {
@@ -233,7 +269,9 @@ final class Redirects {
 	/**
 	 * n>&m (out) or n<&m: n becomes a copy of m; n>&m- also closes m (moves it); n>&- closes n.
 	 */
-	private static void duplicate(ShellContext sc, int n, String word, boolean out) throws IOException {
+	private static void duplicate(ShellContext sc, int n, String word, boolean out, String written) throws IOException {
+		// (a bad descriptor is said as the word is written: $fd: Bad file descriptor, as bash's)
+		String shown = written == null ? word : written;
 		if( !isDescriptor(word)) {
 			throw new IOException(word+": ambiguous redirect");
 		}
@@ -246,7 +284,7 @@ final class Redirects {
 		if( out ) {
 			PrintStream ps = getOut(sc, m);
 			if( ps == null ) {
-				throw new IOException(m+": Bad file descriptor");
+				throw new IOException(shown+": Bad file descriptor");
 			}
 			ps.flush();
 			if( n == 1 ) {
@@ -259,7 +297,7 @@ final class Redirects {
 		} else {
 			InputStream in = getIn(sc, m);
 			if( in == null ) {
-				throw new IOException(m+": Bad file descriptor");
+				throw new IOException(shown+": Bad file descriptor");
 			}
 			if( n == 0 ) {
 				sc.stdin = in;
