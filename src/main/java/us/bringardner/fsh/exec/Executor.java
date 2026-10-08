@@ -1871,7 +1871,9 @@ public final class Executor {
 	}
 
 	private int run(String name, List<Object> args, Ast.SimpleCommand c, ShellContext sc, Expander ex) throws IOException {
-		boolean keepRedirects = name.equals("exec") && args.isEmpty();
+		// (command exec >file and builtin exec >file keep them too)
+		boolean keepRedirects = name.equals("exec") && args.isEmpty()
+				|| (name.equals("command") || name.equals("builtin")) && args.size() == 1 && "exec".equals(String.valueOf(args.get(0)));
 		Redirects.Saved streams = Redirects.Saved.of(sc);
 		List<Closeable> opened = null;
 		Integer status = null;
@@ -2213,7 +2215,8 @@ public final class Executor {
 					}
 				}
 			}
-			if( ret == 0 && sc.stdout instanceof ClosedStream && sc.stdout.checkError()) {
+			if( ret == 0 && sc.stdout instanceof ClosedStream && sc.stdout.checkError() && !name.equals("help")) {
+				// (help does not check, as bash's)
 				// echo hi >&-
 				error(sc, name+": write error: Bad file descriptor");
 				ret = 1;
