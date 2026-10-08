@@ -381,7 +381,17 @@ final class Redirects {
 		}
 		if( move && m > 2 ) {
 			// the stream lives on as n
+			if( !PERMANENT.get()) {
+				CHANGES.get().add(new Object[] {m, sc.console.getFileDistcriptor(m)});
+			}
 			sc.console.removeFileDistcriptor(m);
+			if( PERMANENT.get()) {
+				sc.console.keptFds.remove(m);
+				String[] coproc = sc.console.coprocFds.remove(m);
+				if( coproc != null && sc.getVariable(coproc[0]) instanceof java.util.List<?> ) {
+					sc.setVariable(coproc[0], Integer.parseInt(coproc[1]), "-1");
+				}
+			}
 		}
 	}
 
@@ -421,6 +431,11 @@ final class Redirects {
 		} else if( PERMANENT.get()) {
 			sc.console.closeFileDistcriptor(n);
 			sc.console.keptFds.remove(n);
+			String[] coproc = sc.console.coprocFds.remove(n);
+			if( coproc != null && sc.getVariable(coproc[0]) instanceof java.util.List<?> ) {
+				// (a coproc's descriptor closed or moved: its NAME[i] is -1, as bash's)
+				sc.setVariable(coproc[0], Integer.parseInt(coproc[1]), "-1");
+			}
 		} else {
 			// (put back after the command)
 			CHANGES.get().add(new Object[] {n, sc.console.getFileDistcriptor(n)});

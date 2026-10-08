@@ -3781,6 +3781,9 @@ delimiter
 	/**
 	 * Forget a file descriptor without closing its stream (n>&m- moved it to n).
 	 */
+	/** a coproc's descriptors: {name, index} (closing one sets NAME[index] to -1, as bash's) */
+	public final Map<Integer,String[]> coprocFds = new java.util.concurrent.ConcurrentHashMap<>();
+
 	/** {name}>file descriptors, which stay after the command that opened them */
 	public final Map<Integer,FileDiscriptor> keptFds = new java.util.concurrent.ConcurrentHashMap<>();
 

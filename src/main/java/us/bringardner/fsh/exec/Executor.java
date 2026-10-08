@@ -712,6 +712,10 @@ public final class Executor {
 		// (they stay after the command they are in)
 		sc.console.keptFds.put(readFd, sc.console.getFileDistcriptor(readFd));
 		sc.console.keptFds.put(writeFd, sc.console.getFileDistcriptor(writeFd));
+		sc.console.coprocFds.put(readFd, new String[] {k.name, "0"});
+		sc.console.coprocFds.put(writeFd, new String[] {k.name, "1"});
+		Console.FileDiscriptor readDescriptor = sc.console.getFileDistcriptor(readFd);
+		Console.FileDiscriptor writeDescriptor = sc.console.getFileDistcriptor(writeFd);
 		ShellContext ctx = sc.subShell();
 		ctx.stdin = toCoproc.in;
 		ctx.stdout = new PrintStream(fromCoproc.out, true);
@@ -745,6 +749,15 @@ public final class Executor {
 		}
 		// when it is done and reaped, NAME and NAME_PID are unset (a readonly NAME is said)
 		sc.console.jobManager.whenRemoved(job, () -> {
+			// its descriptors are closed (the next coproc gets 63 and 60 again)
+			for(int fd : new int[] {readFd, writeFd}) {
+				Console.FileDiscriptor d = sc.console.getFileDistcriptor(fd);
+				if( d != null && (d == readDescriptor || d == writeDescriptor)) {
+					sc.console.coprocFds.remove(fd);
+					sc.console.keptFds.remove(fd);
+					sc.console.closeFileDistcriptor(fd);
+				}
+			}
 			String n = sc.readonlyName(k.name);
 			if( sc.console.isReadonly(n)) {
 				error(sc, n+": cannot unset: readonly variable");
