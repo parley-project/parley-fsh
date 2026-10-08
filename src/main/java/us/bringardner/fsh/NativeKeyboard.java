@@ -719,7 +719,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 */
 	private String readLineConsole(Console console) throws IOException {
 		if( prompt !=null) {
-			console.getStdOut().print(prompt);
+			// (on standard error, as bash writes its prompts)
+			console.getStdErr().print(prompt);
+			console.getStdErr().flush();
 		}
 
 		StringBuffer ret = new StringBuffer();

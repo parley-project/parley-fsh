@@ -116,6 +116,32 @@ public final class Executor {
 		int ret = 0;
 		while( true ) {
 			Ast.Sequence seq;
+			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.HistExpand) && sc.console.isOptionEnabled(Option.History)) {
+				// set -H with the history on in a script: each line is history-expanded as it is read
+				String line = reader.peekLine();
+				if( line != null && (line.indexOf('!') >= 0 || line.startsWith("^"))) {
+					List<String> commands = new ArrayList<>();
+					for(Console.HistoryEntry e : sc.console.history) {
+						commands.add(e.command);
+					}
+					us.bringardner.fsh.HistoryExpansion.Result r = us.bringardner.fsh.HistoryExpansion.expand(line, commands);
+					if( r.error != null ) {
+						// (said, and the line is not run)
+						error(sc, r.error);
+						reader.replaceLine("");
+						sc.console.setLastExitCode(1);
+						continue;
+					}
+					if( r.changed ) {
+						sc.stderr.println(r.line);
+						reader.replaceLine(r.printOnly ? "" : r.line);
+						if( r.printOnly ) {
+							sc.console.rememberCommand(r.line);
+							continue;
+						}
+					}
+				}
+			}
 			try {
 				seq = reader.next();
 			} catch (SyntaxError e) {
@@ -130,9 +156,24 @@ public final class Executor {
 				return 2;
 			}
 			if( seq == null ) {
+				if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
+					// (a comment line by itself is kept too)
+					for(String c : reader.comments) {
+						sc.console.rememberCommand(c);
+					}
+				}
 				return ret;
 			}
 			warnings(sc, seq);
+			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
+				// set -o history in a script: each line read is kept (comments too, as bash's)
+				for(String c : reader.comments) {
+					sc.console.rememberCommand(c);
+				}
+				if( seq.historyText != null ) {
+					sc.console.rememberCommand(seq.historyText);
+				}
+			}
 			ret = items(seq, new Executor(seq.source), sc, ret);
 		}
 	}
@@ -147,10 +188,6 @@ public final class Executor {
 	/** a line's commands, each in turn (an error that abandons the line skips the rest of it) */
 	private static int items(Ast.Sequence seq, Executor ex, ShellContext sc, int ret) throws IOException {
 		for(Ast.Item item : seq.items) {
-			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
-				// set -o history in a script: each command it runs is kept, as bash keeps them
-				sc.console.rememberCommand(ex.text(item.command).trim()+(item.background ? " &" : ""));
-			}
 			try {
 				ret = ex.item(item, sc);
 			} catch (AbandonLine e) {

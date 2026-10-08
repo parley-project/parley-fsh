@@ -377,6 +377,7 @@ delimiter
 		
 		registerCommand(new Alias());
 		registerCommand(new us.bringardner.fsh.commands.Logout());
+		registerCommand(new us.bringardner.fsh.commands.Fc());
 
 		registerCommand(new Bg());
 
@@ -2425,17 +2426,21 @@ delimiter
 		if( typed == null || typed.isBlank()) {
 			return;
 		}
-		String control = String.valueOf(getVariable("HISTCONTROL"));
+		String control = String.valueOf(shellOrEnvironment("HISTCONTROL"));
 		boolean ignoreSpace = control.contains("ignorespace") || control.contains("ignoreboth");
 		boolean ignoreDups = control.contains("ignoredups") || control.contains("ignoreboth");
 		if( ignoreSpace && (typed.startsWith(" ") || typed.startsWith("\t"))) {
 			return;
 		}
-		String entry = historyLine(typed.trim());
-		Object ignore = getVariable("HISTIGNORE");
+		// (as typed: its blanks are kept, only a newline at its end goes)
+		String entry = historyLine(typed.endsWith("\n") ? typed.substring(0, typed.length()-1) : typed);
+		historyLastLineAdded = false;
+		Object ignore = shellOrEnvironment("HISTIGNORE");
 		if( ignore != null && !ignore.toString().isEmpty()) {
 			for(String pattern : ignore.toString().split(":")) {
-				if( !pattern.isEmpty() && GlobPattern.compile(pattern).matches(entry)) {
+				if( pattern.equals("&") ? !history.isEmpty() && history.get(history.size()-1).command.equals(entry)
+						: !pattern.isEmpty() && GlobPattern.compile(pattern.replace("\\&", "&")).matches(entry)) {
+					// (& is the line before)
 					return;
 				}
 			}
@@ -2486,31 +2491,157 @@ delimiter
 
 	public void addHistory(String code) {
 		history.add(new HistoryEntry(code));
+		historyLinesThisSession++;
+		historyLastLineAdded = true;
 		truncateHistory();
 	}
 
-	private void truncateHistory() {
+	/** the number of the first entry (it grows as HISTSIZE drops the oldest) */
+	public int historyBase = 1;
+	/** entries added since the history file was last read or written (history -a writes them) */
+	public int historyLinesThisSession;
+	/** the lines of the history file read (history -n reads those after them) */
+	public int historyLinesInFile;
+	/** the command line just read went into the history (history -s and -p take it out again) */
+	public boolean historyLastLineAdded;
 
-		int max = 500;
-		try {
-			max =Integer.parseInt(""+environmentVariables.get(VARIABLE_HISTSIZE));
-		} catch (Exception e) {
+	/** history -s, history -p: the line they were on is not kept */
+	public void deleteLastHistory() {
+		if( !history.isEmpty()) {
+			history.remove(history.size()-1);
+			if( historyLinesThisSession > 0 ) {
+				historyLinesThisSession--;
+			}
 		}
-		while(history.size()>max) {
+	}
+
+	/** HISTSIZE (a shell variable, or the environment's), or -1: no limit */
+	private int historySize() {
+		Object v = getVariable(VARIABLE_HISTSIZE);
+		if( v == null ) {
+			v = environmentVariables.get(VARIABLE_HISTSIZE);
+		}
+		if( v == null ) {
+			return -1;
+		}
+		try {
+			int n = Integer.parseInt(v.toString().trim());
+			return n < 0 ? -1 : n;
+		} catch (NumberFormatException e) {
+			return -1;
+		}
+	}
+
+	private void truncateHistory() {
+		int max = historySize();
+		while( max >= 0 && history.size() > max ) {
 			history.remove(0);
-		}		
+			historyBase++;
+		}
+	}
+
+	/** a variable of the shell, or else of its environment (an exported one a parent gave) */
+	public Object shellOrEnvironment(String name) {
+		Object v = getVariable(name);
+		return v != null ? v : environmentVariables.get(name);
+	}
+
+	/** $HISTFILE (a shell variable, or the environment's), or null */
+	public String historyFile() {
+		Object v = getVariable(VARIABLE_HISTFILE);
+		if( v == null ) {
+			v = environmentVariables.get(VARIABLE_HISTFILE);
+		}
+		return v == null || v.toString().isEmpty() ? null : v.toString();
+	}
+
+	/** set -o history in a script: the history file is read (once), as bash does */
+	public void loadHistory() {
+		String f = historyFile();
+		if( f != null ) {
+			historyLinesInFile = readHistoryFile(f, 0);
+		}
+	}
+
+	/**
+	 * The lines of a history file from line skip on, added to the history ("#time" lines are the
+	 * times of the next ones). @return how many lines the file has
+	 */
+	public int readHistoryFile(String fileName, int skip) {
+		try {
+			FileSource file = createFileSource(expandHome(fileName));
+			if( !file.exists() || file.isDirectory()) {
+				return 0;
+			}
+			char comment = historyComment();
+			String [] lines;
+			try(InputStream in = file.getInputStream()) {
+				lines = new String(in.readAllBytes()).split("\n");
+			}
+			long time = System.currentTimeMillis();
+			int count = 0;
+			for (int i = 0; i < lines.length; i++) {
+				String line = lines[i];
+				if( line.length() > 1 && line.charAt(0) == comment && Character.isDigit(line.charAt(1))) {
+					Long stamp = parseHistoryTime(line.substring(1));
+					if( stamp != null ) {
+						time = stamp;
+						continue;
+					}
+				}
+				count++;
+				if( count <= skip || line.isEmpty()) {
+					continue;
+				}
+				history.add(new HistoryEntry(time, true, line));
+			}
+			truncateHistory();
+			return count;
+		} catch (IOException e) {
+			logError("read history", e);
+			return 0;
+		}
+	}
+
+	/**
+	 * The last count entries (all of them if count is -1) written to a history file, after what is
+	 * there (append) or in place of it, with "#time" lines when HISTTIMEFORMAT is set (as bash).
+	 */
+	public boolean writeHistoryFile(String fileName, int count, boolean append) {
+		try {
+			FileSource file = createFileSource(expandHome(fileName));
+			boolean times = getVariable(VARIABLE_HISTTIMEFORMAT) != null;
+			char comment = historyComment();
+			int from = count < 0 ? 0 : Math.max(0, history.size()-count);
+			try(OutputStream out = file.getOutputStream(append)) {
+				for (int i = from; i < history.size(); i++) {
+					HistoryEntry e = history.get(i);
+					if( times ) {
+						out.write((""+comment+(e.time/1000)+"\n").getBytes());
+					}
+					out.write((e.command+"\n").getBytes());
+				}
+			}
+			return true;
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
+	private char historyComment() {
+		Object chars = getVariable(VARIABLE_HISTCHARS);
+		return chars != null && chars.toString().length() > 2 ? chars.toString().charAt(2) : '#';
 	}
 
 	/**
 	 * Read history... any errors are ignored.
 	 */
 	public void readHistory() {
-		Object histfile = environmentVariables.get(VARIABLE_HISTFILE);
-		if( histfile == null || histfile.toString().isEmpty() ) {
+		String fileName = historyFile();
+		if( fileName == null ) {
 			// (as bash: no HISTFILE, no history file)
 			return;
 		}
-		String fileName = ""+environmentVariables.get(VARIABLE_HISTFILE);
 		readHistory(fileName);
 	}
 
@@ -2591,12 +2722,11 @@ delimiter
 	 * Save history ... any errors are ignored
 	 */
 	public void saveHistory() {
-		Object histfile = environmentVariables.get(VARIABLE_HISTFILE);
-		if( histfile == null || histfile.toString().isEmpty() ) {
+		String fileName = historyFile();
+		if( fileName == null ) {
 			// (as bash: no HISTFILE, no history file)
 			return;
 		}
-		String fileName = ""+environmentVariables.get(VARIABLE_HISTFILE);
 		saveHistory(fileName);
 	}
 
@@ -2989,6 +3119,10 @@ delimiter
 		if( o == Option.Posix && enable ) {
 			// as bash: posix mode turns on expand_aliases
 			getShellOptions().put("expand_aliases", true);
+		}
+		if( o == Option.History && enable && !isInteractive && historyLinesThisSession == 0 && !optionList().contains(o)) {
+			// set -o history in a script: the history file is read, as bash's
+			loadHistory();
 		}
 		if( o == Option.IgnoreEof ) {
 			// as bash: set -o ignoreeof is IGNOREEOF=10

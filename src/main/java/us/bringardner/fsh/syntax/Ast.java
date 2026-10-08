@@ -27,6 +27,8 @@ public final class Ast {
 
 	/** commands separated by ; & or newlines (a script, the body of a block, $( ) ...) */
 	public static final class Sequence extends Node {
+		/** the lines it was read from, as written (a script's history keeps that) */
+		public String historyText;
 		public final List<Item> items = new ArrayList<>();
 		/** the text it was read from, with its aliases expanded (what positions in it are in) */
 		public String source;

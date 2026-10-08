@@ -145,17 +145,73 @@ public final class Parser {
 		}
 
 		/** the next line's commands (a compound command may go on for more lines), or null at the end */
-		public Sequence next() {
-			p.skipNewlines();
-			if( p.peek().kind == Kind.EOF ) {
+		/** where the text of the commands next gave ended (what is after it may be comments) */
+		private int lastEnd;
+
+		/**
+		 * The next line not read yet (set -H in a script expands it before it is read), or null
+		 * at the end; its blank lines and comments are skipped as the next read would.
+		 */
+		public String peekLine() {
+			if( p.cur != null || p.back != null ) {
 				return null;
 			}
+			int at = p.pos;
+			while( at < p.src.length()) {
+				int nl = p.src.indexOf('\n', at);
+				String line = p.src.substring(at, nl < 0 ? p.src.length() : nl);
+				if( !line.isBlank() && !line.strip().startsWith("#")) {
+					peeked = at;
+					return line;
+				}
+				if( nl < 0 ) {
+					break;
+				}
+				at = nl+1;
+			}
+			return null;
+		}
+
+		private int peeked = -1;
+
+		/** the line peekLine gave, replaced by text (its history expansion) */
+		public void replaceLine(String text) {
+			if( peeked < 0 ) {
+				return;
+			}
+			int nl = p.src.indexOf('\n', peeked);
+			int end = nl < 0 ? p.src.length() : nl;
+			p.src = p.src.substring(0, peeked)+text+p.src.substring(end);
+			peeked = -1;
+		}
+
+		public Sequence next() {
+			int before = Math.max(p.pos > lastEnd ? lastEnd : p.pos, lastEnd);
+			before = Math.min(before, p.pos);
+			p.skipNewlines();
+			if( p.peek().kind == Kind.EOF ) {
+				comments = p.comments(before, p.src.length());
+				return null;
+			}
+			int start = p.peek().start;
+			// (for the history: the comment lines before it, and its lines as written)
+			comments = p.comments(before, start);
 			Sequence ret = p.oneLine();
+			int lineStart = p.src.lastIndexOf('\n', start-1)+1;
+			int end = Math.min(p.unitEnd >= 0 ? Math.max(p.unitEnd, Math.min(p.pos, p.hereDocsEnd)) : p.pos, p.src.length());
+			String text = p.src.substring(Math.min(lineStart, end), end);
+			// (with here-documents, the newline after the last body stays, as bash keeps it)
+			boolean bodies = p.unitEnd >= 0 && p.hereDocsEnd > p.unitEnd && end > p.unitEnd;
+			ret.historyText = bodies ? text+"\n" : text.endsWith("\n") ? text.substring(0, text.length()-1) : text;
+			lastEnd = end;
 			ret.source = p.src;
 			ret.warnings.addAll(p.warnings);
 			p.warnings.clear();
 			return ret;
 		}
+
+		/** the comment lines read before the commands next gave (what a history keeps of them) */
+		public List<String> comments = new ArrayList<>();
 
 		/** after a recoverable syntax error: go on from the next line */
 		public void skipLine() {
@@ -168,8 +224,26 @@ public final class Parser {
 		}
 	}
 
+	/** the lines in [from, to) that are comments (# first, after blanks) */
+	private List<String> comments(int from, int to) {
+		List<String> ret = new ArrayList<>();
+		if( from >= to ) {
+			return ret;
+		}
+		for(String line : src.substring(from, Math.min(to, src.length())).split("\n")) {
+			if( line.strip().startsWith("#")) {
+				ret.add(line.strip());
+			}
+		}
+		return ret;
+	}
+
+	/** where the newline that ended the last oneLine ends (-1: the text ended) */
+	private int unitEnd = -1;
+
 	/** the commands up to the end of a line (the newline is read too) */
 	private Sequence oneLine() {
+		unitEnd = -1;
 		Sequence seq = new Sequence();
 		seq.start = peek().start;
 		seq.line = lineOf(seq.start);
@@ -180,7 +254,7 @@ public final class Parser {
 				break;
 			}
 			if( t.kind == Kind.NEWLINE ) {
-				take();
+				unitEnd = take().end;
 				break;
 			}
 			Item item = new Item();
@@ -194,7 +268,7 @@ public final class Parser {
 			} else if( isOp(t, ";")) {
 				take();
 			} else if( t.kind == Kind.NEWLINE ) {
-				take();
+				unitEnd = take().end;
 				break;
 			} else if( t.kind != Kind.EOF ) {
 				throw unexpected(t);
@@ -1296,7 +1370,11 @@ public final class Parser {
 			h.body = body.toString();
 		}
 		pendingHereDocs.clear();
+		hereDocsEnd = pos;
 	}
+
+	/** where the here-document bodies read last end */
+	int hereDocsEnd = -1;
 
 	// ------------------------------------------------------------------ errors
 
