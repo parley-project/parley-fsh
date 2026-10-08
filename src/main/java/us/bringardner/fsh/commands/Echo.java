@@ -27,10 +27,13 @@ public class Echo extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		boolean nl = true;
-		boolean escapes = false;
+		// shopt -s xpg_echo: escapes without -e (and in posix mode no options at all), as in bash
+		boolean xpg = us.bringardner.fsh.Glob.option(ctx, "xpg_echo");
+		boolean escapes = xpg;
 		int idx = 0;
+		boolean options = !(xpg && ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix));
 		// options only before the first word, and only a word made of n, e and E, as in bash
-		for(; idx < args.length; idx++) {
+		for(; options && idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
 			if( !text.matches("-[neE]+")) {
 				break;

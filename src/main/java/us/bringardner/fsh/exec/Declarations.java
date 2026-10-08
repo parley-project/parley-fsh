@@ -57,7 +57,7 @@ public final class Declarations {
 		boolean local = isLocal || (sc.isInFunction() && o.indexOf('g') < 0);
 
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
-			return functions(items, o.indexOf('F') >= 0);
+			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0);
 		}
 		if( o.indexOf('p') >= 0 || (items.isEmpty() && !remove)) {
 			return print(command, items, remove ? "" : o);
@@ -287,7 +287,7 @@ public final class Declarations {
 	}
 
 	/** declare -f [name ...]: functions as code; -F: their names */
-	private int functions(List<Object> items, boolean names) {
+	private int functions(String command, List<Object> items, boolean names, boolean p) {
 		List<String> wanted = new ArrayList<>();
 		for(Object item : items) {
 			wanted.add(item instanceof Ast.Assignment a ? a.name : String.valueOf(item));
@@ -299,6 +299,10 @@ public final class Declarations {
 		for(String name : wanted) {
 			ShellFunction f = sc.console.getFunctions().get(name);
 			if( f == null ) {
+				if( p ) {
+					// (declare -fp says so; declare -f does not)
+					error(command, name+": not found");
+				}
 				ret = 1;
 			} else if( names ) {
 				sc.stdout.println(items.isEmpty() ? "declare -f "+name : name);

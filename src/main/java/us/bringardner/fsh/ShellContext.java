@@ -420,6 +420,14 @@ $
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
 		name = resolveName(name);
+		if( name.equals("DIRSTACK") && index instanceof Integer i && value != null ) {
+			// DIRSTACK[1]=/bin: that entry of pushd's stack
+			int size = console.dirStack.size();
+			if( i >= 1 && i <= size ) {
+				console.dirStack.set(size-i, value.toString());
+			}
+			return;
+		}
 		console.declaredUnset.remove(name);
 		Object val = globalVariable(name);
 		if( isolated != null && !isolated.containsKey(name)) {
@@ -700,6 +708,16 @@ $
 		if( name.equals("BASHPID")) {
 			return ProcessHandle.current().pid();
 		}
+		if( name.equals("DIRSTACK")) {
+			// the current directory, then pushd's stack (the most recent first)
+			FshList ret = new FshList();
+			Object pwd = console.getVariable("PWD");
+			ret.add(pwd == null ? "" : pwd.toString());
+			for (int i = console.dirStack.size()-1; i >= 0; i--) {
+				ret.add(console.dirStack.get(i));
+			}
+			return ret;
+		}
 		if( name.equals("RANDOM") && !console.unsetSpecials.contains(name)) {
 			return console.random();
 		}
@@ -747,6 +765,14 @@ $
 	}
 
 	private static final java.security.SecureRandom SECURE = new java.security.SecureRandom();
+
+	/** exec -a name, exec -l: the argv[0] the next program gets (null: its path) */
+	public String programArgv0;
+	/** running a builtin through command (its failure does not end a posix shell) */
+	public int viaCommand;
+
+	/** exec -c: the next program gets an empty environment */
+	public boolean programCleanEnvironment;
 
 	private static volatile String hostName;
 	private static volatile Long userId;

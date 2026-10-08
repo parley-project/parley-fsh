@@ -74,7 +74,8 @@ public class Hash extends ShellCommand {
 			}
 			if( table.isEmpty()) {
 				if( !list ) {
-					ctx.error("hash: hash table empty");
+					// (as bash, on standard output)
+					ctx.stdout.println("hash: hash table empty");
 				}
 				return 0;
 			}

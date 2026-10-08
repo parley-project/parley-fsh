@@ -62,6 +62,12 @@ public class Cd extends ShellCommand{
 			path = sargs.get(0);
 		}
 
+		return change(ctx, "cd", path, follow, print);
+	}
+
+	/** go to path (on $CDPATH for a relative name) as cd does; messages say who (cd, pushd, popd) */
+	static int change(ShellContext ctx, String who, String path, boolean follow, boolean print) throws IOException {
+		int ret = 0;
 		FileSource dir = null;
 		if( !path.isEmpty() && !path.startsWith("/") && !path.startsWith("./") && !path.startsWith("../")
 				&& !path.equals(".") && !path.equals("..") && !path.startsWith("~")) {
@@ -81,7 +87,7 @@ public class Cd extends ShellCommand{
 		if( dir == null ) {
 			List<FileSource> dirs = getFiles(ctx, path);
 			if( dirs==null || dirs.size()==0 || !dirs.get(0).exists()) {
-				ctx.error("cd: "+path+": No such file or directory");
+				ctx.error(who+": "+path+": No such file or directory");
 				return 1;
 			}
 			dir = dirs.get(0);
@@ -95,7 +101,7 @@ public class Cd extends ShellCommand{
 			}
 		}
 		if( !dir.isDirectory()) {
-			ctx.error("cd: "+path+": Not a directory");
+			ctx.error(who+": "+path+": Not a directory");
 			return 1;
 		}
 		//  PWD and OLD_PWD variables are managed by console (in a pipe stage, set here: the stage's own)

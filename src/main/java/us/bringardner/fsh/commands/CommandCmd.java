@@ -32,7 +32,10 @@ public class CommandCmd extends ShellCommand{
 		String mode = null;
 		while( idx < args.length ) {
 			String a = ""+args[idx].getValue(ctx);
-			if( a.equals("-v") || a.equals("-V") || a.equals("-p")) {
+			if( a.equals("--")) {
+				idx++;
+				break;
+			} else if( a.equals("-v") || a.equals("-V") || a.equals("-p")) {
 				if( !a.equals("-p")) {
 					mode = a;
 				}
@@ -63,7 +66,13 @@ public class CommandCmd extends ShellCommand{
 		}
 		Constructor<? extends ShellCommand> con = ctx.console.builtin(n);
 		if( con != null ) {
-			return Builtin.run(con, Arrays.copyOfRange(args, idx+1, args.length), ctx);
+			// (command makes a special builtin's failure not end the shell)
+			ctx.viaCommand++;
+			try {
+				return Builtin.run(con, Arrays.copyOfRange(args, idx+1, args.length), ctx);
+			} finally {
+				ctx.viaCommand--;
+			}
 		}
 		// a program
 		List<String> cmd = new ArrayList<>();

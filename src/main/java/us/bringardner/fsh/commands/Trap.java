@@ -38,8 +38,22 @@ public class Trap extends ShellCommand implements SignalHandler {
 	private enum Args{l,p,P};
 	
 	
-	private static final String [] COMMON_NAMES = {"HUP","INT","QUIT","ILL","TRAP","ABRT","FPE","KILL","BUS","SEGV","SYS","PIPE","ALRM","TERM","URG","STOP","TSTP","CONT","CHLD","TTIN","TTOU","IO","XCPU","XFSZ","VTALRM","PROF","WINCH","USR1","USR2"};
+	private static final String [] COMMON_NAMES = {"HUP","INT","QUIT","ILL","TRAP","ABRT","EMT","FPE","KILL","BUS","SEGV","SYS","PIPE","ALRM","TERM","URG","STOP","TSTP","CONT","CHLD","TTIN","TTOU","IO","XCPU","XFSZ","VTALRM","PROF","WINCH","INFO","USR1","USR2","STKFLT","PWR"};
 	private static transient Map<Integer,String> locals;
+	/** the signals as kill -l and trap -l list them: " 1) SIGHUP\t 2) SIGINT ...", five to a line */
+	public static String listing() {
+		StringBuilder ret = new StringBuilder();
+		int column = 0;
+		for(Map.Entry<Integer, String> e : getLocalSignals().entrySet()) {
+			ret.append(String.format("%2d) SIG%s", e.getKey(), e.getValue()));
+			ret.append(++column % 5 == 0 ? "\n" : "\t");
+		}
+		if( column % 5 != 0 ) {
+			ret.append('\n');
+		}
+		return ret.toString();
+	}
+
 	public static Map<Integer, String> getLocalSignals() {
 		if( locals == null ) {
 			synchronized (Trap.class) {
@@ -92,9 +106,7 @@ public class Trap extends ShellCommand implements SignalHandler {
 			}
 		}
 		if( list ) {
-			for(java.util.Map.Entry<Integer, String> e : getLocalSignals().entrySet()) {
-				ctx.stdout.printf("%2d) SIG%s%n", e.getKey(), e.getValue());
-			}
+			ctx.stdout.print(listing());
 			return 0;
 		}
 		if( print ) {

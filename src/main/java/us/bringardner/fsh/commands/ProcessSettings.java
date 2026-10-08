@@ -82,7 +82,8 @@ public class ProcessSettings {
 		}
 		int status = (Integer) r[0];
 		if( status == 0 && sets ) {
-			settings(ctx).add(cmd.toString());
+			// (replayed quietly: umask -S u=rwx prints what it set)
+			settings(ctx).add(cmd+" >/dev/null");
 		}
 		return status;
 	}

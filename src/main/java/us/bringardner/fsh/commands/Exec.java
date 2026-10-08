@@ -1,6 +1,8 @@
 package us.bringardner.fsh.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
@@ -45,6 +47,11 @@ public class Exec extends ShellCommand{
 			if( val.equals("--")) {
 				break;
 			} else if( val.equals("-a")) {
+				if( idx+1 >= args.length ) {
+					ctx.error("exec: -a: option requires an argument");
+					ctx.stderr.println("exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]");
+					return 2;
+				}
 				cmdName = ""+args[++idx].getValue(ctx);
 			} else if( val.startsWith("-") && val.length() > 1 ) {
 				for(char o : val.substring(1).toCharArray()) {
@@ -65,36 +72,33 @@ public class Exec extends ShellCommand{
 			}
 		}
 
-		if( idx < args.length) {
+		if( idx < args.length && idx+1 < args.length ) {
+			// as bash: the program (not a builtin or function) replaces the shell
 			String command = ""+args[++idx].getValue(ctx);
-			StringBuilder buf = new StringBuilder(command);
+			us.bringardner.parley.files.FileSource file = us.bringardner.fsh.exec.Programs.which(command, ctx);
+			if( file == null || file.isDirectory()) {
+				ctx.error("exec: "+command+": "+(file == null ? "not found" : "Is a directory"));
+				throw new ExitException(ctx, file == null ? 127 : 126);
+			}
+			List<String> cmd = new ArrayList<>();
+			cmd.add(file.getAbsolutePath());
 			for(idx++; idx < args.length; idx++ ) {
-				buf.append(' ');
-				if( l ) {
-					buf.append("-");
-					l = false;
-				}
-				buf.append(args[idx].getValue(ctx));
+				cmd.add(""+args[idx].getValue(ctx));
 			}
-			
-			String code = buf.toString().trim();
-			if( !code.isEmpty()) {
-				if( cmdName !=null ) {
-					ctx.setVariable("$0", cmdName);
-				} else {
-					ctx.setVariable("$0", command);
-				}
-				if( c ) {
-					// clear env
-				}
-				ret = ctx.console.executeScript(code);
-				throw new ExitException(ctx, ret);
-			} else {
-				ret = 1;
+			if( l ) {
+				// a login shell's argv[0]: -name
+				String base = cmdName != null ? cmdName : command.substring(command.lastIndexOf('/')+1);
+				cmdName = "-"+base;
 			}
-		} else {
-			//  no command 
-			//  redirect current shell???
+			ctx.programArgv0 = cmdName;
+			ctx.programCleanEnvironment = c;
+			try {
+				ret = us.bringardner.fsh.exec.Programs.execute(cmd, ctx);
+			} finally {
+				ctx.programArgv0 = null;
+				ctx.programCleanEnvironment = false;
+			}
+			throw new ExitException(ctx, ret);
 		}
 		return ret;
 	}

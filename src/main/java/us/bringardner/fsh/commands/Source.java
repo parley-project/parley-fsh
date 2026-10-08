@@ -28,51 +28,88 @@ public class Source extends ShellCommand{
 		super(name, help);
 	}
 
+	protected Source(String name) {
+		super(name, help);
+	}
+
 	@Override
 	public int process(ShellContext ctx)  {
-		if(args.length==0) {
-			ctx.error("source: usage: source filename [arguments]");
-			return 1;
+		int first = 0;
+		// -p path: where a name with no / is looked for (in place of PATH)
+		String searchPath = null;
+		while( first < args.length ) {
+			String a = ""+args[first].getValue(ctx);
+			if( a.equals("--")) {
+				first++;
+				break;
+			}
+			if( a.equals("-p") && first+1 < args.length ) {
+				searchPath = ""+args[first+1].getValue(ctx);
+				first += 2;
+				continue;
+			}
+			break;
 		}
+		if( first >= args.length ) {
+			ctx.error(getName()+": filename argument required");
+			ctx.stderr.println(getName()+": usage: "+getName()+" [-p path] filename [arguments]");
+			return 2;
+		}
+		args = java.util.Arrays.copyOfRange(args, first, args.length);
 
-		
 		try {
 			String path = ""+args[0].getValue(ctx);
 			path = expandTilde(ctx, path);
 			FileSource file = null;
-			if( path.indexOf('/') < 0 && us.bringardner.fsh.Glob.option(ctx, "sourcepath")) {
-				// a name with no / is looked for on $PATH first (shopt sourcepath), as in bash
-				Object dirs = ctx.getVariable("PATH");
+			boolean posix = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && ctx.viaCommand == 0;
+			if( path.indexOf('/') < 0 && (searchPath != null || us.bringardner.fsh.Glob.option(ctx, "sourcepath"))) {
+				// a name with no / is looked for on -p's path, or $PATH (shopt sourcepath), as in bash
+				Object dirs = searchPath != null ? searchPath : ctx.getVariable("PATH");
 				if( dirs != null ) {
-					for(String dir : dirs.toString().split(":")) {
-						if( dir.isEmpty()) {
-							continue;
-						}
-						FileSource f = ctx.getFileSource(dir+"/"+path);
+					for(String dir : dirs.toString().split(":", -1)) {
+						FileSource f = ctx.getFileSource((dir.isEmpty() ? "." : dir)+"/"+path);
 						if( f.exists() && f.isFile()) {
 							file = f;
 							break;
 						}
 					}
 				}
+				if( file == null && (searchPath != null || posix)) {
+					// (-p, or posix mode: not the current directory)
+					ctx.error(getName()+": "+path+": file not found");
+					if( posix ) {
+						throw new ExitException(ctx, 1);
+					}
+					return 1;
+				}
 			}
 			if( file == null ) {
 				file = ctx.getFileSource(path);
 			}
-			
-			if( !file.exists()) {
-				// as bash says it
+
+			boolean stdin = path.equals("/dev/stdin") || path.equals("/dev/fd/0");
+			if( !stdin && !file.exists()) {
+				// as bash says it (posix mode: the shell ends, . being a special builtin)
 				ctx.error(path+": No such file or directory");
+				if( posix ) {
+					throw new ExitException(ctx, 1);
+				}
 				return 1;
 
 			}
-			try (InputStream in = file.getInputStream()) {
+			// (/dev/stdin: this command's standard input, a pipe too)
+			try (InputStream in = stdin ? new java.io.FilterInputStream(ctx.stdin) {
+					@Override
+					public void close() {
+					}
+				} : file.getInputStream()) {
 				String code = new String(in.readAllBytes());
 				// in the caller's context (its functions and locals), and return ends the file
 				List<Object> saved = null;
+				List<Object> params = null;
 				if( args.length>1) {
 					saved = ctx.getPositionalParameterValues();
-					List<Object> params = new ArrayList<>();
+					params = new ArrayList<>();
 					for (int idx = 1; idx < args.length; idx++) {
 						params.add(""+args[idx].getValue(ctx));
 					}
@@ -88,7 +125,8 @@ public class Source extends ShellCommand{
 				} finally {
 					ctx.sourceFiles.pollLast();
 					ctx.sourceDepth--;
-					if( saved != null ) {
+					if( saved != null && params.equals(ctx.getPositionalParameterValues())) {
+						// (unless the file set them itself: set -- in it stays, as in bash)
 						ctx.setPositionalParameterValues(saved);
 					}
 				}

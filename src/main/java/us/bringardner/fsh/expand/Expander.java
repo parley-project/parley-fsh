@@ -349,6 +349,16 @@ public final class Expander {
 		case "-":
 			return str(sc.getVariable("OLDPWD"));
 		default:
+			if( user.matches("[+-]?[0-9]+")) {
+				// ~N ~+N ~-N: an entry of the directory stack, as dirs +N (-N) prints it
+				Object stack = sc.getVariable("DIRSTACK");
+				if( stack instanceof List<?> l ) {
+					long n = Long.parseLong(user.startsWith("+") ? user.substring(1) : user);
+					long i = user.startsWith("-") ? l.size()-1+n : n;
+					return i >= 0 && i < l.size() ? str(l.get((int) i)) : null;
+				}
+				return null;
+			}
 			if( !user.matches("[A-Za-z0-9_][A-Za-z0-9_.-]*")) {
 				return null;
 			}

@@ -1,92 +1,110 @@
 package us.bringardner.fsh.commands;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.Argument;
 
-public class Dirs extends DirStack{
+/** dirs [-clpv] [+N] [-N], as bash's */
+public class Dirs extends DirStack {
 	static String name = "dirs";
-	// physical 
-	static String help = "dirs [-clpv] [+N | -N]\n"
-			+ "Without options, display the list of currently remembered directories. Directories are added to the list with the pushd command; the popd command removes directories from the list. The current directory is always the first directory in the stack.\n"
-			+ "\n"
-			+ "Options, if supplied, have the following meanings:\n"
-			+ "\n"
-			+ "-c\n"
-			+ "Clears the directory stack by deleting all of the elements.\n"
-			+ "\n"
-			+ "-l\n"
-			+ "Produces a listing using full pathnames; the default listing format uses a tilde to denote the home directory.\n"
-			+ "\n"
-			+ "-p\n"
-			+ "Causes dirs to print the directory stack with one entry per line.\n"
-			+ "\n"
-			+ "-v\n"
-			+ "Causes dirs to print the directory stack with one entry per line, prefixing each entry with its index in the stack.\n"
-			+ "\n"
-			+ "+N\n"
-			+ "Displays the Nth directory (counting from the left of the list printed by dirs when invoked without options), starting with zero.\n"
-			+ "\n"
-			+ "-N\n"
-			+ "Displays the Nth directory (counting from the right of the list printed by dirs when invoked without options), starting with zero.";
+	static String help = "dirs [-clpv] [+N] [-N]\n"
+			+ "	Print the directory stack, the current directory first: -l without ~, -p one per line, -v\n"
+			+ "	numbered, +N or -N one entry (counted from the left or right); -c clears it.";
+	static final String USAGE = "dirs [-clpv] [+N] [-N]";
 
 	public Dirs() {
 		super(name, help);
 	}
-	
-	public int process(ShellContext ctx, List<FileSource> stack) throws IOException {
-		int ret = 0;
-		boolean fullPath= false;
-		boolean onePerLine= false;
-		boolean showIndex= false;
-		Integer N=null;
-		for(Argument arg : args) {
-			String a = ""+arg.getValue(ctx);
-			if( a.equals("dirs")) {
-				continue;
-			}
-			
-			if( a.startsWith("+")) {
-				N = Integer.parseInt(a.substring(1));	
-			} else if( a.startsWith("-")) {
-				if(Character.isDigit(a.charAt(1))) {
-					N = stack.size()-Integer.parseInt(a.substring(1))-1;
+
+	@Override
+	public int process(ShellContext ctx) throws IOException {
+		List<String> stack = stack(ctx);
+		boolean longForm = false, clear = false;
+		int vflag = 0;
+		int index = -1;
+		int indexFlag = 0;
+		String w = "";
+		for(int idx = 0; idx < args.length; idx++) {
+			String a = ""+args[idx].getValue(ctx);
+			if( a.equals("-l")) {
+				longForm = true;
+			} else if( a.equals("-c")) {
+				clear = true;
+			} else if( a.equals("-v")) {
+				vflag |= 2;
+			} else if( a.equals("-p")) {
+				vflag |= 1;
+			} else if( a.equals("--")) {
+				break;
+			} else if( a.startsWith("+") || a.startsWith("-")) {
+				Long n = number(a);
+				w = a.substring(1);
+				if( n == null ) {
+					ctx.error("dirs: "+a+": invalid number");
+					usage(ctx, USAGE);
+					return 2;
+				}
+				boolean plus = a.startsWith("+");
+				// bash's get_dirstack_index
+				indexFlag = plus ? 1 : 2;
+				int size = stack.size();
+				if( n == 0 && plus ) {
+					index = 0;
+				} else if( n == size ) {
+					indexFlag = plus ? 2 : 1;
+					index = 0;
+				} else if( n >= 0 && n <= size ) {
+					index = (int) (plus ? size-n : n);
 				} else {
-					for(int i=1; i < a.length(); i++) {
-						switch (a.charAt(i)) {
-						case 'c':stack.clear();return 0;
-						case 'l':fullPath = true;break;
-						case 'p':onePerLine = true;break;
-						case 'v':showIndex = onePerLine = true; break;
-						default:
-							throw new IllegalArgumentException("Unexpected value: " + a.charAt(i));
-						}
-					}
+					index = -1;
+				}
+			} else {
+				ctx.error("dirs: "+a+": invalid option");
+				usage(ctx, USAGE);
+				return 2;
+			}
+		}
+		if( clear ) {
+			stack.clear();
+			return 0;
+		}
+		int size = stack.size();
+		if( indexFlag != 0 && (index < 0 || index > size)) {
+			if( stack.isEmpty()) {
+				ctx.error("dirs: directory stack empty");
+			} else {
+				ctx.error("dirs: "+w+": directory stack index out of range");
+			}
+			return 1;
+		}
+		StringBuilder out = new StringBuilder();
+		if( indexFlag == 0 || (indexFlag == 1 && index == 0)) {
+			String here = format(ctx, cwd(ctx), longForm);
+			out.append((vflag & 2) != 0 ? String.format("%2d  %s", 0, here) : here);
+			if( indexFlag != 0 ) {
+				ctx.stdout.println(out);
+				return 0;
+			}
+		}
+		if( indexFlag != 0 ) {
+			String e = format(ctx, stack.get(index), longForm);
+			out.append((vflag & 2) != 0 ? String.format("%2d  %s", size-index, e) : e);
+		} else {
+			for (int i = size-1; i >= 0; i--) {
+				String e = format(ctx, stack.get(i), longForm);
+				if( vflag >= 2 ) {
+					out.append(String.format("\n%2d  %s", size-i, e));
+				} else {
+					out.append((vflag & 1) != 0 ? "\n" : " ").append(e);
 				}
 			}
 		}
-		List<FileSource> tmp = new ArrayList<>();
-		tmp.addAll(stack);
-		if( tmp.size()==0) {
-			tmp.add(ctx.console.getCurrentDirectory());
-		} else {
-			tmp.set(0, ctx.console.getCurrentDirectory());
-		}
-		if( N != null ) {
-			if( N<0 || N>=tmp.size()) {
-				ctx.error("dirs: "+N+": directory stack index out of range");
-				ret = 1;
-			} else {
-				print(tmp, ctx, onePerLine, showIndex, fullPath,N);
-			}
-		} else {		
-			print(tmp, ctx, onePerLine, showIndex, fullPath,N);
-		}
-		return ret;
+		ctx.stdout.println(out);
+		return 0;
 	}
-		
+
+	private static String format(ShellContext ctx, String dir, boolean longForm) {
+		return longForm ? dir : polite(ctx, dir);
+	}
 }

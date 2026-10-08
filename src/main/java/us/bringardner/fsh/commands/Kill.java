@@ -64,12 +64,34 @@ public class Kill extends ShellCommand{
 			}
 			//[-s sigspec] [-n signum] [-sigspec] id [...]
 			if( val.equals("-l") || val.equals("-L")) {
-				list = true;
-				if( idx < args.length-1) {
-					String tmp = ""+args[++idx].getValue(ctx);
-					exitStatus = Character.isDigit(tmp.charAt(0)) ? Integer.valueOf(tmp) : -1;
-					listName = tmp;
+				// kill -l [sigspec ...]: names for numbers (128+n too), numbers for names
+				if( idx == args.length-1 ) {
+					ctx.stdout.print(Trap.listing());
+					return 0;
 				}
+				int status = 0;
+				for(idx++; idx < args.length; idx++) {
+					String spec = ""+args[idx].getValue(ctx);
+					if( spec.matches("[0-9]+")) {
+						long n = Long.parseLong(spec);
+						String name = n > Integer.MAX_VALUE ? null : signals.get((int) (n > 128 ? n-128 : n));
+						if( name == null ) {
+							ctx.error("kill: "+spec+": invalid signal specification");
+							status = 1;
+						} else {
+							ctx.stdout.println(name);
+						}
+					} else {
+						int number = signalNumber(spec);
+						if( number < 0 ) {
+							ctx.error("kill: "+spec+": invalid signal specification");
+							status = 1;
+						} else {
+							ctx.stdout.println(""+number);
+						}
+					}
+				}
+				return status;
 			} else if( val.equals("-s") || val.equals("-n")) {
 				signum = parseSigNum(""+args[++idx].getValue(ctx));								
 			} else if( val.startsWith("-")) {				

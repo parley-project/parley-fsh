@@ -3,116 +3,112 @@ package us.bringardner.fsh.commands;
 import java.io.IOException;
 import java.util.List;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.Argument;
 
-public class Pushd extends DirStack {	
+/** pushd [-n] [+N | -N | dir], as bash's */
+public class Pushd extends DirStack {
 	static String name = "pushd";
-	// physical 
-	static String help = "pushd\n"
-			+ "pushd [-n] [+N | -N | dir]\n"
-			+ "Add a directory to the top of the directory stack, or rotate the stack, making the new top of the stack the current working directory. With no arguments, pushd exchanges the top two elements of the directory stack.\n"
-			+ "\n"
-			+ "Arguments, if supplied, have the following meanings:\n"
-			+ "\n"
-			+ "-n\n"
-			+ "Suppress the normal change of directory when rotating or adding directories to the stack, only manipulate the stack.\n"
-			+ "\n"
-			+ "+N\n"
-			+ "Rotate the stack so that the Nth directory (counting from the left of the list printed by dirs, starting with zero) is at the top.\n"
-			+ "\n"
-			+ "-N\n"
-			+ "Rotate the stack so that the Nth directory (counting from the right of the list printed by dirs, starting with zero) is at the top.\n"
-			+ "\n"
-			+ "dir\n"
-			+ "Make dir be the top of the stack.\n"
-			+ "\n"
-			+ "After the stack has been modified, if the -n option was not supplied, pushd uses the cd builtin to change to the directory at the top of the stack. If the cd fails, pushd returns a non-zero value.\n"
-			+ "\n"
-			+ "Otherwise, if no arguments are supplied, pushd returns zero unless the directory stack is empty. When rotating the directory stack, pushd returns zero unless the directory stack is empty or N specifies a non-existent directory stack element.\n"
-			+ "\n"
-			+ "If the pushd command is successful, Bash runs dirs to show the final contents of the directory stack.";
+	static String help = "pushd [-n] [+N | -N | dir]\n"
+			+ "	Add dir to the top of the directory stack (going there), or rotate the stack (+N, -N,\n"
+			+ "	counted from the left or right of dirs' list) so that entry is on top. With nothing, swap the\n"
+			+ "	top two. -n changes the stack only, not the directory.";
+	static final String USAGE = "pushd [-n] [+N | -N | dir]";
 
 	public Pushd() {
 		super(name, help);
 	}
-	
-	public int process(ShellContext ctx, List<FileSource> dirStack) throws IOException {
-		int ret = 0;
-		if( args.length== 0 ) {
-			//With no arguments, pushd exchanges the top two elements of the directory stack.
-			if( dirStack.size()>1) {
-				FileSource o = dirStack.remove(1);
-				dirStack.add(0,o);
-				return ret;
-			} else {
+
+	@Override
+	public int process(ShellContext ctx) throws IOException {
+		List<String> stack = stack(ctx);
+		int idx = 0;
+		boolean skipOptions = false;
+		if( args.length > 0 && "--".equals(""+args[0].getValue(ctx))) {
+			idx++;
+			skipOptions = true;
+		}
+		if( idx >= args.length ) {
+			// swap the top two
+			if( stack.isEmpty()) {
+				ctx.error("pushd: no other directory");
 				return 1;
 			}
+			String here = cwd(ctx);
+			String top = stack.get(stack.size()-1);
+			int ret = cd(ctx, "pushd", top);
+			if( ret == 0 ) {
+				stack.set(stack.size()-1, here);
+				print(ctx);
+			}
+			return ret;
 		}
-
-		boolean n=false;
-
-		for(Argument arg : args) {
-			String a = arg.getValue(ctx).toString();
-			if( a.equals("-n")) {
-				n = true;
-				break;
-			} 
-		}
-
-		// first replace the top element with cwd
-		if( dirStack.size()==0) {
-			dirStack.add(ctx.console.getCurrentDirectory());
-		} else {
-			dirStack.set(0, ctx.console.getCurrentDirectory());
-		}
-		int direrction = 1;
-		int cnt = 0;
-
-		for(int idx=0; idx < args.length; idx++) {
+		boolean nocd = false;
+		Long rotate = null;
+		for(; !skipOptions && idx < args.length; idx++) {
 			String a = ""+args[idx].getValue(ctx);
-			if( a.startsWith("-")) {
-				cnt = Integer.parseInt(a.substring(1));
-				direrction = -1;
-			} else if( a.startsWith("+")) {
-				cnt = Integer.parseInt(a.substring(1))-1;
-			}else {
-				if( !n ) {
-					Cd cd = new Cd();
-					Argument [] aa = {new Argument(a)};
-					
-					cd.setArgs(aa);
-					ret = cd.process(ctx);
-					if( ret == 0 ) {
-						dirStack.add(0,ctx.console.getCurrentDirectory());						
-					}
-					print(dirStack,ctx,false,false,false,null);
-					return ret;
-				} else {
-					// change stack but not cwd
-					List<FileSource> dirs = getFiles(ctx, a);
-					if( dirs==null || dirs.size()==0) {
-						ctx.error("pushd: "+a+": No such file or directory");
-						return -1;
-					}
-					FileSource dir = dirs.get(0);
-					dirStack.add(0,dir);
-					print(dirStack,ctx,false,false,false,null);
-					return 0;
+			if( a.equals("-n")) {
+				nocd = true;
+			} else if( a.equals("--")) {
+				idx++;
+				break;
+			} else if( a.equals("-")) {
+				break;
+			} else if( a.startsWith("+") || a.startsWith("-")) {
+				Long n = number(a);
+				if( n == null ) {
+					ctx.error("pushd: "+a+": invalid number");
+					usage(ctx, USAGE);
+					return 2;
 				}
+				if( a.startsWith("-")) {
+					n = stack.size()-n;
+				}
+				if( n > stack.size() || n < 0 ) {
+					indexError(ctx, a);
+					return 1;
+				}
+				rotate = n;
+			} else {
+				break;
 			}
 		}
-		ret = rotate(direrction,cnt,ctx,dirStack);
-		if( !n ) {
-			String old = ctx.console.getCurrentDirectory().getAbsolutePath();
-			ctx.console.setCurrentDirectory((FileSource) dirStack.get(0));
-			ctx.setVariable(us.bringardner.fsh.Console.VARIABLE_OLDPWD, old);
+		if( rotate != null ) {
+			// the current directory is part of what turns
+			String temp = cwd(ctx);
+			long n = rotate;
+			if( n == 0 ) {
+				return nocd ? 0 : cdAndPrint(ctx, temp);
+			}
+			do {
+				String top = stack.get(stack.size()-1);
+				stack.remove(stack.size()-1);
+				stack.add(0, temp);
+				temp = top;
+			} while( --n > 0 );
+			if( nocd ) {
+				print(ctx);
+				return 0;
+			}
+			return cdAndPrint(ctx, temp);
 		}
-		print(dirStack, ctx,false,false,false,null);
-
+		if( idx >= args.length ) {
+			return 0;
+		}
+		String dir = ""+args[idx].getValue(ctx);
+		String here = cwd(ctx);
+		int ret = nocd ? 0 : cd(ctx, "pushd", dir);
+		if( ret == 0 ) {
+			stack.add(nocd ? dir : here);
+			print(ctx);
+		}
 		return ret;
-
 	}
 
+	private static int cdAndPrint(ShellContext ctx, String dir) throws IOException {
+		int ret = cd(ctx, "pushd", dir);
+		if( ret == 0 ) {
+			print(ctx);
+		}
+		return ret;
+	}
 }

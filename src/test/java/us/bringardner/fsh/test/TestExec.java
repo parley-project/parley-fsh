@@ -1,6 +1,6 @@
 package us.bringardner.fsh.test;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
@@ -43,8 +43,12 @@ public class TestExec extends AbstractConsoleTest {
 
 		ExecuteResult res = executeCommand(cmd, "");
 		assertEquals(0,res.exitCode,"Exit code for cmd="+cmd);
-		String[] out = res.getStdOut().split("\n");
-		assertEquals(expect.length,out.length,"Stdout for cmd="+cmd);
+		// (exec runs the program ls, as bash does, not the ls builtin: its own layout)
+		String out = res.getStdOut();
+		for(String line : expect) {
+			String file = line.substring(line.lastIndexOf(' ')+1);
+			assertTrue(out.contains(file), "Stdout for cmd="+cmd+" has "+file);
+		}
 
 	}
 

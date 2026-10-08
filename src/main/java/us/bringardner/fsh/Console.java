@@ -98,6 +98,12 @@ public class Console extends SignalEnabledThread {
 	/** umask and ulimit settings, as the commands that made them (see commands.ProcessSettings) */
 	public final List<String> processSettings = new CopyOnWriteArrayList<>();
 
+	/** pushd's stack below the current directory, oldest first */
+	public final List<String> dirStack = new CopyOnWriteArrayList<>();
+
+	/** the umask (null until umask asks the system for it) */
+	public volatile Integer umask;
+
 	/** builtins turned off with enable -n: the name runs a program (or nothing) instead */
 	public final java.util.Set<String> disabledBuiltins = ConcurrentHashMap.newKeySet();
 
@@ -432,6 +438,7 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.Shopt());
 		registerCommand(new us.bringardner.fsh.commands.Type());
 		registerCommand(new us.bringardner.fsh.commands.Hash());
+		registerCommand(new us.bringardner.fsh.commands.Dot());
 		registerCommand(new us.bringardner.fsh.commands.Builtin());
 		registerCommand(new us.bringardner.fsh.commands.CommandCmd());
 		registerCommand(new us.bringardner.fsh.commands.Caller());
@@ -964,7 +971,8 @@ delimiter
 		if( inv.command != null ) {
 			// -c command [name [arguments]]: name is $0
 			readsFrom = 'c';
-			params.add(inv.args.isEmpty() ? "fsh" : inv.args.get(0));
+			// (with no name: how the shell was called, if the launcher says so (fsh.argv0), as bash's argv[0])
+			params.add(inv.args.isEmpty() ? System.getProperty("fsh.argv0", "fsh") : inv.args.get(0));
 			for (int i = 1; i < inv.args.size(); i++) {
 				params.add(inv.args.get(i));
 			}
@@ -2716,8 +2724,16 @@ delimiter
 		private final Map<String,ShellFunction> functions;
 		private final FileSource cwd;
 		private final Map<Integer,FileDiscriptor> files;
+		private final List<String> processSettings;
+		private final List<String> dirStack;
+		private final Integer umask;
+		private final Map<String,Object []> hashTable;
 
 		private Snapshot(Console c) throws IOException {
+			processSettings = new ArrayList<>(c.processSettings);
+			dirStack = new ArrayList<>(c.dirStack);
+			umask = c.umask;
+			hashTable = new java.util.LinkedHashMap<>(c.hashTable);
 			// arrays by value: a subshell's a[1]=x or m[k]=v changes the arrays it shares with
 			// the shell, and restore puts these copies back
 			variables = new TreeMap<>();
@@ -2740,6 +2756,14 @@ delimiter
 	}
 
 	public void restore(Snapshot s) throws IOException {
+		// (umask, ulimit and hash in a subshell are its own)
+		processSettings.clear();
+		processSettings.addAll(s.processSettings);
+		dirStack.clear();
+		dirStack.addAll(s.dirStack);
+		umask = s.umask;
+		hashTable.clear();
+		hashTable.putAll(s.hashTable);
 		variables.clear();
 		variables.putAll(s.variables);
 		environmentVariables.clear();

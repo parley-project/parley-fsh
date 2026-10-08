@@ -3,72 +3,86 @@ package us.bringardner.fsh.commands;
 import java.io.IOException;
 import java.util.List;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.Argument;
 
+/** popd [-n] [+N | -N], as bash's */
 public class Popd extends DirStack {
 	static String name = "popd";
-	// physical 
 	static String help = "popd [-n] [+N | -N]\n"
-			+ "Remove elements from the directory stack. The elements are numbered from 0 starting at the first directory listed by dirs; that is, popd is equivalent to popd +0.\n"
-			+ "\n"
-			+ "When no arguments are given, popd removes the top directory from the stack and changes to the new top directory.\n"
-			+ "\n"
-			+ "Arguments, if supplied, have the following meanings:\n"
-			+ "\n"
-			+ "-n\n"
-			+ "Suppress the normal change of directory when removing directories from the stack, only manipulate the stack.\n"
-			+ "\n"
-			+ "+N\n"
-			+ "Remove the Nth directory (counting from the left of the list printed by dirs), starting with zero, from the stack.\n"
-			+ "\n"
-			+ "-N\n"
-			+ "Remove the Nth directory (counting from the right of the list printed by dirs), starting with zero, from the stack.\n"
-			+ "\n"
-			+ "If the top element of the directory stack is modified, and the -n option was not supplied, popd uses the cd builtin to change to the directory at the top of the stack. If the cd fails, popd returns a non-zero value.\n"
-			+ "\n"
-			+ "Otherwise, popd returns an unsuccessful status if an invalid option is specified, the directory stack is empty, or N specifies a non-existent directory stack entry.\n"
-			+ "\n"
-			+ "If the popd command is successful, Bash runs dirs to show the final contents of the directory stack, and the return status is 0.";
+			+ "	Take the top directory off the stack and go to the new top, or take off entry N\n"
+			+ "	(counted from the left or right of dirs' list). -n changes the stack only.";
+	static final String USAGE = "popd [-n] [+N | -N]";
 
 	public Popd() {
 		super(name, help);
 	}
-	
-	
-	public int process(ShellContext ctx, List<FileSource> stack) throws IOException {
-		int ret = 0;
-		if(stack.size()>0) {
-			boolean n=false;
-			int idx =0;
 
-			for(Argument arg : args) {
-				String a = ""+arg.getValue(ctx);
-				if( a.equals("-n")) {
-					n = true;
-					break;
-				} else if( a.startsWith("+")) {
-					idx = Integer.parseInt(a.substring(1));					
-				} else if( a.startsWith("-")) {
-					idx = stack.size()-Integer.parseInt(a.substring(1))-1;
-				}
-			}
-			if( idx >=0 && idx < stack.size()) {
-				stack.remove(idx);
-				if( !n && stack.size()>0) {
-					Cd cd = new Cd();
-					Argument [] aa = {new Argument(stack.get(0).toString())};
-					cd.setArgs(aa);
-					ret = cd.process(ctx);
-					if( ret == 0 ) {
-						print(stack,ctx,false,false,false,null);
+	@Override
+	public int process(ShellContext ctx) throws IOException {
+		List<String> stack = stack(ctx);
+		boolean nocd = false;
+		long which = 0;
+		char direction = '+';
+		String whichWord = null;
+		for(int idx = 0; idx < args.length; idx++) {
+			String a = ""+args[idx].getValue(ctx);
+			if( a.equals("-n")) {
+				nocd = true;
+			} else if( a.equals("--")) {
+				if( idx+1 < args.length ) {
+					String next = ""+args[idx+1].getValue(ctx);
+					if( next.startsWith("+") || next.startsWith("-")) {
+						Long n = number(next);
+						if( n == null ) {
+							ctx.error("popd: "+next+": invalid number");
+							usage(ctx, USAGE);
+							return 2;
+						}
+						which = n;
+						direction = next.charAt(0);
+						whichWord = next;
 					}
-					return ret;		
 				}
+				break;
+			} else if( a.startsWith("+") || a.startsWith("-")) {
+				Long n = number(a);
+				if( n == null ) {
+					ctx.error("popd: "+a+": invalid number");
+					usage(ctx, USAGE);
+					return 2;
+				}
+				which = n;
+				direction = a.charAt(0);
+				whichWord = a;
+			} else if( !a.isEmpty()) {
+				ctx.error("popd: "+a+": invalid argument");
+				usage(ctx, USAGE);
+				return 2;
 			}
 		}
-		return ret;
+		int size = stack.size();
+		if( which > size || (stack.isEmpty() && which == 0)) {
+			indexError(ctx, whichWord == null ? "" : whichWord);
+			return 1;
+		}
+		if( (direction == '+' && which == 0) || (direction == '-' && which == size)) {
+			// the top: go there
+			if( !nocd ) {
+				int ret = cd(ctx, "popd", stack.get(size-1));
+				if( ret != 0 ) {
+					return ret;
+				}
+			}
+			stack.remove(size-1);
+		} else {
+			int i = (int) (direction == '+' ? size-which : which);
+			if( i < 0 || i >= size ) {
+				indexError(ctx, whichWord == null ? "" : whichWord);
+				return 1;
+			}
+			stack.remove(i);
+		}
+		print(ctx);
+		return 0;
 	}
-
 }

@@ -1,5 +1,5 @@
 /*
- * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [--] program [args...]
+ * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [--] program [args...]
  *
  * Runs a program for fsh as bash would run it.
  *
@@ -10,6 +10,7 @@
  *     bash: when the program ends, where it left the file (head -n 1 reads a block and seeks
  *     back after its line) is written to REPORT, for the shell to go on reading from there.
  *     The status is the program's (a signal that ended it ends this too).
+ * -0: the program's argv[0] is NAME (exec -a NAME, exec -l), not its path.
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -21,8 +22,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+static const char *argv0 = NULL;
+
 static void run(char **argv) {
-	execvp(argv[0], argv);
+	const char *path = argv[0];
+	if( argv0 != NULL ) {
+		argv[0] = (char *) argv0;
+	}
+	execvp(path, argv);
+	argv[0] = (char *) path;
 	int err = errno;
 	fprintf(stderr, "fsh: %s: %s\n", argv[0], strerror(err));
 	_exit(err == ENOENT ? 127 : 126);
@@ -43,6 +51,9 @@ int main(int argc, char **argv) {
 			pgid = (pid_t) atol(argv[i+1]);
 			fg = atoi(argv[i+2]);
 			i += 3;
+		} else if( strcmp(argv[i], "-0") == 0 && i+1 < argc ) {
+			argv0 = argv[i+1];
+			i += 2;
 		} else if( strcmp(argv[i], "-i") == 0 && i+3 < argc ) {
 			file = argv[i+1];
 			offset = (off_t) atoll(argv[i+2]);
@@ -53,7 +64,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	if( i >= argc ) {
-		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [--] program [args...]\n");
+		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [--] program [args...]\n");
 		return 2;
 	}
 	if( group ) {

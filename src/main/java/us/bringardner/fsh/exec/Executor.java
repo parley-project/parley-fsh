@@ -1206,6 +1206,12 @@ public final class Executor {
 						error(sc, a.name+": readonly variable");
 						continue;
 					}
+					boolean exported = name.equals("export") || name.equals("declare") && args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*x[a-zA-Z]*"));
+					if( exported && sc.getFunction(name) == null ) {
+						// foo= export foo, FOO=1 declare -x FOO: the assignment stays (and is exported), as in bash
+						sc.setVariable(a.name, v);
+						continue;
+					}
 					if( sc.console.isOptionEnabled(Console.Option.Posix) && SPECIAL_BUILTINS.contains(name) && sc.getFunction(name) == null ) {
 						// posix mode: an assignment before a special builtin stays
 						sc.setVariable(a.name, v);
@@ -1423,9 +1429,6 @@ public final class Executor {
 	}
 
 	private int dispatch(String name, List<Object> args, ShellContext sc, Expander ex) throws IOException {
-		if( name.equals(".")) {
-			name = "source";
-		}
 		// (aliases are expanded when the command is read: see Parser.aliases)
 		switch (name) {
 		case "[": {
@@ -1531,6 +1534,9 @@ public final class Executor {
 	/** break [n], continue [n] */
 	private static int loopControl(String name, List<String> args, ShellContext sc) {
 		int n = 1;
+		if( !args.isEmpty() && args.get(0).equals("--")) {
+			args = args.subList(1, args.size());
+		}
 		if( !args.isEmpty()) {
 			try {
 				n = Integer.parseInt(args.get(0));

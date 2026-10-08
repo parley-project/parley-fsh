@@ -245,6 +245,12 @@ public class Test extends ShellCommand{
 		case "-z": return val.isEmpty();
 		case "-v": {
 			java.util.regex.Matcher m = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]").matcher(val);
+			if( m.matches() && (m.group(2).equals("@") || m.group(2).equals("*"))) {
+				// -v a[@]: a has an element (a set scalar is one)
+				Object arr = ctx.getVariable(m.group(1));
+				// (of an associative array, as bash: the element whose key is @)
+				return arr instanceof java.util.Map<?,?> map ? map.containsKey(m.group(2)) : arr instanceof java.util.List<?> l ? !l.isEmpty() : arr != null;
+			}
 			if( m.matches()) {
 				// -v a[1], -v m[key]: that element is set
 				Object arr = ctx.getVariable(m.group(1));
@@ -257,7 +263,8 @@ public class Test extends ShellCommand{
 				}
 				return false;
 			}
-			return ctx.getVariable(val) != null;
+			// -v a of an array: its element 0, as $a
+			return us.bringardner.fsh.ShellContext.firstElement(ctx.getVariable(val)) != null;
 		}
 		case "-o": {
 			// a set -o option is on

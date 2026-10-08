@@ -39,17 +39,29 @@ def build_helpers(out):
 
 
 def fsh_command(out):
-    """a script that runs fsh from this project's target/classes (and macos/ for the native parts)"""
+    """a program that runs fsh from this project's target/classes (and macos/ for the native parts):
+    compiled, not a /bin/sh script, which would rewrite the functions bash's tests export"""
     cp_file = os.path.join(PROJECT, 'target', 'runtime-classpath.txt')
     if not os.path.exists(cp_file):
         subprocess.run(['mvn', '-q', 'dependency:build-classpath', '-Dmdep.includeScope=runtime',
                         '-Dmdep.outputFile='+cp_file], cwd=PROJECT, check=True)
     cp = os.path.join(PROJECT, 'target', 'classes')+':'+open(cp_file).read().strip()
+    fixed = ['java', '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED',
+             '-Djava.library.path='+os.path.join(PROJECT, 'macos'), '-cp', cp]
+    source = os.path.join(out, 'bin', 'fsh.c')
+    with open(source, 'w') as f:
+        f.write('#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n'
+                'int main(int argc, char **argv) {\n'
+                '\tchar **args = calloc(argc+%d, sizeof(char *));\n\tint n = 0;\n' % (len(fixed)+4))
+        for a in fixed:
+            f.write('\targs[n++] = "%s";\n' % a.replace('\\', '\\\\').replace('"', '\\"'))
+        # how it was called, for $0 of -c (as bash's argv[0])
+        f.write('\tchar *a0 = malloc(strlen(argv[0])+16);\n\tstrcpy(a0, "-Dfsh.argv0=");\n\tstrcat(a0, argv[0]);\n'
+                '\targs[n++] = a0;\n\targs[n++] = "us.bringardner.fsh.Console";\n'
+                '\tfor (int i = 1; i < argc; i++) args[n++] = argv[i];\n'
+                '\texecvp("java", args);\n\treturn 127;\n}\n')
     script = os.path.join(out, 'bin', 'fsh')
-    with open(script, 'w') as f:
-        f.write('#!/bin/sh\nexec java -Djava.awt.headless=true --enable-native-access=ALL-UNNAMED '
-                '-Djava.library.path=%s -cp "%s" us.bringardner.fsh.Console "$@"\n' % (os.path.join(PROJECT, 'macos'), cp))
-    os.chmod(script, 0o755)
+    subprocess.run(['cc', '-O1', '-o', script, source], check=True)
     return script
 
 

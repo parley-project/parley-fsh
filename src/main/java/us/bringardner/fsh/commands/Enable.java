@@ -20,6 +20,10 @@ public class Enable extends ShellCommand{
 			+ "	-a: all)."
 			;
 
+	/** posix's special builtins (and source), as enable -s lists them */
+	private static final java.util.Set<String> SPECIAL = java.util.Set.of(".", ":", "break", "continue", "eval", "exec",
+			"exit", "export", "readonly", "return", "set", "shift", "source", "times", "trap", "unset");
+
 	public Enable() {
 		super(name, help);
 	}
@@ -28,6 +32,8 @@ public class Enable extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		boolean disable = false;
 		boolean all = false;
+		boolean special = false;
+		boolean dynamic = false;
 		List<String> names = new ArrayList<>();
 		for(int idx = 0; idx < args.length; idx++) {
 			String a = ""+args[idx].getValue(ctx);
@@ -37,6 +43,8 @@ public class Enable extends ShellCommand{
 					case 'n': disable = true; break;
 					case 'a': all = true; break;
 					case 'p': break;
+					case 's': special = true; break;
+					case 'd': dynamic = true; break;
 					default:
 						ctx.error("enable: -"+c+": invalid option");
 						return 2;
@@ -46,9 +54,12 @@ public class Enable extends ShellCommand{
 				names.add(a);
 			}
 		}
+		TreeSet<String> known = new TreeSet<>(Console.commands.keySet());
+		// (the ones the shell runs itself)
+		known.addAll(List.of("break", "continue", "declare", "typeset", "local", "."));
 		if( names.isEmpty()) {
-			for(String n : new TreeSet<>(Console.commands.keySet())) {
-				if( n.startsWith("__")) {
+			for(String n : known) {
+				if( n.startsWith("__") || special && !SPECIAL.contains(n)) {
 					continue;
 				}
 				boolean off = ctx.console.disabledBuiltins.contains(n);
@@ -60,8 +71,12 @@ public class Enable extends ShellCommand{
 		}
 		int ret = 0;
 		for(String n : names) {
-			if( !Console.commands.containsKey(n)) {
+			if( !known.contains(n)) {
 				ctx.error("enable: "+n+": not a shell builtin");
+				ret = 1;
+			} else if( dynamic ) {
+				// (fsh loads no builtins)
+				ctx.error("enable: "+n+": not dynamically loaded");
 				ret = 1;
 			} else if( disable ) {
 				ctx.console.disabledBuiltins.add(n);

@@ -284,8 +284,14 @@ public final class Programs {
 
 			try {
 				String name = cmd.get(0);
+				List<String> program = cmd;
+				if( ctx.programArgv0 != null && NativeKeyboard.helper() != null ) {
+					// exec -a name: through the helper, which sets argv[0]
+					program = new java.util.ArrayList<>(List.of(NativeKeyboard.helper(), "-0", ctx.programArgv0, "--"));
+					program.addAll(cmd);
+				}
 				// with umask or ulimit set, through sh so the program gets them
-				List<String> command = us.bringardner.fsh.commands.ProcessSettings.wrap(ctx, cmd);
+				List<String> command = us.bringardner.fsh.commands.ProcessSettings.wrap(ctx, program);
 
 				// as under bash, a program in the foreground uses the shell's terminal (and its
 				// output and error files) itself, not through a pipe: vi, less and top work
@@ -330,7 +336,9 @@ public final class Programs {
 				// the shell's exported variables, not the JVM's (export X=1 and X=1 cmd reach the program)
 				Map<String,String> env = builder.environment();
 				env.clear();
-				env.putAll(ctx.console.programEnvironment(ctx));
+				if( !ctx.programCleanEnvironment ) {
+					env.putAll(ctx.console.programEnvironment(ctx));
+				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
 				if (dir instanceof FileProxy) {

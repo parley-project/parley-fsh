@@ -463,7 +463,7 @@ public class TestDirStack extends AbstractConsoleTest{
 				+ "pushd three\n"
 				+ "pushd four\n"
 				+ "pushd five\n"
-				+ "dirs -lp\n"
+				+ "dirs -l -p\n"
 				
 				;
 		
@@ -543,7 +543,7 @@ public class TestDirStack extends AbstractConsoleTest{
 				+ "pushd five\n"
 				+ "dirs -2\n"
 				+ "dirs +2\n"
-				+ "dirs -lpv +2\n"
+				+ "dirs -l -p -v +2\n"
 				
 				;
 		

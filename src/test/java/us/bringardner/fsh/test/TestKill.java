@@ -34,17 +34,11 @@ public class TestKill extends AbstractConsoleTest {
 	public void testKill01() throws IOException {
 		boolean showErrTmp = showError;
 		showError = false;
-		String expect = "HUP     INT     QUIT    ILL     TRAP    ABRT    FPE     KILL    BUS     SEGV    SYS     PIPE    ALRM    TERM    URG     STOP    TSTP    CONT    \n"
-				+ "CHLD    TTIN    TTOU    IO      XCPU    XFSZ    VTALRM  PROF    WINCH   USR1    USR2\n"
-				;
-		if(getOs()==OperatingSystem.Windows) {
-			expect = "INT   ILL   FPE   SEGV  TERM  ABRT\n";
-		} else if( getOs()==OperatingSystem.Linux) {
-			expect = "HUP     INT     QUIT    ILL     TRAP    ABRT    BUS     FPE     KILL    USR1    SEGV    USR2    PIPE    ALRM    TERM    CHLD    CONT    STOP    \n"
-					+ "TSTP    TTIN    TTOU    URG     XCPU    XFSZ    VTALRM  PROF    WINCH   IO      SYS\n"
-					;
+		// as bash lists them: " 1) SIGHUP\t 2) SIGINT ...", five to a line
+		String expect = us.bringardner.fsh.commands.Trap.listing();
+		if(getOs()!=OperatingSystem.Windows) {
+			assertTrue(expect.startsWith(" 1) SIGHUP\t 2) SIGINT\t 3) SIGQUIT\t"), expect);
 		}
-		
 		String code = "kill -l\n"
 				+ ""
 				;
