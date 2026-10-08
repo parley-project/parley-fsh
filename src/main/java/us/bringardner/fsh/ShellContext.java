@@ -1644,6 +1644,13 @@ $
 		return attr == 'u' ? v.toUpperCase() : v.toLowerCase();
 	}
 
+	/**
+	 * The running builtin's arguments (the String objects themselves) that were written as
+	 * name[subscript] and expanded to one word: its subscript is not expanded again (bash's
+	 * W_ARRAYREF, for unset).
+	 */
+	public java.util.Set<Object> arrayRefWords = java.util.Set.of();
+
 	/** while a trap runs: the line of the command it ran for ($LINENO), or null */
 	public Integer trapLine;
 	/** how many functions were running when trapLine was set (in functions the trap calls $LINENO is theirs) */

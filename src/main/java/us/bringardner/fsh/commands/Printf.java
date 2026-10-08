@@ -114,6 +114,11 @@ public class Printf extends ShellCommand{
 		if( element != null && element.matches()) {
 			// -v 'a[1]', -v 'm[key]'
 			Object cur = ctx.getVariable(element.group(1));
+			if( !(cur instanceof java.util.Map<?,?>) && (element.group(2).equals("@") || element.group(2).equals("*"))) {
+				// (no element @ of an indexed array)
+				ctx.error(var+": bad array subscript");
+				return 1;
+			}
 			Object key = cur instanceof java.util.Map<?,?> ? element.group(2)
 					: (Object) us.bringardner.fsh.expand.Arithmetic.evaluate(element.group(2), ctx).intValue();
 			ctx.setVariable(element.group(1), key, out.toString());

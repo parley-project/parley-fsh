@@ -1446,6 +1446,7 @@ public final class Executor {
 		// set -k: name=value after the command's name is an assignment for it too, as in bash
 		List<String[]> keywordAssignments = new ArrayList<>();
 		List<Word> keywordWords = new ArrayList<>();
+		java.util.Set<Object> arrayRefs = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 		boolean keyword = sc.console.isOptionEnabled(Console.Option.Keyword);
 		try {
 			boolean declaration = false;
@@ -1463,6 +1464,10 @@ public final class Executor {
 				List<String> fields = ex.expand(w);
 				if( args.isEmpty() && !fields.isEmpty()) {
 					declaration = isDeclaration(fields.get(0)) && w.isPlain();
+				}
+				if( fields.size() == 1 && !args.isEmpty() && arrayReference(w.raw)) {
+					// (unset m["$k"]: m[value of k], not expanded again)
+					arrayRefs.add(fields.get(0));
 				}
 				args.addAll(fields);
 			}
@@ -1497,6 +1502,7 @@ public final class Executor {
 			}
 			return status;
 		}
+		sc.arrayRefWords = arrayRefs;
 		String name = (String) args.remove(0);
 		// (the redirects come before the assignments, as bash's: FOO=bar cat < <(echo $FOO) does
 		// not see bar)
@@ -1899,6 +1905,15 @@ public final class Executor {
 			plain = " \t\n'\"\\|&;()<>!{}*[?]$`".indexOf(s.charAt(i)) < 0;
 		}
 		return plain ? s : "'"+s.replace("'", "'\\''")+"'";
+	}
+
+	/** a word as written is name[subscript] (bash's valid_array_reference) */
+	private static boolean arrayReference(String raw) {
+		if( raw == null ) {
+			return false;
+		}
+		int b = raw.indexOf('[');
+		return b > 0 && isName(raw.substring(0, b)) && Expander.subscriptClose(raw, b) == raw.length()-1 && raw.length() > b+2;
 	}
 
 	/** the builtins the executor runs itself (not a ShellCommand) */

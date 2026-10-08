@@ -101,7 +101,8 @@ public class Unset extends ShellCommand{
 					}
 				} else if( val instanceof java.util.Map<?,?> ) {
 					String key = m.group(2);
-					if( (key.indexOf('$') >= 0 || key.indexOf('`') >= 0) && !us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")
+					if( key.matches("(?s).*[$`'\"\\\\].*") && !us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")
+							&& !ctx.arrayRefWords.contains(args[idx].getValue(ctx))
 							&& us.bringardner.fsh.expand.Arithmetic.expandSubscript != null ) {
 						// (the key is expanded once more, as bash's: unset 'm[$k]' is m[value of k])
 						key = us.bringardner.fsh.expand.Arithmetic.expandSubscript.apply(ctx, key);
@@ -123,6 +124,10 @@ public class Unset extends ShellCommand{
 						ret = 1;
 					}
 				}
+			} else if( variables && !us.bringardner.fsh.exec.Executor.isName(text)) {
+				// unset -v of no name (bash's)
+				ctx.error("unset: `"+text+"': not a valid identifier");
+				ret = 1;
 			} else if( functions ) {
 				if( ctx.console.isReadonlyFunction(text)) {
 					ctx.error("unset: "+text+": cannot unset: readonly function");

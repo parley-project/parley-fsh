@@ -278,7 +278,7 @@ public final class Expander {
 	}
 
 	/** the ] that closes the [ at open (nested, quotes and expansions skipped), or -1 */
-	private static int subscriptClose(String s, int open) {
+	public static int subscriptClose(String s, int open) {
 		int depth = 0;
 		for (int i = open; i < s.length(); i++) {
 			char x = s.charAt(i);
@@ -1207,7 +1207,7 @@ public final class Expander {
 		if( cur instanceof Map<?,?> ) {
 			sc.setVariable(e.name, join(paramPieces(e.subscript)), value);
 		} else {
-			sc.setVariable(e.name, (int) evaluate(join(paramPieces(e.subscript))).longValue(), value);
+			sc.setVariable(e.name, (int) evaluate(arithmeticText(Parser.arithmeticFragment(e.subscript))).longValue(), value);
 		}
 	}
 
@@ -1507,8 +1507,9 @@ public final class Expander {
 		long off;
 		Long len;
 		try {
-			off = evaluate(join(paramPieces(e.arg))).longValue();
-			len = e.arg2 == null ? null : evaluate(join(paramPieces(e.arg2))).longValue();
+			// (as $(( )) is: a[$k] in it expanded once)
+			off = evaluate(arithmeticText(Parser.arithmeticFragment(e.arg))).longValue();
+			len = e.arg2 == null ? null : evaluate(arithmeticText(Parser.arithmeticFragment(e.arg2))).longValue();
 		} catch (ExpansionError x) {
 			// as bash: x: 1+: arithmetic syntax error ...
 			throw new ExpansionError(e.name+": "+x.getMessage(), x.kind);
