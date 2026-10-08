@@ -355,6 +355,11 @@ final class CommandPrinter {
 		return ansiC(normalized(w.raw == null ? "" : w.raw, subs), w.parts);
 	}
 
+	/** a word as bash keeps it: $'..' as the characters in '..' (set -x shows array words so) */
+	static String asKept(Word w) {
+		return ansiC(w.raw == null ? "" : w.raw, w.parts);
+	}
+
 	/** $'..' as bash keeps it: the characters, in '..' */
 	private static String ansiC(String ret, List<Word.Part> parts) {
 		int from = 0;

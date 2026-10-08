@@ -2076,8 +2076,11 @@ public final class Parser {
 		while( from < to && Character.isWhitespace(ch(from))) {
 			from++;
 		}
+		// (raw keeps the blanks after it, as bash's text of it does: set -x shows them)
+		int trailing = 0;
 		while( to > from && Character.isWhitespace(ch(to-1))) {
 			to--;
+			trailing++;
 		}
 		int saved = pos;
 		Word w = new Word();
@@ -2133,7 +2136,7 @@ public final class Parser {
 		}
 		flush(w, lit);
 		w.end = to;
-		w.raw = src.substring(from, to);
+		w.raw = src.substring(from, to+trailing);
 		pos = saved;
 		return w;
 	}
@@ -2197,13 +2200,40 @@ public final class Parser {
 		c.start = open.start;
 		c.line = lineOf(c.start);
 		condLook = null;
-		c.expression = condOr();
-		CondToken t = condTake(false);
+		condLine = c.line;
+		CondToken t;
+		try {
+			c.expression = condOr();
+			t = condTake(false);
+		} catch (SyntaxError e) {
+			throw condMore(e);
+		}
+		if( "EOF".equals(t.op)) {
+			throw condMore(new SyntaxError(c.line, "unexpected EOF while looking for `]]'"));
+		}
 		if( !"]]".equals(t.op)) {
-			throw condError(t);
+			throw condMore(condError(t));
 		}
 		c.end = pos;
 		return c;
+	}
+
+	/** the line [[ is on */
+	private int condLine;
+
+	/** the token a [[ ]] error is at (for "syntax error near"), or null at the end of the text */
+	private CondToken condAt;
+
+	/** what bash says after a [[ ]] error: near the token and the line, or the end of the text */
+	private SyntaxError condMore(SyntaxError e) {
+		if( condAt == null || "EOF".equals(condAt.op)) {
+			e.eofFrom = "[[";
+			e.eofFromLine = condLine;
+			e.eofLine = lineOf(src.length())-(src.endsWith("\n") ? 1 : 0)+1;
+		} else {
+			e.near = condText(condAt);
+		}
+		return e;
 	}
 
 	/** a token of [[ ]]: an operator (]] && || ( ) < >) or a word */
@@ -2230,16 +2260,18 @@ public final class Parser {
 	private CondToken condTake(boolean regex) {
 		CondToken ret = condLook != null ? condLook : condRead(regex);
 		condLook = null;
+		condAt = ret;
 		return ret;
 	}
 
 	private CondToken condRead(boolean regex) {
 		skipBlanks();
-		if( atEnd(pos)) {
-			throw new SyntaxError(lineOf(pos), "unexpected EOF while looking for `]]'");
-		}
 		CondToken t = new CondToken();
 		t.start = pos;
+		if( atEnd(pos)) {
+			t.op = "EOF";
+			return t;
+		}
 		if( ch(pos) == '\n' ) {
 			t.op = "\n";
 		} else if( src.startsWith("]]", pos) && (atEnd(pos+2) || isMeta(ch(pos+2)))) {
@@ -2249,7 +2281,8 @@ public final class Parser {
 		} else if( !regex && "()<>".indexOf(ch(pos)) >= 0 ) {
 			t.op = src.substring(pos, pos+1);
 		} else if( !regex && isMeta(ch(pos))) {
-			throw new SyntaxError(lineOf(pos), "syntax error in conditional expression: unexpected token `"+ch(pos)+"'");
+			// & ; |: a token here too (what is wrong depends on where it is)
+			t.op = operatorAt(pos);
 		}
 		if( t.op != null ) {
 			pos += t.op.length();
@@ -2261,6 +2294,10 @@ public final class Parser {
 
 	private String condText(CondToken t) {
 		return t.op == null ? t.word.raw : t.op.equals("\n") ? "newline" : t.op;
+	}
+
+	private SyntaxError condEof() {
+		return new SyntaxError(condLine, "unexpected EOF while looking for `]]'");
 	}
 
 	private SyntaxError condError(CondToken t) {
@@ -2295,13 +2332,19 @@ public final class Parser {
 			Ast.CondExpr e = condOr();
 			CondToken close = condTake(false);
 			if( !")".equals(close.op)) {
-				throw new SyntaxError(lineOf(close.start), "syntax error in conditional expression: unexpected token `"+condText(close)+"', expected `)'");
+				throw new SyntaxError("EOF".equals(close.op) ? condLine : lineOf(close.start), "unexpected token `"+condText(close)+"', expected `)'");
 			}
 			condNewlines();
 			return e;
 		}
+		if( "EOF".equals(t.op)) {
+			throw condEof();
+		}
 		if( t.word == null ) {
-			throw condError(t);
+			if( "]]".equals(t.op) || ")".equals(t.op)) {
+				throw condError(t);
+			}
+			throw new SyntaxError(lineOf(t.start), "unexpected token `"+condText(t)+"' in conditional command");
 		}
 		String text = t.word.plainText();
 		if( "!".equals(text)) {
@@ -2309,6 +2352,9 @@ public final class Parser {
 		}
 		if( text != null && UNARY_TESTS.contains(text)) {
 			CondToken operand = condTake(false);
+			if( "EOF".equals(operand.op)) {
+				throw condEof();
+			}
 			if( operand.word == null ) {
 				throw new SyntaxError(lineOf(operand.start), "unexpected argument `"+condText(operand)+"' to conditional unary operator");
 			}
@@ -2316,15 +2362,19 @@ public final class Parser {
 			return new Ast.CondUnary(text, operand.word);
 		}
 		CondToken next = condPeek();
-		if( next.op != null && Set.of("]]", "&&", "||", ")").contains(next.op)) {
+		if( next.op != null && Set.of("]]", "&&", "||", ")", "EOF").contains(next.op)) {
 			return new Ast.CondWord(t.word);
 		}
+		condAt = next;
 		String op = next.op != null ? next.op : next.word.plainText();
 		if( op == null || !(BINARY_TESTS.contains(op) || op.equals("=~"))) {
 			throw new SyntaxError(lineOf(next.start), "unexpected token `"+condText(next)+"', conditional binary operator expected");
 		}
 		condTake(false);
 		CondToken right = condTake(op.equals("=~"));
+		if( "EOF".equals(right.op)) {
+			throw condEof();
+		}
 		if( right.word == null ) {
 			throw new SyntaxError(lineOf(right.start), "unexpected argument `"+condText(right)+"' to conditional binary operator");
 		}

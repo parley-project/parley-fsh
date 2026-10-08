@@ -47,7 +47,7 @@ public class TestSyntaxParser {
 		{"echo \"a $(echo \"b ${c:-\"d\"}\") `e` $((1+2)) \\$x\" $'\\n' $\"loc\" @(a|b)",
 			"(seq (cmd [echo] [\"a $(seq (cmd [echo] [\"b ${c:-\"d\"}\"])) `e` $((1+2)) \\$x\"] [$'\\n'] [$\"loc\"] [@(a|b)]))"},
 		{"echo $(( $x + $(echo 2) * \"3\" )) $[1+2]; (( a[$i] += 1 ))",
-			"(seq (cmd [echo] [$(($x + $(seq (cmd [echo] [2])) * 3))] [$((1+2))]) (arith {a[$i] += 1}))"},
+			"(seq (cmd [echo] [$(($x + $(seq (cmd [echo] [2])) * 3))] [$((1+2))]) (arith {a[$i] += 1 }))"},
 		{"eval a=( 1 \"2 3\" ); declare -A m=([a b]=1 [c]=2)",
 			"(seq (cmd [eval] [a=( 1 \"2 3\" )]) (cmd [declare] [-A] decl:m=([[a b]=1] [[c]=2])))"},
 		{"function g { :; }; function h() ( : ); i() [[ -n $x ]]",

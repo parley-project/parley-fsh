@@ -15,6 +15,13 @@ public class SyntaxError extends RuntimeException {
 	/** bash reports it and goes on with the next command (an operator in x=( )) */
 	public boolean recoverable;
 
+	/** [[ ]]'s errors: bash says syntax error near `near' and shows the line after the message */
+	public String near;
+	/** or, at the end of the text: syntax error: unexpected end of file from `[[' command on line N */
+	public String eofFrom;
+	public int eofFromLine;
+	public int eofLine;
+
 	public SyntaxError(int line, String message) {
 		super(message);
 		this.line = line;

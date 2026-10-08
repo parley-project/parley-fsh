@@ -508,6 +508,14 @@ $
 			// as bash: a new PATH forgets the remembered programs
 			console.hashTable.clear();
 		}
+		if( name.equals("BASH_XTRACEFD") && value != null && !value.toString().isEmpty()) {
+			// set -x's descriptor must be one that is open
+			String v = value.toString().trim();
+			boolean ok = v.matches("[0-9]{1,9}") && (Integer.parseInt(v) <= 2 || console.getFileDistcriptor(Integer.parseInt(v)) != null);
+			if( !ok ) {
+				error("BASH_XTRACEFD: "+value+": invalid value for trace file descriptor");
+			}
+		}
 		if( name.equals("POSIXLY_CORRECT") && value != null ) {
 			// as bash: setting it turns on posix mode
 			console.setOption(Console.Option.Posix, true);

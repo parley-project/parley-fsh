@@ -187,21 +187,34 @@ public final class Executor {
 	 * on (fsh: line 2: `fi'). In -c's command, after $0 comes -c:.
 	 */
 	private static void syntaxError(ShellContext sc, SyntaxError e, String code, int firstLine) {
-		String prefix = prefix(sc, e.line);
-		if( sc.console.inCommandString && !sc.console.isInteractive ) {
-			String zero = String.valueOf(sc.getVariable("$0"));
-			if( prefix.startsWith(zero+": ")) {
-				prefix = zero+": -c: "+prefix.substring(zero.length()+2);
-			}
-		}
+		String prefix = commandStringPrefix(sc, prefix(sc, e.line));
 		sc.stderr.println(prefix+e.getMessage());
-		if( e.getMessage().startsWith("syntax error near unexpected token")) {
+		if( e.near != null ) {
+			// [[ ]]: where, and the line
+			sc.stderr.println(prefix+"syntax error near `"+e.near+"'");
+		}
+		if( e.eofFrom != null ) {
+			String p2 = commandStringPrefix(sc, prefix(sc, e.eofLine));
+			sc.stderr.println(p2+"syntax error: unexpected end of file from `"+e.eofFrom+"' command on line "+e.eofFromLine);
+		}
+		if( e.getMessage().startsWith("syntax error near unexpected token") || e.near != null ) {
 			String [] lines = code.split("\n", -1);
 			int i = e.line-firstLine;
 			if( i >= 0 && i < lines.length ) {
 				sc.stderr.println(prefix+"`"+lines[i]+"'");
 			}
 		}
+	}
+
+	/** in -c's command, after $0 comes -c: */
+	private static String commandStringPrefix(ShellContext sc, String prefix) {
+		if( sc.console.inCommandString && !sc.console.isInteractive ) {
+			String zero = String.valueOf(sc.getVariable("$0"));
+			if( prefix.startsWith(zero+": ")) {
+				return zero+": -c: "+prefix.substring(zero.length()+2);
+			}
+		}
+		return prefix;
 	}
 
 	static String prefix(ShellContext sc, int line) {
@@ -792,7 +805,8 @@ public final class Executor {
 		debugTrap(sc, "(("+w.raw+"))");
 		String text = ex.arithmeticText(w);
 		if( tracing(sc)) {
-			trace(sc, sc.stderr, "(( "+text.trim()+" ))");
+			// (the blanks after it as written: bash's (( i++  )))
+			trace(sc, sc.stderr, "(( "+text.trim()+w.raw.substring(w.raw.stripTrailing().length())+" ))");
 		}
 		return ex.evaluate(text);
 	}
@@ -982,9 +996,13 @@ public final class Executor {
 
 	// ------------------------------------------------------------------ [[ ]]
 
-	/** an invalid regular expression after =~: status 2 */
+	/** an invalid [[ ]] (a regular expression after =~, -t's descriptor): status 2 */
 	private static final class BadRegex extends RuntimeException {
 		private static final long serialVersionUID = 1L;
+
+		BadRegex(String message) {
+			super(message);
+		}
 	}
 
 	private int cond(Ast.Cond c, ShellContext sc) {
@@ -992,6 +1010,7 @@ public final class Executor {
 		try {
 			return test(c.expression, sc, expander(sc)) ? 0 : 1;
 		} catch (BadRegex e) {
+			error(sc, "[[: "+e.getMessage());
 			return 2;
 		} catch (Arithmetic.ArithmeticError e) {
 			error(sc, "[[: "+e.getMessage());
@@ -1020,6 +1039,10 @@ public final class Executor {
 		case Ast.CondUnary u -> {
 			String v = ex.string(u.operand());
 			traceTest(sc, u.op()+" "+v);
+			if( u.op().equals("-t") && !v.trim().matches("[-+]?[0-9]+")) {
+				// (status 2, as bash)
+				throw new BadRegex(v+": integer expected");
+			}
 			return us.bringardner.fsh.commands.Test.unaryTest(u.op(), v, sc);
 		}
 		case Ast.CondBinary b -> {
@@ -1078,7 +1101,14 @@ public final class Executor {
 		try {
 			p = Pattern.compile(posixClasses(rx), Glob.option(sc, "nocasematch") ? Pattern.CASE_INSENSITIVE : 0);
 		} catch (PatternSyntaxException e) {
-			throw new BadRegex();
+			// as bash says it (regcomp's words for the common ones)
+			String d = e.getDescription();
+			String why = d.startsWith("Illegal character range") ? "invalid character range"
+					: d.startsWith("Unclosed group") || d.startsWith("Unmatched closing ')'") ? "parentheses not balanced"
+					: d.startsWith("Unclosed character class") ? "brackets ([ ]) not balanced"
+					: d.startsWith("Unexpected internal error") || d.contains("escape sequence") ? "trailing backslash (\\)"
+					: d.substring(0, 1).toLowerCase()+d.substring(1);
+			throw new BadRegex("invalid regular expression `"+rx+"': "+why);
 		}
 		Matcher m = p.matcher(text);
 		FshList groups = new FshList();
@@ -1261,6 +1291,7 @@ public final class Executor {
 			opened = Redirects.apply(c.redirects, sc, ex);
 			// (traced with PS4 as it was before: PS4=... shows the old one, as in bash)
 			String prefix = tracing(sc) ? ps4(sc) : null;
+			java.util.Map<Ast.Assignment,String> before = new java.util.HashMap<>();
 			for(Ast.Assignment a : c.assignments) {
 				if( sc.console.isReadonly(a.name)) {
 					error(sc, a.name+": readonly variable");
@@ -1268,14 +1299,25 @@ public final class Executor {
 					// as in bash, the rest of the line is not run
 					throw new AbandonLine(c.line);
 				}
+				if( a.append && a.array == null && a.index == null && prefix != null ) {
+					Object old = ShellContext.firstElement(sc.getVariable(a.name));
+					before.put(a, old == null ? "" : old.toString());
+				}
 				assign(a, sc, ex, false);
 			}
 			if( prefix != null && !expandingPs4.get()) {
 				for(Ast.Assignment a : c.assignments) {
 					Object v = sc.getVariable(a.name);
-					String shown = a.array != null ? "("+(v instanceof List<?> l ? String.join(" ", strings(new ArrayList<>(l))) : "")+")"
-							: assigned(String.valueOf(ShellContext.firstElement(v) == null ? "" : ShellContext.firstElement(v)));
-					streams.err().println(prefix+a.name+(a.append ? "+=" : "=")+shown);
+					String now = String.valueOf(ShellContext.firstElement(v) == null ? "" : ShellContext.firstElement(v));
+					String old = before.get(a);
+					if( old != null ) {
+						// x+=v shows what was added, as bash's
+						now = now.startsWith(old) ? now.substring(old.length()) : a.value == null ? "" : a.value.raw;
+					}
+					// (an array's words as written, as bash shows them)
+					String shown = a.array != null ? "("+String.join(" ", a.array.stream().map(CommandPrinter::asKept).toList())+")"
+							: assigned(now);
+					traceStream(sc, streams.err()).println(prefix+a.name+(a.append ? "+=" : "=")+shown);
 				}
 			}
 		} catch (ExpansionError e) {
@@ -1389,8 +1431,26 @@ public final class Executor {
 	/** set -x: a line on err (the shell's standard error) */
 	private static void trace(ShellContext sc, PrintStream err, String text) {
 		if( !expandingPs4.get()) {
-			err.println(ps4(sc)+text);
+			traceStream(sc, err).println(ps4(sc)+text);
 		}
+	}
+
+	/** where set -x writes: the descriptor $BASH_XTRACEFD names, if it is open, else err */
+	static PrintStream traceStream(ShellContext sc, PrintStream err) {
+		Object fd = sc.getVariable("BASH_XTRACEFD");
+		if( fd != null && fd.toString().trim().matches("[0-9]{1,9}")) {
+			int n = Integer.parseInt(fd.toString().trim());
+			if( n == 1 ) {
+				return sc.stdout;
+			}
+			if( n > 2 ) {
+				Console.FileDiscriptor d = sc.console.getFileDistcriptor(n);
+				if( d != null && d.getOut() != null ) {
+					return d.getOut();
+				}
+			}
+		}
+		return err;
 	}
 
 	/** set -x: the command as it runs */
@@ -1407,11 +1467,12 @@ public final class Executor {
 	 * unless set -T.
 	 */
 	private static void debugTrap(ShellContext sc, String text) {
+		if( sc.trapLine == null ) {
+			// ($BASH_COMMAND: in a function too, where the trap does not run)
+			sc.currentCommand = text;
+		}
 		if( sc.debugBlocked > 0 && !sc.console.isOptionEnabled(Option.FuncTrace)) {
 			return;
-		}
-		if( sc.trapLine == null ) {
-			sc.currentCommand = text;
 		}
 		sc.console.runTrap(ConsoleMetaSignal.Debug, sc);
 	}
@@ -1426,6 +1487,10 @@ public final class Executor {
 	 * blanks or special characters, or starts with ~ or #.
 	 */
 	private static String quote(String s) {
+		if( s.chars().anyMatch(Character::isISOControl)) {
+			// $'\t' for what does not print (bash's ansic_quote)
+			return Declarations.quote(s);
+		}
 		boolean plain = !s.isEmpty() && !s.startsWith("~") && !s.startsWith("#");
 		for (int i = 0; plain && i < s.length(); i++) {
 			plain = " \t\n'\"\\|&;()<>!{}*[?]$`".indexOf(s.charAt(i)) < 0;
