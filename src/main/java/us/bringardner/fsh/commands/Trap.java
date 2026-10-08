@@ -167,6 +167,10 @@ public class Trap extends ShellCommand implements SignalHandler {
 			ConsoleMetaSignal cs = ConsoleMetaSignal.find(n);
 			if( cs != ConsoleMetaSignal.UnKnown ) {
 				ctx.console.setTrap(cs, a);
+				if( cs == us.bringardner.fsh.Console.ConsoleMetaSignal.Err ) {
+					// (set here: it runs here, in a subshell or function that would not inherit it)
+					ctx.errTrapSetAt = ctx.errTrapBlocked;
+				}
 				if( cs == ConsoleMetaSignal.Return && a != null ) {
 					ctx.returnTrapSet();
 				}

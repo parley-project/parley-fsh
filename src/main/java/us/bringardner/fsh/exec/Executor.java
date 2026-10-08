@@ -392,8 +392,10 @@ public final class Executor {
 			time(p, start, sc);
 		}
 		sc.console.setLastExitCode(ret);
-		if( ret != 0 && !cond && sc.conditionDepth == 0 && failureCounts(p)) {
-			if( sc.errTrapBlocked == 0 ) {
+		boolean redirectFailed = sc.compoundRedirectFailed;
+		sc.compoundRedirectFailed = false;
+		if( ret != 0 && !cond && sc.conditionDepth == 0 && (failureCounts(p) || redirectFailed && p.commands.size() == 1)) {
+			if( sc.errTrapRuns()) {
 				sc.console.runTrap(ConsoleMetaSignal.Err, sc);
 			}
 			if( sc.console.isOptionEnabled(Option.ExitImediately)) {
@@ -737,9 +739,13 @@ public final class Executor {
 			try {
 				opened = Redirects.apply(c.redirects, sc, expander(sc));
 			} catch (ExpansionError e) {
+				saved.restore(sc);
 				return expansionError(sc, e);
 			} catch (IOException | RuntimeException e) {
 				error(sc, message(e));
+				saved.restore(sc);
+				// (the command itself failed: set -e and the ERR trap see it, as bash's)
+				sc.compoundRedirectFailed = true;
 				return 1;
 			}
 			try {

@@ -1131,6 +1131,9 @@ $
 		return functionStack.size();
 	}
 
+	/** a compound command's redirect failed (it counts as a failure for set -e and the ERR trap) */
+	public boolean compoundRedirectFailed;
+
 	/** running a builtin through command (its failure does not end a posix shell) */
 	public int viaCommand;
 
@@ -1702,6 +1705,14 @@ $
 	 * (they do not inherit it): above 0 it is off.
 	 */
 	public int errTrapBlocked;
+
+	/** how blocked the ERR trap was where trap ... ERR was last run here (it runs that deep), or -1 */
+	public int errTrapSetAt = -1;
+
+	/** the ERR trap runs here */
+	public boolean errTrapRuns() {
+		return errTrapBlocked == 0 || errTrapBlocked <= errTrapSetAt;
+	}
 
 	/** l (declare -l), u (declare -u) or null: the case attribute of the variable name refers to */
 	public Character caseAttribute(String name) {

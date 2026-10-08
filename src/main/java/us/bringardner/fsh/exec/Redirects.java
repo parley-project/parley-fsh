@@ -227,6 +227,9 @@ final class Redirects {
 			InputStream in;
 			if( file instanceof FileProxy proxy && proxy.getTarget().isFile()) {
 				// a local file: a program reads it itself, from where the shell is
+				if( !proxy.getTarget().canRead()) {
+					throw new IOException(word+": Permission denied");
+				}
 				in = new ReadBack(proxy.getTarget());
 			} else {
 				in = file.getInputStream();

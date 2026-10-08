@@ -2983,8 +2983,13 @@ delimiter
 		/** attributes: a subshell's readonly, -i, -l/-u and readonly functions are its own */
 		private final java.util.Set<String> readonly, integer, readonlyFunctions, declaredUnset, pendingExports;
 		private final Map<String,Character> cases;
+		/** a subshell's traps are its own */
+		private final Map<ConsoleMetaSignal,List<String>> traps;
+		private final Map<Integer,List<ConsoleSignalHandler>> osTraps;
 
 		private Snapshot(Console c) throws IOException {
+			traps = new java.util.HashMap<>(c.signalHandlers);
+			osTraps = new java.util.HashMap<>(c.osSignalHandlers);
 			readonly = new java.util.HashSet<>(c.readonlyVariables);
 			integer = new java.util.HashSet<>(c.integerVariables);
 			readonlyFunctions = new java.util.HashSet<>(c.readonlyFunctions);
@@ -3017,6 +3022,10 @@ delimiter
 	}
 
 	public void restore(Snapshot s) throws IOException {
+		signalHandlers.clear();
+		signalHandlers.putAll(s.traps);
+		osSignalHandlers.clear();
+		osSignalHandlers.putAll(s.osTraps);
 		// (umask, ulimit and hash in a subshell are its own)
 		processSettings.clear();
 		processSettings.addAll(s.processSettings);
