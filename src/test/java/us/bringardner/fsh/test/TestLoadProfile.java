@@ -24,9 +24,10 @@ public class TestLoadProfile extends AbstractConsoleTest {
 	public void testSource01() throws IOException {
 		Console c = new Console();
 		Object var1 = c.getVariable("var1");
-		assertEquals(1, var1);
+		// shell variables are text
+		assertEquals("1", var1);
 		Object var2 = c.getVariable("var2");
-		assertEquals(2, var2);
+		assertEquals("2", var2);
 		ExecuteResult res = executeCommand("ll", "");
 		assertEquals(0, res.exitCode);
 		assertEquals("", res.getStdErr());

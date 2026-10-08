@@ -84,15 +84,8 @@ public class Set extends ShellCommand{
 						Option o = Option.find(""+c);
 
 						if( o == Option.Unsupported) {
-							String tmp = ""+ctx.getVariable("$0");
-
-							if( a.getContext() != null ) {
-								tmp+=" "+a.getContext().getStart().getLine()+","+a.getContext().getStart().getCharPositionInLine()+": ";
-							} else {
-								// a word made by expansion has no position
-								tmp+=": ";
-							}
-							tmp += (set?"-":"+")+""+c+": invalid option";
+							// as bash says it
+							String tmp = "set: "+(set?"-":"+")+c+": invalid option";
 							ctx.stderr.println(tmp);
 							return 1;
 						}

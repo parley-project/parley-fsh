@@ -196,7 +196,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 		String cmd = ""
 				+ "var1=1\n"
 				+ "var2=2\n"
-				+ "if ![ $var1 -eq 0 ] && [ $var2 -eq 2 ] ; then\n"
+				+ "if ! [ $var1 -eq 0 ] && [ $var2 -eq 2 ] ; then\n"
 				+ "		echo one\n"
 				+ "elif [ $var1 -eq 1 ]; then\n"
 				+ "		echo \"elif\"\n"
@@ -219,7 +219,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 		String cmd = ""
 				+ "var1=1\n"
 				+ "var2=2\n"
-				+ "if ![[ $var1 -eq 0 ] || [ $var2 -eq 2 ]] ; then\n"
+				+ "if ! { [ $var1 -eq 0 ] || [ $var2 -eq 2 ]; } ; then\n"
 				+ "		echo one\n"
 				+ "elif [ $var1 -eq 1 ]; then\n"
 				+ "		echo \"elif\"\n"
@@ -242,7 +242,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 		String cmd = ""
 				+ "var1=1\n"
 				+ "var2=2\n"
-				+ "if [[ $var1 -eq 0 ]||[ $var1 -eq 1 ]] || [ $var2 -eq 2 ] ; then\n"
+				+ "if { [ $var1 -eq 0 ]||[ $var1 -eq 1 ]; } || [ $var2 -eq 2 ] ; then\n"
 				+ "		echo one\n"
 				+ "elif [ $var1 -eq 1 ]; then\n"
 				+ "		echo \"elif\"\n"
@@ -266,7 +266,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 	public void testIfStatent03_1() throws Exception{
 
 		String cmd = ""
-				+ "if[ -a /file/path] ; then\n"
+				+ "if [ -a /file/path ] ; then\n"
 				+ "	echo yes\n"
 				+ "else\n"
 				+ "	echo no\n"
@@ -347,7 +347,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 
 	@Test
 	public void testIfStatent04_1() throws Exception{
-		String cmd = "[ 1 -gt 0] {echo yes}"
+		String cmd = "[ 1 -gt 0 ] && { echo yes; }"
 				;
 
 		String expect = "yes\n";
@@ -366,7 +366,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 
 	@Test
 	public void testIfStatent04_2() throws Exception{
-		String cmd = "[ 1 -gt 2] {echo yes}"
+		String cmd = "[ 1 -gt 2 ] && { echo yes; }"
 				;
 
 		String expect = "";

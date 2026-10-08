@@ -192,8 +192,7 @@ public class TestExternal extends AbstractConsoleTest {
 
 		String expectOut = "\n";
 		String stdIn = "";
-		// the position of -O (the old token started at the space before it)
-		String expectErr = "fsh 1,4: -O: invalid option\n";
+		String expectErr = "set: -O: invalid option\n";
 		int exitCode = 0;
 		boolean tmp = showError;
 		showError = false;

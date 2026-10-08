@@ -2761,8 +2761,8 @@ delimiter
 
 	}
 
-	/** run scripts with the new front end (us.bringardner.fsh.syntax and .exec): -Dfsh.frontend=new */
-	public static volatile boolean newFrontEnd = "new".equals(System.getProperty("fsh.frontend"));
+	/** run scripts with the new front end (us.bringardner.fsh.syntax and .exec); -Dfsh.frontend=old: the ANTLR one */
+	public static volatile boolean newFrontEnd = !"old".equals(System.getProperty("fsh.frontend"));
 
 	/**
 	 * Run code in ctx, in the front end in use (a trap's action, a sourced file).

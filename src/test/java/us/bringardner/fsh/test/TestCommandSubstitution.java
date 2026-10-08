@@ -154,8 +154,9 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 		for(String code : new String[] {"echo \"cost $( x\"", "echo \"`echo hi\"", "echo \"${x\"", "echo \"$((1+2\""}) {
 			ExecuteResult res = executeCommand(code, "");
 			assertEquals("", res.getStdOut(), code);
-			assertEquals(1, res.exitCode, code);
-			assertTrue(res.getStdErr().contains("syntax error: no matching"), code+" -> "+res.getStdErr());
+			// a syntax error, as bash reports it
+			assertEquals(2, res.exitCode, code);
+			assertTrue(res.getStdErr().contains("unexpected EOF while looking for matching"), code+" -> "+res.getStdErr());
 		}
 	}
 }

@@ -468,10 +468,10 @@ exec 3>&- #close fd 3.
 		
 		String expectData = "something to log";
 
-		String cmd = "fid=3\n"
-				+ "exec $fid<> "+logFile+"\n"
+		// {fid}: the shell picks a descriptor and puts its number in fid
+		String cmd = "exec {fid}<> "+logFile+"\n"
 				+ "echo \""+expectData+"\" >&$fid\n"
-				+ "exec $fid>&-\n";
+				+ "exec {fid}>&-\n";
 				;
 		String expectOut = "";
 		String stdIn = "";

@@ -130,7 +130,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		showError=tmp;
 		String out = res.getStdOut();
 		String err = res.getStdErr();
-		assertTrue(err.startsWith("real"));
+		// bash's format: a blank line, then real, user and sys
+		assertTrue(err.startsWith("\nreal\t"));
 		assertEquals(expect, out.trim());
 		assertEquals(0, res.exitCode);
 		
@@ -158,7 +159,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String out = res.getStdOut();
 		String err = res.getStdErr();
 		
-		assertTrue(err.startsWith("posix real"));
+		assertTrue(err.startsWith("real "));
 		assertEquals(expect, out.trim());
 		assertEquals(1, res.exitCode);
 		

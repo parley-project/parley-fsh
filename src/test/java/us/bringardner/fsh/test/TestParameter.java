@@ -260,7 +260,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "7 8 9 0 a b c d e f g h\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:7}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
@@ -275,7 +275,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "7 8\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:7:2}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
@@ -290,7 +290,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "b c\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:2}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
@@ -305,7 +305,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "-2: substring expression < 0\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:-2}\n";
 		//System.out.println(code);
 		boolean tmp = showError;showError=false;
@@ -322,7 +322,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:0}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
@@ -337,7 +337,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "0 1\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]:0:2}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");
@@ -352,7 +352,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expect = "\n";
 		String code = ""
-				+ "array = (0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
+				+ "array=(0 1 2 3 4 5 6 7 8 9 0 a b c d e f g h)\n"
 				+ "echo ${array[@]: -7:0}\n";
 		//System.out.println(code);
 		ExecuteResult res = executeCommand(code, "");

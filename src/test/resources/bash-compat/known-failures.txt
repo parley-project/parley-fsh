@@ -4,7 +4,6 @@
 
 # Kept on purpose: bash does not expand aliases in a script (unless shopt -s expand_aliases) and
 # reads a whole line before an alias defined on it takes effect; this shell always expands them.
-alias-expand
 
 
 

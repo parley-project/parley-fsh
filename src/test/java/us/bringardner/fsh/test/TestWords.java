@@ -243,7 +243,8 @@ public class TestWords extends AbstractConsoleTest {
 		expect("x=$(ls nope 2>/dev/null; echo done); echo \"[$x]\"", "[done]\n");
 		expect("x=$(false); echo \"[$x] $?\"; x=\"$(false)\"; echo $?", "[] 1\n1\n");
 		expect("x=\"$(echo a; exit 4; echo b)\"; echo \"[$x] $?\"", "[a] 4\n");
-		expect("alias t='false; echo after'; t", "after\n");
+		// (an alias is used from the line after the one that defines it, as in bash)
+		expect("alias t='false; echo after'\nt", "after\n");
 		// standard error is not captured
 		ExecuteResult res = executeCommand("x=$(echo out; ls /no-such-dir; exit 3); echo \"[$x] $?\"", "");
 		assertEquals("[out] 3\n", res.getStdOut());
