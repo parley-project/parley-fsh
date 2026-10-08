@@ -437,6 +437,9 @@ public final class Programs {
 					// the program reads the shell's input itself
 				} else if( feeder != null ) {
 					feeder.start();
+				} else if( onFile != null ) {
+					// the helper gives it the file itself (nothing is copied to it: a write to the pipe
+					// it does not read would end the shell with SIGPIPE once it is gone)
 				} else if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
 					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
