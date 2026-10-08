@@ -837,9 +837,75 @@ delimiter
 	FileSource homeDir ;
 	public ConsoleState state;
 
+	/** functions from the environment (BASH_FUNC_name%%), defined when the console is made */
+	private final Map<String,String> importedFunctions = new java.util.LinkedHashMap<>();
+
+	/** define the functions bash (or fsh) exported to this one, exported again */
+	private void importFunctions() {
+		for(Map.Entry<String,String> e : importedFunctions.entrySet()) {
+			if( !e.getKey().matches("[A-Za-z_][A-Za-z0-9_.:-]*")) {
+				continue;
+			}
+			try {
+				ShellContext sc = new ShellContext(this);
+				sc.stderr = new PrintStream(java.io.OutputStream.nullOutputStream());
+				us.bringardner.fsh.exec.Executor.run(sc, e.getKey()+" "+e.getValue());
+				ShellFunction f = getFunction(e.getKey());
+				if( f != null ) {
+					f.setExported(true);
+				}
+			} catch (Exception ex) {
+				// a function that does not parse is left out, as bash does
+			}
+		}
+		importedFunctions.clear();
+	}
+
+	/**
+	 * The environment of a program: the exported variables, and the exported functions as bash
+	 * passes them (BASH_FUNC_name%%=() { ... }).
+	 */
+	public Map<String,String> programEnvironment(ShellContext ctx) {
+		Map<String,String> env = new java.util.LinkedHashMap<>();
+		for(Map.Entry<String,Object> e : ctx.getEnvironmentVariables().entrySet()) {
+			if( e.getValue() != null ) {
+				env.put(e.getKey(), ""+e.getValue());
+			}
+		}
+		for(ShellFunction f : getFunctions().values()) {
+			if( f.isExported()) {
+				env.put("BASH_FUNC_"+f.getName()+"%%", exportedBody(f));
+			}
+		}
+		return env;
+	}
+
+	/** "() {  first;\n second\n}": a function's body as bash puts it in the environment */
+	public static String exportedBody(ShellFunction f) {
+		String [] lines = f.declaration().split("\n");
+		StringBuilder ret = new StringBuilder("() {  ");
+		// lines: "f () ", "{ ", the commands (indented 4), "}" and maybe its redirects
+		for (int i = 2; i < lines.length-1; i++) {
+			String line = lines[i].startsWith("    ") ? lines[i].substring(4) : lines[i];
+			ret.append(i == 2 ? "" : " ").append(line).append(i < lines.length-2 ? "\n" : "");
+		}
+		return ret.append("\n").append(lines[lines.length-1]).toString();
+	}
+
 	public Console() {
 		try {
 			environmentVariables.putAll(System.getenv());
+			// an inherited OLDPWD stays only if it is a directory, as in bash
+			Object oldpwd = environmentVariables.get(VARIABLE_OLDPWD);
+			if( oldpwd != null && !new java.io.File(oldpwd.toString()).isDirectory()) {
+				environmentVariables.remove(VARIABLE_OLDPWD);
+			}
+			// functions bash exported (export -f): BASH_FUNC_name%%=() { ... }
+			for(String key : new java.util.ArrayList<>(environmentVariables.keySet())) {
+				if( key.startsWith("BASH_FUNC_") && key.endsWith("%%")) {
+					importedFunctions.put(key.substring(10, key.length()-2), ""+environmentVariables.remove(key));
+				}
+			}
 			if( defaultPath !=null) {
 				environmentVariables.put(PATH, getDefaultPath());
 			}
@@ -858,7 +924,7 @@ delimiter
 				mountFactory.setCurrentDirectory(homeDir);
 			}
 			variables.put(VARIABLE_PWD, mountFactory.getCurrentDirectory().getAbsolutePath());
-			variables.put(VARIABLE_OLDPWD, mountFactory.getCurrentDirectory().getAbsolutePath());
+			// (OLDPWD is unset until cd, as in bash)
 			variables.put(IFS, " \t\n");
 			////Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
 
@@ -877,6 +943,7 @@ delimiter
 
 		} catch (IOException e) {
 		}
+			importFunctions();
 	}
 
 	public void loadProfile() {
@@ -2069,12 +2136,11 @@ delimiter
 
 
 
+	/** change the directory and PWD (cd, pushd and popd set OLDPWD; starting in a directory does not) */
 	public void setCurrentDirectory(FileSource dir) throws IOException {
-		String old = getCurrentDirectory().getAbsolutePath();
 		changeDirectory(dir);
 		if( stage.get() == null ) {
-			// (in a pipe stage cd sets the stage's PWD and OLDPWD)
-			setVariable(VARIABLE_OLDPWD, old);
+			// (in a pipe stage cd sets the stage's PWD)
 			setVariable(VARIABLE_PWD, dir.getAbsolutePath());
 		}
 	}

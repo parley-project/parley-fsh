@@ -172,6 +172,9 @@ public final class AstPrinter {
 		} else if( c instanceof Cond k ) {
 			out.append("(cond ");
 			cond(k.expression);
+		} else if( c instanceof Ast.Coproc k ) {
+			out.append("(coproc ").append(k.name).append(' ');
+			command(k.body);
 		} else if( c instanceof FunctionDef f ) {
 			out.append("(function ").append(f.name).append(' ');
 			command(f.body);

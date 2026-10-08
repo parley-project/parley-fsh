@@ -160,6 +160,12 @@ public final class Ast {
 	public record CondWord(Word word) implements CondExpr {
 	}
 
+	/** coproc NAME command: command runs in the background, its output on NAME[0], its input NAME[1] */
+	public static final class Coproc extends Command {
+		public String name;
+		public Command body;
+	}
+
 	/** name() compound-command, function name compound-command */
 	public static final class FunctionDef extends Command {
 		public String name;

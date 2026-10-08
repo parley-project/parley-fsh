@@ -1294,6 +1294,15 @@ $
 			}
 			sub.setPositionalParameters(true, tmp);
 			sub.setDebugContext(console.getDebugContext());
+			// the exported variables and functions, as a program would get them
+			for(Map.Entry<String,Object> e : getEnvironmentVariables().entrySet()) {
+				sub.setEnvironmentVariable(e.getKey(), e.getValue());
+			}
+			for(ShellFunction f : console.getFunctions().values()) {
+				if( f.isExported()) {
+					sub.addFunction(f);
+				}
+			}
 
 			int ret = sub.executeScript(code);
 

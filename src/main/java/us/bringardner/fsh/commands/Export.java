@@ -38,17 +38,24 @@ public class Export extends ShellCommand{
 		if(sa.options.contains(Arguments.f)) {
 			// function
 			if(sa.options.contains(Arguments.p) || sa.paths.size()==0) {
-				// display functions
-				/*
-				Map<String, ShellFunction> map = ctx.getFunctions();
-				for(String name : map.keySet()) {
-					// linux bash does nothing
-					//ctx.stdout.println("function "+name);
+				// as bash lists them: each exported function, then declare -fx name
+				for(ShellFunction f : new java.util.TreeMap<>(ctx.getFunctions()).values()) {
+					if( f.isExported()) {
+						ctx.stdout.println(f.declaration());
+						ctx.stdout.println("declare -fx "+f.getName());
+					}
 				}
-				*/
-			} else if(sa.options.contains(Arguments.n)) {
+			} else {
+				// export -f name: programs (and fsh scripts) get it; export -fn name: they don't
+				boolean export = !sa.options.contains(Arguments.n);
 				for(String name : sa.paths) {
-					ctx.removeFunction(name);
+					ShellFunction f = ctx.getFunction(name);
+					if( f == null ) {
+						ctx.error("export: "+name+": not a function");
+						ret = 1;
+					} else {
+						f.setExported(export);
+					}
 				}
 			}
 		} else {

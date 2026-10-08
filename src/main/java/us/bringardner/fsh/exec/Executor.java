@@ -424,6 +424,53 @@ public final class Executor {
 		}
 	}
 
+	/**
+	 * coproc NAME command: command runs in the background; NAME[0] is a descriptor to read its
+	 * output from, NAME[1] one to write its input to (63 and 60 if free, as bash picks them),
+	 * NAME_PID its process id.
+	 */
+	private int coproc(Ast.Coproc k, ShellContext sc) {
+		Pipe toCoproc = new Pipe();
+		Pipe fromCoproc = new Pipe();
+		int readFd = freeDescriptor(sc, 63, -1);
+		int writeFd = freeDescriptor(sc, 60, readFd);
+		sc.console.setFileDistcriptor(new Console.FileDiscriptor(readFd, fromCoproc.in, null));
+		sc.console.setFileDistcriptor(new Console.FileDiscriptor(writeFd, new PrintStream(toCoproc.out, true), null));
+		ShellContext ctx = sc.subShell();
+		ctx.stdin = toCoproc.in;
+		ctx.stdout = new PrintStream(fromCoproc.out, true);
+		String text = text(k).trim();
+		CommandThread thread = new CommandThread(ctx, new ShellTask() {
+			@Override
+			public int run(ShellContext job) throws IOException {
+				return command(k.body, job);
+			}
+
+			@Override
+			public String text() {
+				return text;
+			}
+		});
+		BackgroundJob job = new BackgroundJob(thread);
+		sc.console.addJob(job);
+		job.start();
+		FshList fds = new FshList();
+		fds.add(String.valueOf(readFd));
+		fds.add(String.valueOf(writeFd));
+		sc.setVariable(k.name, fds);
+		sc.setVariable(k.name+"_PID", String.valueOf(job.pid));
+		return 0;
+	}
+
+	/** the first descriptor at or below from that is not open (and not except) */
+	private static int freeDescriptor(ShellContext sc, int from, int except) {
+		int fd = from;
+		while( fd > 10 && (fd == except || sc.console.getFileDistcriptor(fd) != null)) {
+			fd--;
+		}
+		return fd;
+	}
+
 	// ------------------------------------------------------------------ commands
 
 	/** one command, with the redirects after it */
@@ -502,6 +549,9 @@ public final class Executor {
 		}
 		case Ast.Cond k -> {
 			return cond(k, sc);
+		}
+		case Ast.Coproc k -> {
+			return coproc(k, sc);
 		}
 		default -> throw new IllegalStateException("not a compound command: "+c.getClass());
 		}

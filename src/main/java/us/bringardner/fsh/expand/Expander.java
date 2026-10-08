@@ -1225,7 +1225,37 @@ public final class Expander {
 
 	/** 'text' the way the shell reads it back */
 	private static String quote(String s) {
-		return "'"+s.replace("'", "'\\''")+"'";
+		boolean control = false;
+		for(char c : s.toCharArray()) {
+			control |= c < ' ' || c == 0x7f;
+		}
+		if( !control ) {
+			return "'"+s.replace("'", "'\\''")+"'";
+		}
+		// with control characters: $'...', as bash writes it
+		StringBuilder ret = new StringBuilder("$'");
+		for(char c : s.toCharArray()) {
+			switch (c) {
+			case 0x07 -> ret.append("\\a");
+			case '\b' -> ret.append("\\b");
+			case 0x1b -> ret.append("\\E");
+			case '\f' -> ret.append("\\f");
+			case '\n' -> ret.append("\\n");
+			case '\r' -> ret.append("\\r");
+			case '\t' -> ret.append("\\t");
+			case 0x0b -> ret.append("\\v");
+			case '\\' -> ret.append("\\\\");
+			case '\'' -> ret.append("\\'");
+			default -> {
+				if( c < ' ' || c == 0x7f ) {
+					ret.append(String.format("\\%03o", (int) c));
+				} else {
+					ret.append(c);
+				}
+			}
+			}
+		}
+		return ret.append('\'').toString();
 	}
 
 	/** ${x@a}: a A i n r u l c x, in bash's order */

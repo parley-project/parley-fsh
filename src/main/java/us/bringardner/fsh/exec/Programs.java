@@ -281,11 +281,7 @@ public final class Programs {
 				// the shell's exported variables, not the JVM's (export X=1 and X=1 cmd reach the program)
 				Map<String,String> env = builder.environment();
 				env.clear();
-				for(Map.Entry<String,Object> e : ctx.getEnvironmentVariables().entrySet()) {
-					if( e.getValue() != null ) {
-						env.put(e.getKey(), ""+e.getValue());
-					}
-				}
+				env.putAll(ctx.console.programEnvironment(ctx));
 
 				FileSource dir = ctx.console.getCurrentDirectory();
 				if (dir instanceof FileProxy) {

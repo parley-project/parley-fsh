@@ -105,7 +105,9 @@ public class Pushd extends DirStack {
 		}
 		ret = rotate(direrction,cnt,ctx,dirStack);
 		if( !n ) {
+			String old = ctx.console.getCurrentDirectory().getAbsolutePath();
 			ctx.console.setCurrentDirectory((FileSource) dirStack.get(0));
+			ctx.setVariable(us.bringardner.fsh.Console.VARIABLE_OLDPWD, old);
 		}
 		print(dirStack, ctx,false,false,false,null);
 

@@ -155,7 +155,7 @@ public final class Parser {
 	private static final Set<String> BINARY_TESTS = Set.of("=", "==", "!=", "<", ">", "-eq", "-ne", "-lt", "-le", "-gt", "-ge", "-ef", "-nt", "-ot");
 
 	/** reserved words after which a command starts */
-	private static final Set<String> STARTERS = Set.of("if", "then", "else", "elif", "do", "while", "until", "{", "!", "time");
+	private static final Set<String> STARTERS = Set.of("if", "then", "else", "elif", "do", "while", "until", "{", "!", "time", "coproc");
 
 	/** reserved words that end a list (they may not start a command) */
 	private static final Set<String> CLOSERS = Set.of("then", "elif", "else", "fi", "do", "done", "esac", "}", "in", "]]");
@@ -213,6 +213,9 @@ public final class Parser {
 	}
 
 	private Token peek() {
+		if( back != null ) {
+			return back;
+		}
 		if( cur == null ) {
 			cur = scan();
 		}
@@ -220,10 +223,18 @@ public final class Parser {
 	}
 
 	private Token take() {
+		if( back != null ) {
+			Token t = back;
+			back = null;
+			return t;
+		}
 		Token t = peek();
 		cur = null;
 		return t;
 	}
+
+	/** a token taken and given back (coproc looks two ahead): it comes before cur */
+	private Token back;
 
 	/** spaces, tabs, \newline and comments */
 	private void skipBlanks() {
@@ -306,10 +317,14 @@ public final class Parser {
 			}
 		}
 		if( c == '{' ) {
-			// {fd}>file
+			// {fd}>file, {a[1]}>&-
 			int j = pos+1;
 			while( isNameChar(ch(j), j == pos+1)) {
 				j++;
+			}
+			if( j > pos+1 && ch(j) == '[' ) {
+				int close = src.indexOf(']', j);
+				j = close < 0 || src.substring(j, close).contains("\n") ? -1 : close+1;
 			}
 			if( j > pos+1 && ch(j) == '}' && (ch(j+1) == '<' || ch(j+1) == '>')) {
 				t.kind = Kind.IO_VAR;
@@ -1118,6 +1133,9 @@ public final class Parser {
 			if( w.equals("function")) {
 				return functionDef(true, null);
 			}
+			if( w.equals("coproc")) {
+				return coproc();
+			}
 			if( !Set.of("if", "while", "until", "for", "select", "case", "{", "[[").contains(w)) {
 				return simpleCommand();
 			}
@@ -1450,6 +1468,30 @@ public final class Parser {
 		f.body = command();
 		f.end = f.body.end;
 		return f;
+	}
+
+	/** coproc [NAME] command: NAME only before a compound command (COPROC otherwise) */
+	private Command coproc() {
+		Ast.Coproc c = new Ast.Coproc();
+		Token kw = take();
+		c.start = kw.start;
+		c.line = lineOf(c.start);
+		c.name = "COPROC";
+		Token t = peek();
+		if( t.kind == Kind.WORD && t.word.isPlain() && isName(t.word.plainText())
+				&& !Set.of("if", "while", "until", "for", "select", "case", "{", "[[").contains(t.word.plainText())) {
+			Token name = take();
+			Token next = peek();
+			boolean compound = isOp(next, "(") || (next.kind == Kind.WORD && Set.of("if", "while", "until", "for", "select", "case", "{", "[[").contains(plain(next)));
+			if( compound ) {
+				c.name = name.word.plainText();
+			} else {
+				back = name;
+			}
+		}
+		c.body = command();
+		c.end = c.body.end;
+		return c;
 	}
 
 	private BraceGroup braceGroup() {

@@ -101,8 +101,8 @@ public class Cd extends ShellCommand{
 		//  PWD and OLD_PWD variables are managed by console (in a pipe stage, set here: the stage's own)
 		String old = ctx.console.getCurrentDirectory().getAbsolutePath();
 		ctx.console.setCurrentDirectory(dir);
+		ctx.setVariable(Console.VARIABLE_OLDPWD, old);
 		if( ctx.isIsolated()) {
-			ctx.setVariable(Console.VARIABLE_OLDPWD, old);
 			ctx.setVariable(Console.VARIABLE_PWD, dir.getAbsolutePath());
 		}
 		if( print ) {

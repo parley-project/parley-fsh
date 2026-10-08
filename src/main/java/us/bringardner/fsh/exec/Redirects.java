@@ -176,9 +176,12 @@ final class Redirects {
 	 */
 	private static int variableFd(ShellContext sc, Ast.Redirect r) {
 		String name = r.fdVariable;
+		Expander ex = Executor.expanderFor(sc);
 		if( r.target != null && "-".equals(r.target.raw)) {
+			// {name}>&-, {a[1]}>&-: the descriptor the variable holds
+			String value = ex.string(us.bringardner.fsh.syntax.Parser.fragment("${"+name+"}", us.bringardner.fsh.syntax.Parser.Fragment.WORD));
 			try {
-				return Integer.parseInt((""+sc.getVariable(name)).trim());
+				return Integer.parseInt(value.trim());
 			} catch (NumberFormatException e) {
 				throw new RuntimeException(name+": not a file descriptor");
 			}
@@ -187,7 +190,18 @@ final class Redirects {
 		while( sc.console.getFileDistcriptor(fd) != null ) {
 			fd++;
 		}
-		sc.setVariable(name, String.valueOf(fd));
+		int bracket = name.indexOf('[');
+		if( bracket < 0 ) {
+			sc.setVariable(name, String.valueOf(fd));
+		} else {
+			String array = name.substring(0, bracket);
+			us.bringardner.fsh.syntax.Word sub = us.bringardner.fsh.syntax.Parser.fragment(name.substring(bracket+1, name.length()-1), us.bringardner.fsh.syntax.Parser.Fragment.WORD);
+			if( sc.getVariable(array) instanceof java.util.Map<?,?> ) {
+				sc.setVariable(array, ex.string(sub), String.valueOf(fd));
+			} else {
+				sc.setVariable(array, (int) ex.arithmetic(sub).longValue(), String.valueOf(fd));
+			}
+		}
 		return fd;
 	}
 
