@@ -278,7 +278,7 @@ public class Read extends ShellCommand{
 	}
 	
 	public String readLine(ShellContext ctx,String prompt, char lineDelim, int timeout, String editLineText,int n,int N, List<Options> options) throws IOException {
-		if(NativeKeyboard.isAvailible() && ctx.stdin == Console.System_in || ctx.stdin instanceof NativeKeyboard) {
+		if(NativeKeyboard.isAvailible() && Console.isKeyboard(ctx.stdin) || ctx.stdin instanceof NativeKeyboard) {
 			return readLineNative(ctx,prompt, lineDelim, timeout, editLineText, n, N, options);
 		} else {
 			return readLineConsole(ctx,prompt, lineDelim, timeout, editLineText, n, N, options);

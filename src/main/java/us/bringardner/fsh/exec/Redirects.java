@@ -15,6 +15,7 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.expand.Expander;
 import us.bringardner.fsh.syntax.Ast;
 import us.bringardner.parley.files.FileSource;
+import us.bringardner.parley.files.fileproxy.FileProxy;
 import us.bringardner.parley.files.IRandomAccessStream;
 
 /**
@@ -124,8 +125,17 @@ final class Redirects {
 				throw new IOException(word+": No such file or directory");
 			}
 			// a file (not a device or a named pipe, where a read can wait) is shared with the programs
-			InputStream in = file.getInputStream();
-			setIn(sc, fd == null ? 0 : fd, file.isFile() ? new ReadBack(in) : in, opened);
+			InputStream in;
+			if( file instanceof FileProxy proxy && proxy.getTarget().isFile()) {
+				// a local file: a program reads it itself, from where the shell is
+				in = new ReadBack(proxy.getTarget());
+			} else {
+				in = file.getInputStream();
+				if( file.isFile()) {
+					in = new ReadBack(in);
+				}
+			}
+			setIn(sc, fd == null ? 0 : fd, in, opened);
 			break;
 		}
 		case "<<<":

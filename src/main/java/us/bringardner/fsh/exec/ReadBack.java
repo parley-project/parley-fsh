@@ -13,9 +13,38 @@ final class ReadBack extends InputStream implements SharedInput {
 
 	private final InputStream source;
 	private byte [] pushed = new byte[0];
+	/** the local file it reads, or null */
+	private final java.io.File file;
+	private final java.nio.channels.FileChannel channel;
 
 	ReadBack(InputStream source) {
 		this.source = source;
+		this.file = null;
+		this.channel = null;
+	}
+
+	/** a local file: a program can read it itself, from where the shell is (see position) */
+	ReadBack(java.io.File file) throws IOException {
+		java.io.FileInputStream in = new java.io.FileInputStream(file);
+		this.source = in;
+		this.file = file;
+		this.channel = in.getChannel();
+	}
+
+	/** the local file it reads, or null */
+	java.io.File file() {
+		return file;
+	}
+
+	/** where the next read starts in the file */
+	synchronized long position() throws IOException {
+		return channel.position()-pushed.length;
+	}
+
+	/** the next read starts at pos (where a program left the file) */
+	synchronized void seek(long pos) throws IOException {
+		pushed = new byte[0];
+		channel.position(pos);
 	}
 
 	@Override

@@ -50,7 +50,7 @@ public class ShellContext {
 		stderr = console.getStdErr();
 		stdout = console.getStdOut();
 		stdin = console.getStdIn();
-		if( stdin == Console.System_in) {
+		if( Console.isKeyboard(stdin)) {
 			stdin = new NativeKeyboard();
 		}
 

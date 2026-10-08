@@ -278,6 +278,8 @@ public final class Programs {
 
 			Object terminalUser = null;
 			StdinFeeder feeder = null;
+			ReadBack onFile = null;
+			java.io.File report = null;
 			us.bringardner.fsh.job.IJob job = ctx.job;
 
 			try {
@@ -294,14 +296,29 @@ public final class Programs {
 				boolean inheritErr = isShellStream(ctx.stderr, Console.System_err);
 				// with job control, as bash: the job's programs are a process group of their own,
 				// which has the terminal while the job is in the foreground
-				String helper = ctx.console.isInteractive && job != null && new java.io.File(cmd.get(0)).isAbsolute()
-						? NativeKeyboard.groupHelper() : null;
-				boolean grouped = helper != null;
-				if( grouped ) {
+				boolean absolute = new java.io.File(cmd.get(0)).isAbsolute();
+				boolean grouped = ctx.console.isInteractive && job != null && absolute && NativeKeyboard.groupHelper() != null;
+				// a local file as input: the program reads it itself, from where the shell is, and the
+				// shell goes on from where the program left it (head -n 1 seeks back after its line)
+				onFile = !inheritIn && absolute && ctx.stdin instanceof ReadBack rb && rb.file() != null
+						&& NativeKeyboard.helper() != null ? (ReadBack) ctx.stdin : null;
+				if( grouped || onFile != null ) {
 					List<String> run = new java.util.ArrayList<>();
-					run.add(helper);
-					run.add(String.valueOf(job.getProcessGroup()));
-					run.add(foreground ? "1" : "0");
+					run.add(NativeKeyboard.helper());
+					if( grouped ) {
+						run.add("-g");
+						// (the group is set when it starts)
+						run.add("0");
+						run.add(foreground ? "1" : "0");
+					}
+					if( onFile != null ) {
+						report = java.io.File.createTempFile("fsh-", ".pos");
+						run.add("-i");
+						run.add(onFile.file().getAbsolutePath());
+						run.add(String.valueOf(onFile.position()));
+						run.add(report.getAbsolutePath());
+					}
+					run.add("--");
 					run.addAll(command);
 					command = run;
 				} else if( tty && !foreground && ctx.console.isInteractive ) {
@@ -322,6 +339,11 @@ public final class Programs {
 				}
 				if( inheritIn ) {
 					builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+				} else if( ctx.stdin instanceof us.bringardner.fsh.ProcessStdin ) {
+					// the shell's own input (a pipe or a file): it reads it itself, as under bash
+					builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+				} else if( onFile != null ) {
+					// the helper opens it
 				} else {
 					// input the shell shares with it: what it does not read stays for the shell
 					feeder = StdinFeeder.of(ctx.stdin);
@@ -351,7 +373,7 @@ public final class Programs {
 					synchronized (job) {
 						// the first program makes the group; the others of the job (a pipeline) join it
 						List<String> args = new java.util.ArrayList<>(builder.command());
-						args.set(1, String.valueOf(job.getProcessGroup()));
+						args.set(2, String.valueOf(job.getProcessGroup()));
 						builder.command(args);
 						p = builder.start();
 						long group = job.getProcessGroup();
@@ -369,8 +391,8 @@ public final class Programs {
 					job.addProcess(p);
 				}
 				process = p;
-				if( inheritIn ) {
-					// the program reads the terminal
+				if( inheritIn || ctx.stdin instanceof us.bringardner.fsh.ProcessStdin ) {
+					// the program reads the shell's input itself
 				} else if( feeder != null ) {
 					feeder.start();
 				} else if (ctx.stdin instanceof NativeKeyboard) {
@@ -432,6 +454,13 @@ public final class Programs {
 					feeder.finish();
 					feeder = null;
 				}
+				if( onFile != null ) {
+					// where the program left the file
+					String pos = java.nio.file.Files.readString(report.toPath()).trim();
+					if( !pos.isEmpty()) {
+						onFile.seek(Long.parseLong(pos));
+					}
+				}
 
 				if( terminalUser != null && job != null && exitCode == 128+INT && (grouped || Console.interruptTypedSince(started))) {
 					// Ctrl-C ended it: as bash, the rest of the command line does not run
@@ -445,6 +474,9 @@ public final class Programs {
 				exitCode = 1;
 				error = e;
 			} finally {
+				if( report != null ) {
+					report.delete();
+				}
 				if( feeder != null ) {
 					// it did not start, or failed
 					feeder.finish();
@@ -471,7 +503,7 @@ public final class Programs {
 
 		/** the shell's own keyboard */
 		private static boolean isKeyboard(java.io.InputStream in) {
-			return in instanceof NativeKeyboard || in == Console.System_in;
+			return in instanceof NativeKeyboard || Console.isKeyboard(in);
 		}
 
 		/** the stream is the shell's own standard output (or error), not a pipe or a file it opened */

@@ -769,7 +769,11 @@ delimiter
 			});
 
 			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
-			c.setStdIn(System.in);
+			if( !NativeKeyboard.inputIsTerminal()) {
+				// a pipe or a file: read as bash reads it, and shared with the programs it runs
+				System_in = new ProcessStdin();
+			}
+			c.setStdIn(System_in);
 
 			int ret = c.execute(args);
 
@@ -801,6 +805,11 @@ delimiter
 			} catch (IOException e) {
 			}
 		}		
+	}
+
+	/** in is the process's standard input, and it is a terminal (the keyboard) */
+	public static boolean isKeyboard(InputStream in) {
+		return in == System_in && !(in instanceof ProcessStdin);
 	}
 
 	public static void close(Console console,InputStream in) {
@@ -2908,7 +2917,7 @@ delimiter
 		sc.stdout = getStdOut();
 		sc.stderr = getStdErr();
 
-		if( sc.stdin == System_in) {
+		if( isKeyboard(sc.stdin)) {
 			sc.stdin = new NativeKeyboard();
 		}
 

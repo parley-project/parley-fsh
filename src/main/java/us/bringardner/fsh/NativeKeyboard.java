@@ -30,47 +30,75 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** standard input and output are a terminal */
 	private native boolean isTerminal();
 
+	/** standard input is a terminal */
+	private native boolean isInputTerminal0();
+
+	/** the process's standard input is a terminal (without this library: there is a console) */
+	public static boolean inputIsTerminal() {
+		if( availible ) {
+			try {
+				return new NativeKeyboard().isInputTerminal0();
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		return System.console() != null;
+	}
+
 	private native void giveTerminalTo(long group);
 
 	private native void setProcessGroup(long pid, long group);
 
 	private native int stoppedBy(long pid);
 
-	private static volatile String groupHelper;
+	private static volatile String helper;
+	/** the fsh.exec property helper was found with */
+	private static volatile String helperProperty;
+	private static volatile Boolean groups;
 
 	/**
-	 * The helper that runs a program in a process group (fshexec, next to this library, or the
-	 * fsh.exec property), or null: then a job's programs share the shell's process group.
+	 * fshexec, the helper that runs a program as bash would (in a process group, on the shell's
+	 * file): next to this library, or the fsh.exec property. Null if there is none.
 	 */
-	public static String groupHelper() {
-		if( groupHelper == null ) {
+	public static String helper() {
+		String prop = System.getProperty("fsh.exec");
+		if( helper == null || !java.util.Objects.equals(prop, helperProperty)) {
+			helperProperty = prop;
 			String found = "";
-			if( terminal()) {
-				java.util.List<String> dirs = new java.util.ArrayList<>();
-				String prop = System.getProperty("fsh.exec");
-				if( prop != null ) {
-					dirs.add(new java.io.File(prop).getParent());
-				}
-				dirs.addAll(java.util.List.of(System.getProperty("java.library.path", "").split(java.io.File.pathSeparator)));
-				for(String dir : dirs) {
-					java.io.File f = new java.io.File(dir == null ? "." : dir, "fshexec");
-					if( f.isFile() && f.canExecute()) {
-						found = f.getAbsolutePath();
-						break;
-					}
-				}
-				if( !found.isEmpty()) {
-					try {
-						// the library has the calls it needs
-						new NativeKeyboard().stoppedBy(-1);
-					} catch (UnsatisfiedLinkError e) {
-						found = "";
-					}
+			java.util.List<String> dirs = new java.util.ArrayList<>();
+			if( prop != null ) {
+				dirs.add(new java.io.File(prop).getAbsoluteFile().getParent());
+			}
+			dirs.addAll(java.util.List.of(System.getProperty("java.library.path", "").split(java.io.File.pathSeparator)));
+			for(String dir : dirs) {
+				java.io.File f = new java.io.File(dir == null ? "." : dir, "fshexec");
+				if( f.isFile() && f.canExecute()) {
+					found = f.getAbsolutePath();
+					break;
 				}
 			}
-			groupHelper = found;
+			helper = found;
 		}
-		return groupHelper.isEmpty() ? null : groupHelper;
+		return helper.isEmpty() ? null : helper;
+	}
+
+	/**
+	 * The helper, when a job's programs can be a process group that has the terminal (on a
+	 * terminal, with this library); else null: they share the shell's process group.
+	 */
+	public static String groupHelper() {
+		if( groups == null ) {
+			boolean ok = terminal() && helper() != null;
+			if( ok ) {
+				try {
+					new NativeKeyboard().stoppedBy(-1);
+				} catch (UnsatisfiedLinkError e) {
+					ok = false;
+				}
+			}
+			groups = ok;
+		}
+		return groups ? helper() : null;
 	}
 
 	/** a job's process group gets the terminal (fg) */

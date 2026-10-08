@@ -160,6 +160,13 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy(JNIEnv *
 /*
  * @return true if standard input is a terminal
  */
+JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isInputTerminal0(JNIEnv *, jobject) {
+	return isatty(STDIN_FILENO) ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * @return true if standard input and output are a terminal
+ */
 JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isTerminal(JNIEnv *, jobject) {
 	return isatty(STDIN_FILENO) && isatty(STDOUT_FILENO) ? JNI_TRUE : JNI_FALSE;
 }
