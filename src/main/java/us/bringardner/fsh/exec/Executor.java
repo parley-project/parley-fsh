@@ -156,6 +156,25 @@ public final class Executor {
 		return new Expander(sc, new Host(sc));
 	}
 
+	/**
+	 * Whether code (a command, such as [ $i -gt 3 ], or a list) succeeds in sc: its status is 0.
+	 * Its output is discarded; set -e and the ERR trap do not apply (a debugger's breakpoint
+	 * condition).
+	 * @throws SyntaxError if code does not parse
+	 */
+	public static boolean test(ShellContext sc, String code) throws IOException {
+		Ast.Sequence seq = Parser.parse(code);
+		PrintStream out = sc.stdout;
+		sc.stdout = new PrintStream(java.io.OutputStream.nullOutputStream());
+		sc.conditionDepth++;
+		try {
+			return new Executor(code).list(seq, sc) == 0;
+		} finally {
+			sc.conditionDepth--;
+			sc.stdout = out;
+		}
+	}
+
 	/** an Expander for words in sc, whose $( ) run here */
 	public static Expander expanderFor(ShellContext sc) {
 		return new Executor("").expander(sc);
@@ -414,7 +433,7 @@ public final class Executor {
 		int outputSubstitutions = sc.pendingOutputSubstitutions.size();
 		try {
 			// a debugger stops here; a stop or suspend of the job takes effect
-			sc.enterNode(c);
+			sc.enterNode(c, source);
 			if( c instanceof Ast.SimpleCommand s ) {
 				return simple(s, sc);
 			}
@@ -441,7 +460,7 @@ public final class Executor {
 				Redirects.close(opened);
 			}
 		} finally {
-			sc.exitNode(c);
+			sc.exitNode(c, source);
 			// >(cmd) in its words: cmd reads what was written
 			while( sc.pendingOutputSubstitutions.size() > outputSubstitutions ) {
 				String [] p = sc.pendingOutputSubstitutions.remove(outputSubstitutions);

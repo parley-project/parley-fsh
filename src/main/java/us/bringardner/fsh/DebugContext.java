@@ -46,12 +46,17 @@ public class DebugContext  implements DebugController {
 		this.currentState = currentState;
 	}
 
-	public synchronized void before(us.bringardner.fsh.syntax.Ast.Node node,ShellContext ctx) {
+	/**
+	 * A command is about to run.
+	 * @param source the text node was read from (node.text(source) is the command as written)
+	 */
+	public synchronized void before(us.bringardner.fsh.syntax.Ast.Node node, String source, ShellContext ctx) {
 		// do nothing by default
 		
 	}
 	
-	public synchronized void after(us.bringardner.fsh.syntax.Ast.Node node,ShellContext ctx) {
+	/** a command has run (see before) */
+	public synchronized void after(us.bringardner.fsh.syntax.Ast.Node node, String source, ShellContext ctx) {
 		// do nothing by default
 		
 	}

@@ -1262,14 +1262,14 @@ $
 
 
 	/**
-	 * The executor starts a command: a debugger sees it (and stops at a breakpoint or a step);
+	 * The executor starts a command (read from source): a debugger sees it (and stops at a breakpoint or a step);
 	 * a stop or suspend of the job takes effect here.
 	 */
-	public void enterNode(us.bringardner.fsh.syntax.Ast.Node node) {
+	public void enterNode(us.bringardner.fsh.syntax.Ast.Node node, String source) {
 		nodeStack.push(node);
 		if( console != null ) {
 			DebugContext debug = console.debugContext;
-			debug.before(node, this);
+			debug.before(node, source, this);
 			if( debug.isBreakpoint(new java.awt.Point(node.line, 0), this)
 					|| debug.getCurrentState() == DebugContext.RunState.StepOver
 					|| debug.getCurrentState() == DebugContext.RunState.StepInto ) {
@@ -1289,12 +1289,12 @@ $
 	}
 
 	/** the executor is done with a command */
-	public void exitNode(us.bringardner.fsh.syntax.Ast.Node node) {
+	public void exitNode(us.bringardner.fsh.syntax.Ast.Node node, String source) {
 		if( !nodeStack.isEmpty()) {
 			nodeStack.pop();
 		}
 		if( console != null ) {
-			console.debugContext.after(node, this);
+			console.debugContext.after(node, source, this);
 		}
 	}
 
