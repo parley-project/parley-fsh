@@ -232,6 +232,10 @@ public class Console extends SignalEnabledThread {
 		, NoExec ("n", "noexec")
 		// set -T: functions inherit the DEBUG and RETURN traps
 		, FuncTrace ("T", "functrace")
+		// set -H: history expansion of typed lines (!!, !$, ^old^new); on in an interactive shell
+		, HistExpand ("H", "histexpand")
+		// set -o history: commands go into the history (typed ones, or a script's); on in an interactive shell
+		, History ("\u0000history", "history")
 		, KeyboardEcho ("kbecho")
 		, VerboseError ("verboseError")
 		;
@@ -817,6 +821,9 @@ delimiter
 			ret = executeScript(codeToRun);
 		} else {
 			isInteractive = true;
+			// history expansion (!!, !$ ...) and the history are on in an interactive shell, as in bash
+			options.add(Option.HistExpand);
+			options.add(Option.History);
 		}
 
 		return ret;
@@ -1118,24 +1125,22 @@ delimiter
 					job.setState(JobState.Notified);
 				}
 			}
-			String prompt = getPrompt(Prompt.Primary);					
-			kb.setPrompt(prompt);
 			String code;
 			try {
-				code = kb.readLine(this);
+				code = readCommand(kb);
 				boolean endOfInput = code == null;
 				if( endOfInput ) {
 					// end of input (Ctrl-D): leave like bash does
 					code = "exit";
 				}
+				if( !endOfInput && isOptionEnabled(Option.History)) {
+					rememberCommand(code);
+				}
 				code = code.trim();
 				if( !code.isEmpty()) {
 					state = ConsoleState.Executing;
-					if( !endOfInput ) {
-						addHistory(code) ;
-					}
 
-					prompt = getPrompt(Prompt.BeforeExecute);
+					String prompt = getPrompt(Prompt.BeforeExecute);
 					if( prompt !=null && !prompt.isEmpty()) {
 						stdOut.append(prompt);
 					}
@@ -1165,113 +1170,6 @@ delimiter
 	}
 
 
-	public void run1() {
-		int exitCode = 0;
-		KeyboardReader kb = getKeyboadReader(true);
-		stdOut = kb.getStdOut();
-		stdErr = kb.getStdErr();
-		stdIn =  kb.getStdIn();
-
-		readHistory();
-
-		started = running = true;
-		while(running && !stopping) {
-			try {
-
-				state = ConsoleState.ReadLine;
-				currentJob.set(null);
-				if(adminMessage!=null) {
-					stdOut.println(adminMessage);
-					adminMessage = null;
-				}
-				String prompt = getPrompt(Prompt.Primary);					
-				kb.setPrompt(prompt);
-				String code = kb.readLine(this).trim();
-				if( !code.isEmpty()) {
-					state = ConsoleState.Executing;
-					addHistory(code) ;
-
-					prompt = getPrompt(Prompt.BeforeExecute);
-					if( prompt !=null && !prompt.isEmpty()) {
-						stdOut.append(prompt);
-					}
-
-					ShellContext sc = new ShellContext(this);
-
-					if( isOptionEnabled(Option.PrintLinesAsRead)) {
-						sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
-					}
-
-					code = code.trim();
-
-					IJob job = new ForgroundJob(sc,code);
-					currentJob.set(job);
-					job.start();
-
-					exitCode = executeAsJob(job);	
-					if( exitCode!=0) {
-						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
-							Console.exit(this,exitCode);
-						}
-					}
-				}
-			} catch (ResumeException e) {
-				try {
-					currentJob.set(e.job);
-					exitCode = executeAsJob(e.job);
-					if( exitCode!=0) {
-						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
-							Console.exit(this,exitCode);
-						}
-					}
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}	
-
-
-			} catch (SuspendException e) {
-
-				IJob job = currentJob.get();
-				if( e.job !=null ) {
-					job = e.job;
-				}
-				if( job !=null) {
-					String tmp = positionalParameters.get(0)+": suspended  "+job.toString();
-					stdOut.println(tmp);
-					addJob(job);
-				} 
-			} catch(ExitException e) {
-				handleMetaSignal(ConsoleMetaSignal.Exit);
-				stdErr.println(e);
-				stop();
-
-				if(!isInteractive) {
-					Console.exit(this,exitCode);
-				} else {
-					if (kb instanceof ConsoleFrame) {
-						ConsoleFrame cf = (ConsoleFrame) kb;
-						cf.dispose();
-					}
-				}
-			} catch(Exception e) {
-				//e.printStackTrace();
-				exitCode = 1;
-				stdErr.println(e);
-				logError("", e);
-				handleMetaSignal(ConsoleMetaSignal.Err);
-			}
-		}
-		if(!isInteractive) {
-			Console.exit(this,exitCode);
-		} else {
-			if (kb instanceof ConsoleFrame) {
-				ConsoleFrame cf = (ConsoleFrame) kb;
-				cf.dispose();
-			}
-		}
-		running = false;
-	}
 	/*
 	 * 1/16
 	 * 308l stainless
@@ -1697,6 +1595,125 @@ delimiter
 
 
 		return keyboardReader;
+	}
+
+	/**
+	 * One command as it is typed: PS1, then PS2 for each further line it needs (an if with no fi
+	 * yet, an open quote, a here-document, a trailing | or \), each line history-expanded
+	 * first (set -H). null at the end of the input; "" if there is nothing to run (a blank
+	 * line, a history error, :p).
+	 */
+	public String readCommand(KeyboardReader kb) throws IOException {
+		StringBuilder code = new StringBuilder();
+		boolean first = true;
+		while( true ) {
+			kb.setPrompt(getPrompt(first ? Prompt.Primary : Prompt.Secondary));
+			String line = kb.readLine(this);
+			if( line == null ) {
+				if( first ) {
+					return null;
+				}
+				stdErr.println("fsh: syntax error: unexpected end of file");
+				return "";
+			}
+			if( isOptionEnabled(Option.HistExpand)) {
+				List<String> commands = new ArrayList<>();
+				for(HistoryEntry e : history) {
+					commands.add(e.command);
+				}
+				HistoryExpansion.Result r = HistoryExpansion.expand(line, commands);
+				if( r.error != null ) {
+					stdErr.println("fsh: "+r.error);
+					return "";
+				}
+				if( r.changed ) {
+					// as bash shows it
+					stdOut.println(r.line);
+				}
+				if( r.printOnly ) {
+					rememberCommand(r.line);
+					return "";
+				}
+				line = r.line;
+			}
+			if( code.length() > 0 ) {
+				code.append('\n');
+			}
+			code.append(line);
+			if( code.toString().isBlank() || us.bringardner.fsh.syntax.Parser.isComplete(code.toString())) {
+				return code.toString();
+			}
+			first = false;
+		}
+	}
+
+	/**
+	 * A typed command goes into the history, as bash keeps it: HISTCONTROL (ignorespace,
+	 * ignoredups, ignoreboth, erasedups) and HISTIGNORE (patterns separated by :) leave some
+	 * out; a command of several lines is one entry, its lines joined by ; or a space where that
+	 * means the same.
+	 */
+	public void rememberCommand(String typed) {
+		if( typed == null || typed.isBlank()) {
+			return;
+		}
+		String control = String.valueOf(getVariable("HISTCONTROL"));
+		boolean ignoreSpace = control.contains("ignorespace") || control.contains("ignoreboth");
+		boolean ignoreDups = control.contains("ignoredups") || control.contains("ignoreboth");
+		if( ignoreSpace && (typed.startsWith(" ") || typed.startsWith("\t"))) {
+			return;
+		}
+		String entry = historyLine(typed.trim());
+		Object ignore = getVariable("HISTIGNORE");
+		if( ignore != null && !ignore.toString().isEmpty()) {
+			for(String pattern : ignore.toString().split(":")) {
+				if( !pattern.isEmpty() && Glob.toRegex(pattern).matcher(entry).matches()) {
+					return;
+				}
+			}
+		}
+		if( ignoreDups && !history.isEmpty() && history.get(history.size()-1).command.equals(entry)) {
+			return;
+		}
+		if( control.contains("erasedups")) {
+			history.removeIf(e -> e.command.equals(entry));
+		}
+		addHistory(entry);
+	}
+
+	/** a command of several lines as one history line: ; or a space between them where that means the same */
+	static String historyLine(String code) {
+		if( code.indexOf('\n') < 0 ) {
+			return code;
+		}
+		String meaning;
+		try {
+			meaning = us.bringardner.fsh.syntax.AstPrinter.print(us.bringardner.fsh.syntax.Parser.parse(code));
+		} catch (RuntimeException e) {
+			return code;
+		}
+		String ret = code;
+		int at = ret.indexOf('\n');
+		while( at >= 0 ) {
+			String joined = null;
+			for(String sep : new String[] {"; ", " "}) {
+				String candidate = ret.substring(0, at)+sep+ret.substring(at+1);
+				try {
+					if( meaning.equals(us.bringardner.fsh.syntax.AstPrinter.print(us.bringardner.fsh.syntax.Parser.parse(candidate)))) {
+						joined = candidate;
+						break;
+					}
+				} catch (RuntimeException e) {
+				}
+			}
+			if( joined != null ) {
+				ret = joined;
+				at = ret.indexOf('\n');
+			} else {
+				at = ret.indexOf('\n', at+1);
+			}
+		}
+		return ret;
 	}
 
 	public void addHistory(String code) {

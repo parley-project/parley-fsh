@@ -2,9 +2,11 @@ package us.bringardner.fsh.commands;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import us.bringardner.fsh.Argument;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
@@ -32,103 +34,124 @@ public class History extends ShellCommand{
 	enum HistoryOption {c,d,a,n,r,w,p,s};
 	
 	@Override
-	public int process(ShellContext ctx) throws IOException {		
-		int ret = 0;
-		if( args.length==0) {
-			print(ctx,ctx.console.history.size());
-		} else {
-			String option = ""+args[0].getValue(ctx);
-			StringBuilder buf = new StringBuilder();
-			for (int idx = 1; idx < args.length; idx++) {
-				buf.append(args[idx].getValue(ctx).toString());
-			}
-			String cmdArg = buf.toString();
-			
-			if( option.equals("-c")) {
-				ctx.console.history.clear();
-			} else if( option.equals("-d")) {
-				if( !cmdArg.isEmpty()) {
-					int start = -2;
-					int end = -1;
-					int idx = cmdArg.indexOf('-', 1);
-					if( idx > 0 ) {
-						String tmp = cmdArg.substring(0,idx);
-						start = Integer.parseInt(tmp);
-						tmp = cmdArg.substring(idx+1);
-						end = Integer.parseInt(tmp);
-					} else {
-						start = Integer.parseInt(cmdArg);
-						end = start;
-					}
-					if( start< 0 ) {
-						start = ctx.console.history.size()+start-1;						
-					}
-					if( end< 0 ) {
-						end = ctx.console.history.size()+end-1;						
-					}
-					if(end >= ctx.console.history.size()) {
-						end = ctx.console.history.size();
-					}
-					
-					ctx.stdout.printf("%s -> %d %d\n",cmdArg,start,end);
-					for(idx=end; idx >= start; idx--) {
-						ctx.console.history.remove(idx);
-					}
-				} 
-				
-			} else if( option.equals("-a") || option.equals("-n") || option.equals("-w")) {
-				if(!cmdArg.isEmpty()) {
-					ctx.console.saveHistory(cmdArg);
-				} else {
-					ctx.console.saveHistory();
-				}
-			} else if( option.equals("-r")) {
-				if(!cmdArg.isEmpty()) {
-					ctx.console.readHistory(cmdArg);
-				} else {
-					ctx.console.readHistory();
-				}
-			} else if( option.equals("-p")) {
-				ctx.stdout.println("find cmd");
-			} else if( option.equals("-s")) {
-				ctx.console.addHistory(cmdArg);
+	public int process(ShellContext ctx) throws IOException {
+		List<HistoryEntry> list = ctx.console.history;
+		List<String> words = new ArrayList<>();
+		for(Argument a : args) {
+			words.add(String.valueOf(a.getValue(ctx)));
+		}
+		if( words.isEmpty()) {
+			print(ctx, list.size());
+			return 0;
+		}
+		String option = words.get(0);
+		List<String> rest = words.subList(1, words.size());
+		switch (option) {
+		case "-c":
+			list.clear();
+			return 0;
+		case "-d":
+			return delete(ctx, rest.isEmpty() ? "" : rest.get(0));
+		case "-a":
+		case "-w":
+			if( rest.isEmpty()) {
+				ctx.console.saveHistory();
 			} else {
-				int lines = Integer.parseInt(option);
-				print(ctx, lines);
+				ctx.console.saveHistory(rest.get(0));
+			}
+			return 0;
+		case "-r":
+		case "-n":
+			if( rest.isEmpty()) {
+				ctx.console.readHistory();
+			} else {
+				ctx.console.readHistory(rest.get(0));
+			}
+			return 0;
+		case "-s":
+			// the arguments as one entry, in place of this history -s command
+			if( !list.isEmpty() && list.get(list.size()-1).command.startsWith("history")) {
+				list.remove(list.size()-1);
+			}
+			ctx.console.addHistory(String.join(" ", rest));
+			return 0;
+		case "-p": {
+			// each argument history-expanded and printed, not run or kept (nor this command)
+			if( !list.isEmpty() && list.get(list.size()-1).command.startsWith("history")) {
+				list.remove(list.size()-1);
+			}
+			List<String> commands = new ArrayList<>();
+			for(HistoryEntry e : list) {
+				commands.add(e.command);
+			}
+			int ret = 0;
+			for(String w : rest) {
+				us.bringardner.fsh.HistoryExpansion.Result r = us.bringardner.fsh.HistoryExpansion.expand(w, commands);
+				if( r.error != null ) {
+					// (in a typed line it says why: !x: event not found)
+					ctx.error("history: "+w+": history expansion failed");
+					ret = 1;
+				} else {
+					ctx.stdout.println(r.line);
+				}
+			}
+			return ret;
+		}
+		default:
+			try {
+				print(ctx, Integer.parseInt(option));
+				return 0;
+			} catch (NumberFormatException e) {
+				ctx.error("history: "+option+": numeric argument required");
+				return 1;
 			}
 		}
-			
-
-		return ret;
 	}
 
+	/** -d n (1 is the first; negative counts from the end) or -d start-end */
+	private int delete(ShellContext ctx, String arg) {
+		List<HistoryEntry> list = ctx.console.history;
+		try {
+			int dash = arg.indexOf('-', 1);
+			int start = position(dash > 0 ? arg.substring(0, dash) : arg, list.size());
+			int end = dash > 0 ? position(arg.substring(dash+1), list.size()) : start;
+			if( start < 1 || end > list.size() || start > end ) {
+				ctx.error("history: "+arg+": history position out of range");
+				return 1;
+			}
+			for (int i = end; i >= start; i--) {
+				list.remove(i-1);
+			}
+			return 0;
+		} catch (NumberFormatException e) {
+			ctx.error("history: "+arg+": numeric argument required");
+			return 1;
+		}
+	}
+
+	private static int position(String text, int size) {
+		int n = Integer.parseInt(text);
+		return n < 0 ? size+n+1 : n;
+	}
+
+	/** the last lines entries, as bash shows them: "%5d  command" (HISTTIMEFORMAT before it) */
 	private void print(ShellContext ctx, int lines) {
 		SimpleDateFormat fmt = null;
 		Object obj = ctx.getVariable(Console.VARIABLE_HISTTIMEFORMAT);
-		if( obj !=null ) {
-			fmt = new SimpleDateFormat(obj.toString());			
+		if( obj != null && !obj.toString().isEmpty()) {
+			try {
+				fmt = new SimpleDateFormat(ctx.console.strftimeToJava(obj.toString()));
+			} catch (RuntimeException e) {
+				fmt = null;
+			}
 		}
-		
-		List<HistoryEntry> tmp = ctx.console.history;
-		int sz = tmp.size();
-		if( lines > sz) {
-			lines = sz;
+		List<HistoryEntry> list = ctx.console.history;
+		int sz = list.size();
+		int start = Math.max(0, sz-Math.max(0, lines));
+		for (int idx = start; idx < sz; idx++) {
+			HistoryEntry e = list.get(idx);
+			String tm = fmt == null ? "" : fmt.format(new Date(e.time));
+			ctx.stdout.printf("%5d  %s%s%n", idx+1, tm, e.command);
 		}
-		int start = ctx.console.history.size()-lines;
-		if(start < 0 ) {
-			start = 0;
-		}
-		//1072 tm history -d
-		
-		for(int idx=start; idx < sz; idx++) {
-			HistoryEntry e = tmp.get(idx);
-			String tm = "";
-			if(fmt != null ) {
-				tm = fmt.format(new Date(e.time));
-			} 
-			ctx.stdout.printf("%4d %s %s%s\n", idx,e.saved?"":"*",tm,e.command);			
-		}
-
 	}
-
 }

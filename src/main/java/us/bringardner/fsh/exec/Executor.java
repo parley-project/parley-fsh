@@ -96,6 +96,10 @@ public final class Executor {
 			if( item.command.line == abandoned ) {
 				continue;
 			}
+			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
+				// set -o history in a script: each command it runs is kept, as bash keeps them
+				sc.console.rememberCommand(ex.text(item.command).trim()+(item.background ? " &" : ""));
+			}
 			try {
 				ret = ex.item(item, sc);
 			} catch (AbandonLine e) {

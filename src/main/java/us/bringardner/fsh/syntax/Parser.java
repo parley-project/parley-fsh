@@ -110,13 +110,42 @@ public final class Parser {
 
 	/** parse a whole script */
 	public static Sequence parse(String source) {
-		Parser p = new Parser(source);
-		Sequence ret = p.list(Set.of(), Set.of());
-		Token t = p.peek();
+		return new Parser(source).script();
+	}
+
+	private Sequence script() {
+		Sequence ret = list(Set.of(), Set.of());
+		Token t = peek();
 		if( t.kind != Kind.EOF ) {
-			throw p.unexpected(t);
+			throw unexpected(t);
 		}
 		return ret;
+	}
+
+	/** a here-document reached the end of the text before its word */
+	private boolean hereDocumentOpen;
+
+	/**
+	 * Whether code is whole, or more lines are needed to finish it, as an interactive shell
+	 * decides when to show PS2: an if with no fi, an open quote or $( ), a here-document with no
+	 * end yet, or a line that ends with |, &&, || or \. (A real syntax error is whole: it is
+	 * reported.)
+	 */
+	public static boolean isComplete(String code) {
+		int backslashes = 0;
+		for (int i = code.length()-1; i >= 0 && code.charAt(i) == '\\'; i--) {
+			backslashes++;
+		}
+		if( backslashes % 2 == 1 ) {
+			return false;
+		}
+		Parser p = new Parser(code);
+		try {
+			p.script();
+		} catch (SyntaxError e) {
+			return !e.endOfInput;
+		}
+		return !p.hereDocumentOpen && p.pendingHereDocs.isEmpty();
 	}
 
 	// ------------------------------------------------------------------ tokens
@@ -917,6 +946,7 @@ public final class Parser {
 			while( true ) {
 				if( atEnd(pos)) {
 					// bash warns and takes the rest of the file
+					hereDocumentOpen = true;
 					break;
 				}
 				int nl = src.indexOf('\n', pos);
