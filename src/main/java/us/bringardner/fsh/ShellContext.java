@@ -418,10 +418,16 @@ $
 		return globalVariable(name);
 	}
 
+	/** isolated holds every variable there was when this began (nothing more is looked up) */
+	private boolean snapshot;
+
 	private Object globalVariable(String name) {
 		if( isolated != null && isolated.containsKey(name)) {
 			Object v = isolated.get(name);
 			return v == UNSET ? null : v;
+		}
+		if( snapshot ) {
+			return null;
 		}
 		return console.getVariable(name);
 	}
@@ -599,6 +605,11 @@ $
 		if( name.equals("POSIXLY_CORRECT") && value != null ) {
 			// as bash: setting it turns on posix mode
 			console.setOption(Console.Option.Posix, true);
+		}
+		if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
+				&& console.pendingExports.remove(name)) {
+			// export x before x had a value
+			console.setEnvironmentVariable(name, ""+value);
 		}
 		FunctionInvocation scope = localScope(name);
 		if( scope != null ) {
@@ -874,6 +885,12 @@ $
 			// (kept only with extdebug, as bash's: empty)
 			return new FshList();
 		}
+		if( name.equals("SHELLOPTS") && !console.unsetSpecials.contains(name)) {
+			return console.shellOpts();
+		}
+		if( name.equals("BASHOPTS") && !console.unsetSpecials.contains(name)) {
+			return console.bashOpts();
+		}
 		if( name.equals("BASH_ALIASES") && !console.unsetSpecials.contains(name)) {
 			// the aliases, as an associative array
 			return new TreeMap<String,Object>(console.getAliases());
@@ -930,6 +947,10 @@ $
 			if( isolated != null && isolated.containsKey(name)) {
 				Object v = isolated.get(name);
 				return v == UNSET ? null : v;
+			}
+			if( snapshot ) {
+				// (only what there was when it began)
+				return dynamicVariable(name);
 			}
 			ret = console.getVariable(name);
 			if( ret == null) {
@@ -1111,6 +1132,44 @@ $
 	}
 
 	/** name is a local variable of the running function itself (not a caller's) */
+	/** local x: x's readonly and integer attributes before, kept to put back when the function returns */
+	public void localAttributes(String name) {
+		if( !functionStack.isEmpty()) {
+			functionStack.peek().attributesBefore.computeIfAbsent(name, n -> new boolean[] {console.isReadonly(n), console.isInteger(n)});
+		}
+	}
+
+	/** a function has a local name (one running now) */
+	public boolean hasLocal(String name) {
+		return localScope(name) != null;
+	}
+
+	/** declare -g name=value: the global variable (readonly, -l -u and export as for any) */
+	public void setGlobalChecked(String name, Object value) {
+		if( console.isReadonly(name)) {
+			throw new ReadonlyException(name);
+		}
+		value = withCase(name, value);
+		setGlobalVariable(name, value);
+		if( isolated == null && value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>)
+				&& console.getEvironmentVariables(name) != null ) {
+			console.setEnvironmentVariable(name, ""+value);
+		}
+	}
+
+	/** name=value outside every function's locals (a temporary assignment put back) */
+	public void setGlobal(String name, Object value) {
+		if( value == null ) {
+			if( isolated != null ) {
+				isolated.put(name, UNSET);
+			} else {
+				console.variables.remove(name);
+			}
+		} else {
+			setGlobalVariable(name, value);
+		}
+	}
+
 	/** a function's local variable declared with no value (local x) */
 	public boolean isDeclaredLocal(String name) {
 		FunctionInvocation scope = localScope(name);
@@ -1195,6 +1254,7 @@ $
 		// a subshell inside a pipe stage sees (a copy of) the stage's variables
 		if( isolated != null ) {
 			ret.isolated = new java.util.HashMap<>(isolated);
+			ret.snapshot = snapshot;
 		}
 		if( stagePositional != null ) {
 			ret.stagePositional = new ArrayList<>(stagePositional);
@@ -1224,7 +1284,20 @@ $
 		// the pipeline's status runs the ERR trap, not its stages
 		ret.errTrapBlocked++;
 		if( ret.isolated == null ) {
+			// the shell's variables as they are now (a stage, a <(cmd): what the shell sets later
+			// is not seen, as after bash's fork)
 			ret.isolated = new java.util.HashMap<>();
+			for(Map.Entry<String,Object> e : console.getEnvironmentVariable().entrySet()) {
+				if( e.getValue() != null ) {
+					ret.isolated.put(e.getKey(), e.getValue());
+				}
+			}
+			for(Map.Entry<String,Object> e : console.variables.entrySet()) {
+				if( e.getValue() != null ) {
+					ret.isolated.put(e.getKey(), e.getValue());
+				}
+			}
+			ret.snapshot = true;
 		}
 		return ret;
 	}
@@ -1274,6 +1347,8 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
+		/** readonly and integer of the names it made locals of, before (put back when it returns) */
+		final Map<String,boolean[]> attributesBefore = new java.util.HashMap<>();
 		/** local -l / -u attributes of this function's variables */
 		final Map<String,Character> caseAttributes = new java.util.HashMap<>();
 		/** set -E is off: the ERR trap does not run in this function */
@@ -1350,6 +1425,15 @@ $
 
 	public void exitFunction(ShellFunction functionDefStatement) {
 		FunctionInvocation inv = functionStack.pop();
+		for(Map.Entry<String,boolean[]> e : inv.attributesBefore.entrySet()) {
+			// (local -r x, local -i x: the attributes were the local's)
+			if( e.getValue()[0] ) {
+				console.setReadonly(e.getKey());
+			} else {
+				console.clearReadonly(e.getKey());
+			}
+			console.setInteger(e.getKey(), e.getValue()[1]);
+		}
 		if( inv.errBlocked ) {
 			errTrapBlocked--;
 		}
@@ -1597,7 +1681,7 @@ $
 		@SuppressWarnings("unchecked")
 		Map<String,Object> local = (Map<String, Object>) map.get(LOCAL_VARIABLES);
 		ret.putAll(local);
-		for(String dynamic : new String[] {"BASH_ALIASES", "BASH_CMDS", "BASH_ARGC", "BASH_ARGV", "BASH_LINENO", "BASH_SOURCE", "DIRSTACK", "FUNCNAME"}) {
+		for(String dynamic : new String[] {"SHELLOPTS", "BASHOPTS", "BASH_ALIASES", "BASH_CMDS", "BASH_ARGC", "BASH_ARGV", "BASH_LINENO", "BASH_SOURCE", "DIRSTACK", "FUNCNAME"}) {
 			if( !console.unsetSpecials.contains(dynamic) && !ret.containsKey(dynamic)) {
 				// (DIRSTACK as bash lists it before it is used: empty while pushd has nothing)
 				Object v = dynamic.equals("DIRSTACK") && console.dirStack.isEmpty() ? new FshList() : getVariable(dynamic);

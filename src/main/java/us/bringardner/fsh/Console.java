@@ -672,6 +672,9 @@ delimiter
 		return cmdCnt++;
 	}
 
+	/** export name of a variable with no value: exported when it gets one */
+	public final java.util.Set<String> pendingExports = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
 	/** the variables commands running now were given (var=1 cmd), with what they will get back */
 	public final java.util.Deque<List<Object[]>> temporaryAssignments = new java.util.concurrent.ConcurrentLinkedDeque<>();
 
@@ -2965,11 +2968,41 @@ delimiter
 			// as bash: posix mode turns on expand_aliases
 			getShellOptions().put("expand_aliases", true);
 		}
+		if( o == Option.IgnoreEof ) {
+			// as bash: set -o ignoreeof is IGNOREEOF=10
+			if( enable ) {
+				variables.put("IGNOREEOF", "10");
+			} else {
+				variables.remove("IGNOREEOF");
+			}
+		}
 		if( !enable ) {
 			optionList().remove(o);
 		} else if(!optionList().contains(o)) {
 			optionList().add(o);
 		}
+	}
+
+	/** $SHELLOPTS: the set -o options that are on, by name, : between */
+	public String shellOpts() {
+		java.util.TreeSet<String> on = new java.util.TreeSet<>();
+		for(Option o : optionList()) {
+			if( o.longName.length() > 1 && Character.isLowerCase(o.longName.charAt(0)) && o != Option.KeyboardEcho && o != Option.VerboseError ) {
+				on.add(o.longName);
+			}
+		}
+		return String.join(":", on);
+	}
+
+	/** $BASHOPTS: the shopt options that are on, : between */
+	public String bashOpts() {
+		java.util.TreeSet<String> on = new java.util.TreeSet<>();
+		for(Map.Entry<String, Boolean> e : getShellOptions().entrySet()) {
+			if( Boolean.TRUE.equals(e.getValue())) {
+				on.add(e.getKey());
+			}
+		}
+		return String.join(":", on);
 	}
 
 
@@ -3109,11 +3142,17 @@ delimiter
 	}
 
 	public boolean isReadonly(String name) {
-		return readonlyVariables.contains(name);
+		// (SHELLOPTS and BASHOPTS: set -o and shopt change them)
+		return readonlyVariables.contains(name) || (name.equals("SHELLOPTS") || name.equals("BASHOPTS")) && !unsetSpecials.contains(name);
 	}
 
 	public void setReadonly(String name) {
 		readonlyVariables.add(name);
+	}
+
+	/** a function's readonly local is gone: its name is not readonly (unless it was before) */
+	public void clearReadonly(String name) {
+		readonlyVariables.remove(name);
 	}
 
 	/** declare -l (l) and -u (u): an assigned value is made lower or upper case */

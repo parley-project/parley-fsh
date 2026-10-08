@@ -72,30 +72,34 @@ public class Export extends ShellCommand{
 				}
 				
 			} else if(sa.options.contains(Arguments.n)) {
-				// unset variables
+				// export -n: no longer exported (the variable stays)
 				for(String name : sa.paths) {
 					Object val = ctx.getEvironmentVariable(name);
-					if(val !=null ) {
-						ctx.setEnvironmentVariable(name, null);
+					if( val != null && ctx.getVariable(name) == null ) {
 						ctx.setVariable(name, val);
 					}
+					ctx.setEnvironmentVariable(name, null);
+					ctx.console.pendingExports.remove(name);
 				}
 			} else {
-				// with no args all we can do is set a value for export
 				for (int idx = 0; idx < args.length; idx++) {
 					String val = args[idx].getValue(ctx).toString();
 					int eq = val.indexOf('=');
 					if( eq > 0) {
-						// name=value (the value is already expanded)
+						// name=value (the value is already expanded): set, and exported
 						String name = val.substring(0, eq);
-						ctx.unSetVariable(name);
-						ctx.setEnvironmentVariable(name, val.substring(eq+1));					
+						ctx.setVariable(name, val.substring(eq+1));
+						ctx.setEnvironmentVariable(ctx.resolveName(name), val.substring(eq+1));
 					} else if( val.matches("[a-zA-Z_][a-zA-Z_0-9]*")) {
-						// export name: the variable's value goes to the environment
+						// export name: its value goes to the environment (a local's too); one with no
+						// value is exported when it gets one
+						String name = ctx.resolveName(val);
 						Object v = ctx.getVariable(val);
-						if( v != null && ctx.getEvironmentVariable(val) == null ) {
-							ctx.unSetVariable(val);
-							ctx.setEnvironmentVariable(val, ""+ShellContext.firstElement(v));
+						if( v != null ) {
+							ctx.setEnvironmentVariable(name, ""+ShellContext.firstElement(v));
+						} else if( ctx.getEvironmentVariable(name) == null ) {
+							ctx.console.pendingExports.add(name);
+							ctx.console.declaredUnset.add(name);
 						}
 					}
 				}

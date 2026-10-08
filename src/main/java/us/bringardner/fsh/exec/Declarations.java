@@ -195,6 +195,11 @@ public final class Declarations {
 				status = 1;
 				continue;
 			}
+			if( !local && !sc.console.temporaryAssignments.isEmpty()) {
+				// x=1 declare -r x: the temporary x stays (and exported), as bash's
+				String declared = name;
+				sc.console.temporaryAssignments.peek().removeIf(t -> declared.equals(t[0]));
+			}
 			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef empty && empty.target().isEmpty()
 					&& !(local && sc.isInFunction() && !sc.isOwnLocal(name))) {
 				if( o.indexOf('a') >= 0 || o.indexOf('A') >= 0 ) {
@@ -270,6 +275,13 @@ public final class Declarations {
 				}
 				status = 1;
 				continue;
+			}
+			if( local && sc.isInFunction() && !sc.console.isReadonly(name)) {
+				// (its readonly and integer attributes are the local's)
+				if( !sc.isOwnLocal(name)) {
+					sc.localAttributes(name);
+					sc.console.setInteger(name, false);
+				}
 			}
 			if( o.indexOf('i') >= 0 ) {
 				sc.console.setInteger(name, !remove);
@@ -441,7 +453,19 @@ public final class Declarations {
 					val = list;
 				}
 			}
-			Object old = local ? null : sc.getVariable(name);
+			// declare -g in a function: the global (readonly and export: a local if there is one)
+			boolean toGlobal = o.indexOf('g') >= 0 && sc.isInFunction()
+					&& !((command.equals("readonly") || command.equals("export")) && sc.hasLocal(name));
+			Object old = local ? null : toGlobal ? sc.globalRaw(name) : sc.getVariable(name);
+			if( o.indexOf('A') >= 0 && !remove && old instanceof FshList ) {
+				// declare -A of an indexed array
+				if( sc.isInFunction()) {
+					sc.error(ShellContext.firstElement(sc.getVariable("FUNCNAME"))+": "+name+": cannot convert indexed to associative array");
+				}
+				error(command, name+": cannot convert indexed to associative array");
+				status = 1;
+				continue;
+			}
 			if( arrays && val instanceof String v && (o.indexOf('A') >= 0 || old instanceof Map<?,?>)) {
 				// declare -A m=v: the element "0"
 				Map<String,Object> map = new TreeMap<>();
@@ -484,12 +508,19 @@ public final class Declarations {
 			}
 			if( local ) {
 				if( val == null ) {
-					if( !sc.isOwnLocal(name)) {
+					if( !sc.isOwnLocal(name) && sc.isInFunction() && temporary(name)) {
+						// local x of a variable the function (or this command) was given (x=1 f):
+						// that value
+						sc.setLocalVariable(name, sc.getVariable(name));
+					} else if( !sc.isOwnLocal(name)) {
 						sc.declareLocal(name);
 					}
 				} else {
 					sc.setLocalVariable(name, val);
 				}
+			} else if( val != null && toGlobal ) {
+				// declare -g in a function: the global, past any local of that name
+				sc.setGlobalChecked(name, val);
 			} else if( val != null ) {
 				sc.setVariable(name, val);
 			}
@@ -633,6 +664,18 @@ public final class Declarations {
 		return ret;
 	}
 
+	/** name has a temporary value now (x=1 f, x=1 local x) */
+	private boolean temporary(String name) {
+		for(List<Object[]> l : sc.console.temporaryAssignments) {
+			for(Object[] o : l) {
+				if( name.equals(o[0]) && sc.getVariable(name) != null ) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** declare -- x="1", declare -a a=([0]="x"), declare -A m=([k]="v" ) */
 	private String declaration(String name, Object val) {
 		StringBuilder value = new StringBuilder();
@@ -691,7 +734,7 @@ public final class Declarations {
 		if( sc.console.isReadonly(name)) {
 			flags += "r";
 		}
-		if( sc.getEvironmentVariable(name) != null ) {
+		if( sc.getEvironmentVariable(name) != null || val == null && sc.console.pendingExports.contains(name)) {
 			flags += "x";
 		}
 		Character c = sc.caseAttribute(name);

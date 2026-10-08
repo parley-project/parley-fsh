@@ -119,6 +119,7 @@ public class Unset extends ShellCommand{
 					// unset -n of a variable that is no nameref: nothing (bash 5.3's)
 					continue;
 				}
+				ctx.console.pendingExports.remove(text);
 				boolean declared = ctx.console.declaredUnset.remove(text);
 				if( !ctx.unSetVariable(text, !reference) && !declared ) {
 					if( !variables ) {

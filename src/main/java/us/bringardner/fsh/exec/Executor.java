@@ -1365,7 +1365,7 @@ public final class Executor {
 					args.add(w.assignment);
 					continue;
 				}
-				if( keyword && !declaration && !args.isEmpty() && w.raw.matches("[A-Za-z_][A-Za-z0-9_]*=(?s).*")) {
+				if( keyword && !declaration && w.raw.matches("[A-Za-z_][A-Za-z0-9_]*=(?s).*")) {
 					String value = String.join(" ", ex.expand(w));
 					int eq = value.indexOf('=');
 					if( eq > 0 ) {
@@ -1383,9 +1383,51 @@ public final class Executor {
 			return expansionError(sc, e);
 		}
 		if( args.isEmpty()) {
+			// (set -k: name=value words with no command left set the shell's variables too)
+			for(String [] a : keywordAssignments) {
+				if( sc.console.isReadonly(sc.readonlyName(a[0]))) {
+					error(sc, sc.readonlyName(a[0])+": readonly variable");
+					continue;
+				}
+				sc.setVariable(a[0], a[1]);
+			}
 			return assignments(c, sc, ex, substitutions);
 		}
 		String name = (String) args.remove(0);
+		// (the redirects come before the assignments, as bash's: FOO=bar cat < <(echo $FOO) does
+		// not see bar)
+		Redirects.Saved early = null;
+		List<Closeable> earlyOpened = null;
+		if( !c.redirects.isEmpty() && (!c.assignments.isEmpty() || !keywordAssignments.isEmpty()) && !name.equals("exec")) {
+			early = Redirects.Saved.of(sc);
+			try {
+				earlyOpened = Redirects.apply(c.redirects, sc, ex);
+			} catch (ExpansionError e) {
+				early.restore(sc);
+				return expansionError(sc, e);
+			} catch (FshException e) {
+				early.restore(sc);
+				throw e;
+			} catch (Exception e) {
+				early.restore(sc);
+				error(sc, message(e));
+				sc.console.setLastExitCode(1);
+				return 1;
+			}
+		}
+		try {
+			return withAssignments(name, args, c, sc, ex, keywordAssignments, early != null);
+		} finally {
+			if( early != null ) {
+				early.restore(sc);
+				Redirects.close(earlyOpened);
+			}
+		}
+	}
+
+	/** the command with its assignments (redirected already, if redirected) */
+	private int withAssignments(String name, List<Object> args, Ast.SimpleCommand c, ShellContext sc, Expander ex,
+			List<String[]> keywordAssignments, boolean redirected) throws IOException {
 		List<Object[]> saved = null;
 		if( !keywordAssignments.isEmpty()) {
 			saved = new ArrayList<>();
@@ -1448,7 +1490,9 @@ public final class Executor {
 						sc.setEnvironmentVariable(a.name, v);
 						continue;
 					}
-					saved.add(new Object[] {target, sc.console.getVariable(target), sc.getEvironmentVariable(target)});
+					// (put back where it was: a local the command makes of it, as local x does, keeps
+					// the value)
+					saved.add(new Object[] {target, sc.console.getVariable(target), sc.getEvironmentVariable(target), !sc.hasLocal(target)});
 					sc.setVariable(target, v);
 					sc.setEnvironmentVariable(target, v);
 				}
@@ -1461,7 +1505,7 @@ public final class Executor {
 			sc.console.temporaryAssignments.push(saved);
 		}
 		try {
-			return run(name, args, c, sc, ex);
+			return redirected ? runRedirected(name, args, c, sc, ex) : run(name, args, c, sc, ex);
 		} finally {
 			if( saved != null ) {
 				sc.console.temporaryAssignments.remove(saved);
@@ -1473,6 +1517,11 @@ public final class Executor {
 	private static void restore(List<Object[]> saved, ShellContext sc) {
 		for (int i = saved.size()-1; i >= 0; i--) {
 			Object [] s = saved.get(i);
+			if( s.length > 3 && Boolean.TRUE.equals(s[3])) {
+				sc.setGlobal((String) s[0], s[1]);
+				sc.setEnvironmentVariable((String) s[0], s[2]);
+				continue;
+			}
 			sc.setVariable((String) s[0], s[1]);
 			sc.setEnvironmentVariable((String) s[0], s[2]);
 		}
@@ -1550,6 +1599,17 @@ public final class Executor {
 	}
 
 	/** run the command name with its arguments, its redirects applied around it */
+	/** run, its redirects applied already */
+	private int runRedirected(String name, List<Object> args, Ast.SimpleCommand c, ShellContext sc, Expander ex) throws IOException {
+		Ast.SimpleCommand plain = new Ast.SimpleCommand();
+		plain.words.addAll(c.words);
+		plain.assignments.addAll(c.assignments);
+		plain.line = c.line;
+		plain.start = c.start;
+		plain.end = c.end;
+		return run(name, args, plain, sc, ex);
+	}
+
 	private int run(String name, List<Object> args, Ast.SimpleCommand c, ShellContext sc, Expander ex) throws IOException {
 		boolean keepRedirects = name.equals("exec") && args.isEmpty();
 		Redirects.Saved streams = Redirects.Saved.of(sc);
