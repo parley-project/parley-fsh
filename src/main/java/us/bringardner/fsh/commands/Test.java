@@ -36,7 +36,7 @@ public class Test extends ShellCommand{
 		}
 	}
 
-	private static final String BINARY = " = == != < > -eq -ne -lt -le -gt -ge -nt -ot -ef ";
+	private static final String BINARY = " = == != < > =~ !~ -eq -ne -lt -le -gt -ge -nt -ot -ef ";
 	private static final String UNARY = " -n -z -v -o -e -a -f -d -s -r -w -x -h -L -b -c -p -S -g -u -k -t -G -O -N ";
 
 	private List<String> words;
@@ -83,128 +83,213 @@ public class Test extends ShellCommand{
 	}
 
 	private boolean evaluate(List<String> w) {
-		switch (w.size()) {
-		case 0:
-			return false;
-		case 1:
-			return !w.get(0).isEmpty();
-		case 2:
-			if( w.get(0).equals("!")) {
-				return w.get(1).isEmpty();
-			}
-			if( isUnary(w.get(0))) {
-				return unary(w.get(0), w.get(1));
-			}
-			throw new TestError(w.get(0)+": unary operator expected");
-		case 3:
-			if( isBinary(w.get(1))) {
-				return binary(w.get(0), w.get(1), w.get(2));
-			}
-			if( w.get(1).equals("-a") || w.get(1).equals("-o")) {
-				return expression(w);
-			}
-			if( w.get(0).equals("!")) {
-				return !evaluate(w.subList(1, 3));
-			}
-			if( w.get(0).equals("(") && w.get(2).equals(")")) {
-				return !w.get(1).isEmpty();
-			}
-			throw new TestError(w.get(1)+": binary operator expected");
-		case 4:
-			if( w.get(0).equals("!")) {
-				return !evaluate(w.subList(1, 4));
-			}
-			if( w.get(0).equals("(") && w.get(3).equals(")")) {
-				return evaluate(w.subList(1, 3));
-			}
-			return expression(w);
-		default:
-			return expression(w);
-		}
-	}
-
-	// ---------------------------------------------------------------- 5 or more: an expression
-
-	private boolean expression(List<String> w) {
 		words = w;
 		pos = 0;
-		boolean ret = or();
-		if( pos < words.size()) {
+		if( w.isEmpty()) {
+			return false;
+		}
+		boolean value = posixtest(w.size());
+		if( pos != w.size()) {
+			if( pos < w.size() && w.get(pos).startsWith("-")) {
+				throw new TestError("syntax error: `"+w.get(pos)+"' unexpected");
+			}
 			throw new TestError("too many arguments");
 		}
-		return ret;
+		return value;
 	}
 
-	private String peek(int ahead) {
-		return pos+ahead < words.size() ? words.get(pos+ahead) : null;
+	// ---------------------------------------------------------------- bash's test.c
+
+	private String at(int i) {
+		return i < words.size() ? words.get(i) : null;
+	}
+
+	private boolean posixtest(int nargs) {
+		switch (nargs) {
+		case 0:
+			return false;
+		case 1: {
+			boolean v = !words.get(pos).isEmpty();
+			pos++;
+			return v;
+		}
+		case 2:
+			return twoArguments();
+		case 3:
+			return threeArguments();
+		case 4:
+			if( "!".equals(at(pos))) {
+				pos++;
+				return !threeArguments();
+			}
+			if( "(".equals(at(pos)) && ")".equals(at(pos+3))) {
+				pos++;
+				boolean v = twoArguments();
+				pos++;
+				return v;
+			}
+			return expr();
+		default:
+			return expr();
+		}
+	}
+
+	private boolean twoArguments() {
+		String w = words.get(pos);
+		if( w.equals("!")) {
+			pos++;
+			return words.get(pos++).isEmpty();
+		}
+		if( w.length() == 2 && w.charAt(0) == '-' && isUnary(w)) {
+			return unaryOperator();
+		}
+		throw new TestError(w+": unary operator expected");
+	}
+
+	private boolean threeArguments() {
+		String op = words.get(pos+1);
+		if( isBinary(op)) {
+			return binaryOperator();
+		}
+		if( op.equals("-a") || op.equals("-o")) {
+			boolean a = !words.get(pos).isEmpty();
+			boolean b = !words.get(pos+2).isEmpty();
+			pos += 3;
+			return op.equals("-a") ? a && b : a || b;
+		}
+		if( words.get(pos).equals("!")) {
+			pos++;
+			return !twoArguments();
+		}
+		if( words.get(pos).equals("(") && words.get(pos+2).equals(")")) {
+			pos++;
+			boolean v = !words.get(pos).isEmpty();
+			pos += 2;
+			return v;
+		}
+		throw new TestError(op+": binary operator expected");
+	}
+
+	private boolean expr() {
+		if( pos >= words.size()) {
+			throw new TestError("argument expected");
+		}
+		return or();
 	}
 
 	private boolean or() {
-		boolean ret = and();
-		while( "-o".equals(peek(0))) {
+		boolean value = and();
+		if( pos < words.size() && words.get(pos).equals("-o")) {
 			pos++;
-			boolean right = and();
-			ret = ret || right;
+			boolean v2 = or();
+			return value || v2;
 		}
-		return ret;
+		return value;
 	}
 
 	private boolean and() {
-		boolean ret = not();
-		while( "-a".equals(peek(0))) {
+		boolean value = term();
+		if( pos < words.size() && words.get(pos).equals("-a")) {
 			pos++;
-			boolean right = not();
-			ret = ret && right;
+			boolean v2 = and();
+			return value && v2;
 		}
-		return ret;
+		return value;
 	}
 
-	private boolean not() {
-		if( "!".equals(peek(0)) && peek(1) != null ) {
-			pos++;
-			return !not();
-		}
-		return primary();
-	}
-
-	private boolean primary() {
-		String w = peek(0);
-		if( w == null ) {
+	private boolean term() {
+		if( pos >= words.size()) {
 			throw new TestError("argument expected");
 		}
-		if( w.equals("(") && peek(1) != null ) {
-			pos++;
-			boolean ret = or();
-			if( !")".equals(peek(0))) {
-				throw new TestError("`)' expected");
+		if( words.get(pos).equals("!")) {
+			boolean value = false;
+			while( pos < words.size() && words.get(pos).equals("!")) {
+				advance(true);
+				value = !value;
+			}
+			return value ? !term() : term();
+		}
+		if( words.get(pos).equals("(")) {
+			advance(true);
+			int nargs = 1;
+			for(int count = 1; pos+nargs < words.size(); nargs++) {
+				if( words.get(pos+nargs).equals(")")) {
+					count--;
+				} else if( words.get(pos+nargs).equals("(")) {
+					count++;
+				}
+				if( count == 0 ) {
+					break;
+				}
+			}
+			boolean value = pos+nargs < words.size() && nargs <= 4 ? posixtest(nargs) : expr();
+			if( pos >= words.size()) {
+				// ([ expr ] has its ] there)
+				throw new TestError(label.equals("[") ? "`)' expected, found ]" : "`)' expected");
+			} else if( !words.get(pos).equals(")")) {
+				throw new TestError("`)' expected, found "+words.get(pos));
 			}
 			pos++;
-			return ret;
+			return value;
 		}
-		if( peek(1) != null && isBinary(peek(1)) && peek(2) != null ) {
-			pos += 3;
-			return binary(w, words.get(pos-2), words.get(pos-1));
+		if( pos+3 <= words.size() && isBinary(words.get(pos+1))) {
+			return binaryOperator();
 		}
-		if( isUnary(w) && peek(1) != null ) {
-			pos += 2;
-			return unary(w, words.get(pos-1));
+		if( pos+2 <= words.size() && isUnary(words.get(pos))) {
+			return unaryOperator();
+		}
+		boolean value = !words.get(pos).isEmpty();
+		pos++;
+		return value;
+	}
+
+	/** past an argument; there must be another (f) */
+	private void advance(boolean f) {
+		pos++;
+		if( f && pos >= words.size()) {
+			throw new TestError("argument expected");
+		}
+	}
+
+	private boolean binaryOperator() {
+		String a = words.get(pos);
+		String op = words.get(pos+1);
+		String b = words.get(pos+2);
+		pos += 3;
+		return binary(a, op, b);
+	}
+
+	private boolean unaryOperator() {
+		String op = words.get(pos);
+		if( op.equals("-t") && !ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
+			// -t may have no argument (then fd 1)
+			pos++;
+			if( pos < words.size()) {
+				if( words.get(pos).trim().matches("[-+]?[0-9]+")) {
+					return unaryTest(op, words.get(pos++), ctx);
+				}
+				if( words.size() >= 5 && (words.get(pos).equals("-a") || words.get(pos).equals("-o"))) {
+					return unaryTest(op, "1", ctx);
+				}
+				throw new TestError(words.get(pos)+": integer expected");
+			}
+			return unaryTest(op, "1", ctx);
 		}
 		pos++;
-		return !w.isEmpty();
+		if( pos >= words.size()) {
+			throw new TestError("argument expected");
+		}
+		return unaryTest(op, words.get(pos++), ctx);
 	}
 
 	// ---------------------------------------------------------------- tests
 
 	private static boolean isUnary(String w) {
-		return UNARY.contains(" "+w+" ");
+		return w.length() == 2 && w.charAt(0) == '-' && "abcdefghknoprstuvwxzGLOSNR".indexOf(w.charAt(1)) >= 0;
 	}
 
 	private static boolean isBinary(String w) {
 		return BINARY.contains(" "+w+" ");
-	}
-
-	private boolean unary(String op, String val) {
-		return unaryTest(op, val, ctx);
 	}
 
 	private boolean binary(String a, String op, String b) {
@@ -212,6 +297,12 @@ public class Test extends ShellCommand{
 		case "=":
 		case "==": return a.equals(b);
 		case "!=": return !a.equals(b);
+		case "=~":
+		case "!~": {
+			// a pattern match (bash's test has it)
+			boolean m = us.bringardner.fsh.GlobPattern.compile(b).matches(a);
+			return op.equals("=~") == m;
+		}
 		case "<": return a.compareTo(b) < 0;
 		case ">": return a.compareTo(b) > 0;
 		case "-nt":
@@ -231,8 +322,12 @@ public class Test extends ShellCommand{
 	}
 
 	private static long integer(String s) {
+		String t = s.trim();
+		if( !t.matches("[-+]?[0-9]+")) {
+			throw new TestError(s+": integer expected");
+		}
 		try {
-			return Long.parseLong(s.trim());
+			return Long.parseLong(t.startsWith("+") ? t.substring(1) : t);
 		} catch (NumberFormatException e) {
 			throw new TestError(s+": integer expected");
 		}
@@ -272,7 +367,60 @@ public class Test extends ShellCommand{
 			return o != us.bringardner.fsh.Console.Option.Unsupported && o != us.bringardner.fsh.Console.Option.Option
 					&& ctx.console.isOptionEnabled(o);
 		}
-		case "-t": return false;
+		case "-t": {
+			// a descriptor on a terminal
+			String n = val.trim();
+			int fd = n.matches("[-+]?[0-9]{1,9}") ? Integer.parseInt(n.startsWith("+") ? n.substring(1) : n) : -1;
+			switch (fd) {
+			case 0: return us.bringardner.fsh.Console.isKeyboard(ctx.stdin);
+			case 1: return ctx.stdout == us.bringardner.fsh.Console.System_out && us.bringardner.fsh.NativeKeyboard.terminal();
+			case 2: return ctx.stderr == us.bringardner.fsh.Console.System_err && us.bringardner.fsh.NativeKeyboard.terminal();
+			default: return false;
+			}
+		}
+		case "-R":
+			// a nameref
+			return ctx.rawVariable(val) instanceof ShellContext.NameRef;
+		}
+		if( val.isEmpty()) {
+			// (no file has no name)
+			return false;
+		}
+		java.util.Map<String,Object> st = stat(ctx, val, !op.equals("-h") && !op.equals("-L"));
+		if( st != null || isLocal(ctx, val)) {
+			if( st == null ) {
+				return false;
+			}
+			int mode = (Integer) st.get("mode");
+			int type = mode & 0170000;
+			java.nio.file.Path path = path(ctx, val);
+			switch (op) {
+			case "-e":
+			case "-a": return true;
+			case "-f": return type == 0100000;
+			case "-d": return type == 0040000;
+			case "-c": return type == 0020000;
+			case "-b": return type == 0060000;
+			case "-p": return type == 0010000;
+			case "-S": return type == 0140000;
+			case "-h":
+			case "-L": return type == 0120000;
+			case "-s": return ((Number) st.get("size")).longValue() > 0;
+			case "-u": return (mode & 04000) != 0;
+			case "-g": return (mode & 02000) != 0;
+			case "-k": return (mode & 01000) != 0;
+			case "-r": return java.nio.file.Files.isReadable(path);
+			case "-w": return java.nio.file.Files.isWritable(path);
+			case "-x": return java.nio.file.Files.isExecutable(path);
+			case "-O": return String.valueOf(st.get("uid")).equals(String.valueOf(ctx.getVariable("EUID")));
+			case "-G": return String.valueOf(st.get("gid")).equals(String.valueOf(firstGroup(ctx)));
+			case "-N": {
+				java.nio.file.attribute.FileTime m = (java.nio.file.attribute.FileTime) st.get("lastModifiedTime");
+				java.nio.file.attribute.FileTime a = (java.nio.file.attribute.FileTime) st.get("lastAccessTime");
+				return m.compareTo(a) > 0;
+			}
+			default: return false;
+			}
 		}
 		try {
 			FileSource file = ctx.getFileSource(val);
@@ -294,6 +442,41 @@ public class Test extends ShellCommand{
 		}
 	}
 
+	/** the real path of a name in a local directory (null for another file system) */
+	static java.nio.file.Path path(ShellContext ctx, String val) {
+		try {
+			FileSource f = ctx.getFileSource(val);
+			if( f instanceof us.bringardner.parley.files.fileproxy.FileProxy p ) {
+				return p.getTarget().toPath();
+			}
+		} catch (IOException e) {
+		}
+		return null;
+	}
+
+	private static boolean isLocal(ShellContext ctx, String val) {
+		return path(ctx, val) != null;
+	}
+
+	/** the file's unix attributes (mode, uid, gid, ino, dev, size, times), or null if it is not there */
+	static java.util.Map<String,Object> stat(ShellContext ctx, String val, boolean follow) {
+		java.nio.file.Path p = path(ctx, val);
+		if( p == null ) {
+			return null;
+		}
+		try {
+			return java.nio.file.Files.readAttributes(p, "unix:*", follow ? new java.nio.file.LinkOption[0] : new java.nio.file.LinkOption[] {java.nio.file.LinkOption.NOFOLLOW_LINKS});
+		} catch (IOException | UnsupportedOperationException | IllegalArgumentException e) {
+			return null;
+		}
+	}
+
+	/** the shell's group (bash's egid) */
+	private static Object firstGroup(ShellContext ctx) {
+		Object g = ctx.getVariable("GROUPS");
+		return g instanceof java.util.List<?> l && !l.isEmpty() ? l.get(0) : null;
+	}
+
 	/** f1 -nt -ot -ef f2 (also used by test and [ ]) */
 	public static boolean fileCompare(String a, String op, String b, ShellContext ctx) {
 		try {
@@ -302,7 +485,15 @@ public class Test extends ShellCommand{
 			switch (op) {
 			case "-nt": return f1.exists() && (!f2.exists() || f1.lastModified() > f2.lastModified());
 			case "-ot": return f2.exists() && (!f1.exists() || f1.lastModified() < f2.lastModified());
-			default: return f1.exists() && f2.exists() && f1.getCanonicalPath().equals(f2.getCanonicalPath());
+			default: {
+				java.util.Map<String,Object> s1 = stat(ctx, a, true);
+				java.util.Map<String,Object> s2 = stat(ctx, b, true);
+				if( s1 != null && s2 != null ) {
+					// the same device and inode (a hard link too)
+					return s1.get("dev").equals(s2.get("dev")) && s1.get("ino").equals(s2.get("ino"));
+				}
+				return f1.exists() && f2.exists() && f1.getCanonicalPath().equals(f2.getCanonicalPath());
+			}
 			}
 		} catch (IOException e) {
 			return false;

@@ -285,6 +285,16 @@ public class TestIfStatement extends AbstractConsoleTest{
 		assertEquals("", err);
 	}
 
+	/** the file's uid (gid) is the user's (the first of the user's groups) */
+	private static boolean owned(FileSource file, String which) throws Exception {
+		java.nio.file.Path p = new File(file.getAbsolutePath()).toPath();
+		Object id = java.nio.file.Files.getAttribute(p, "unix:"+which);
+		Class<?> c = Class.forName("com.sun.security.auth.module.UnixSystem");
+		Object u = c.getConstructor().newInstance();
+		Object mine = c.getMethod(which.equals("uid") ? "getUid" : "getGid").invoke(u);
+		return String.valueOf(id).equals(String.valueOf(mine));
+	}
+
 	@Test
 	public void testIfStatent03_2() throws Exception{
 		File testFilesDir = new File("LnTestFiles").getCanonicalFile();
@@ -310,14 +320,15 @@ public class TestIfStatement extends AbstractConsoleTest{
 				"p","no",
 				"r","yes",
 				"s","yes",
-				"t","no",
+				// (-t takes a descriptor: test says integer expected for a file name, as bash)
 				"u","no",
 				"w","yes",
 				"x",file.canExecute()?"yes":"no",
-				"G","no",
+				// -G and -O: the file's group and owner are the user's, as bash checks them
+				"G",owned(file, "gid")?"yes":"no",
 				"L","no",
 				"N","no",
-				"O","no",
+				"O",owned(file, "uid")?"yes":"no",
 				"S","no",
 
 		};

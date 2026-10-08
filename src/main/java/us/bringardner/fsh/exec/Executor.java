@@ -1281,7 +1281,7 @@ public final class Executor {
 		} catch (ExpansionError e) {
 			return expansionError(sc, e);
 		} catch (IOException e) {
-			error(sc, e.getMessage());
+			error(sc, message(e));
 			return 1;
 		} finally {
 			streams.restore(sc);
@@ -1347,6 +1347,11 @@ public final class Executor {
 			if( dot > 0 ) {
 				msg = msg.substring(dot+1);
 			}
+		}
+		// Java's "file (reason)" is bash's "file: reason"
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(.*) \\(([A-Z][^()]*)\\)$").matcher(msg);
+		if( e instanceof java.io.FileNotFoundException && m.matches()) {
+			msg = m.group(1)+": "+m.group(2);
 		}
 		return msg;
 	}

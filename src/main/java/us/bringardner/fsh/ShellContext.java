@@ -782,6 +782,17 @@ $
 		switch (name) {
 		case "PPID":
 			return ProcessHandle.current().parent().map(ProcessHandle::pid).orElse(0L);
+		case "GROUPS": {
+			// the groups the user is in, the effective one first
+			if( groups == null ) {
+				groups = findGroups();
+			}
+			FshList ret = new FshList();
+			for(long g : groups) {
+				ret.add(String.valueOf(g));
+			}
+			return ret;
+		}
 		case "UID":
 		case "EUID":
 			if( userId == null ) {
@@ -802,6 +813,29 @@ $
 		default:
 			return null;
 		}
+	}
+
+	private static volatile long [] groups;
+
+	private static long [] findGroups() {
+		try {
+			Class<?> c = Class.forName("com.sun.security.auth.module.UnixSystem");
+			Object u = c.getConstructor().newInstance();
+			long gid = (Long) c.getMethod("getGid").invoke(u);
+			long [] all = (long []) c.getMethod("getGroups").invoke(u);
+			java.util.LinkedHashSet<Long> ret = new java.util.LinkedHashSet<>();
+			ret.add(gid);
+			for(long g : all) {
+				ret.add(g);
+			}
+			return ret.stream().mapToLong(Long::longValue).toArray();
+		} catch (Throwable e) {
+		}
+		String id = run("id", "-G");
+		if( id == null ) {
+			return new long[0];
+		}
+		return java.util.Arrays.stream(id.trim().split("\\s+")).filter(x -> x.matches("[0-9]+")).mapToLong(Long::parseLong).toArray();
 	}
 
 	private static Long findUserId() {
