@@ -134,15 +134,24 @@ public class Trap extends ShellCommand implements SignalHandler {
 		if( print ) {
 			// trap -p [sigspec ...]: the traps as commands that set them again
 			java.util.Set<String> only = new java.util.HashSet<>();
+			int ret = 0;
 			for(String w : words) {
+				if( !validSignal(w)) {
+					ctx.error("trap: "+w+": invalid signal specification");
+					ret = 1;
+					continue;
+				}
 				only.add(normalName(w));
+			}
+			if( ret != 0 && only.isEmpty()) {
+				return ret;
 			}
 			for(String[] t : ctx.console.traps()) {
 				if( only.isEmpty() || only.contains(t[0])) {
 					ctx.stdout.println(actions ? t[1] : "trap -- '"+t[1].replace("'", "'\\''")+"' "+t[0]);
 				}
 			}
-			return 0;
+			return ret;
 		}
 		if( words.size() == 1 && !validSignal(words.get(0)) && !words.get(0).equals("-")) {
 			// one word that is not a signal: no action for it

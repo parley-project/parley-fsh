@@ -64,6 +64,15 @@ public class Hash extends ShellCommand {
 				}
 			}
 		}
+		if( delete && idx >= args.length ) {
+			ctx.error("hash: -d: option requires an argument");
+			return 1;
+		}
+		if( !ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Hashall)) {
+			// set +o hashall
+			ctx.error("hash: hashing disabled");
+			return 1;
+		}
 		Map<String,Object []> table = ctx.console.hashTable;
 		if( reset ) {
 			table.clear();

@@ -55,12 +55,33 @@ public class Kill extends ShellCommand{
 		String listName = null;
 		JobManager jm = ctx.console.jobManager;
 
+		final String usage = "kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]";
+		if( args.length == 0 ) {
+			ctx.stderr.println(usage);
+			return 2;
+		}
+		boolean options = true;
 		// parse all the args
 		for (int idx = 0; idx < args.length; idx++) {
 			Argument a = args[idx];
 			String val = (""+a.getValue(ctx)).trim();
 			if( val.isEmpty()) {
+				ctx.error("kill: `': not a pid or valid job spec");
+				ret = 1;
 				continue;
+			}
+			if( options && val.equals("--")) {
+				options = false;
+				continue;
+			}
+			if( options && (val.equals("-s") || val.equals("-n")) && idx == args.length-1 ) {
+				ctx.error("kill: "+val+": option requires an argument");
+				return 2;
+			}
+			if( options && val.startsWith("-") && !val.equals("-l") && !val.equals("-L") && !val.equals("-s") && !val.equals("-n")
+					&& !val.substring(1).matches("[0-9]+") && signalNumber(val.substring(1)) < 0 ) {
+				ctx.error("kill: "+val.substring(1)+": invalid signal specification");
+				return 1;
 			}
 			//[-s sigspec] [-n signum] [-sigspec] id [...]
 			if( val.equals("-l") || val.equals("-L")) {
@@ -99,7 +120,7 @@ public class Kill extends ShellCommand{
 			} else if( val.matches("\\d+") && jm.getJobByPid(Long.parseLong(val)) == null ) {
 				processes.add(Long.parseLong(val));
 			} else if( !val.startsWith("%") && !val.matches("\\d+")) {
-				ctx.error("kill: "+val+": arguments must be process or job IDs");
+				ctx.error("kill: `"+val+"': not a pid or valid job spec");
 				ret = 1;
 			} else {
 				IJob job;
@@ -153,8 +174,8 @@ public class Kill extends ShellCommand{
 				return ret;
 			}
 			if( jobs.size()==0) {
-				ctx.error("kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]");
-				return 1;
+				ctx.stderr.println(usage);
+				return 2;
 			}
 			for(IJob job: jobs) {
 				signalJob(job, sig);

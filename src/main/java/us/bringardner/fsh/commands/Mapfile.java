@@ -45,7 +45,15 @@ public class Mapfile extends ShellCommand{
 				case "-n": max = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
 				case "-s": skip = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
 				case "-O": origin = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
-				case "-u": fromFd = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
+				case "-u": {
+					String fd = ""+args[++idx].getValue(ctx);
+					if( !fd.trim().matches("[0-9]+")) {
+						ctx.error(getName()+": "+fd+": invalid file descriptor specification");
+						return 1;
+					}
+					fromFd = Integer.parseInt(fd.trim());
+					break;
+				}
 				case "-C": callback = ""+args[++idx].getValue(ctx); break;
 				case "-c":
 					quantum = Integer.parseInt(""+args[++idx].getValue(ctx));
@@ -70,6 +78,14 @@ public class Mapfile extends ShellCommand{
 				ctx.error(getName()+": "+text+": option requires a number");
 				return 2;
 			}
+		}
+		if( var.isEmpty()) {
+			ctx.error(getName()+": empty array variable name");
+			return 1;
+		}
+		if( !var.matches("[A-Za-z_][A-Za-z_0-9]*")) {
+			ctx.error(getName()+": `"+var+"': not a valid identifier");
+			return 1;
 		}
 		FshList lines = new FshList();
 		InputStream in = ctx.stdin;

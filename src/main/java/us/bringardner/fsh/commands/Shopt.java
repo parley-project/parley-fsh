@@ -32,8 +32,14 @@ public class Shopt extends ShellCommand{
 			if( text.startsWith("-") && text.length() > 1 && names.isEmpty()) {
 				for(char c : text.substring(1).toCharArray()) {
 					switch (c) {
-					case 's': set = true; break;
-					case 'u': set = false; break;
+					case 's':
+					case 'u':
+						if( set != null && set != (c == 's')) {
+							ctx.error("shopt: cannot set and unset shell options simultaneously");
+							return 1;
+						}
+						set = c == 's';
+						break;
 					case 'p': print = true; break;
 					case 'q': quiet = true; break;
 					// set -o's options

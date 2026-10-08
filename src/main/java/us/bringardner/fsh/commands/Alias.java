@@ -24,18 +24,24 @@ public class Alias extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
+		boolean options = true;
 		for(Argument arg : args) {
 			String text = ""+arg.getValue(ctx);
-			if( text.startsWith("-")) {
-				if(text.equals("-p")) {
-					for(String name : ctx.console.getAliases().keySet()) {
-						printAlias(ctx,name, ctx.console.getAlias(name));
+			if( options && text.equals("--")) {
+				options = false;
+			} else if( options && text.startsWith("-") && text.length() > 1 ) {
+				for(char c : text.substring(1).toCharArray()) {
+					if( c != 'p' ) {
+						ctx.error("alias: -"+c+": invalid option");
+						ctx.stderr.println("alias: usage: alias [-p] [name[=value] ... ]");
+						return 2;
 					}
-				} else {
-					// invalid??
-					throw new IOException("Don't know what to do for '"+text+"'");
+				}
+				for(String name : new java.util.TreeSet<>(ctx.console.getAliases().keySet())) {
+					printAlias(ctx,name, ctx.console.getAlias(name));
 				}
 			} else {
+				options = false;
 				int eq = text.indexOf('=');
 				if( eq > 0 ) {
 					// name=value

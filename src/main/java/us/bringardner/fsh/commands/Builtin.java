@@ -26,13 +26,25 @@ public class Builtin extends ShellCommand{
 		if( args.length == 0 ) {
 			return 0;
 		}
+		int first = 0;
 		String n = ""+args[0].getValue(ctx);
+		if( n.equals("--")) {
+			if( args.length == 1 ) {
+				return 0;
+			}
+			first = 1;
+			n = ""+args[1].getValue(ctx);
+		} else if( n.startsWith("-") && n.length() > 1 ) {
+			ctx.error("builtin: "+n.substring(0, 2)+": invalid option");
+			ctx.stderr.println("builtin: usage: builtin [shell-builtin [arg ...]]");
+			return 2;
+		}
 		Constructor<? extends ShellCommand> con = ctx.console.builtin(n);
 		if( con == null ) {
 			ctx.error("builtin: "+n+": not a shell builtin");
 			return 1;
 		}
-		return run(con, Arrays.copyOfRange(args, 1, args.length), ctx);
+		return run(con, Arrays.copyOfRange(args, first+1, args.length), ctx);
 	}
 
 	static int run(Constructor<? extends ShellCommand> con, us.bringardner.fsh.Argument[] args, ShellContext ctx) throws IOException {

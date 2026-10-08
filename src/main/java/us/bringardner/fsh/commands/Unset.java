@@ -45,7 +45,7 @@ public class Unset extends ShellCommand{
 					reference |= c == 'n';
 				} else {
 					ctx.error("unset: -"+c+": invalid option");
-					ctx.error("unset: usage: unset [-f] [-v] [name ...]");
+					ctx.stderr.println("unset: usage: unset [-f] [-v] [-n] [name ...]");
 					return 2;
 				}
 			}
@@ -66,6 +66,12 @@ public class Unset extends ShellCommand{
 					text = target;
 					viaRef = true;
 				}
+			}
+			if( !functions && (text.equals("BASH_LINENO") || text.equals("BASH_SOURCE"))) {
+				// (bash keeps these)
+				ctx.error("unset: "+text+": cannot unset");
+				ret = 1;
+				continue;
 			}
 			String ro = reference || functions ? text : ctx.readonlyName(text);
 			if( ctx.console.isReadonly(ro) && !functions ) {
@@ -109,6 +115,11 @@ public class Unset extends ShellCommand{
 					}
 				}
 			} else if( functions ) {
+				if( ctx.console.isReadonlyFunction(text)) {
+					ctx.error("unset: "+text+": cannot unset: readonly function");
+					ret = 1;
+					continue;
+				}
 				ctx.removeFunction(text);
 			} else {
 				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS") || text.equals("BASH_ALIASES") || text.equals("BASH_CMDS")) {

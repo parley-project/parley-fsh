@@ -20,19 +20,31 @@ public class Unalias extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
+		if( args.length == 0 ) {
+			ctx.stderr.println("unalias: usage: unalias [-a] name [name ...]");
+			return 2;
+		}
+		boolean options = true;
 		for(Argument arg : args) {
 			String text = ""+arg.getValue(ctx);
-			if( text.startsWith("-")) {
-				if(text.equals("-a")) {
-					ctx.console.clearAliases();
-				} else {
-					// invalid??
-					throw new IOException("Don't know what to do for '"+text+"'");
+			if( options && text.equals("--")) {
+				options = false;
+			} else if( options && text.startsWith("-") && text.length() > 1 ) {
+				for(char c : text.substring(1).toCharArray()) {
+					if( c != 'a' ) {
+						ctx.error("unalias: -"+c+": invalid option");
+						ctx.stderr.println("unalias: usage: unalias [-a] name [name ...]");
+						return 2;
+					}
 				}
+				ctx.console.clearAliases();
+				return 0;
 			} else if( ctx.console.getAlias(text) == null ) {
+				options = false;
 				ctx.error("unalias: "+text+": not found");
 				ret = 1;
 			} else {
+				options = false;
 				ctx.console.removeAlias(text);
 			}
 		}

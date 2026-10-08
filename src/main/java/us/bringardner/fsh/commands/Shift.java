@@ -29,22 +29,33 @@ public class Shift extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
-		int n =1;
-		if( args.length>0) {
-			n = Integer.parseInt(""+args[0].getValue(ctx));
+		int first = args.length > 0 && "--".equals(""+args[0].getValue(ctx)) ? 1 : 0;
+		if( args.length > first+1 ) {
+			ctx.error("shift: too many arguments");
+			return 1;
+		}
+		long n = 1;
+		if( args.length > first ) {
+			String text = (""+args[first].getValue(ctx)).trim();
+			if( !text.matches("[-+]?[0-9]{1,18}")) {
+				ctx.error("shift: "+text+": numeric argument required");
+				return 1;
+			}
+			n = Long.parseLong(text.startsWith("+") ? text.substring(1) : text);
 		}
 		List<Object> tmp = ctx.getPositionalParameterValues();
-		if( n > tmp.size()) {
-			// as in bash, nothing is shifted and the status is 1
+		if( n < 0 || n > tmp.size()) {
+			// as in bash: nothing is shifted, the status is 1 (said for a negative count, or with
+			// shopt -s shift_verbose)
+			if( n < 0 || us.bringardner.fsh.Glob.option(ctx, "shift_verbose")) {
+				ctx.error("shift: "+n+": shift count out of range");
+			}
 			return 1;
 		}
 		if( n > 0 ) {
-			ctx.setPositionalParameterValues(new ArrayList<>(tmp.subList(n, tmp.size())));
+			ctx.setPositionalParameterValues(new ArrayList<>(tmp.subList((int) n, tmp.size())));
 		}
-		return ret;
+		return 0;
 	}
-
-	
 
 }

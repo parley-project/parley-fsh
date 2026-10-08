@@ -72,8 +72,62 @@ public final class Declarations {
 			}
 			return ret;
 		}
+		boolean readonlyCommand = command.equals("readonly");
+		for(char c : o.toCharArray()) {
+			if( (readonlyCommand ? "aAfpgrn" : "aAfFgiIlnprtuxc").indexOf(c) < 0 ) {
+				error(command, "-"+c+": invalid option");
+				sc.stderr.println(readonlyCommand ? "readonly: usage: readonly [-aAf] [name[=value] ...] or readonly -p"
+						: command.equals("local") ? "local: usage: local [option] name[=value] ..."
+						: command+": usage: "+command+" [-aAfFgiIlnrtux] [name[=value] ...] or "+command+" -p [-aAfFilnrtux] [name ...]");
+				return 2;
+			}
+		}
+		if( readonlyCommand ) {
+			// (readonly -n: as readonly)
+			o = o.replace("n", "");
+		}
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
-			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0);
+			for(char c : o.toCharArray()) {
+				if( "aAilnuIc".indexOf(c) >= 0 ) {
+					// (functions have no such attribute)
+					error(command, "-"+c+": invalid option");
+					return 1;
+				}
+			}
+			for(Object item : items) {
+				if( item instanceof Ast.Assignment || String.valueOf(item).contains("=")) {
+					error(command, "cannot use `-f' to make functions");
+					return 1;
+				}
+			}
+			if( (o.indexOf('r') >= 0 || o.indexOf('x') >= 0) && !items.isEmpty() && o.indexOf('p') < 0 ) {
+				// declare -fr name, declare -fx name, +x: the attributes
+				int ret = 0;
+				for(Object item : items) {
+					String n = String.valueOf(item);
+					ShellFunction f = sc.getFunction(n);
+					if( f == null ) {
+						error(command, n+": not found");
+						ret = 1;
+						continue;
+					}
+					if( o.indexOf('r') >= 0 ) {
+						if( remove ) {
+							if( sc.console.isReadonlyFunction(n)) {
+								error(command, n+": readonly function");
+								ret = 1;
+							}
+						} else {
+							sc.console.setReadonlyFunction(n);
+						}
+					}
+					if( o.indexOf('x') >= 0 ) {
+						f.setExported(!remove);
+					}
+				}
+				return ret;
+			}
+			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0, o.indexOf('r') >= 0 && !remove);
 		}
 		if( isLocal && !items.isEmpty() && o.equals("p")) {
 			// local -p names: the function's own variables only
@@ -289,6 +343,12 @@ public final class Declarations {
 						continue;
 					}
 				}
+			}
+			if( remove && o.indexOf('r') >= 0 && sc.console.isReadonly(name)) {
+				// declare +r: readonly stays
+				error(command, name+": readonly variable");
+				status = 1;
+				continue;
 			}
 			if( remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0)) {
 				// declare +a: not for an array
@@ -662,7 +722,7 @@ public final class Declarations {
 	}
 
 	/** declare -f [name ...]: functions as code; -F: their names */
-	private int functions(String command, List<Object> items, boolean names, boolean p, boolean exported) {
+	private int functions(String command, List<Object> items, boolean names, boolean p, boolean exported, boolean readonly) {
 		List<String> wanted = new ArrayList<>();
 		for(Object item : items) {
 			wanted.add(item instanceof Ast.Assignment a ? a.name : String.valueOf(item));
@@ -670,7 +730,7 @@ public final class Declarations {
 		if( wanted.isEmpty()) {
 			for(String n : new TreeSet<>(sc.console.getFunctions().keySet())) {
 				// (declare -xf: the exported ones)
-				if( !exported || sc.console.getFunctions().get(n).isExported()) {
+				if( (!exported || sc.console.getFunctions().get(n).isExported()) && (!readonly || sc.console.isReadonlyFunction(n))) {
 					wanted.add(n);
 				}
 			}
@@ -685,7 +745,9 @@ public final class Declarations {
 				}
 				ret = 1;
 			} else if( names ) {
-				sc.stdout.println(items.isEmpty() ? "declare -f "+name : name);
+				// (with its attributes: declare -fr f, declare -fx f)
+				String flags = "f"+(sc.console.isReadonlyFunction(name) ? "r" : "")+(f.isExported() ? "x" : "");
+				sc.stdout.println(items.isEmpty() ? "declare -"+flags+" "+name : name);
 			} else {
 				sc.stdout.println(f.declaration());
 			}

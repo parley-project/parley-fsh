@@ -35,11 +35,19 @@ public class CommandCmd extends ShellCommand{
 			if( a.equals("--")) {
 				idx++;
 				break;
-			} else if( a.equals("-v") || a.equals("-V") || a.equals("-p")) {
-				if( !a.equals("-p")) {
-					mode = a;
+			} else if( a.matches("-[pvV]+")) {
+				// (-pv, -Vp ...)
+				if( a.contains("V")) {
+					mode = "-V";
+				} else if( a.contains("v")) {
+					mode = "-v";
 				}
 				idx++;
+			} else if( a.startsWith("-") && a.length() > 1 ) {
+				char bad = a.substring(1).chars().filter(c -> "pvV".indexOf(c) < 0).mapToObj(c -> (char) c).findFirst().orElse('?');
+				ctx.error("command: -"+bad+": invalid option");
+				ctx.stderr.println("command: usage: command [-pVv] command [arg ...]");
+				return 2;
 			} else {
 				break;
 			}

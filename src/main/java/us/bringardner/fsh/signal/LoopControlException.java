@@ -11,8 +11,16 @@ public class LoopControlException extends FshException {
 	public final LoopControl type;
 	public final int howFar;
 
+	/** the loop's status after it (break 0: 1) */
+	public final int status;
+
 	public LoopControlException(LoopControl type, int howFar) {
+		this(type, howFar, 0);
+	}
+
+	public LoopControlException(LoopControl type, int howFar, int status) {
 		this.type = type;
 		this.howFar = howFar;
+		this.status = status;
 	}
 }

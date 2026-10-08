@@ -48,6 +48,11 @@ public class Source extends ShellCommand{
 				first += 2;
 				continue;
 			}
+			if( a.startsWith("-") && a.length() > 1 && !a.equals("-p")) {
+				ctx.error(getName()+": "+a.substring(0, 2)+": invalid option");
+				ctx.stderr.println(getName()+": usage: "+getName()+" [-p path] filename [arguments]");
+				return 2;
+			}
 			break;
 		}
 		if( first >= args.length ) {

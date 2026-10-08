@@ -89,7 +89,8 @@ public class Set extends ShellCommand{
 							// as bash says it
 							String tmp = "set: "+(set?"-":"+")+c+": invalid option";
 							ctx.error(tmp);
-							return 1;
+							ctx.stderr.println("set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]");
+							return 2;
 						}
 						if( o == Option.Option) {
 							// (set -o -B: -o lists the options, then -B is read, as bash does)

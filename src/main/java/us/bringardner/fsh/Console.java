@@ -376,6 +376,7 @@ delimiter
 		commands = new TreeMap<>();
 		
 		registerCommand(new Alias());
+		registerCommand(new us.bringardner.fsh.commands.Logout());
 
 		registerCommand(new Bg());
 
@@ -2798,8 +2799,17 @@ delimiter
 		private final List<String> dirStack;
 		private final Integer umask;
 		private final Map<String,Object []> hashTable;
+		/** attributes: a subshell's readonly, -i, -l/-u and readonly functions are its own */
+		private final java.util.Set<String> readonly, integer, readonlyFunctions, declaredUnset, pendingExports;
+		private final Map<String,Character> cases;
 
 		private Snapshot(Console c) throws IOException {
+			readonly = new java.util.HashSet<>(c.readonlyVariables);
+			integer = new java.util.HashSet<>(c.integerVariables);
+			readonlyFunctions = new java.util.HashSet<>(c.readonlyFunctions);
+			declaredUnset = new java.util.HashSet<>(c.declaredUnset);
+			pendingExports = new java.util.HashSet<>(c.pendingExports);
+			cases = new java.util.HashMap<>(c.caseVariables);
 			processSettings = new ArrayList<>(c.processSettings);
 			dirStack = new ArrayList<>(c.dirStack);
 			umask = c.umask;
@@ -2829,6 +2839,18 @@ delimiter
 		// (umask, ulimit and hash in a subshell are its own)
 		processSettings.clear();
 		processSettings.addAll(s.processSettings);
+		readonlyVariables.clear();
+		readonlyVariables.addAll(s.readonly);
+		integerVariables.clear();
+		integerVariables.addAll(s.integer);
+		readonlyFunctions.clear();
+		readonlyFunctions.addAll(s.readonlyFunctions);
+		declaredUnset.clear();
+		declaredUnset.addAll(s.declaredUnset);
+		pendingExports.clear();
+		pendingExports.addAll(s.pendingExports);
+		caseVariables.clear();
+		caseVariables.putAll(s.cases);
 		dirStack.clear();
 		dirStack.addAll(s.dirStack);
 		umask = s.umask;

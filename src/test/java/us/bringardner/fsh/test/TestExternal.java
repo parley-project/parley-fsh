@@ -191,7 +191,8 @@ public class TestExternal extends AbstractConsoleTest {
 		String expectOut = "\n";
 		String stdIn = "";
 		// as bash says it in a script ($0 is fsh here): the line, then the builtin
-		String expectErr = "fsh: line 1: set: -O: invalid option\n";
+		String expectErr = "fsh: line 1: set: -O: invalid option\n"
+				+ "set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]\n";
 		int exitCode = 0;
 		boolean tmp = showError;
 		showError = false;

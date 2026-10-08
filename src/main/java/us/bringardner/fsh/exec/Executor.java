@@ -735,9 +735,9 @@ public final class Executor {
 			status[0] = list(body, sc);
 			return null;
 		} catch (LoopControlException e) {
-			status[0] = 0;
+			status[0] = e.status;
 			if( e.howFar > 1 ) {
-				throw new LoopControlException(e.type, e.howFar-1);
+				throw new LoopControlException(e.type, e.howFar-1, e.status);
 			}
 			return e.type;
 		}
@@ -773,7 +773,12 @@ public final class Executor {
 			}
 		}
 		if( !isName(f.variable)) {
+			sc.line = f.line;
 			error(sc, "`"+f.variable+"': not a valid identifier");
+			if( sc.console.isOptionEnabled(Option.Posix) && !sc.console.isInteractive ) {
+				// (fatal in posix mode)
+				throw new ExitException(sc, 1);
+			}
 			return 1;
 		}
 		StringBuilder header = new StringBuilder("for "+f.variable);
@@ -804,6 +809,13 @@ public final class Executor {
 						continue;
 					}
 					sc.retarget(f.variable, v);
+				} else if( sc.console.isReadonly(sc.readonlyName(f.variable))) {
+					// (said, and the loop ends; in posix mode the shell)
+					error(sc, sc.readonlyName(f.variable)+": readonly variable");
+					if( sc.console.isOptionEnabled(Option.Posix) && !sc.console.isInteractive ) {
+						throw new ExitException(sc, 1);
+					}
+					return 1;
 				} else {
 					sc.setVariable(f.variable, v);
 				}
@@ -857,6 +869,14 @@ public final class Executor {
 
 	/** select name in words: a numbered menu on standard error, a choice read from standard input */
 	private int select(Ast.Select s, ShellContext sc) throws IOException {
+		if( !isName(s.variable)) {
+			sc.line = s.line;
+			error(sc, "`"+s.variable+"': not a valid identifier");
+			if( sc.console.isOptionEnabled(Option.Posix) && !sc.console.isInteractive ) {
+				throw new ExitException(sc, 1);
+			}
+			return 1;
+		}
 		List<String> entries;
 		if( s.words == null ) {
 			entries = new ArrayList<>();
@@ -912,6 +932,13 @@ public final class Executor {
 						return 1;
 					}
 					sc.retarget(s.variable, choice);
+				} else if( sc.console.isReadonly(sc.readonlyName(s.variable))) {
+					sc.line = s.line;
+					error(sc, sc.readonlyName(s.variable)+": readonly variable");
+					if( sc.console.isOptionEnabled(Option.Posix) && !sc.console.isInteractive ) {
+						throw new ExitException(sc, 1);
+					}
+					return 1;
 				} else {
 					sc.setVariable(s.variable, choice);
 				}
@@ -1325,7 +1352,14 @@ public final class Executor {
 			return 1;
 		}
 		if( sc.console.isReadonlyFunction(f.name)) {
-			error(sc, f.name+": readonly function");
+			// (said at the line it ends on, as bash's)
+			int saved = sc.line;
+			sc.line = f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+			try {
+				error(sc, f.name+": readonly function");
+			} finally {
+				sc.line = saved;
+			}
 			return 1;
 		}
 		sc.addFunction(new AstFunction(f, this));
@@ -1839,7 +1873,16 @@ public final class Executor {
 		case "continue":
 			return loopControl(name, strings(args), sc);
 		case "eval": {
-			String code = String.join(" ", strings(args)).trim();
+			List<String> evalArgs = strings(args);
+			if( !evalArgs.isEmpty() && evalArgs.get(0).equals("--")) {
+				evalArgs = evalArgs.subList(1, evalArgs.size());
+			} else if( !evalArgs.isEmpty() && evalArgs.get(0).startsWith("-") && evalArgs.get(0).length() > 1 ) {
+				// eval takes no options
+				error(sc, "eval: "+evalArgs.get(0).substring(0, 2)+": invalid option");
+				sc.stderr.println("eval: usage: eval [arg ...]");
+				return 2;
+			}
+			String code = String.join(" ", evalArgs).trim();
 			// (read as bash reads it: a newline at its end)
 			if( code.isEmpty()) {
 				return 0;
@@ -1955,11 +1998,19 @@ public final class Executor {
 			try {
 				n = Integer.parseInt(args.get(0));
 			} catch (NumberFormatException e) {
+				// (the shell ends, as bash's)
 				error(sc, name+": "+args.get(0)+": numeric argument required");
+				if( !sc.console.isInteractive ) {
+					throw new ExitException(sc, 1);
+				}
 				return 1;
 			}
 			if( n < 1 ) {
+				// (said, and the loop ends with status 1, as bash's)
 				error(sc, name+": "+args.get(0)+": loop count out of range");
+				if( sc.loopDepth > 0 ) {
+					throw new LoopControlException(LoopControl.Break, 1, 1);
+				}
 				return 1;
 			}
 		}
