@@ -3702,6 +3702,28 @@ delimiter
 		return ret;
 	}
 
+	/**
+	 * exit: the EXIT trap runs there (in a function, $FUNCNAME is it), as bash's.
+	 * @return the status to exit with (an exit in the trap gives its own)
+	 */
+	public int runExitTrapAt(ShellContext ctx, int status) {
+		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
+		if( actions == null ) {
+			return status;
+		}
+		setLastExitCode(status);
+		for(String action : actions) {
+			try {
+				us.bringardner.fsh.exec.Executor.run(ctx, action);
+			} catch (ExitException e) {
+				return e.exitCode;
+			} catch (Exception e) {
+				getStdErr().println(e.getMessage());
+			}
+		}
+		return status;
+	}
+
 	private void runExitTrap() {
 		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
 		if( actions != null ) {

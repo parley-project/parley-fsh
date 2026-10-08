@@ -46,7 +46,12 @@ public class Exit extends ShellCommand{
 			}
 		}
 		// a status is 0 to 255
-		throw new ExitException(ctx, (int) (((ret % 256)+256) % 256));
+		int status = (int) (((ret % 256)+256) % 256);
+		if( !ctx.isIsolated() && ctx.isInFunction()) {
+			// the EXIT trap runs here, in the function (its $FUNCNAME), as bash's
+			status = ctx.console.runExitTrapAt(ctx, status);
+		}
+		throw new ExitException(ctx, status);
 	}
 
 }

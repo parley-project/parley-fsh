@@ -549,7 +549,8 @@ $
 		if( name.equals("OPTIND")) {
 			optindAssigned(value);
 		}
-		if( value != null && !(value instanceof List<?> l && l.isEmpty()) && !(value instanceof Map<?,?> m && m.isEmpty())) {
+		if( value != null && !(value instanceof List<?> l && l.isEmpty()) && !(value instanceof Map<?,?> m && m.isEmpty()) && localScope(name) == null ) {
+			// (a global given a value; a local's is the local's)
 			console.declaredUnset.remove(name);
 		}
 		if( (name.equals("RANDOM") || name.equals("SECONDS")) && !console.unsetSpecials.contains(name) && value != null
@@ -731,7 +732,7 @@ $
 			throw new ReadonlyException(name);
 		}
 		FunctionInvocation scope = localScope(name);
-		if( scope != null && scope != functionStack.peek()) {
+		if( scope != null && scope != functionStack.peek() && !us.bringardner.fsh.Glob.option(this, "localvar_unset")) {
 			// a caller's local: gone, so what is below it (the global) is seen again (bash's)
 			scope.local.remove(name);
 			return true;
@@ -784,6 +785,9 @@ $
 		}
 		return ret;
 	}
+
+	/** the temporary assignments of the command running now (x=1 cmd), or null */
+	public List<Object[]> commandTemporaries;
 
 	/** the builtin running now (its name starts what the variables say: printf: `/': ...), or null */
 	public String builtin;
@@ -1141,6 +1145,23 @@ $
 	}
 
 	/** name is a local variable of the running function itself (not a caller's) */
+	/** name is readonly because a calling function made its local of it readonly */
+	public boolean readonlyFromCaller(String name) {
+		for (int i = 0; i < functionStack.size()-1; i++) {
+			if( functionStack.get(i).readonlyHere.contains(name)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** local -r name: readonly while the running function runs */
+	public void readonlyHere(String name) {
+		if( !functionStack.isEmpty()) {
+			functionStack.peek().readonlyHere.add(name);
+		}
+	}
+
 	/** local -: the set -o options are put back when the running function returns */
 	public void localOptions() {
 		if( !functionStack.isEmpty() && functionStack.peek().savedOptions == null ) {
@@ -1368,6 +1389,8 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
+		/** the locals it made readonly */
+		final java.util.Set<String> readonlyHere = new java.util.HashSet<>();
 		/** local -: the set -o options when it ran (put back when it returns), or null */
 		List<Console.Option> savedOptions;
 		/** readonly and integer of the names it made locals of, before (put back when it returns) */

@@ -75,6 +75,20 @@ public final class Declarations {
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
 			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0);
 		}
+		if( isLocal && !items.isEmpty() && o.equals("p")) {
+			// local -p names: the function's own variables only
+			int ret = 0;
+			for(Object item : items) {
+				String n = String.valueOf(item instanceof Ast.Assignment a ? a.name : item);
+				if( sc.isOwnLocal(n)) {
+					sc.stdout.println(declaration(n, sc.getVariable(n)));
+				} else {
+					error(command, n+": not found");
+					ret = 1;
+				}
+			}
+			return ret;
+		}
 		if( isLocal && items.isEmpty() && (o.isEmpty() || o.equals("p"))) {
 			// local, local -p: the function's own variables (local - first)
 			if( sc.hasLocalOptions()) {
@@ -203,10 +217,33 @@ public final class Declarations {
 				status = 1;
 				continue;
 			}
-			if( !local && !sc.console.temporaryAssignments.isEmpty()) {
-				// x=1 declare -r x: the temporary x stays (and exported), as bash's
+			if( !local && sc.commandTemporaries != null ) {
+				// x=1 declare -r x: the temporary x stays (and exported), as bash's; in a function it
+				// stays as the function's local
 				String declared = name;
-				sc.console.temporaryAssignments.peek().removeIf(t -> declared.equals(t[0]));
+				Object[] entry = null;
+				for(Object[] t : sc.commandTemporaries) {
+					if( declared.equals(t[0])) {
+						entry = t;
+					}
+				}
+				if( entry != null ) {
+					sc.commandTemporaries.remove(entry);
+					boolean outer = false;
+					for(List<Object[]> l : sc.console.temporaryAssignments) {
+						for(Object[] t : l) {
+							outer |= l != sc.commandTemporaries && declared.equals(t[0]);
+						}
+					}
+					if( sc.isInFunction() && !sc.hasLocal(name) && outer ) {
+						// (a=7 f, with a=3 readonly a in f: the temporary a of the call has it)
+						Object value = sc.getVariable(name);
+						sc.setGlobal(name, entry[1]);
+						sc.setEnvironmentVariable(name, entry[2]);
+						sc.localAttributes(name);
+						sc.setLocalVariable(name, value);
+					}
+				}
 			}
 			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef empty && empty.target().isEmpty()
 					&& !(local && sc.isInFunction() && !sc.isOwnLocal(name))) {
@@ -266,6 +303,11 @@ public final class Declarations {
 					status = 1;
 					continue;
 				}
+			}
+			if( local && sc.isInFunction() && !sc.isOwnLocal(name) && sc.readonlyFromCaller(name)) {
+				// a caller's readonly local: this function may have its own
+				sc.localAttributes(name);
+				sc.console.clearReadonly(name);
 			}
 			if( (assignment != null || text != null) && sc.console.isReadonly(name) && !remove ) {
 				boolean hasA = o.indexOf('a') >= 0 || o.indexOf('A') >= 0;
@@ -408,7 +450,7 @@ public final class Declarations {
 				}
 				continue;
 			}
-			if( local && sc.isInFunction() && !sc.isOwnLocal(name) && us.bringardner.fsh.Glob.option(sc, "localvar_inherit")) {
+			if( local && sc.isInFunction() && !sc.isOwnLocal(name) && (o.indexOf('I') >= 0 || us.bringardner.fsh.Glob.option(sc, "localvar_inherit"))) {
 				// shopt -s localvar_inherit: the local starts with the value (and attributes) it has
 				Object inherited = sc.getVariable(name);
 				if( inherited != null ) {
@@ -569,6 +611,9 @@ public final class Declarations {
 					continue;
 				}
 				sc.console.setReadonly(target);
+				if( local && sc.isInFunction()) {
+					sc.readonlyHere(target);
+				}
 			}
 			if( o.indexOf('x') >= 0 ) {
 				Object v = sc.getVariable(name);

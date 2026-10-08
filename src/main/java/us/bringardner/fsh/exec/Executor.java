@@ -1477,7 +1477,7 @@ public final class Executor {
 						// posix mode: an assignment before a special builtin stays (past the
 						// temporary ones of the commands it is in: var=1 f, with var=2 return in f)
 						sc.setVariable(a.name, v);
-						for(List<Object[]> outer : sc.console.temporaryAssignments) {
+						for(List<Object[]> outer : sc.hasLocal(a.name) ? List.<List<Object[]>>of() : sc.console.temporaryAssignments) {
 							for(Object[] o : outer) {
 								if( o[0].equals(a.name)) {
 									o[1] = v;
@@ -1497,7 +1497,7 @@ public final class Executor {
 					}
 					// (put back where it was: a local the command makes of it, as local x does, keeps
 					// the value)
-					saved.add(new Object[] {target, sc.console.getVariable(target), sc.getEvironmentVariable(target), !sc.hasLocal(target)});
+					saved.add(new Object[] {target, sc.hasLocal(target) ? sc.getVariable(target) : sc.console.getVariable(target), sc.getEvironmentVariable(target), !sc.hasLocal(target)});
 					sc.setVariable(target, v);
 					sc.setEnvironmentVariable(target, v);
 				}
@@ -1509,9 +1509,13 @@ public final class Executor {
 		if( saved != null ) {
 			sc.console.temporaryAssignments.push(saved);
 		}
+		// (the command's own temporary assignments: x=1 declare -r x keeps them)
+		List<Object[]> outerTemporaries = sc.commandTemporaries;
+		sc.commandTemporaries = saved;
 		try {
 			return redirected ? runRedirected(name, args, c, sc, ex) : run(name, args, c, sc, ex);
 		} finally {
+			sc.commandTemporaries = outerTemporaries;
 			if( saved != null ) {
 				sc.console.temporaryAssignments.remove(saved);
 				restore(saved, sc);
