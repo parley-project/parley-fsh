@@ -1,0 +1,10 @@
+declare -- x=$'a\nb'
+declare -a z=([0]=$'q\nr' [1]="s\"t")
+declare -A m=(["\$k"]="1" )
+declare -A t=(["~"]="3" )
+declare -A p=([plain]="2" )
+declare -i n
+declare -a b
+declare -rl l="abc"
+declare -a a=([0]="abc")
+declare -a d=([1]="" [5]="x y")

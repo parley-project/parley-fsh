@@ -34,6 +34,9 @@ public class Mapfile extends ShellCommand{
 		// -O n: put the lines from index n, keeping the array (without -O it is replaced)
 		Integer origin = null;
 		int fromFd = 0;
+		// -C callback -c quantum: callback index line, every quantum lines
+		String callback = null;
+		int quantum = 5000;
 		for(int idx = 0; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
 			try {
@@ -43,6 +46,14 @@ public class Mapfile extends ShellCommand{
 				case "-s": skip = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
 				case "-O": origin = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
 				case "-u": fromFd = Integer.parseInt(""+args[++idx].getValue(ctx)); break;
+				case "-C": callback = ""+args[++idx].getValue(ctx); break;
+				case "-c":
+					quantum = Integer.parseInt(""+args[++idx].getValue(ctx));
+					if( quantum <= 0 ) {
+						ctx.error(getName()+": "+quantum+": invalid callback quantum");
+						return 1;
+					}
+					break;
 				case "-d": {
 					String d = ""+args[++idx].getValue(ctx);
 					delim = d.isEmpty() ? '\0' : d.charAt(0);
@@ -74,18 +85,19 @@ public class Mapfile extends ShellCommand{
 		int read = 0;
 		int c;
 		while( (max < 0 || lines.size() < max) && (c = in.read()) >= 0 ) {
-			if( c != delim || !trim ) {
+			if( (c != delim || !trim) && c != 0 ) {
+				// (a value cannot hold NUL, as in bash)
 				line.write(c);
 			}
 			if( c == delim ) {
 				if( read++ >= skip ) {
-					lines.add(line.toString());
+					add(ctx, lines, line.toString(java.nio.charset.StandardCharsets.UTF_8), callback, quantum, origin);
 				}
 				line.reset();
 			}
 		}
 		if( line.size() > 0 && (max < 0 || lines.size() < max) && read >= skip ) {
-			lines.add(line.toString());
+			add(ctx, lines, line.toString(java.nio.charset.StandardCharsets.UTF_8), callback, quantum, origin);
 		}
 		if( origin != null ) {
 			Object old = ctx.getVariable(var);
@@ -106,5 +118,14 @@ public class Mapfile extends ShellCommand{
 		}
 		ctx.setVariable(var, lines);
 		return 0;
+	}
+
+	/** a line into the array; every quantum lines the callback runs first (index, line), as bash's */
+	private static void add(ShellContext ctx, FshList lines, String line, String callback, int quantum, Integer origin) throws IOException {
+		if( callback != null && (lines.size()+1) % quantum == 0 ) {
+			int index = (origin == null ? 0 : origin)+lines.size();
+			ctx.console.runCode(ctx, callback+" "+index+" '"+line.replace("'", "'\\''")+"'");
+		}
+		lines.add(line);
 	}
 }
