@@ -18,6 +18,86 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 */
 	private native int ready();
 
+	/**
+	 * on: Ctrl-C, Ctrl-Z and Ctrl-\ are read as keys instead of signalling the shell (the
+	 * interactive shell gives them to its foreground job).
+	 */
+	private native void setSignalKeys(boolean on);
+
+	/** what a key that stops or interrupts a job is read as when the shell has taken it */
+	public static final int KEY_INTR = -3;
+	public static final int CTRL_C = 3;
+	public static final int CTRL_Z = 26;
+	public static final int CTRL_BACKSLASH = 28;
+
+	/** told of Ctrl-C, Ctrl-Z and Ctrl-\; true if it took the key */
+	public interface ControlKeys {
+		boolean typed(int key);
+	}
+
+	/** set by the interactive shell while a job runs in the foreground */
+	public static volatile ControlKeys controlKeys;
+
+	/** keys read while a job ran (to find Ctrl-C and Ctrl-Z) that a reader has not had yet */
+	private static final ArrayDeque<Integer> typedAhead = new ArrayDeque<>();
+	private static final Object keyLock = new Object();
+	private static NativeKeyboard poller;
+
+	/** Ctrl-C, Ctrl-Z and Ctrl-\ as keys (on) or as signals (off, as without a shell) */
+	public static void signalKeys(boolean on) {
+		if( availible ) {
+			try {
+				new NativeKeyboard().setSignalKeys(on);
+			} catch (UnsatisfiedLinkError e) {
+				// an older library: they stay signals
+			}
+		}
+	}
+
+	/** the next key: what was typed ahead first; one the shell took is KEY_INTR (Ctrl-C) or KEY_NONE */
+	private int key() {
+		synchronized (keyLock) {
+			Integer k = typedAhead.poll();
+			if( k != null ) {
+				return k;
+			}
+			int key = getChar();
+			if( taken(key)) {
+				return key == CTRL_C ? KEY_INTR : KEY_NONE;
+			}
+			return key;
+		}
+	}
+
+	private static boolean taken(int key) {
+		ControlKeys ck = controlKeys;
+		return (key == CTRL_C || key == CTRL_Z || key == CTRL_BACKSLASH) && ck != null && ck.typed(key);
+	}
+
+	/**
+	 * Read what has been typed, without waiting, so Ctrl-C and Ctrl-Z reach the shell while a
+	 * job that does not read the keyboard runs; the other keys are kept for whoever reads next.
+	 */
+	public static void pollTyped() {
+		if( !availible ) {
+			return;
+		}
+		synchronized (keyLock) {
+			if( poller == null ) {
+				poller = new NativeKeyboard();
+			}
+			while( poller.ready() > 0 ) {
+				int key = poller.getChar();
+				if( key == KEY_EOF || key == KEY_NONE ) {
+					break;
+				}
+				if( !taken(key)) {
+					typedAhead.add(key);
+				}
+			}
+		}
+	}
+
 	/** getChar() result at the end of input */
 	public static final int KEY_EOF = -1;
 	/** getChar() result when nothing was typed (yet) */
@@ -31,7 +111,12 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	// https://espterm.github.io/docs/VT100%20escape%20codes.html
 
 
-	private  String readLineNative(Console console) {
+	/** Ctrl-C at the prompt: the line typed so far is dropped */
+	public static class LineCancelled extends InterruptedIOException {
+		private static final long serialVersionUID = 1L;
+	}
+
+	private  String readLineNative(Console console) throws LineCancelled {
 		if( prompt == null ) {
 			prompt = "";
 		}
@@ -50,17 +135,30 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		}
 
 		int pos = buf.length();
-		int key = getChar();
+		int key = key();
 
 		while(true) {
 			
 				if( key == KEY_EOF || (key == CTRL_D && buf.length()==0 && lines.isEmpty())) {
 					// end of input: null if nothing was typed
 					if( buf.length()==0 && lines.isEmpty()) {
-						print('\n');
 						return null;
 					}
 					return join(lines, buf);
+				}
+				if( key == KEY_INTR ) {
+					// Ctrl-C stopped the job that is reading
+					return null;
+				}
+				if( key == CTRL_C ) {
+					// at the prompt, as bash does
+					System.out.print("^C\n");
+					System.out.flush();
+					throw new LineCancelled();
+				}
+				if( key == CTRL_Z || key == CTRL_BACKSLASH ) {
+					key = key();
+					continue;
 				}
 
 				if(key>=0 && maxBytes_N<0 && (!escaped && key == lineTerminator)) {
@@ -197,7 +295,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					key = lineTerminator;
 				} else {
 
-					key = getChar();
+					key = key();
 				}
 			}
 		
@@ -237,9 +335,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * @return the next key, waiting until one is typed (or KEY_EOF)
 	 */
 	private int nextKey() {
-		int key = getChar();
+		int key = key();
 		while( key == KEY_NONE ) {
-			key = getChar();
+			key = key();
 		}
 		return key;
 	}
@@ -413,8 +511,10 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			return System.in.read();
 		}
 		while(true) {
-			int key = getChar();
-			if( key == KEY_NONE ) {
+			int key = key();
+			if( key == KEY_INTR ) {
+				return -1;
+			} else if( key == KEY_NONE ) {
 				if( Thread.currentThread().isInterrupted()) {
 					throw new InterruptedIOException();
 				}
@@ -433,12 +533,50 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		}
 	}	
 
+	/**
+	 * A byte that was typed, without waiting: KEY_NONE if there is none (or the shell took it,
+	 * Ctrl-Z), KEY_EOF at the end of input. For a program's input, so a job that is stopped
+	 * meanwhile does not wait in here for the next key.
+	 */
+	public int readTyped() {
+		if( !pending.isEmpty()) {
+			return pending.poll();
+		}
+		if( !availible ) {
+			return KEY_NONE;
+		}
+		int key;
+		synchronized (keyLock) {
+			Integer k = typedAhead.poll();
+			if( k != null ) {
+				key = k;
+			} else if( ready() <= 0 ) {
+				return KEY_NONE;
+			} else {
+				key = getChar();
+				if( taken(key)) {
+					return KEY_NONE;
+				}
+			}
+		}
+		if( key > 255 ) {
+			byte [] seq = escapeSequence(key);
+			for(int idx=1; idx < seq.length; idx++ ) {
+				pending.add(seq[idx] & 0xff);
+			}
+			return seq[0];
+		}
+		return key;
+	}
+
 	@Override
 	public int available() throws IOException {
 		if( !availible ) {
 			return pending.size()+System.in.available();
 		}
-		return pending.size()+ready();
+		synchronized (keyLock) {
+			return pending.size()+typedAhead.size()+ready();
+		}
 	}
 
 	private static byte [] escapeSequence(int key) {

@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -92,6 +91,7 @@ import us.bringardner.fsh.job.ForgroundJob;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobManager;
 import us.bringardner.fsh.job.JobState;
+import us.bringardner.fsh.job.ProcessSignals;
 
 public class Console extends SignalEnabledThread {
 
@@ -184,20 +184,6 @@ public class Console extends SignalEnabledThread {
 
 	}
 
-
-	public static class ResumeException extends RuntimeException{
-
-		public IJob job;
-
-
-
-		public ResumeException(IJob job) {
-			this.job = job;
-		}
-
-		private static final long serialVersionUID = 1L;
-
-	}
 
 	public static class ConsoleSignalHandler {
 		ShellContext ctx;
@@ -580,7 +566,8 @@ delimiter
 			} catch (Exception e) {
 				error = e;
 				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
-				exitCode = e instanceof ExitException ? ((ExitException) e).exitCode : 1;
+				exitCode = e instanceof ExitException ? ((ExitException) e).exitCode
+						: e instanceof us.bringardner.fsh.signal.SignalException ? ((us.bringardner.fsh.signal.SignalException) e).exitCode() : 1;
 			}
 			if( terminatedBy != null ) {
 				// ended by kill: 128 + the signal, as in bash (143 for TERM)
@@ -666,11 +653,7 @@ delimiter
 				}
 			});
 
-			ShellContext ctx = new ShellContext(c);
-			c.registerHandler(ctx,new Signal("INT"), "echo -n '^C '");
 			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
-			c.registerHandler(ctx,new Signal("TERM"), "echo -n '^\\ '");
-			c.registerHandler(ctx,new Signal("TSTP"), "echo -n '^Z '");
 			c.setStdIn(System.in);
 
 			int ret = c.execute(args);
@@ -1039,69 +1022,172 @@ delimiter
 		stdIn =  kb.getStdIn();
 
 		readHistory();
-		IJob job = null;
 		started = running = true;
-		JobState lastState = JobState.Idel;
+		watchKeyboard(kb);
 
 		while(running && !stopping) {
 			try {
-				currentJob.set(job);
-				if( job == null ){
-					job = readLineToJob(kb);
-					lastState = job.getState();
+				IJob job = readLineToJob(kb);
+				int exitCode = waitForeground(job, true);
+				setLastExitCode(exitCode);
+				if( exitCode!=0 && isOptionEnabled(Option.ExitImediately)) {
+					Console.exit(this,exitCode);
 				}
-				currentJob.set(job);
-
-
-				synchronized (jobStateLock) {
-					// woken by the listener added in readLineToJob; the timeout is only a safety net
-					while( job.getState() == lastState && lastState!=JobState.Termnated) {
-						try {
-							jobStateLock.wait(500);
-						} catch (InterruptedException e) {
-						}
-					}
-				}
-
-				JobState jobState = job.getState();
-
-				switch (jobState	) {
-				case Running: break;
-				case Idel: break;
-				case Suspended:
-					if( job.getJobNumber()<0) {
-						addJob(job);
-					}
-					job = null;		
-					lastState = JobState.Idel;
-					break;
-				case Termnated: 
-					if(job.getJobNumber()<0) {
-						// simple command					
-					} else {
-						// this is a background job
-						System.out.println("notify");
-					}
-
-
-					int exitCode = job.getExitCode();
-					if( exitCode!=0 ) {
-						if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
-							Console.exit(this,exitCode);
-						}
-					}
-					job = null;					
-					break;
-				case Notified:break;
-				default:
-					throw new IllegalArgumentException("Unexpected value: " + job.getState());
-				}
-				lastState = jobState;
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
+		NativeKeyboard.controlKeys = null;
+		// as bash leaves: its stopped jobs get SIGHUP (and SIGCONT, so they see it)
+		for(IJob job : jobManager.getJobs()) {
+			if( job.getState() == JobState.Suspended && !job.isIgnoreSignal(ConsoleSignal.Hup)) {
+				job.signalJob(1);
+			}
+		}
+	}
 
+	/** the jobs in the foreground: the one typed at the prompt, and what fg brought back (last) */
+	private final java.util.Deque<IJob> foregroundJobs = new java.util.concurrent.ConcurrentLinkedDeque<>();
+
+	/**
+	 * Ctrl-C, Ctrl-Z and Ctrl-\ are keys the shell reads (not signals to it and every program it
+	 * started): Ctrl-C ends the foreground job and Ctrl-Z stops it, as the terminal does it for
+	 * bash. While a job runs, what is typed is read here, so they are seen when the job does not
+	 * read the keyboard; the rest is kept for whoever reads next.
+	 */
+	private void watchKeyboard(KeyboardReader kb) {
+		if( !(kb instanceof NativeKeyboard) || !NativeKeyboard.isAvailible()) {
+			return;
+		}
+		NativeKeyboard.signalKeys(true);
+		NativeKeyboard.controlKeys = key -> {
+			IJob job = foregroundJobs.peekLast();
+			if( job == null || state != ConsoleState.Executing ) {
+				return false;
+			}
+			if( key == NativeKeyboard.CTRL_C ) {
+				// as the terminal echoes it
+				System.out.print("^C\n");
+				System.out.flush();
+				Thread t = new Thread(() -> job.signalJob(ProcessSignals.number("INT") < 0 ? 2 : ProcessSignals.number("INT")), "Ctrl-C");
+				t.setDaemon(true);
+				t.start();
+			} else if( key == NativeKeyboard.CTRL_Z ) {
+				System.out.print("^Z\n");
+				System.out.flush();
+				Thread t = new Thread(() -> job.stopJob("Stopped"), "Ctrl-Z");
+				t.setDaemon(true);
+				t.start();
+			}
+			// Ctrl-\ is ignored, as bash ignores SIGQUIT
+			return true;
+		};
+		Thread watcher = new Thread(() -> {
+			while( running && !stopping ) {
+				if( state == ConsoleState.Executing ) {
+					NativeKeyboard.pollTyped();
+				}
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {
+				}
+			}
+		}, "keyboard watcher");
+		watcher.setDaemon(true);
+		watcher.start();
+	}
+
+	/**
+	 * Wait while job runs in the foreground: until it ends (its status) or is stopped (Ctrl-Z:
+	 * 128 + SIGTSTP, and it goes into the job table if it was not there). typed: the command
+	 * typed at the prompt (else fg brought it back).
+	 */
+	private int waitForeground(IJob job, boolean typed) {
+		if( !foregroundJobs.contains(job)) {
+			foregroundJobs.addLast(job);
+		}
+		try {
+			while( true ) {
+				JobState state = job.getState();
+				if( state == JobState.Suspended ) {
+					if( !jobManager.contains(job)) {
+						addJob(job);
+					}
+					jobManager.touch(job);
+					return ProcessSignals.stoppedStatus();
+				}
+				if( state == JobState.Termnated || state == JobState.Notified ) {
+					break;
+				}
+				synchronized (jobStateLock) {
+					try {
+						jobStateLock.wait(50);
+					} catch (InterruptedException e) {
+					}
+				}
+			}
+			// what it still does as it ends (Ctrl-C: the commands unwinding) comes before the prompt
+			Thread t = job.getThread();
+			if( t != null && t != Thread.currentThread()) {
+				try {
+					t.join(2000);
+				} catch (InterruptedException e) {
+				}
+			}
+			if( !typed ) {
+				jobManager.remove(job);
+			}
+			return job.getExitCode();
+		} finally {
+			foregroundJobs.remove(job);
+		}
+	}
+
+	/** what runs in ctx may read the keyboard: its job is in the foreground and not stopped */
+	public boolean readsKeyboard(ShellContext ctx) {
+		IJob job = ctx.job;
+		if( job == null || !isInteractive ) {
+			return true;
+		}
+		return job.getState() != JobState.Suspended && foregroundJobs.contains(job);
+	}
+
+	/** the command line exit was warned on (There are stopped jobs.), and the line before the current one */
+	private IJob exitWarnedOn;
+	/** the command line jobs ran on: exit after it does not warn of stopped jobs */
+	private IJob jobsListedOn;
+
+	public void jobsListed(IJob line) {
+		jobsListedOn = line;
+	}
+	private IJob previousLine;
+	private IJob currentLine;
+
+	/**
+	 * exit at the prompt: true (and it does not exit) if there are stopped jobs and the line
+	 * before was not an exit that was warned of them, as in bash.
+	 */
+	public boolean stoppedJobsWarning(IJob line) {
+		boolean stopped = false;
+		for(IJob job : jobManager.getJobs()) {
+			stopped |= job.getState() == JobState.Suspended;
+		}
+		if( !stopped || (previousLine != null && (exitWarnedOn == previousLine || jobsListedOn == previousLine))) {
+			return false;
+		}
+		exitWarnedOn = line;
+		return true;
+	}
+
+	/**
+	 * fg: job runs in the foreground again; the shell waits for it.
+	 * @return its status, or 128 + SIGTSTP if it is stopped again
+	 */
+	public int foreground(IJob job) {
+		jobManager.touch(job);
+		job.setStopNoticeDue(false);
+		job.continueJob();
+		return waitForeground(job, false);
 	}
 
 	private final Object jobStateLock = new Object();
@@ -1113,18 +1199,15 @@ delimiter
 
 
 			state = ConsoleState.ReadLine;
-			currentJob.set(null);
 			if(adminMessage!=null) {
 				stdOut.println(adminMessage);
 				adminMessage = null;
 			}
-			for(IJob job : jobManager.getJobs()) {
-				if( job.getState()==JobState.Termnated) {
-					//[1]  + done       sleep 50
-					stdOut.println("["+job.getJobNumber()+"] done "+job.toString());	
-					job.setState(JobState.Notified);
-				}
+			// as bash does before a prompt: [1]+  Done                    sleep 5
+			for(String notice : jobManager.notices()) {
+				stdOut.println(notice);
 			}
+			stdOut.flush();
 			String code;
 			try {
 				code = readCommand(kb);
@@ -1153,15 +1236,22 @@ delimiter
 
 					ShellContext sc = new ShellContext(this);
 
-					ret = new ForgroundJob(sc,code);					
+					ret = new ForgroundJob(sc,code);
+					previousLine = currentLine;
+					currentLine = ret;
 					ret.addJobStateChangeListner((job,from,to)->{
 						synchronized (jobStateLock) {
 							jobStateLock.notifyAll();
 						}
 					});
+					// Ctrl-C and Ctrl-Z reach it from the start
+					foregroundJobs.addLast(ret);
 					ret.start();
 				}
 
+			} catch (NativeKeyboard.LineCancelled e) {
+				// Ctrl-C at the prompt
+				setLastExitCode(130);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -1178,33 +1268,6 @@ delimiter
 	 *  
 	 * 
 	 */
-
-	public synchronized int executeAsJob(IJob job) throws Exception {
-		if( currentJob.get() !=null) {
-			throw new JMRuntimeException("Current job is already set");
-		}
-
-		while(!job.hasStarted()) {
-			try {
-				Thread.sleep(10);	
-			} catch (Exception e) {
-			}					
-		}		
-
-		while(job.getState()==JobState.Running) {
-			try {
-				Thread.sleep(10);	
-			} catch (Exception e) {
-			}
-		}
-
-		if( job.getError()!=null) {
-			throw job.getError();
-		}
-
-
-		return job.getExitCode();
-	}
 
 	public String getPrompt(Prompt prompt) {
 		String ret = "";
@@ -1536,23 +1599,12 @@ delimiter
 		return ret.toString();
 	}
 
+	/** the job with process id id, or else the job numbered id */
 	public IJob findJob(int id) {
-		IJob ret = null;
-		List<IJob> ijobs = jobManager.getJobs();
-
-		int sz = ijobs.size();
-		if(id<= sz) {
-			ret = jobManager.getJob(id-1);
-		} else {
-			for(IJob c : ijobs) {
-				if( c.getPid() == id) {
-					ret = c;
-					break;
-				}
-			}
-		}
-		return ret;
+		IJob ret = jobManager.getJobByPid(id);
+		return ret != null ? ret : jobManager.getJob(id);
 	}
+
 
 	KeyboardReader keyboardReader;
 
@@ -2205,7 +2257,6 @@ delimiter
 		this.adminMessage = adminMessage;
 	}
 
-	public AtomicReference<IJob> currentJob = new AtomicReference<>();
 
 	private Stack<ConsoleMetaSignal> inProcess = new Stack<>();
 
@@ -2603,15 +2654,9 @@ delimiter
 				throw new ExitException(null, lastExitCode);
 			}			
 		} else {
-			IJob job = currentJob.get();
+			IJob job = foregroundJobs.peekLast();
 			if( job !=null) {
-				if( signal==ConsoleSignal.Suspend) {
-					job.setState(JobState.Suspended);
-					Thread.yield();
-				} else if( signal == ConsoleSignal.Interupt || signal == ConsoleSignal.Kill) {
-					job.setState(JobState.Termnated);
-					Thread.yield();
-				}
+				job.handleSignal(signal);
 			}
 
 		}
@@ -2622,7 +2667,6 @@ delimiter
 
 
 	public void handleSignal(int pid,ConsoleSignal signal)  {
-		raiseSignal(signal.value);
 		IJob job = findJob(pid);
 		if( job !=null) {
 			job.handleSignal(signal);
@@ -2649,10 +2693,15 @@ delimiter
 			code = code.trim();
 			return us.bringardner.fsh.exec.Executor.script(sc, code);
 
+		} catch(us.bringardner.fsh.signal.SignalException e) {
+			// Ctrl-C or kill ended the job
+			return e.exitCode();
 		} catch(ExitException e) {
 			ret = e.exitCode;
 			handleMetaSignal(ConsoleMetaSignal.Exit);
-			sc.stderr.println(e);
+			if( e.message != null ) {
+				sc.stderr.println(e);
+			}
 			stop();
 
 			if(!isInteractive) {

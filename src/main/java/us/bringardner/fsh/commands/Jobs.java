@@ -44,73 +44,63 @@ public class Jobs extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		ShellArgument options = parseArgs(ctx, Options.class);
-
-		/*
-[1]+  Running                 sleep 10 &
-[1]+  Done                    sleep 10
-		 */
-		//  this defines the current job
 		JobManager jm = ctx.console.jobManager;
-
-		List<Integer> jobs = new ArrayList<>();
-		//  %[0-9] is parse as signed number rather that jobSpec 
-		if(options.paths.size()>0) {
-			for(String tmp : options.paths) {
-				int i = JobSpecs.parse(jm, tmp);
-				if( i >=0) {
-					jobs.add(i);
+		List<IJob> jobs = new ArrayList<>();
+		for(String spec : options.paths) {
+			IJob job;
+			try {
+				job = JobSpecs.find(jm, spec);
+			} catch (JobSpecs.Ambiguous e) {
+				ctx.error(name+": "+e.getMessage());
+				ret = 1;
+				continue;
+			}
+			if( job == null ) {
+				ctx.error(name+": "+JobSpecs.describe(spec)+": no such job");
+				ret = 1;
+			} else if( !jobs.contains(job)) {
+				jobs.add(job);
+			}
+		}
+		if( specs !=null) {
+			for(Integer number : specs) {
+				IJob job = jm.getJob(number);
+				if( job != null && !jobs.contains(job)) {
+					jobs.add(job);
 				}
 			}
 		}
-		if( specs !=null && specs.size()>0) {			
-			jobs.addAll(specs);			
-		} 
-
-		if( jobs.size()==0) {
-			for(IJob job : jm.getJobs()) {
-				jobs.add(job.getJobNumber());
+		if( options.paths.isEmpty() && (specs == null || specs.isEmpty())) {
+			jobs.addAll(jm.getJobs());
+		}
+		boolean running = options.options.contains(Options.r);
+		boolean stopped = options.options.contains(Options.s);
+		List<IJob> reported = new ArrayList<>();
+		for(IJob job : jobs) {
+			JobState state = job.getState();
+			boolean show = (!running && !stopped)
+					|| (running && (state == JobState.Running || state == JobState.Idel))
+					|| (stopped && state == JobState.Suspended);
+			if( !show ) {
+				continue;
+			}
+			if(options.options.contains(Options.p)) {
+				ctx.stdout.println(job.getPid());
+			} else {
+				// as bash shows it: [1]+  Running                    sleep 10 &
+				ctx.stdout.println(jm.describe(job, options.options.contains(Options.l)));
+			}
+			reported.add(job);
+		}
+		ctx.console.jobsListed(ctx.job);
+		// a finished job is reported once, as before a prompt
+		for(IJob job : reported) {
+			if( JobManager.isDone(job)) {
+				jm.remove(job);
+			} else {
+				job.setStopNoticeDue(false);
 			}
 		}
-
-		for(Integer idx : jobs) {
-
-
-
-			IJob job = jm.getJob(idx);
-			if( !job.isDisowned()) {
-				boolean show = false;
-				JobState state = job.getState();
-				if( state == JobState.Running) {				
-					show = !options.options.contains(Options.s) || options.options.contains(Options.r);
-				} else if( state == JobState.Suspended) {
-					show = options.options.contains(Options.s) || !options.options.contains(Options.r);
-				} else if( state == JobState.Termnated) {
-					show = !options.options.contains(Options.s) && !options.options.contains(Options.r);
-				}
-
-
-				if( show ) {
-					int jobSize = jm.getJobs().size();
-					String flag = idx == jobSize-1 ?"+":idx == (jobSize-2)?"-":" ";
-					// as bash shows it: [1]+  Running                    sleep 10 &
-					String status = switch (state) {
-					case Running -> "Running";
-					case Suspended -> "Stopped";
-					default -> job.getExitCode() == 0 ? "Done" : job.getExitCode() > 128 ? "Terminated" : "Exit "+job.getExitCode();
-					};
-					String text = job.toString()+(state == JobState.Running ? " &" : "");
-					if(options.options.contains(Options.p)) {
-						ctx.stdout.println(job.getPid());
-					} else if(options.options.contains(Options.l)) {
-						ctx.stdout.println(String.format("[%d]%s %d %-27s%s", idx+1, flag, job.getPid(), status, text));
-					} else {
-						ctx.stdout.println(String.format("[%d]%s  %-27s%s", idx+1, flag, status, text));
-					}
-				}
-			}
-		}
-
 		return ret;
 	}
-
 }

@@ -195,12 +195,13 @@ public final class Programs {
 				boolean isSystemOut = (out == Console.System_out) ;
 
 				while(running && !stopping ) {
-					// only read what was already typed, so nothing is taken after the process ends
-					if( in.available() <= 0 ) {
+					// only read what was already typed, so nothing is taken after the process ends;
+					// a stopped or background job does not read the keyboard
+					int key = ctx.console.readsKeyboard(ctx) ? in.readTyped() : NativeKeyboard.KEY_NONE;
+					if( key == NativeKeyboard.KEY_NONE ) {
 						Thread.sleep(10);
 						continue;
 					}
-					int key = in.read();
 					if( key < 0 || key == 4 ) {
 						// end of input or Ctrl-D: the finally block closes the process's stdin
 						break;
@@ -260,6 +261,7 @@ public final class Programs {
 		ShellContext ctx;
 		int exitCode;
 		Throwable error;
+		private Process process;
 
 		public ExternalProcess(List<String> cmd, ShellContext ctx) {
 			this.cmd  = cmd;
@@ -290,6 +292,12 @@ public final class Programs {
 				}
 
 				Process p = builder.start();
+				// stopped (Ctrl-Z), continued and signalled with its job
+				us.bringardner.fsh.job.IJob job = ctx.job;
+				if( job != null ) {
+					job.addProcess(p);
+				}
+				process = p;
 				if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
 					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
@@ -324,6 +332,9 @@ public final class Programs {
 				exitCode = 1;
 				error = e;
 			} finally {
+				if( process != null && ctx.job != null ) {
+					ctx.job.removeProcess(process);
+				}
 				try {sc1.stop();}catch (Throwable e) {}
 				try {sc2.stop();}catch (Throwable e) {}
 				try {sc3.stop();}catch (Throwable e) {}

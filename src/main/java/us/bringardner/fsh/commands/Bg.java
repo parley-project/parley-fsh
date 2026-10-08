@@ -26,61 +26,44 @@ public class Bg extends ShellCommand{
 		super(name, help);
 	}
 
-	List<Integer> specs;
-	public Bg(List<Integer> specs) {
-		this();
-		this.specs = specs;
-	}
-
-
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-
-		/*
-[1]+  Running                 sleep 10 &
-[1]+  Done                    sleep 10
-		 */
-		//  this defines the current job
-		JobManager jm = ctx.console.jobManager;
-		
-		List<Integer> jobs = new ArrayList<>();
-		//  %[0-9] is parse as signed number rather that jobSpec
-		for (int idx = 0; idx < args.length; idx++) {
-			String tmp = ""+args[idx].getValue(ctx);
-			int i = JobSpecs.parse(jm, tmp);
-			if( i >=0) {
-				jobs.add(i);
-			}
-		}
-		if( specs !=null && specs.size()>0) {			
-			jobs.addAll(specs);			
-		} 
-
-		if( jobs.size()==0) {
-			ctx.stderr.println(help);
+		if( !ctx.console.isInteractive ) {
+			ctx.error(name+": no job control");
 			return 1;
 		}
-		if( jobs.size()>1) {
-			ctx.stderr.println(help);
-			return 2;
+		JobManager jm = ctx.console.jobManager;
+		List<String> specs = new ArrayList<>();
+		for (int idx = 0; idx < args.length; idx++) {
+			specs.add(""+args[idx].getValue(ctx));
 		}
-
-		IJob job = jm.getJob(jobs.get(0));
-		if( job == null ) {
-			ctx.error("No such job "+jobs.get(0));
-			return 3;
+		if( specs.isEmpty()) {
+			specs.add("%%");
 		}
-		
-		JobState state = job.getState();
-		if( state == JobState.Suspended) {
-			job.setState(JobState.Running);
-			ctx.stdout.println("["+job.getJobNumber()+"] continued "+job.toString());
-		}	else {
-			job.setState(JobState.Running);
+		for(String spec : specs) {
+			IJob job;
+			try {
+				job = JobSpecs.find(jm, spec);
+			} catch (JobSpecs.Ambiguous e) {
+				ctx.error(name+": "+e.getMessage());
+				ret = 1;
+				continue;
+			}
+			if( job == null || JobManager.isDone(job)) {
+				ctx.error(name+": "+JobSpecs.describe(spec)+": no such job");
+				ret = 1;
+				continue;
+			}
+			if( job.getState() != JobState.Suspended ) {
+				ctx.error(name+": job "+job.getJobNumber()+" already in background");
+				continue;
+			}
+			job.continueJob();
+			jm.touch(job);
+			// as bash says it: [1]+ sleep 10 &
+			ctx.stdout.println("["+job.getJobNumber()+"]"+jm.marker(job)+" "+job.getCommandLine()+" &");
 		}
-
 		return ret;
 	}
-
 }

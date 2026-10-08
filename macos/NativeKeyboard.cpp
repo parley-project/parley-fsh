@@ -24,6 +24,8 @@
 
 static struct termios orig_termios;
 static int rawMode = 0;
+/* 1: Ctrl-C, Ctrl-Z and Ctrl-\ are read as keys (the interactive shell decides what they stop) */
+static int keysNotSignals = 0;
 
 static void disableRawMode() {
 	if( rawMode ) {
@@ -50,10 +52,30 @@ static void enableRawMode() {
 	}
 	struct termios raw = orig_termios;
 	raw.c_lflag &= ~(ECHO | ICANON);
+	if( keysNotSignals ) {
+		raw.c_lflag &= ~ISIG;
+	}
 	raw.c_cc[VMIN] = 1;
 	raw.c_cc[VTIME] = 0;
 	if( tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == 0 ) {
 		rawMode = 1;
+	}
+}
+
+/*
+ * on: Ctrl-C, Ctrl-Z and Ctrl-\ are read as keys instead of signalling the shell's process group.
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setSignalKeys(JNIEnv *, jobject, jboolean on) {
+	keysNotSignals = on ? 1 : 0;
+	struct termios t;
+	if( rawMode && tcgetattr(STDIN_FILENO, &t) == 0 ) {
+		// now, without dropping what was typed
+		if( keysNotSignals ) {
+			t.c_lflag &= ~ISIG;
+		} else {
+			t.c_lflag |= ISIG;
+		}
+		tcsetattr(STDIN_FILENO, TCSANOW, &t);
 	}
 }
 

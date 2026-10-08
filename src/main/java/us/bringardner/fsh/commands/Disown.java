@@ -46,47 +46,50 @@ public class Disown extends ShellCommand{
 		ShellArgument ops = parseArgs(ctx, DisownOptions.class);
 
 		JobManager jm = ctx.console.jobManager;
-
 		List<IJob> jobs = new ArrayList<>();
 		if( ops.paths.size()>0) {
 			for(String val : ops.paths) {
-				int id = JobSpecs.parse(jm, val);
-				IJob job = jm.getJob(id);
-				if( job!=null ) {
-					if( !jobs.contains(job)) {
-						jobs.add(job);
-					}
-				} else {
-					ctx.error("disown: "+val+": no such job");
-					return 1;
+				IJob job;
+				try {
+					job = JobSpecs.find(jm, val);
+				} catch (JobSpecs.Ambiguous e) {
+					ctx.error("disown: "+e.getMessage());
+					ret = 1;
+					continue;
+				}
+				if( job==null ) {
+					ctx.error("disown: "+JobSpecs.describe(val)+": no such job");
+					ret = 1;
+				} else if( !jobs.contains(job)) {
+					jobs.add(job);
+				}
+			}
+		} else if(ops.options.contains(DisownOptions.a)) {
+			jobs.addAll(jm.getJobs());
+		} else if(ops.options.contains(DisownOptions.r)) {
+			for(IJob job : jm.getJobs()) {
+				if( job.getState() == JobState.Running) {
+					jobs.add(job);
 				}
 			}
 		} else {
-			if(!ops.options.contains(DisownOptions.a) && !ops.options.contains(DisownOptions.r)) {
-				IJob job = jm.getGetCurrentJob();
-				if( job != null && !jobs.contains(job)) {
-					jobs.add(job);
-				}
-			} else if(ops.options.contains(DisownOptions.a)) {
-				jobs.addAll(jm.getJobs());
-			} else if(ops.options.contains(DisownOptions.r)) {
-				for(IJob job : jm.getJobs()) {
-					if( job.getState() == JobState.Running && !jobs.contains(job)) {
-						jobs.add(job);
-					}
-				}
+			IJob job = jm.current();
+			if( job == null ) {
+				ctx.error("disown: current: no such job");
+				return 1;
 			}
-		}
-		for(IJob job : jobs) {
-			if( !job.isDisowned()) {
-				if(ops.options.contains(DisownOptions.h)) {
-					job.addIgnoreSignal(ConsoleSignal.Hup);
-				} else {
-					job.setDisowned(true);
-				}
-			}
+			jobs.add(job);
 		}
 
+		for(IJob job : jobs) {
+			if(ops.options.contains(DisownOptions.h)) {
+				// it stays a job, but SIGHUP does not reach it
+				job.addIgnoreSignal(ConsoleSignal.Hup);
+			} else {
+				job.setDisowned(true);
+				jm.remove(job);
+			}
+		}
 		return ret;
 
 	}

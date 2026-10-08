@@ -61,6 +61,9 @@ public abstract class ShellCommand {
 				out.write(data,0,got);
 			}
 			if(sc.getException() !=null) {
+				if( sc.getException() instanceof us.bringardner.fsh.signal.SignalException ) {
+					throw sc.getException();
+				}
 				throw new IOException(sc.getException());
 			}
 			sc.waitWhilePaused();

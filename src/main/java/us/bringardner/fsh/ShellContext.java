@@ -812,6 +812,7 @@ $
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
 		ret.line = line;
+		ret.job = job;
 		ret.loopDepth = loopDepth;
 		ret.substitutionLevel = substitutionLevel;
 		ret.debugBlocked = debugBlocked + (console.isOptionEnabled(Console.Option.FuncTrace) ? 0 : 1);
@@ -1087,6 +1088,12 @@ $
 
 	private final Object pauseLock = new Object();
 
+	/**
+	 * The job this runs in: when it is stopped (Ctrl-Z) or killed, so is what runs here (a
+	 * subshell or pipe stage is in the job of the command that started it).
+	 */
+	public volatile us.bringardner.fsh.job.IJob job;
+
 	public void setPause(boolean b) {
 		pause.set(b);
 		synchronized (pauseLock) {
@@ -1100,9 +1107,10 @@ $
 	 */
 	public void waitWhilePaused() {
 		synchronized (pauseLock) {
-			while(pause.get() && exeption.get() == null) {
+			while(isPaused() && getException() == null) {
 				try {
-					pauseLock.wait();
+					// the job's state is not signalled here
+					pauseLock.wait(100);
 				} catch (InterruptedException e) {
 					// stop requests arrive through setExecption
 				}
@@ -1116,13 +1124,13 @@ $
 	public void sleep(long millis) {
 		long end = System.currentTimeMillis()+millis;
 		synchronized (pauseLock) {
-			while(exeption.get() == null && !pause.get()) {
+			while(getException() == null && !isPaused()) {
 				long left = end-System.currentTimeMillis();
 				if( left <= 0 ) {
 					break;
 				}
 				try {
-					pauseLock.wait(left);
+					pauseLock.wait(Math.min(left, 100));
 				} catch (InterruptedException e) {
 					// stop requests arrive through setExecption
 				}
@@ -1131,11 +1139,17 @@ $
 	}
 
 	public boolean isPaused() {
-		return pause.get();
+		us.bringardner.fsh.job.IJob j = job;
+		return pause.get() || (j != null && j.getState() == us.bringardner.fsh.job.JobState.Suspended);
 	}
 
 	public RuntimeException getException() {
-		return exeption.get();
+		RuntimeException ret = exeption.get();
+		us.bringardner.fsh.job.IJob j = job;
+		if( ret == null && j != null ) {
+			ret = j.getStopRequest();
+		}
+		return ret;
 	}
 
 	public void setExecption(Exception e) {
@@ -1333,8 +1347,8 @@ $
 			}
 		}
 		waitWhilePaused();
-		if( exeption.get() != null ) {
-			throw exeption.get();
+		if( getException() != null ) {
+			throw getException();
 		}
 	}
 

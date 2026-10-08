@@ -412,6 +412,11 @@ public final class Executor {
 				}
 			});
 			BackgroundJob job = new BackgroundJob(thread);
+			if( !sc.console.isInteractive ) {
+				// as in bash, without job control a job started with & ignores SIGINT and SIGQUIT
+				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Interupt);
+				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Quit);
+			}
 			sc.console.addJob(job);
 			job.start();
 			while( job.getState() == JobState.Idel ) {
@@ -421,7 +426,7 @@ public final class Executor {
 				}
 			}
 			if( sc.console.isInteractive ) {
-				sc.stdout.println("["+(job.getJobNumber()+1)+"] "+job.pid);
+				sc.stdout.println("["+job.getJobNumber()+"] "+job.pid);
 			}
 		} catch (Exception e) {
 			sc.stderr.println(e);

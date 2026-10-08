@@ -26,6 +26,15 @@ public class Exit extends ShellCommand{
 			} catch (Exception e) {
 			}
 		}
+		us.bringardner.fsh.job.IJob typed = ctx.job;
+		if( ctx.console.isInteractive && typed instanceof us.bringardner.fsh.job.ForgroundJob && typed.getShellContext() == ctx ) {
+			// the shell itself (not a subshell) leaves; as bash, it says so, but not at once with stopped jobs
+			ctx.stderr.println("exit");
+			if( ctx.console.stoppedJobsWarning(typed)) {
+				ctx.stderr.println("There are stopped jobs.");
+				return 1;
+			}
+		}
 		// a status is 0 to 255
 		throw new ExitException(ctx, ((ret % 256)+256) % 256);
 	}

@@ -1,6 +1,8 @@
 package us.bringardner.fsh.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
@@ -93,12 +95,9 @@ public class TestKill extends AbstractConsoleTest {
 		showError = showErrTmp;
 	}
 	
+	/** the shell's trap for a signal is not the job's: kill -INT ends the job (an interactive shell) */
 	@Test
 	public void testKill02() throws IOException, InterruptedException {
-		String expect = "Running... Press Ctrl+C to stop.\n"
-				+ "[1] 100000\n"
-				+ "Caught SIGINT! Exiting...\n";
-		
 		String code = "function handle_ctrlc02() {\n"
 				+ "    echo \"Caught SIGINT! Exiting...\"\n"
 				+ "    exit\n"
@@ -114,57 +113,47 @@ public class TestKill extends AbstractConsoleTest {
 				+ "}\n"
 				+ "work &\n"				
 				+ "kill -s INT $!\n"
-				//+ "sleep 1\n"
-				;
-
-		Console.setNextPid(100000);
-		//Console.jobs.clear();
-		console.isInteractive=true;
-		ExecuteResult res = executeCommand(code, "");
-		//  give time for signal handling
-		String val = res.getStdErr();
-		assertEquals("", val);
-		assertEquals(expect, res.getStdOut());
-		assertEquals(0, res.exitCode);
-		
-	}
-
-	@Test
-	public void testKill03() throws IOException, InterruptedException {
-		String expect = "Running... Press Ctrl+C to stop.\n"
-				+ "[1] 100000\n"
-				+ "Caught SIGINT! Exiting...\n";
-		
-		String code = "function handle_ctrlc03() {\n"
-				+ "    echo \"Caught SIGINT! Exiting...\"\n"
-				+ "    exit\n"
-				+ "}\n"
-				+ "\n"
-				+ "trap handle_ctrlc03 SIGINT\n"
-				+ "\n"
-				+ "function work() { "
-				+ "while true; do\n"
-				+ "    echo \"Running... Press Ctrl+C to stop.\"\n"
-				+ "    sleep 5\n"
-				+ "done\n"
-				+ "}\n"
-				+ "work &\n"				
-				+ "kill -s INT %1\n"
-				//+ "sleep 1\n"
+				+ "wait $!\n"
+				+ "echo \"st=$?\"\n"
 				;
 
 		console = new Console();
 		Console.setNextPid(100000);
 		console.jobManager.clear();
 		console.isInteractive=true;
+		ExecuteResult res = executeCommand(code, "");
+		String out = res.getStdOut();
+		assertEquals("", res.getStdErr());
+		assertTrue(out.contains("[1] 100000\n"), out);
+		assertTrue(out.contains("st=130\n"), out);
+		assertFalse(out.contains("Caught SIGINT"), out);
+		assertEquals(0, res.exitCode);
+	}
+
+	/** as in bash, without job control a job ignores SIGINT; TERM ends it (143) */
+	@Test
+	public void testKill03() throws IOException, InterruptedException {
+		String code = "work() { while true; do sleep 1; done; }\n"
+				+ "work &\n"
+				+ "sleep 0.2\n"
+				+ "kill -s INT %1\n"
+				+ "sleep 0.2\n"
+				+ "jobs\n"
+				+ "kill %1\n"
+				+ "wait %1\n"
+				+ "echo \"st=$?\"\n"
+				+ "jobs\n"
+				;
+
+		console = new Console();
+		Console.setNextPid(100000);
+		console.jobManager.clear();
+		console.isInteractive=false;
 		
 		ExecuteResult res = executeCommand(code, "");
-		//  give time for signal handling
-		Thread.sleep(50);
 		assertEquals("", res.getStdErr());
-		assertEquals(expect, res.getStdOut());
+		assertEquals("[1]+  Running                    work &\nst=143\n", res.getStdOut());
 		assertEquals(0, res.exitCode);
-		
 	}
 	
 	@Test
@@ -177,7 +166,7 @@ public class TestKill extends AbstractConsoleTest {
 
 		Console.setNextPid(100000);
 		console.jobManager.clear();
-		//console.isInteractive=true;
+		console.isInteractive=true;
 		ExecuteResult res = executeCommand(code, "");
 		String err = res.getStdErr();
 		String out = res.getStdOut();

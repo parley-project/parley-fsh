@@ -1,0 +1,18 @@
+[1]-  Running                    sleep 2 &
+[1]-  Running                    sleep 2 &
+[2]+  Running                    sleep 3 &
+[2]+  Running                    sleep 3 &
+st=0
+ambiguous=1
+none=1
+st=143
+[1]+  Running                    sleep 2 &
+[1]+  Running                    sleep 2 &
+--
+fg=1
+bg=1
+n=0
+st=3
+st=127
+st=127
+[1]+  Done                       sleep 0.1

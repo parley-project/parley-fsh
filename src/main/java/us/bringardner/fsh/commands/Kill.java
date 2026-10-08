@@ -11,6 +11,7 @@ import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.Argument;
 import us.bringardner.fsh.job.JobSpecs;
+import us.bringardner.fsh.job.ProcessSignals;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobManager;
 
@@ -73,18 +74,26 @@ public class Kill extends ShellCommand{
 				signum = parseSigNum(""+args[++idx].getValue(ctx));								
 			} else if( val.startsWith("-")) {				
 				signum = parseSigNum(val.substring(1));				
-			} else if( val.matches("\\d+") && jm.getJob(Integer.parseInt(val)) == null ) {
+			} else if( val.matches("\\d+") && jm.getJobByPid(Long.parseLong(val)) == null ) {
 				processes.add(Long.parseLong(val));
+			} else if( !val.startsWith("%") && !val.matches("\\d+")) {
+				ctx.error("kill: "+val+": arguments must be process or job IDs");
+				ret = 1;
 			} else {
-				
-				int id = JobSpecs.parse(jm, val);
-				IJob job = jm.getJob(id);
+				IJob job;
+				try {
+					job = JobSpecs.find(jm, val);
+				} catch (JobSpecs.Ambiguous e) {
+					ctx.error("kill: "+e.getMessage());
+					ret = 1;
+					continue;
+				}
 				if( job==null) {
-					ctx.error("kill: ("+val+") - No such process");
-					return 1;
+					ctx.error("kill: "+val+": no such job");
+					ret = 1;
+					continue;
 				}
 				jobs.add(job);
-
 			}
 		}
 
@@ -114,14 +123,11 @@ public class Kill extends ShellCommand{
 			}
 		} else {
 
-			ConsoleSignal signal = ConsoleSignal.Terminate;
-			if( signum != null ) {
-				signal = ConsoleSignal.find(signum);
-			}
+			int sig = signum == null ? 15 : signum;
 			for(long pid : processes) {
-				ret |= signalProcess(ctx, pid, signum == null ? 15 : signum);
+				ret |= signalProcess(ctx, pid, sig);
 			}
-			if( jobs.size()==0 && !processes.isEmpty()) {
+			if( jobs.isEmpty() && (!processes.isEmpty() || ret != 0)) {
 				return ret;
 			}
 			if( jobs.size()==0) {
@@ -129,25 +135,34 @@ public class Kill extends ShellCommand{
 				return 1;
 			}
 			for(IJob job: jobs) {
-				ctx.console.handleSignal(job.getPid(),signal);
-				Thread.yield();
-				/*
-				System.out.println("sent signal "+signal+" job="+job.getJobNumber()+" "+job.isRunning());
-				try {
-					Thread.sleep(20);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				System.out.println("after yeild "+signal+" job="+job.getJobNumber()+" "+job.isRunning());
-				*/
+				signalJob(job, sig);
 			}
 		}
 
-
-
-
 		return ret;
+	}
+
+	/** kill for a job: CONT continues it, STOP and TSTP stop it, a signal ignored by default does nothing, the others end it */
+	private static void signalJob(IJob job, int sig) {
+		String name = ProcessSignals.name(sig);
+		if( sig == 0 || name == null && sig < 0 ) {
+			return;
+		}
+		if( name == null ) {
+			job.signalJob(sig);
+			return;
+		}
+		switch (name) {
+		case "STOP", "TSTP", "TTIN", "TTOU" -> job.stopJob("Stopped");
+		case "CONT" -> job.continueJob();
+		case "CHLD", "WINCH", "URG", "INFO" -> {
+		}
+		default -> {
+			if( !job.isIgnoreSignal(ConsoleSignal.find(name))) {
+				job.signalJob(sig);
+			}
+		}
+		}
 	}
 
 	private int parseSigNum(String val) {

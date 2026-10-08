@@ -5,15 +5,21 @@ import java.util.List;
 
 import us.bringardner.fsh.ConsoleSignal;
 
+/**
+ * The shell's jobs, as bash keeps them: a job's number stays the same while it is in the table
+ * (a new one gets one more than the highest), and the current job (%+) is the one most recently
+ * stopped, or else the one most recently started or continued; the previous job (%-) is the
+ * next by the same rule.
+ */
 public class JobManager {
 
-
-
-	// jobs are added by the thread running a command and read by the console thread and by kill, wait and jobs;
-	// every method that touches the list is synchronized
-	private List<IJob> jobs= new ArrayList<>();
-	//The upper limit for a PID on Linux is 32768
+	/** in the order of their numbers */
+	private final List<IJob> jobs= new ArrayList<>();
+	/** the most recently started, stopped or continued first */
+	private final List<IJob> recent = new ArrayList<>();
 	private static int nextPid = 100000;
+	/** process id to status, of the jobs that finished and left the table */
+	private final java.util.Map<Long, Integer> finished = new java.util.HashMap<>();
 
 	public static synchronized int getNextPid() {
 		return nextPid++;
@@ -24,69 +30,85 @@ public class JobManager {
 	 * @param pid
 	 */
 	public static void setNextPid(int pid) {
-		nextPid = pid;		
+		nextPid = pid;
 	}
 
 	/**
-	 * Add a job to the list setting the PID and JobNumber
-	 * @param job
-	 * @return the PID assigned to this job (a.k.a. last PID
+	 * Add a job to the table, giving it a process id and a job number.
+	 * @return the process id given to the job ($!)
 	 */
 	public synchronized int addJob(final IJob job) {
-
 		if( job.getPid()>=0) {
 			throw new RuntimeException("Logic error pid alread set = "+job.getPid());
 		}
 		int ret = getNextPid();
 		job.setPid( ret);
-		job.setJobNumber(jobs.size());
+		job.setJobNumber(jobs.isEmpty() ? 1 : jobs.get(jobs.size()-1).getJobNumber()+1);
 		jobs.add(job);
-
-		job.addJobStateChangeListner((ctx,from,to)->{
-			if( from.equals(to)) {
-				return;
-			}
-			if( to == JobState.Termnated) {
-				if (job instanceof BackgroundJob){
-					BackgroundJob bj = (BackgroundJob) job;
-					bj.child.stop();
-				}
-			}
-
-
-
-		});
+		touch(job);
 		return ret;
 	}
 
-	public synchronized IJob getJob(int pid_or_job_number) {
+	/** the job was stopped or continued: it is the most recent */
+	public synchronized void touch(IJob job) {
+		recent.remove(job);
+		recent.add(0, job);
+	}
+
+	/** the job numbered number (%number), or null */
+	public synchronized IJob getJob(int number) {
 		for(IJob j : jobs) {
-			if( j.getPid()==pid_or_job_number || j.getJobNumber()==pid_or_job_number) {
+			if( j.getJobNumber()==number) {
 				return j;
 			}
 		}
 		return null;
 	}
 
-	/*
-	public int size() {
-		return jobs.size();
-	}
-	 */
-	public synchronized List<IJob> getJobs(){
-		List<IJob> ret = new ArrayList<IJob>();
-		for(int idx=0,sz=jobs.size(); idx<sz;idx++ ) {
-			IJob job = jobs.get(idx);
-			if( job.getState()==JobState.Notified) {
-				// reported as done, drop it
-			} else {
-				job.setJobNumber(ret.size());
-				ret.add(job);
+	/** the job whose process id is pid, or null */
+	public synchronized IJob getJobByPid(long pid) {
+		for(IJob j : jobs) {
+			if( j.getPid()==pid) {
+				return j;
 			}
 		}
+		return null;
+	}
 
-		jobs = ret;
-		return new ArrayList<>(ret);
+	/** the jobs in the table, in the order of their numbers */
+	public synchronized List<IJob> getJobs(){
+		return new ArrayList<>(jobs);
+	}
+
+	/** the current job (%+, %%), or null */
+	public synchronized IJob current() {
+		return pick(null);
+	}
+
+	/** the previous job (%-), or null */
+	public synchronized IJob previous() {
+		IJob current = current();
+		return current == null ? null : pick(current);
+	}
+
+	/** the most recently stopped job, or else the most recent one; not except */
+	private IJob pick(IJob except) {
+		for(IJob j : recent) {
+			if( j != except && j.getState() == JobState.Suspended ) {
+				return j;
+			}
+		}
+		for(IJob j : recent) {
+			if( j != except ) {
+				return j;
+			}
+		}
+		return null;
+	}
+
+	/** what jobs shows after the job's number: + for the current job, - for the previous one */
+	public synchronized char marker(IJob job) {
+		return job == current() ? '+' : job == previous() ? '-' : ' ';
 	}
 
 	public synchronized void clear() {
@@ -96,20 +118,89 @@ public class JobManager {
 			}
 		}
 		jobs.clear();
-
+		recent.clear();
+		finished.clear();
 	}
 
+	/** the current job, or null */
 	public synchronized IJob getGetCurrentJob() {
-		if( jobs.size()>0) {
-			return jobs.getLast();
-		}
-		return null;
+		return current();
 	}
 
 	public synchronized void remove(IJob job) {
-		jobs.remove(job);		
+		if( jobs.remove(job) && isDone(job)) {
+			finished.put((long) job.getPid(), job.getExitCode());
+		}
+		recent.remove(job);
 	}
 
+	/** wait (for all): the statuses of the jobs that left the table are forgotten, as in bash */
+	public synchronized void forgetFinished() {
+		finished.clear();
+	}
 
+	/** the status of a job that finished and left the table (wait pid still gets it, as in bash) */
+	public synchronized Integer finishedStatus(long pid) {
+		return finished.get(pid);
+	}
 
+	public synchronized boolean contains(IJob job) {
+		return jobs.contains(job);
+	}
+
+	/** a job's state as jobs shows it: Running, Stopped, Done, Exit 3, Terminated: 15 ... */
+	public static String status(IJob job) {
+		switch (job.getState()) {
+		case Running:
+		case Idel:
+			return "Running";
+		case Suspended:
+			return job.getStoppedHow();
+		default:
+			Integer by = job.getTerminatedBy();
+			if( by != null ) {
+				return ProcessSignals.describe(by);
+			}
+			int code = job.getExitCode();
+			return code == 0 ? "Done" : "Exit "+code;
+		}
+	}
+
+	/** the line jobs shows for a job (and the shell before a prompt): [1]+  Running    sleep 10 & */
+	public synchronized String describe(IJob job, boolean withPid) {
+		JobState state = job.getState();
+		String text = job.getCommandLine()+(state == JobState.Running || state == JobState.Idel ? " &" : "");
+		if( withPid ) {
+			return String.format("[%d]%c %d %-27s%s", job.getJobNumber(), marker(job), job.getPid(), status(job), text);
+		}
+		return String.format("[%d]%c  %-27s%s", job.getJobNumber(), marker(job), status(job), text);
+	}
+
+	/** finished (and not waited for or reported yet) */
+	public static boolean isDone(IJob job) {
+		JobState state = job.getState();
+		return state == JobState.Termnated || state == JobState.Notified;
+	}
+
+	/**
+	 * What the interactive shell says before a prompt, as bash does: the jobs that have finished
+	 * (they then leave the table) and those stopped since the last prompt.
+	 */
+	public synchronized List<String> notices() {
+		List<String> ret = new ArrayList<>();
+		List<IJob> done = new ArrayList<>();
+		for(IJob job : jobs) {
+			if( isDone(job)) {
+				ret.add(describe(job, false));
+				done.add(job);
+			} else if( job.getState() == JobState.Suspended && job.isStopNoticeDue()) {
+				ret.add(describe(job, false));
+				job.setStopNoticeDue(false);
+			}
+		}
+		for(IJob job : done) {
+			remove(job);
+		}
+		return ret;
+	}
 }

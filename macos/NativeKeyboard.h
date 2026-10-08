@@ -13,6 +13,14 @@ extern "C" {
 #define us_bringardner_fsh_NativeKeyboard_DEFAULT_BUFFER_SIZE 16384L
 #undef us_bringardner_fsh_NativeKeyboard_MAX_BUFFER_SIZE
 #define us_bringardner_fsh_NativeKeyboard_MAX_BUFFER_SIZE 2147483639L
+#undef us_bringardner_fsh_NativeKeyboard_KEY_INTR
+#define us_bringardner_fsh_NativeKeyboard_KEY_INTR -3L
+#undef us_bringardner_fsh_NativeKeyboard_CTRL_C
+#define us_bringardner_fsh_NativeKeyboard_CTRL_C 3L
+#undef us_bringardner_fsh_NativeKeyboard_CTRL_Z
+#define us_bringardner_fsh_NativeKeyboard_CTRL_Z 26L
+#undef us_bringardner_fsh_NativeKeyboard_CTRL_BACKSLASH
+#define us_bringardner_fsh_NativeKeyboard_CTRL_BACKSLASH 28L
 #undef us_bringardner_fsh_NativeKeyboard_KEY_EOF
 #define us_bringardner_fsh_NativeKeyboard_KEY_EOF -1L
 #undef us_bringardner_fsh_NativeKeyboard_KEY_NONE
@@ -52,6 +60,14 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_getChar
  */
 JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_ready
   (JNIEnv *, jobject);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    setSignalKeys
+ * Signature: (Z)V
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setSignalKeys
+  (JNIEnv *, jobject, jboolean);
 
 #ifdef __cplusplus
 }

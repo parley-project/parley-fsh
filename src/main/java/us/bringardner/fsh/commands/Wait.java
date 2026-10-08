@@ -58,6 +58,7 @@ public class Wait extends ShellCommand{
 		JobManager jm = ctx.console.jobManager;
 
 		List<IJob> jobs = new ArrayList<>();
+		boolean ids = false;
 
 		// parse all the args
 		for (int idx = 0; idx < args.length; idx++) {
@@ -83,21 +84,42 @@ public class Wait extends ShellCommand{
 					}
 				}
 			} else {
-				int id = JobSpecs.parse(jm, val);
-				IJob job = jm.getJob(id);
+				ids = true;
+				IJob job;
+				try {
+					job = JobSpecs.find(jm, val);
+				} catch (JobSpecs.Ambiguous e) {
+					ctx.error("wait: "+e.getMessage());
+					return 127;
+				}
 				if( job!=null) {
 					jobs.add(job);
+				} else if( val.startsWith("%")) {
+					ctx.error("wait: "+JobSpecs.describe(val)+": no such job");
+					return 127;
+				} else if( val.matches("\\d+")) {
+					Integer status = jm.finishedStatus(Long.parseLong(val));
+					if( status == null ) {
+						ctx.error("wait: pid "+val+" is not a child of this shell");
+						return 127;
+					}
+					ret = status;
 				}
 			}
 		}
 
-		if( jobs.isEmpty()) {
+		if( jobs.isEmpty() && !ids) {
 			/*
  + "If no options or ids are supplied, wait waits for all running background jobs and the last-executed process substitution,"
 			+ " if its process id is the same as $!, and the return status is zero.\n"
 
 			 */
-			jobs.addAll(jm.getJobs());
+			// not the stopped ones, which would never end
+			for(IJob job : jm.getJobs()) {
+				if( job.getState() != JobState.Suspended ) {
+					jobs.add(job);
+				}
+			}
 		}
 
 		int jobId = -1;
@@ -105,8 +127,7 @@ public class Wait extends ShellCommand{
 		if( n && jobs.isEmpty()) {
 			ret = 127;
 		} else if( jobs.isEmpty()) {
-			// nothing to wait for
-			ret = 0;
+			// nothing (more) to wait for
 		} else {
 			boolean done = false;			
 			List<Integer> complete = new ArrayList<Integer>();
@@ -147,8 +168,15 @@ public class Wait extends ShellCommand{
 		// as in bash, a job that was waited for leaves the job table (jobs no longer lists it)
 		for(IJob job : jobs) {
 			if( isFinished(job)) {
+				if( ids && ctx.console.isInteractive ) {
+					// an interactive bash reports a job it was asked to wait for
+					ctx.stdout.println(jm.describe(job, false));
+				}
 				jm.remove(job);
 			}
+		}
+		if( !ids && !n ) {
+			jm.forgetFinished();
 		}
 
 		return ret;
