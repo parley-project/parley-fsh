@@ -885,18 +885,13 @@ $
 		}
 		if( name.equals("FUNCNAME")) {
 			// the running functions, innermost first, then main
-			if( functionStack.isEmpty()) {
+			if( callFrames.isEmpty()) {
+				// (only ${ list; } frames)
 				return null;
 			}
 			FshList names = new FshList();
-			for (int idx = functionStack.size()-1; idx >= 0; idx--) {
-				if( functionStack.get(idx).function != null ) {
-					names.add(functionStack.get(idx).function.getName());
-				}
-			}
-			if( names.isEmpty()) {
-				// (only ${ list; } frames)
-				return null;
+			for (int idx = callFrames.size()-1; idx >= 0; idx--) {
+				names.add(callFrames.get(idx)[0]);
 			}
 			names.add("main");
 			return names;
@@ -905,8 +900,8 @@ $
 			// the line each running function was called from, innermost first, then 0 (main; outside
 			// a function that is all)
 			FshList lines = new FshList();
-			for (int idx = functionStack.size()-1; idx >= 0; idx--) {
-				lines.add(String.valueOf(functionStack.get(idx).callLine));
+			for (int idx = callFrames.size()-1; idx >= 0; idx--) {
+				lines.add(callFrames.get(idx)[2]);
 			}
 			lines.add("0");
 			return lines;
@@ -919,8 +914,23 @@ $
 			return ProcessHandle.current().pid();
 		}
 		if( (name.equals("BASH_ARGC") || name.equals("BASH_ARGV")) && !console.unsetSpecials.contains(name) && console.getVariable(name) == null ) {
-			// (kept only with extdebug, as bash's: empty)
-			return new FshList();
+			// with extdebug: the arguments of the functions called while it was on, innermost first
+			// (each one's last first), and how many each had
+			FshList ret = new FshList();
+			for (int idx = functionStack.size()-1; idx >= 0; idx--) {
+				FunctionInvocation inv = functionStack.get(idx);
+				if( inv.function == null || !inv.argsKept ) {
+					continue;
+				}
+				if( name.equals("BASH_ARGC")) {
+					ret.add(String.valueOf(inv.args.size()-1));
+				} else {
+					for (int a = inv.args.size()-1; a >= 1; a--) {
+						ret.add(String.valueOf(inv.args.get(a)));
+					}
+				}
+			}
+			return ret;
 		}
 		if( name.equals("SHELLOPTS") && !console.unsetSpecials.contains(name)) {
 			return console.shellOpts();
@@ -962,14 +972,14 @@ $
 		if( name.equals("BASH_SOURCE")) {
 			// the files being sourced, innermost first, then the script
 			FshList files = new FshList();
-			for(java.util.Iterator<String> it = sourceFiles.descendingIterator(); it.hasNext(); ) {
-				files.add(it.next());
+			for (int idx = callFrames.size()-1; idx >= 0; idx--) {
+				files.add(callFrames.get(idx)[1]);
 			}
 			files.add(""+getPositionalVariable(0));
 			return files;
 		}
 		if( name.equals("LINENO")) {
-			if( trapLine != null ) {
+			if( trapLine != null && functionDepth() <= trapLineDepth ) {
 				// in a trap: the line of the command it ran for
 				return trapLine;
 			}
@@ -1311,6 +1321,8 @@ $
 		for(FunctionInvocation inv : functionStack) {
 			ret.functionStack.push(inv.copy());
 		}
+		ret.callFrames.addAll(callFrames);
+		ret.sourceFiles.addAll(sourceFiles);
 		if( !commandStack.isEmpty()) {
 			Map<String,Object> l = (Map<String, Object>) commandStack.peek().get(LOCAL_VARIABLES);
 			if( l != null ) {
@@ -1381,18 +1393,27 @@ $
 	public final java.util.Deque<String> sourceFiles = new java.util.ArrayDeque<>();
 
 	/**
-	 * caller n: the call n frames up.
-	 * @return {line, function (or main), file}, or null if there is no such frame
+	 * The running functions and sourced files, outermost first: {FUNCNAME (source for a file),
+	 * BASH_SOURCE (the file the function was defined in), BASH_LINENO (the line it was called from)}.
 	 */
-	public String [] callerFrame(int n) {
-		int idx = functionStack.size()-1-n;
-		if( idx < 0 ) {
-			return null;
+	public final List<String[]> callFrames = new ArrayList<>();
+
+	/** the file the commands running were read from: the innermost sourced file, else $0 */
+	public String currentSourceFile() {
+		return sourceFiles.isEmpty() ? ""+getPositionalVariable(0) : sourceFiles.peekLast();
+	}
+
+	/** source file: a frame for it (FUNCNAME source) */
+	public void enterSource(String path) {
+		sourceFiles.addLast(path);
+		callFrames.add(new String[] {"source", path, ""+currentLine()});
+	}
+
+	public void exitSource() {
+		sourceFiles.pollLast();
+		if( !callFrames.isEmpty()) {
+			callFrames.remove(callFrames.size()-1);
 		}
-		FunctionInvocation inv = functionStack.get(idx);
-		String from = idx > 0 && functionStack.get(idx-1).function != null ? functionStack.get(idx-1).function.getName() : "main";
-		String file = sourceFiles.isEmpty() ? ""+getPositionalVariable(0) : sourceFiles.peekLast();
-		return new String[] {""+inv.callLine, from, file};
 	}
 
 	public Object getEvironmentVariable(String name) {		
@@ -1427,6 +1448,8 @@ $
 		boolean returnTrap;
 		/** trap ... DEBUG was set while this ran: it runs for this function's commands */
 		boolean debugTrap;
+		/** extdebug was on when it was called: its arguments are in $BASH_ARGV */
+		boolean argsKept;
 		/** getopts' place (OPTIND, the letter in that word) when this was called */
 		int [] getopts = {1, 0};
 
@@ -1446,6 +1469,8 @@ $
 		private FunctionInvocation(FunctionInvocation other) {
 			function = other.function;
 			args.addAll(other.args);
+			callLine = other.callLine;
+			argsKept = other.argsKept;
 			// a subshell's copy: its local arrays are its own
 			for(Map.Entry<String,Object> e : other.local.entrySet()) {
 				local.put(e.getKey(), copyValue(e.getValue()));
@@ -1480,7 +1505,10 @@ $
 			errTrapBlocked++;
 		}
 		inv.getopts = console.getoptsState();
+		inv.argsKept = us.bringardner.fsh.Glob.option(this, "extdebug");
 		functionStack.push(inv);		
+		String file = function.sourceFile();
+		callFrames.add(new String[] {function.getName(), file == null ? currentSourceFile() : file, ""+inv.callLine});
 	}
 
 	/** ${ list; } runs as a function does (local, return), with the caller's $1 ... */
@@ -1495,6 +1523,9 @@ $
 
 	public void exitFunction(ShellFunction functionDefStatement) {
 		FunctionInvocation inv = functionStack.pop();
+		if( inv.function != null && !callFrames.isEmpty()) {
+			callFrames.remove(callFrames.size()-1);
+		}
 		if( inv.savedOptions != null ) {
 			// local -: the options as they were
 			console.restoreOptions(inv.savedOptions);
@@ -1575,6 +1606,8 @@ $
 
 	/** while a trap runs: the line of the command it ran for ($LINENO), or null */
 	public Integer trapLine;
+	/** how many functions were running when trapLine was set (in functions the trap calls $LINENO is theirs) */
+	public int trapLineDepth;
 	/** the simple command running, as bash shows it in $BASH_COMMAND */
 	public volatile String currentCommand = "";
 
@@ -1645,6 +1678,19 @@ $
 	public void functionReturning() {
 		if( !functionStack.isEmpty() && (functionStack.peek().returnTrap || console.isOptionEnabled(Console.Option.FuncTrace))) {
 			console.runTrap(Console.ConsoleMetaSignal.Return, this);
+		}
+	}
+
+	/** source file is done: the RETURN trap, on the line of the source command, as bash's */
+	public void sourceReturning(int callLine) {
+		if( functionStack.isEmpty() || functionStack.peek().returnTrap || console.isOptionEnabled(Console.Option.FuncTrace)) {
+			int saved = line;
+			line = callLine;
+			try {
+				console.runTrap(Console.ConsoleMetaSignal.Return, this);
+			} finally {
+				line = saved;
+			}
 		}
 	}
 

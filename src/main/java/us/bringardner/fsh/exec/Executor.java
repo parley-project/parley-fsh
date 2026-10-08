@@ -817,7 +817,9 @@ public final class Executor {
 		try {
 			for(String v : values) {
 				sc.line = f.line;
-				debugTrap(sc, header.toString());
+				if( debugTrap(sc, header.toString())) {
+					continue;
+				}
 				if( tracing(sc)) {
 					trace(sc, sc.stderr, shown.toString());
 				}
@@ -1075,7 +1077,9 @@ public final class Executor {
 
 	/** (( expression )): 0 if it is not 0 */
 	private int arith(Ast.Arith a, ShellContext sc) {
-		debugTrap(sc, text(a).trim());
+		if( debugTrap(sc, text(a).trim())) {
+			return 0;
+		}
 		try {
 			Expander ex = expander(sc);
 			String expr = ex.arithmeticText(a.expression);
@@ -1113,7 +1117,9 @@ public final class Executor {
 	}
 
 	private int cond(Ast.Cond c, ShellContext sc) {
-		debugTrap(sc, text(c).trim());
+		if( debugTrap(sc, text(c).trim())) {
+			return 0;
+		}
 		try {
 			return test(c.expression, sc, expander(sc)) ? 0 : 1;
 		} catch (BadRegex e) {
@@ -1409,7 +1415,7 @@ public final class Executor {
 			}
 			return 1;
 		}
-		sc.addFunction(new AstFunction(f, this));
+		sc.addFunction(new AstFunction(f, this, sc.currentSourceFile()));
 		return 0;
 	}
 
@@ -1431,7 +1437,9 @@ public final class Executor {
 		if( sc.trapLine == null ) {
 			sc.currentCommand = text;
 		}
-		debugTrap(sc, text);
+		if( debugTrap(sc, text)) {
+			return 0;
+		}
 		Expander ex = expander(sc);
 		long substitutions = sc.console.substitutionCount();
 		List<Object> args = new ArrayList<>();
@@ -1832,16 +1840,25 @@ public final class Executor {
 	/**
 	 * The DEBUG trap, before a command (text is $BASH_COMMAND): not in a function, ( ) or $( )
 	 * unless set -T.
+	 * @return the command is to be skipped (extdebug, and the trap's status was not 0)
 	 */
-	private static void debugTrap(ShellContext sc, String text) {
+	private static boolean debugTrap(ShellContext sc, String text) {
 		if( sc.trapLine == null ) {
 			// ($BASH_COMMAND: in a function too, where the trap does not run)
 			sc.currentCommand = text;
 		}
 		if( sc.debugBlocked > 0 && !sc.console.isOptionEnabled(Option.FuncTrace) && !sc.debugTrapHere()) {
-			return;
+			return false;
 		}
-		sc.console.runTrap(ConsoleMetaSignal.Debug, sc);
+		int status = sc.console.runTrap(ConsoleMetaSignal.Debug, sc);
+		if( status == 0 || !Glob.option(sc, "extdebug")) {
+			return false;
+		}
+		// extdebug: the command is skipped; 2 returns from the function or sourced file
+		if( status == 2 && (sc.isInFunction() || sc.sourceDepth > 0)) {
+			throw new us.bringardner.fsh.signal.ReturnException(sc, null, 2);
+		}
+		return true;
 	}
 
 	/** a value as set -x shows it after name= (an empty one is nothing) */

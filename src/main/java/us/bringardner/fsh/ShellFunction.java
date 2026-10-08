@@ -22,6 +22,11 @@ public interface ShellFunction {
 	/** call it with these arguments ($1 ...); its status */
 	int invoke(Argument[] args, ShellContext ctx) throws IOException;
 
+	/** the file it was defined in ($BASH_SOURCE in it), or null */
+	default String sourceFile() {
+		return null;
+	}
+
 	boolean isExported();
 
 	void setExported(boolean exported);

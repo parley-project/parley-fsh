@@ -3557,7 +3557,11 @@ delimiter
 		int saved = getLastExitCode();
 		Integer savedLine = ctx.trapLine;
 		String savedCommand = ctx.currentCommand;
-		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
+		int savedLineDepth = ctx.trapLineDepth;
+		if( ctx.trapLine == null || ctx.functionDepth() > ctx.trapLineDepth ) {
+			ctx.trapLine = ctx.currentLine();
+			ctx.trapLineDepth = ctx.functionDepth();
+		}
 		// $BASH_TRAPSIG: the signal's number while its trap runs
 		Object savedSig = ctx.getVariable("BASH_TRAPSIG");
 		ctx.setVariable("BASH_TRAPSIG", String.valueOf(signum));
@@ -3574,6 +3578,7 @@ delimiter
 		} finally {
 			setLastExitCode(saved);
 			ctx.trapLine = savedLine;
+			ctx.trapLineDepth = savedLineDepth;
 			ctx.currentCommand = savedCommand;
 			ctx.setVariable("BASH_TRAPSIG", savedSig);
 			ctx.trapStatus = savedTrapStatus;
@@ -3609,23 +3614,34 @@ delimiter
 	/**
 	 * Run the ERR, RETURN (or DEBUG) trap in ctx, so $1 and local variables are the running
 	 * function's; $? is kept. A trap does not run inside its own action.
+	 * @return the trap's status (0 if it did not run)
 	 */
-	public void runTrap(ConsoleMetaSignal signal, ShellContext ctx) {
+	public int runTrap(ConsoleMetaSignal signal, ShellContext ctx) {
 		List<String> actions = signalHandlers.get(signal);
 		if( actions == null || actions.isEmpty() || inProcess.contains(signal)) {
-			return;
+			return 0;
+		}
+		if( signal == ConsoleMetaSignal.Return && inProcess.contains(ConsoleMetaSignal.Debug)) {
+			// (not for the functions the DEBUG trap calls, as bash's)
+			return 0;
 		}
 		int saved = getLastExitCode();
+		int status = 0;
 		inProcess.push(signal);
 		Integer savedLine = ctx.trapLine;
 		String savedCommand = ctx.currentCommand;
 		// (the line the shell is on: the command the trap ran for goes on with it)
 		int shellLine = ctx.line;
-		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
+		int savedLineDepth = ctx.trapLineDepth;
+		if( ctx.trapLine == null || ctx.functionDepth() > ctx.trapLineDepth ) {
+			ctx.trapLine = ctx.currentLine();
+			ctx.trapLineDepth = ctx.functionDepth();
+		}
 		try {
 			for(String code : actions) {
 				runCode(ctx, code);
 			}
+			status = getLastExitCode();
 		} catch (us.bringardner.fsh.signal.FshException e) {
 			throw e;
 		} catch (Exception e) {
@@ -3634,9 +3650,11 @@ delimiter
 			inProcess.pop();
 			setLastExitCode(saved);
 			ctx.trapLine = savedLine;
+			ctx.trapLineDepth = savedLineDepth;
 			ctx.currentCommand = savedCommand;
 			ctx.line = shellLine;
 		}
+		return status;
 	}
 
 	private  Map<Integer,List<ConsoleSignalHandler>> osSignalHandlers = new ConcurrentSkipListMap<>();

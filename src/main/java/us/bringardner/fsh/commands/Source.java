@@ -124,14 +124,28 @@ public class Source extends ShellCommand{
 				}
 				int ret = 0;
 				ctx.sourceDepth++;
-				ctx.sourceFiles.addLast(path);
+				int callLine = ctx.currentLine();
+				// (without set -T the DEBUG trap does not run in the file, nor in its RETURN trap)
+				boolean blockDebug = !ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.FuncTrace);
+				if( blockDebug ) {
+					ctx.debugBlocked++;
+				}
+				ctx.enterSource(path);
 				try {
 					ret = ctx.console.runCode(ctx, code);
 				} catch (ReturnException e) {
 					ret = e.exitCode;
 				} finally {
-					ctx.sourceFiles.pollLast();
+					ctx.exitSource();
 					ctx.sourceDepth--;
+					ctx.console.setLastExitCode(ret);
+					try {
+						ctx.sourceReturning(callLine);
+					} finally {
+						if( blockDebug ) {
+							ctx.debugBlocked--;
+						}
+					}
 					if( saved != null && params.equals(ctx.getPositionalParameterValues())) {
 						// (unless the file set them itself: set -- in it stays, as in bash)
 						ctx.setPositionalParameterValues(saved);

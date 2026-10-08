@@ -18,10 +18,17 @@ final class AstFunction implements ShellFunction {
 	private final Ast.FunctionDef def;
 	private final Executor executor;
 	private boolean exported;
+	private final String file;
 
-	AstFunction(Ast.FunctionDef def, Executor executor) {
+	AstFunction(Ast.FunctionDef def, Executor executor, String file) {
 		this.def = def;
 		this.executor = executor;
+		this.file = file;
+	}
+
+	@Override
+	public String sourceFile() {
+		return file;
 	}
 
 	@Override
@@ -73,6 +80,10 @@ final class AstFunction implements ShellFunction {
 			sc.debugBlocked--;
 			try {
 				sc.console.setLastExitCode(ret);
+				// (the RETURN trap's $LINENO is the line the function starts on, as bash's)
+				if( def.body.line > 0 ) {
+					sc.line = def.body.line;
+				}
 				sc.functionReturning();
 			} finally {
 				sc.exitFunction(this);
