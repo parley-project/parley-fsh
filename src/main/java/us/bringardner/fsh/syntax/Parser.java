@@ -52,7 +52,9 @@ public final class Parser {
 		/** "..." inside "${x:-word}": the quotes are removed and \ quotes any character, as bash's */
 		QUOTED_AGAIN,
 		/** as an unquoted here-document: only \ (before $ ` \), $ and ` count */
-		HERE_DOCUMENT
+		HERE_DOCUMENT,
+		/** as WORD, and <(cmd) >(cmd) are process substitutions (the word of an unquoted ${x:-word}) */
+		WORD_WITH_PROCESSES
 	}
 
 	/**
@@ -64,8 +66,9 @@ public final class Parser {
 		p.commandStart = false;
 		p.aliasing = false;
 		Word w;
-		if( mode == Fragment.WORD ) {
+		if( mode == Fragment.WORD || mode == Fragment.WORD_WITH_PROCESSES ) {
 			p.fragment = true;
+			p.fragmentProcesses = mode == Fragment.WORD_WITH_PROCESSES;
 			w = p.readWord(false);
 		} else {
 			w = new Word();
@@ -311,6 +314,8 @@ public final class Parser {
 	private int functionSubs;
 	/** reading a piece of text as one word (see fragment): nothing ends it but the end */
 	private boolean fragment;
+	/** in that fragment, <(cmd) is a process substitution */
+	private boolean fragmentProcesses;
 	/** reading a word of name=( ... ) */
 	private boolean arrayElement;
 	/** the next word is the target of a redirect (it does not change commandStart) */
@@ -659,7 +664,7 @@ public final class Parser {
 				break;
 			case '<':
 			case '>':
-				if( !regex && (!fragment || ch(pos+1) == '(')) {
+				if( !regex && (!fragment || fragmentProcesses && ch(pos+1) == '(')) {
 					// <(cmd) >(cmd) (in ${x:-<(cmd)} too)
 					flush(w, lit);
 					char dir = c;

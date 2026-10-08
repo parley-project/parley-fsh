@@ -1023,7 +1023,7 @@ public final class Expander {
 
 	/** the word of ${x:-word} (and :+ - +) into pieces: quoted in "...", otherwise split */
 	private boolean paramWord(String text, int context, List<Piece> out) {
-		Word w = Parser.fragment(text, context == QUOTED || inHereDocument ? quotedParameter() : Fragment.WORD);
+		Word w = Parser.fragment(text, context == QUOTED || inHereDocument ? quotedParameter() : Fragment.WORD_WITH_PROCESSES);
 		boolean ret = false;
 		int before = out.size();
 		List<Word.Part> parts = w.parts;
