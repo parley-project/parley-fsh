@@ -958,6 +958,10 @@ public final class Expander {
 			}
 		} else if( "#?-$!".indexOf(n.charAt(0)) >= 0 ) {
 			ret = Val.of(str(sc.getVariable("$"+n)));
+		} else if( e.subscript == null && isName(n) && sc.circular(n)) {
+			// v -> w -> x -> v: said, and nothing
+			sc.error("warning: "+n+": circular name reference");
+			ret = Val.of(null);
 		} else if( e.subscript == null && isName(n) && sc.selfReference(n)) {
 			// a function's local -n v=v: said, and the global v
 			sc.error("warning: "+n+": circular name reference");

@@ -492,6 +492,11 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
+		if( !(value instanceof NameRef) && circular(name)) {
+			// v -> w -> x -> v: nothing is set (said, as bash's)
+			error("warning: "+name+": circular name reference");
+			return;
+		}
 		if( !(value instanceof NameRef) && selfReference(name) && ((NameRef) rawVariable(name)).target.equals(name)) {
 			// a function's local -n v=v: the global v (said, as bash's)
 			error("warning: "+name+": maximum nameref depth (8) exceeded");
@@ -752,6 +757,22 @@ $
 		} else {
 			setGlobalVariable(name, value);
 		}
+	}
+
+	/** namerefs that come back to one already followed (v -> w -> x -> v), not a function's own to itself */
+	public boolean circular(String name) {
+		if( !(rawVariable(name) instanceof NameRef) || selfReference(name)) {
+			return false;
+		}
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		String cur = name;
+		while( rawVariable(cur) instanceof NameRef r && !r.target.isEmpty()) {
+			if( !seen.add(cur)) {
+				return true;
+			}
+			cur = r.target;
+		}
+		return false;
 	}
 
 	/** a function's own nameref that names itself (local -n v=v, or v=v[0]) */
@@ -1045,6 +1066,12 @@ $
 	}
 
 	/** name is a local variable of the running function itself (not a caller's) */
+	/** a function's local variable declared with no value (local x) */
+	public boolean isDeclaredLocal(String name) {
+		FunctionInvocation scope = localScope(name);
+		return scope != null && scope.local.get(name) == UNSET_LOCAL;
+	}
+
 	/** the names of the running function's own local variables */
 	public java.util.Set<String> ownLocalNames() {
 		return functionStack.isEmpty() ? java.util.Set.of() : functionStack.peek().local.keySet();

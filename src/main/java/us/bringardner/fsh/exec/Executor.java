@@ -1409,7 +1409,7 @@ public final class Executor {
 					String v = a.value == null ? "" : ex.assignment(a.value);
 					if( a.append ) {
 						Object before = ShellContext.firstElement(sc.getVariable(a.name));
-						v = sc.console.isInteger(a.name) ? String.valueOf(arithmeticValue((before == null ? "0" : before)+"+("+v+")", sc))
+						v = sc.console.isInteger(sc.readonlyName(a.name)) ? String.valueOf(arithmeticValue((before == null ? "0" : before)+"+("+v+")", sc))
 								: (before == null ? "" : before.toString())+v;
 					}
 					if( tracing(sc)) {
@@ -2081,9 +2081,9 @@ public final class Executor {
 		}
 		if( a.append ) {
 			Object before = old instanceof Map<?,?> m ? m.get(key) : old instanceof List<?> l && key instanceof Integer i ? (l instanceof FshList f ? f.get(i) : i < l.size() ? l.get(i) : null) : null;
-			v = sc.console.isInteger(a.name) ? (before == null ? "0" : before)+"+("+v+")" : (before == null ? "" : before.toString())+v;
+			v = sc.console.isInteger(sc.readonlyName(a.name)) ? (before == null ? "0" : before)+"+("+v+")" : (before == null ? "" : before.toString())+v;
 		}
-		if( sc.console.isInteger(a.name)) {
+		if( sc.console.isInteger(sc.readonlyName(a.name))) {
 			v = String.valueOf(arithmeticValue(v, sc));
 		}
 		if( old != null && !(old instanceof List<?>) && !(old instanceof Map<?,?>) && key instanceof Integer ) {
@@ -2106,7 +2106,7 @@ public final class Executor {
 					map.put(String.valueOf(e.getKey()), e.getValue());
 				}
 			}
-			boolean integer = sc.console.isInteger(a.name);
+			boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
 			for(Word w : a.array) {
 				boolean [] plus = new boolean[1];
 				Word [] kv = keyValue(w, plus);
@@ -2133,7 +2133,7 @@ public final class Executor {
 				list.set(next++, old);
 			}
 		}
-		boolean integer = sc.console.isInteger(a.name);
+		boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
 		for(Word w : a.array) {
 			boolean [] plus = new boolean[1];
 			Word [] kv = keyValue(w, plus);

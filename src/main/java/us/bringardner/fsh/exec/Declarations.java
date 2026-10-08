@@ -323,8 +323,16 @@ public final class Declarations {
 					continue;
 				}
 				sc.setNameRef(name, target, local);
+				if( o.indexOf('i') < 0 ) {
+					// (a nameref is no integer: declare -i x; declare -n x=y)
+					sc.console.setInteger(name, false);
+				}
 				if( o.indexOf('r') >= 0 ) {
 					sc.console.setReadonly(name);
+				}
+				if( o.indexOf('x') >= 0 ) {
+					// declare -nx ref=var: ref=var is in the environment
+					sc.setEnvironmentVariable(name, target);
 				}
 				continue;
 			}
@@ -334,10 +342,19 @@ public final class Declarations {
 				if( assignment != null || text != null ) {
 					String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
 					if( !ref.target().isEmpty()) {
+						if( o.indexOf('i') >= 0 ) {
+							// declare +n -i ref=7+4: what it names is an integer, 11
+							sc.console.setInteger(ref.target(), true);
+							v = String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc));
+						}
 						sc.setVariable(ref.target(), v);
 					}
 				}
-				if( local ) {
+				if( ref.target().isEmpty()) {
+					// (naming nothing: declared, with no value)
+					sc.unSetVariable(name, false);
+					sc.console.declaredUnset.add(name);
+				} else if( local ) {
 					sc.setLocalVariable(name, ref.target());
 				} else {
 					sc.unSetVariable(name, false);
@@ -541,7 +558,7 @@ public final class Declarations {
 				String d = declaration(name, val).substring("declare -".length());
 				String flags = d.substring(0, d.indexOf(' ')).replace("r", "");
 				sc.stdout.println("readonly "+(flags.isEmpty() ? "" : "-"+flags+" ")+d.substring(d.indexOf(' ')+1));
-			} else if( val == null && sc.console.declaredUnset.contains(name)) {
+			} else if( val == null && (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name))) {
 				sc.stdout.println(declaration(name, val));
 			} else if( val == null && !(sc.rawVariable(name) instanceof ShellContext.NameRef)) {
 				error(command.equals("readonly") ? "declare" : command, name+": not found");
@@ -562,7 +579,7 @@ public final class Declarations {
 			return "declare -"+flags(name, val)+" "+name+(target.isEmpty() ? "" : "="+quote(target));
 		}
 		String flags = flags(name, val);
-		if( sc.console.declaredUnset.contains(name) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
+		if( (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name)) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
 			// declared, never given a value
 			return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name;
 		}
@@ -597,9 +614,13 @@ public final class Declarations {
 			flags += "i";
 		}
 		if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
-			flags = "n";
+			// (its own attributes: i n r x)
+			flags = (sc.console.isInteger(name) ? "i" : "")+"n";
 			if( sc.console.isReadonly(name)) {
 				flags += "r";
+			}
+			if( sc.getEvironmentVariable(name) != null ) {
+				flags += "x";
 			}
 			return flags;
 		}
