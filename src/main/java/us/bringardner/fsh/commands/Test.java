@@ -353,7 +353,8 @@ public class Test extends ShellCommand{
 				String sub = m.group(2);
 				if( sub.indexOf('\\') >= 0 ) {
 					sub = sub.replaceAll("\\\\(.)", "$1");
-				} else if( (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0) && us.bringardner.fsh.expand.Arithmetic.expandSubscript != null ) {
+				} else if( (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0) && us.bringardner.fsh.expand.Arithmetic.expandSubscript != null
+						&& !us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")) {
 					// (test -v a[$(cmd)]: the subscript is expanded, as bash's)
 					sub = us.bringardner.fsh.expand.Arithmetic.expandSubscript.apply(ctx, sub);
 				}

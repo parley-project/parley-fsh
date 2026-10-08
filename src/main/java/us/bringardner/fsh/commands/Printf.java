@@ -78,7 +78,7 @@ public class Printf extends ShellCommand{
 					ctx.stderr.println(USAGE);
 					return 2;
 				}
-				if( !var.matches("[A-Za-z_][A-Za-z_0-9]*") && !ELEMENT.matcher(var).matches()) {
+				if( !us.bringardner.fsh.ShellContext.validReferenceName(var)) {
 					ctx.error("printf: `"+var+"': not a valid identifier");
 					return 2;
 				}

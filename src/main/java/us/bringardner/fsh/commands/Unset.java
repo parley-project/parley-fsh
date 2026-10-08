@@ -84,7 +84,10 @@ public class Unset extends ShellCommand{
 				// unset 'a[1]' or 'm[key]': one element
 				Object val = ctx.getVariable(m.group(1));
 				boolean all = m.group(2).equals("@") || m.group(2).equals("*");
-				if( all && val instanceof java.util.List<?> ) {
+				if( all && val instanceof java.util.List<?> && compat51(ctx)) {
+					// (BASH_COMPAT=51: unset a[@] unsets a)
+					ctx.unSetVariable(m.group(1), true);
+				} else if( all && val instanceof java.util.List<?> ) {
 					// unset 'a[@]': every element (a stays an array; for an associative one, bash 5.3
 					// unsets the key @ or *)
 					((java.util.List<?>) val).clear();
@@ -97,7 +100,13 @@ public class Unset extends ShellCommand{
 						ret = 1;
 					}
 				} else if( val instanceof java.util.Map<?,?> ) {
-					((java.util.Map<?,?>) val).remove(m.group(2));
+					String key = m.group(2);
+					if( (key.indexOf('$') >= 0 || key.indexOf('`') >= 0) && !us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")
+							&& us.bringardner.fsh.expand.Arithmetic.expandSubscript != null ) {
+						// (the key is expanded once more, as bash's: unset 'm[$k]' is m[value of k])
+						key = us.bringardner.fsh.expand.Arithmetic.expandSubscript.apply(ctx, key);
+					}
+					((java.util.Map<?,?>) val).remove(key);
 				} else if( val instanceof java.util.List<?> ) {
 					int index = us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).intValue();
 					if( index < 0 ) {
@@ -150,6 +159,20 @@ public class Unset extends ShellCommand{
 		}
 		// an unset name is not an error (a readonly one is)
 		return ret;
+	}
+
+	/** BASH_COMPAT is 51 (5.1) or less */
+	private static boolean compat51(ShellContext ctx) {
+		Object v = ctx.getVariable("BASH_COMPAT");
+		if( v == null ) {
+			return false;
+		}
+		String s = v.toString().replace(".", "");
+		try {
+			return !s.isEmpty() && Integer.parseInt(s) <= 51;
+		} catch (NumberFormatException e) {
+			return false;
+		}
 	}
 
 	/** the indexes of an array (or the keys of an associative one), in order */

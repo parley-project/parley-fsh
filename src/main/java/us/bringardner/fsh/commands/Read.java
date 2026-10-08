@@ -162,7 +162,7 @@ public class Read extends ShellCommand{
 
 		// names that are no variable's (a[1] is an element)
 		for(String nm : arrayName == null ? names : List.of(arrayName)) {
-			if( !nm.matches("[A-Za-z_][A-Za-z_0-9]*(\\[.+\\])?") || arrayName != null && nm.contains("[")) {
+			if( !ShellContext.validReferenceName(nm) || arrayName != null && nm.contains("[")) {
 				ctx.error("read: `"+nm+"': not a valid identifier");
 				return 1;
 			}

@@ -797,6 +797,30 @@ $
 		error(builtin != null ? builtin+": "+message : message);
 	}
 
+	/** name, or name[subscript] with its [ and ] paired up to the end (A[]] is not one), as bash's */
+	public static boolean validReferenceName(String v) {
+		int b = v.indexOf('[');
+		String name = b < 0 ? v : v.substring(0, b);
+		if( !name.matches("[A-Za-z_][A-Za-z_0-9]*")) {
+			return false;
+		}
+		if( b < 0 ) {
+			return true;
+		}
+		int depth = 0;
+		for (int i = b; i < v.length(); i++) {
+			char c = v.charAt(i);
+			if( c == '\\' ) {
+				i++;
+			} else if( c == '[' ) {
+				depth++;
+			} else if( c == ']' && --depth == 0 ) {
+				return i == v.length()-1 && i > b+1;
+			}
+		}
+		return false;
+	}
+
 	/** a name a nameref can name: name, or name[subscript] */
 	public static boolean validReference(String v) {
 		return v.matches("[A-Za-z_][A-Za-z_0-9]*(\\[.+\\])?");
