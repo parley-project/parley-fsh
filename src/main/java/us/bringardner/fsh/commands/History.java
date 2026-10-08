@@ -115,9 +115,10 @@ public class History extends ShellCommand{
 			}
 			int ret = 0;
 			for(String w : rest) {
-				us.bringardner.fsh.HistoryExpansion.Result r = us.bringardner.fsh.HistoryExpansion.expand(w, commands);
+				us.bringardner.fsh.HistoryExpansion.Result r = us.bringardner.fsh.HistoryExpansion.expand(w, commands, ctx.console.historyBase);
 				if( r.error != null ) {
-					ctx.error("history: "+r.error);
+					// (bash says only that it failed)
+					ctx.error("history: "+w+": history expansion failed");
 					ret = 1;
 				} else {
 					ctx.stdout.println(r.line);

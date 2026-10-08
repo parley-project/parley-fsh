@@ -130,15 +130,17 @@ public class TestInteractiveInput {
 	@Test
 	public void historyExpansionOfTypedLines() throws Exception {
 		Console c = console("echo one two", "ls -l /tmp");
+		// (the line as expanded is shown on standard error, as bash shows it)
 		assertEquals("ls -l /tmp", c.readCommand(new Keyboard("!!")));
-		assertEquals("ls -l /tmp\n", out.toString());
+		assertEquals("ls -l /tmp\n", err.toString());
 		assertEquals("echo two", c.readCommand(new Keyboard("echo !-2:$")));
+		err.reset();
 		assertEquals("", c.readCommand(new Keyboard("!nosuch")));
 		assertEquals("fsh: !nosuch: event not found\n", err.toString());
 		// :p shows it and keeps it, but does not run it
-		out.reset();
+		err.reset();
 		assertEquals("", c.readCommand(new Keyboard("!echo:p")));
-		assertEquals("echo one two\n", out.toString());
+		assertEquals("echo one two\n", err.toString());
 		assertEquals("echo one two", c.history.get(c.history.size()-1).command);
 		// off with set +H
 		c.setOption(Console.Option.HistExpand, false);

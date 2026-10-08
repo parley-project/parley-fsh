@@ -297,6 +297,20 @@ public final class Parser {
 	 * end yet, or a line that ends with |, &&, || or \. (A real syntax error is whole: it is
 	 * reported.)
 	 */
+	/** the text so far ends inside a here-document's body (its lines are not history-expanded) */
+	public static boolean inHereDocument(String code) {
+		if( code.indexOf("<<") < 0 ) {
+			return false;
+		}
+		Parser p = new Parser(code);
+		try {
+			p.script();
+		} catch (SyntaxError e) {
+			// (unfinished: what was read tells)
+		}
+		return p.hereDocumentOpen;
+	}
+
 	public static boolean isComplete(String code) {
 		int backslashes = 0;
 		for (int i = code.length()-1; i >= 0 && code.charAt(i) == '\\'; i--) {

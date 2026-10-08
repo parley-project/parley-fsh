@@ -1295,6 +1295,39 @@ delimiter
 					first = line+1;
 					continue;
 				}
+				if( !isInteractive && isOptionEnabled(Option.HistExpand) && isOptionEnabled(Option.History)
+						&& (l.indexOf('!') >= 0 || l.startsWith("^")) && !us.bringardner.fsh.syntax.Parser.inHereDocument(code.toString())) {
+					// set -H with the history on in a script: each line is history-expanded as it is read
+					List<String> commands = new ArrayList<>();
+					for(HistoryEntry e : history) {
+						commands.add(e.command);
+					}
+					HistoryExpansion.Result r = HistoryExpansion.expand(l, commands, historyBase, isOptionEnabled(Option.Posix));
+					if( commandsContext == null ) {
+						commandsContext = scriptContext();
+					}
+					if( r.error != null ) {
+						// (said, and the line is not run)
+						commandsContext.line = line;
+						commandsContext.error(r.error);
+						lastExitCode = 1;
+						if( code.length() == 0 ) {
+							first = line+1;
+						}
+						continue;
+					}
+					if( r.changed ) {
+						commandsContext.stderr.println(r.line);
+						l = r.line;
+						if( r.printOnly ) {
+							rememberCommand(l);
+							if( code.length() == 0 ) {
+								first = line+1;
+							}
+							continue;
+						}
+					}
+				}
 				code.append(l);
 				boolean continued = (l.length()-l.replaceAll("\\\\+$", "").length()) % 2 == 1;
 				if( continued ) {
@@ -2390,14 +2423,14 @@ delimiter
 				for(HistoryEntry e : history) {
 					commands.add(e.command);
 				}
-				HistoryExpansion.Result r = HistoryExpansion.expand(line, commands);
+				HistoryExpansion.Result r = HistoryExpansion.expand(line, commands, historyBase);
 				if( r.error != null ) {
 					stdErr.println("fsh: "+r.error);
 					return "";
 				}
 				if( r.changed ) {
-					// as bash shows it
-					stdOut.println(r.line);
+					// as bash shows it (on standard error)
+					stdErr.println(r.line);
 				}
 				if( r.printOnly ) {
 					rememberCommand(r.line);

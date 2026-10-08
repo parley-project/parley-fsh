@@ -116,32 +116,6 @@ public final class Executor {
 		int ret = 0;
 		while( true ) {
 			Ast.Sequence seq;
-			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.HistExpand) && sc.console.isOptionEnabled(Option.History)) {
-				// set -H with the history on in a script: each line is history-expanded as it is read
-				String line = reader.peekLine();
-				if( line != null && (line.indexOf('!') >= 0 || line.startsWith("^"))) {
-					List<String> commands = new ArrayList<>();
-					for(Console.HistoryEntry e : sc.console.history) {
-						commands.add(e.command);
-					}
-					us.bringardner.fsh.HistoryExpansion.Result r = us.bringardner.fsh.HistoryExpansion.expand(line, commands);
-					if( r.error != null ) {
-						// (said, and the line is not run)
-						error(sc, r.error);
-						reader.replaceLine("");
-						sc.console.setLastExitCode(1);
-						continue;
-					}
-					if( r.changed ) {
-						sc.stderr.println(r.line);
-						reader.replaceLine(r.printOnly ? "" : r.line);
-						if( r.printOnly ) {
-							sc.console.rememberCommand(r.line);
-							continue;
-						}
-					}
-				}
-			}
 			try {
 				seq = reader.next();
 			} catch (SyntaxError e) {
