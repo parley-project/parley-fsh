@@ -1161,7 +1161,7 @@ public final class Parser {
 			}
 			i++;
 		}
-		throw eof(")");
+		throw eofInPiece(")", open);
 	}
 
 	/** the ] that closes the [ at open, or -1 (not found, or not before a newline unless lines is true) */
@@ -1421,6 +1421,14 @@ public final class Parser {
 
 	private SyntaxError eof(String looking) {
 		return new SyntaxError(lineOf(Math.min(pos, src.length())), "unexpected EOF while looking for matching `"+looking+"'");
+	}
+
+	/**
+	 * EOF in what the lexer reads as one piece ((( ... )), name=( ... )): bash says the line it
+	 * starts on
+	 */
+	private SyntaxError eofInPiece(String looking, int start) {
+		return new SyntaxError(lineOf(start), "unexpected EOF while looking for matching `"+looking+"'");
 	}
 
 	// ------------------------------------------------------------------ grammar
@@ -1896,7 +1904,7 @@ public final class Parser {
 					continue;
 				}
 				if( atEnd(pos)) {
-					throw eof(")");
+					throw eofInPiece(")", w.start);
 				}
 				if( ch(pos) == ')' ) {
 					pos++;
