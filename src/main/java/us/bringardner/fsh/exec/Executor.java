@@ -67,15 +67,20 @@ public final class Executor {
 	 * error is reported: status 2.
 	 */
 	public static int run(ShellContext sc, String code) throws IOException {
+		return run(sc, code, null, 1);
+	}
+
+	/** run, its syntax errors said as who's (eval: line N:), its lines counted from firstLine */
+	static int run(ShellContext sc, String code, String who, int firstLine) throws IOException {
 		// (a line at a time, as bash reads eval's and a sourced file's text)
-		Parser.Reader reader = new Parser.Reader(code, 1);
+		Parser.Reader reader = new Parser.Reader(code, firstLine);
 		int ret = 0;
 		while( true ) {
 			Ast.Sequence seq;
 			try {
 				seq = reader.next();
 			} catch (SyntaxError e) {
-				syntaxError(sc, e, code, 1);
+				syntaxError(sc, e, code, firstLine, who);
 				if( e.recoverable ) {
 					reader.skipLine();
 					ret = 1;
@@ -187,7 +192,15 @@ public final class Executor {
 	 * on (fsh: line 2: `fi'). In -c's command, after $0 comes -c:.
 	 */
 	private static void syntaxError(ShellContext sc, SyntaxError e, String code, int firstLine) {
+		syntaxError(sc, e, code, firstLine, null);
+	}
+
+	private static void syntaxError(ShellContext sc, SyntaxError e, String code, int firstLine, String who) {
 		String prefix = commandStringPrefix(sc, prefix(sc, e.line));
+		if( who != null ) {
+			// eval: line N:
+			prefix = prefix.replaceFirst("(line \\d+: )$", who+": $1");
+		}
 		sc.stderr.println(prefix+e.getMessage());
 		if( e.near != null ) {
 			// [[ ]]: where, and the line
@@ -1517,7 +1530,8 @@ public final class Executor {
 			return loopControl(name, strings(args), sc);
 		case "eval": {
 			String code = String.join(" ", strings(args)).trim();
-			return code.isEmpty() ? 0 : run(sc, code);
+			// (read as bash reads it: a newline at its end)
+			return code.isEmpty() ? 0 : run(sc, code+"\n", "eval", Math.max(1, sc.currentLine()));
 		}
 		case "declare":
 		case "typeset":

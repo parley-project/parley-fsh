@@ -1206,6 +1206,7 @@ delimiter
 
 	/** -c's command, or a script's text: a command at a time, as bash runs them */
 	private int runCommands(String text) {
+		unterminated = !text.isEmpty() && !text.endsWith("\n");
 		java.util.Iterator<String> lines = java.util.Arrays.asList(text.split("\n", -1)).iterator();
 		if( text.endsWith("\n")) {
 			// (no empty last line)
@@ -1231,13 +1232,20 @@ delimiter
 			StringBuilder code = new StringBuilder();
 			int line = 0;
 			int first = 1;
+			String ahead = null;
 			while( !stopping ) {
-				String l = next.get();
+				String l = ahead != null ? ahead : next.get();
+				ahead = null;
 				if( l == null ) {
 					String rest = code.toString();
 					if( rest.endsWith("\\\n") && (rest.length()-rest.replaceAll("\\\\+\n$", "").length()) % 2 == 0 ) {
-						// a backslash at the very end is dropped, as bash drops it
-						rest = rest.substring(0, rest.length()-2)+"\n";
+						if( unterminated ) {
+							// echo x\ with no newline after it: the backslash is a character, as in bash
+							rest = rest.substring(0, rest.length()-1);
+						} else {
+							// a backslash-newline at the very end is dropped, as bash drops it
+							rest = rest.substring(0, rest.length()-2)+"\n";
+						}
 					}
 					if( !rest.isBlank()) {
 						// (an unfinished command: its syntax error, status 2)
@@ -1251,7 +1259,22 @@ delimiter
 					first = line+1;
 					continue;
 				}
-				code.append(l).append('\n');
+				code.append(l);
+				boolean continued = (l.length()-l.replaceAll("\\\\+$", "").length()) % 2 == 1;
+				if( continued ) {
+					// a backslash at the end: the next line goes on with it, but with none (and no
+					// newline after it) the backslash is a character, as in bash
+					ahead = next.get();
+					if( ahead != null || !unterminated ) {
+						code.append('\n');
+					}
+					if( ahead != null ) {
+						// (not whole yet: the next line is part of it)
+						continue;
+					}
+				} else {
+					code.append('\n');
+				}
 				if( us.bringardner.fsh.syntax.Parser.isComplete(code.toString())) {
 					int status = runChunk(code.toString(), first);
 					if( status < 0 ) {
@@ -1289,8 +1312,11 @@ delimiter
 		return executeScript0(code, firstLine, commandsContext);
 	}
 
+	/** the text's last line had no newline after it */
+	private boolean unterminated;
+
 	/** a line of in without its newline, read a byte at a time (nothing after it is taken); null at the end */
-	private static String readRawLine(InputStream in) {
+	private String readRawLine(InputStream in) {
 		java.io.ByteArrayOutputStream line = new java.io.ByteArrayOutputStream();
 		try {
 			int b;
@@ -1302,6 +1328,7 @@ delimiter
 			}
 		} catch (IOException e) {
 		}
+		unterminated = line.size() > 0;
 		return line.size() > 0 ? line.toString(java.nio.charset.StandardCharsets.UTF_8) : null;
 	}
 
@@ -1332,7 +1359,16 @@ delimiter
 			try {
 				ShellContext sc = new ShellContext(this);
 				sc.stderr = new PrintStream(java.io.OutputStream.nullOutputStream());
-				us.bringardner.fsh.exec.Executor.run(sc, e.getKey()+" "+e.getValue());
+				String code = e.getKey()+" "+e.getValue();
+				// only a function definition, and nothing after it (bash's fix for CVE-2014-6271)
+				us.bringardner.fsh.syntax.Ast.Sequence seq = us.bringardner.fsh.syntax.Parser.parse(code);
+				if( seq.items.size() != 1 || seq.items.get(0).background || seq.items.get(0).command.pipelines.size() != 1
+						|| seq.items.get(0).command.pipelines.get(0).commands.size() != 1
+						|| !(seq.items.get(0).command.pipelines.get(0).commands.get(0) instanceof us.bringardner.fsh.syntax.Ast.FunctionDef fd)
+						|| !fd.name.equals(e.getKey())) {
+					continue;
+				}
+				us.bringardner.fsh.exec.Executor.run(sc, code);
 				ShellFunction f = getFunction(e.getKey());
 				if( f != null ) {
 					f.setExported(true);
@@ -1356,7 +1392,7 @@ delimiter
 			}
 		}
 		for(ShellFunction f : getFunctions().values()) {
-			if( f.isExported()) {
+			if( f.isExported() && !f.getName().contains("=")) {
 				env.put("BASH_FUNC_"+f.getName()+"%%", exportedBody(f));
 			}
 		}

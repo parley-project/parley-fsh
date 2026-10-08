@@ -53,6 +53,10 @@ public class Export extends ShellCommand{
 					if( f == null ) {
 						ctx.error("export: "+name+": not a function");
 						ret = 1;
+					} else if( export && (name.contains("=") || name.contains("/"))) {
+						// (no environment name could carry it)
+						ctx.error("export: "+name+": cannot export");
+						ret = 1;
 					} else {
 						f.setExported(export);
 					}
