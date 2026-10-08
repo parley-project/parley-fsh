@@ -1625,6 +1625,7 @@ public final class Parser {
 		case Word.CommandSub c -> "$("+c.text()+")";
 		case Word.Backquote b -> "`"+b.text()+"`";
 		case Word.ArithSub a -> "$(("+a.expression().raw+"))";
+		case Word.ArithSubscript a -> "["+a.text()+"]";
 		case Word.AnsiC a -> "$'"+a.text()+"'";
 		default -> "";
 		};
@@ -2164,6 +2165,17 @@ public final class Parser {
 				w.parts.add(readBackquote());
 			} else if( c == '"' ) {
 				pos++;
+			} else if( c == '[' ) {
+				// a[subscript]: expanded once, as bash does (see Word.ArithSubscript)
+				int close = arithSubscriptEnd(pos, to);
+				if( close > pos+1 ) {
+					flush(w, lit);
+					w.parts.add(new Word.ArithSubscript(src.substring(pos+1, close)));
+					pos = close+1;
+				} else {
+					lit.append(c);
+					pos++;
+				}
 			} else {
 				lit.append(c);
 				pos++;
@@ -2174,6 +2186,40 @@ public final class Parser {
 		w.raw = src.substring(from, to+trailing);
 		pos = saved;
 		return w;
+	}
+
+	/** the ] that closes the [ at open before to (nested [ ], quotes, \, $( ) ${ } skipped), or -1 */
+	private int arithSubscriptEnd(int open, int to) {
+		int depth = 0;
+		for (int i = open; i < to; i++) {
+			char c = ch(i);
+			if( c == '\\' ) {
+				i++;
+			} else if( c == '\'' ) {
+				int end = src.indexOf('\'', i+1);
+				if( end < 0 || end >= to ) {
+					return -1;
+				}
+				i = end;
+			} else if( c == '"' ) {
+				for(i++; i < to && ch(i) != '"'; i++) {
+					if( ch(i) == '\\' ) {
+						i++;
+					}
+				}
+			} else if( c == '$' && (ch(i+1) == '(' || ch(i+1) == '{')) {
+				int end = ch(i+1) == '(' ? matchParen(i+1) : braceClose(i+2, false);
+				if( end < 0 || end >= to ) {
+					return -1;
+				}
+				i = end;
+			} else if( c == '[' ) {
+				depth++;
+			} else if( c == ']' && --depth == 0 ) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	private Case caseCommand() {

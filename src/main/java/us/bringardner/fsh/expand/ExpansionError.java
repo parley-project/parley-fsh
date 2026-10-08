@@ -38,4 +38,7 @@ public class ExpansionError extends RuntimeException {
 	public enum Kind {FATAL, ABANDON, FAIL}
 
 	public final Kind kind;
+
+	/** said without the command's name (an error in a variable's value used in (( ))) */
+	public boolean bare;
 }

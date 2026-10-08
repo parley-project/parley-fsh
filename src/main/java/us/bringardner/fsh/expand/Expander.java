@@ -203,6 +203,104 @@ public final class Expander {
 		return evaluate(arithmeticText(w)+trailingBlanks(w));
 	}
 
+	/**
+	 * An operand of [[ a -eq b ]]: expanded as a word, but a[subscript] in it as in (( )) (the
+	 * subscript expanded once and quoted: [[ assoc[$key] -eq 1 ]] with key='x],b[$(cmd)'), as bash's
+	 */
+	public String arithmeticOperand(Word w) {
+		String raw = w.raw;
+		if( raw == null || raw.indexOf('[') < 0 ) {
+			return string(w);
+		}
+		StringBuilder out = new StringBuilder();
+		int seg = 0;
+		int i = 0;
+		while( i < raw.length()) {
+			char c = raw.charAt(i);
+			if( c == '\\' ) {
+				i += 2;
+			} else if( c == '\'' ) {
+				int e = raw.indexOf('\'', i+1);
+				i = e < 0 ? raw.length() : e+1;
+			} else if( c == '"' || c == '`' ) {
+				for(i++; i < raw.length() && raw.charAt(i) != c; i++) {
+					if( raw.charAt(i) == '\\' ) {
+						i++;
+					}
+				}
+				i++;
+			} else if( c == '$' && i+1 < raw.length() && (raw.charAt(i+1) == '(' || raw.charAt(i+1) == '{')) {
+				i = closing(raw, i+1)+1;
+			} else if( c == '[' ) {
+				int close = subscriptClose(raw, i);
+				if( close > i+1 ) {
+					out.append(string(Parser.fragment(raw.substring(seg, i), Fragment.WORD)));
+					out.append('[');
+					for(char k : string(Parser.fragment(raw.substring(i+1, close), Fragment.WORD)).toCharArray()) {
+						if( "[]$`~\\'\"".indexOf(k) >= 0 ) {
+							out.append('\\');
+						}
+						out.append(k);
+					}
+					out.append(']');
+					i = close+1;
+					seg = i;
+				} else {
+					i++;
+				}
+			} else {
+				i++;
+			}
+		}
+		out.append(string(Parser.fragment(raw.substring(seg), Fragment.WORD)));
+		return out.toString();
+	}
+
+	/** the ) or } that closes the ( or { at open (nested ones and quotes skipped), or the end */
+	private static int closing(String s, int open) {
+		char o = s.charAt(open);
+		char c = o == '(' ? ')' : '}';
+		int depth = 0;
+		for (int i = open; i < s.length(); i++) {
+			char x = s.charAt(i);
+			if( x == '\\' ) {
+				i++;
+			} else if( x == '\'' ) {
+				int e = s.indexOf('\'', i+1);
+				i = e < 0 ? s.length() : e;
+			} else if( x == o ) {
+				depth++;
+			} else if( x == c && --depth == 0 ) {
+				return i;
+			}
+		}
+		return s.length();
+	}
+
+	/** the ] that closes the [ at open (nested, quotes and expansions skipped), or -1 */
+	private static int subscriptClose(String s, int open) {
+		int depth = 0;
+		for (int i = open; i < s.length(); i++) {
+			char x = s.charAt(i);
+			if( x == '\\' ) {
+				i++;
+			} else if( x == '\'' ) {
+				int e = s.indexOf('\'', i+1);
+				if( e < 0 ) {
+					return -1;
+				}
+				i = e;
+			} else if( x == '$' && i+1 < s.length() && (s.charAt(i+1) == '(' || s.charAt(i+1) == '{')) {
+				i = closing(s, i+1);
+			} else if( x == '[' ) {
+				depth++;
+			} else if( x == ']' && --depth == 0 ) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
 	/** an indexed array's subscript in a[sub]=v: expanded and evaluated as it is (quotes kept) */
 	public Number subscript(Word w) {
 		try {
@@ -231,7 +329,9 @@ public final class Expander {
 		} catch (Arithmetic.Unbound e) {
 			throw new ExpansionError(e.getMessage(), ExpansionError.Kind.FATAL);
 		} catch (Arithmetic.ArithmeticError e) {
-			throw new ExpansionError(e.getMessage());
+			ExpansionError x = new ExpansionError(e.getMessage());
+			x.bare = e.bare;
+			throw x;
 		} catch (ShellContext.ReadonlyException e) {
 			throw new ExpansionError(e.getMessage());
 		}
@@ -300,6 +400,7 @@ public final class Expander {
 			case Word.CommandSub c -> ret.append("$(").append(c.text()).append(')');
 			case Word.Backquote b -> ret.append('`').append(b.text()).append('`');
 			case Word.ArithSub a -> ret.append("$((").append(a.expression().raw).append("))");
+			case Word.ArithSubscript a -> ret.append('[').append(a.text()).append(']');
 			default -> {
 			}
 			}
@@ -495,6 +596,17 @@ public final class Expander {
 			value(fs.reply() ? v : trimNewlines(v), context, out);
 		}
 		case Word.ArithSub a -> value(String.valueOf(arithmetic(a.expression())), context, out);
+		case Word.ArithSubscript a -> {
+			// expanded as a word (quotes removed), then [ ] $ ` ~ \ ' " quoted with \
+			StringBuilder q = new StringBuilder("[");
+			for(char c : string(Parser.fragment(a.text(), Fragment.WORD)).toCharArray()) {
+				if( "[]$`~\\'\"".indexOf(c) >= 0 ) {
+					q.append('\\');
+				}
+				q.append(c);
+			}
+			out.add(new Piece(QUOTED, q.append(']').toString()));
+		}
 		case Word.ProcessSub ps -> out.add(new Piece(QUOTED, host.processSubstitution(ps.direction(), ps.body(), ps.text())));
 		}
 		return true;

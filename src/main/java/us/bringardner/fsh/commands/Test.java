@@ -349,11 +349,19 @@ public class Test extends ShellCommand{
 			if( m.matches()) {
 				// -v a[1], -v m[key]: that element is set
 				Object arr = ctx.getVariable(m.group(1));
+				// ([[ -v m[$k] ]]: the key came quoted with \, as in (( )))
+				String sub = m.group(2);
+				if( sub.indexOf('\\') >= 0 ) {
+					sub = sub.replaceAll("\\\\(.)", "$1");
+				} else if( (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0) && us.bringardner.fsh.expand.Arithmetic.expandSubscript != null ) {
+					// (test -v a[$(cmd)]: the subscript is expanded, as bash's)
+					sub = us.bringardner.fsh.expand.Arithmetic.expandSubscript.apply(ctx, sub);
+				}
 				if( arr instanceof java.util.Map<?,?> ) {
-					return ((java.util.Map<?,?>) arr).containsKey(m.group(2));
+					return ((java.util.Map<?,?>) arr).containsKey(sub);
 				}
 				if( arr instanceof java.util.List<?> ) {
-					int idx = us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).intValue();
+					int idx = us.bringardner.fsh.expand.Arithmetic.evaluate(sub, ctx).intValue();
 					return ((java.util.List<?>) arr).get(idx) != null;
 				}
 				return false;

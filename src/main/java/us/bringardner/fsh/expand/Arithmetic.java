@@ -36,6 +36,8 @@ public class Arithmetic {
 	/** an invalid expression or a division by 0, with bash's message */
 	public static class ArithmeticError extends RuntimeException {
 		private static final long serialVersionUID = 1L;
+		/** from an expression inside one (a variable's value, a subscript): bash says it without ((: */
+		public boolean bare;
 		public ArithmeticError(String msg) {
 			super(msg);
 		}
@@ -120,7 +122,9 @@ public class Arithmetic {
 	private ArithmeticError evalerror(String msg) {
 		String shown = errorEnd >= 0 ? text.substring(0, errorEnd) : text;
 		String token = lasttp >= 0 && lasttp < shown.length() ? shown.substring(lasttp) : "";
-		return new ArithmeticError(shown.stripLeading()+": "+msg+" (error token is \""+token+"\")");
+		ArithmeticError e = new ArithmeticError(shown.stripLeading()+": "+msg+" (error token is \""+token+"\")");
+		e.bare = depth > 0;
+		return e;
 	}
 
 	// ---------------------------------------------------------------- tokens
@@ -186,6 +190,8 @@ public class Arithmetic {
 			tp = cp;
 			noeval = 1;
 			tokstr = name;
+			// (as after a name: x++ is read as that)
+			curtok = STR;
 			readtok();
 			int peektok = curtok;
 			restoreTok(saved, name, savedVal);
@@ -282,6 +288,12 @@ public class Arithmetic {
 			assigntok = c;
 			tok = OP_ASSIGN;
 			cp++;
+		} else if( ARITHOPS.indexOf(c) < 0 ) {
+			// not an operator: after one (or at the start) an operand was wanted
+			if( curtok == EOF || curtok < 256 && ARITHOPS.indexOf(curtok) >= 0 || multiop(curtok)) {
+				throw evalerror("arithmetic syntax error: operand expected");
+			}
+			throw evalerror("arithmetic syntax error: invalid arithmetic operator");
 		} else {
 			tok = c;
 		}
@@ -290,12 +302,22 @@ public class Arithmetic {
 		tp = cp;
 	}
 
+	/** the characters that are operators by themselves */
+	private static final String ARITHOPS = "=><+-*/%!()&|^~?:,";
+
+	private static boolean multiop(int tok) {
+		return tok >= EQEQ && tok <= COND && tok != STR && tok != NUM;
+	}
+
 	/** the ] that closes the [ at open (nested ones skipped), or -1 */
 	private int skipSubscript(int open) {
 		int depth = 0;
 		for (int i = open; i < text.length(); i++) {
 			char c = text.charAt(i);
-			if( c == '[' ) {
+			if( c == '\\' ) {
+				// (a quoted ] does not close it: a key with ] in it)
+				i++;
+			} else if( c == '[' ) {
 				depth++;
 			} else if( c == ']' && --depth == 0 ) {
 				return i;
@@ -844,14 +866,45 @@ public class Arithmetic {
 
 	/** a subscript's double quotes are removed (a[\"\"] in (( )) is a[0]; not by let with assoc_expand_once) */
 	private String dequote(String sub) {
+		if( sub.indexOf('\\') < 0 && expandSubscript != null && (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0)) {
+			// a subscript not expanded yet ((( $expr )) with expr='a[$i]'): expanded now, as bash's
+			return expandSubscript.apply(ctx, sub);
+		}
+		sub = unbackslash(sub);
 		if( "let".equals(ctx.builtin) && us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")) {
 			return sub;
 		}
 		return sub.replace("\"", "");
 	}
 
+	/** a subscript's text expanded as a word (set by the expander) */
+	public static java.util.function.BiFunction<ShellContext,String,String> expandSubscript;
+
+	/** the \ quoting of a subscript taken away (\] is ]) */
+	private static String unbackslash(String s) {
+		if( s.indexOf('\\') < 0 ) {
+			return s;
+		}
+		StringBuilder ret = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if( c == '\\' && i+1 < s.length()) {
+				c = s.charAt(++i);
+			}
+			ret.append(c);
+		}
+		return ret.toString();
+	}
+
 	/** an associative array's key as written in the expression ('k' and "k": k) */
-	private static String key(String sub) {
+	private String key(String sub) {
+		if( sub.indexOf('\\') >= 0 ) {
+			// (quoted when it was expanded: as it is)
+			return unbackslash(sub);
+		}
+		if( expandSubscript != null && (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0 || sub.indexOf('\'') >= 0)) {
+			return expandSubscript.apply(ctx, sub);
+		}
 		if( sub.length() >= 2 && (sub.startsWith("'") && sub.endsWith("'") || sub.startsWith("\"") && sub.endsWith("\""))) {
 			return sub.substring(1, sub.length()-1);
 		}

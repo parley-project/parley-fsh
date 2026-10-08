@@ -293,6 +293,12 @@ public final class Executor {
 		return new Executor("").expander(sc);
 	}
 
+	static {
+		// a subscript in an expression that was not expanded with it (expr='a[$i]'; (( $expr ))):
+		// expanded as a word when it is used
+		Arithmetic.expandSubscript = (ctx, text) -> expanderFor(ctx).string(Parser.fragment(text, Parser.Fragment.WORD));
+	}
+
 	// ------------------------------------------------------------------ lists
 
 	/** commands separated by ; & or newlines: the status of the last */
@@ -849,7 +855,7 @@ public final class Executor {
 			}
 			return status[0];
 		} catch (ExpansionError e) {
-			error(sc, "((: "+e.getMessage());
+			error(sc, (e.bare ? "" : "((: ")+e.getMessage());
 			return 1;
 		} finally {
 			sc.loopDepth--;
@@ -1079,7 +1085,7 @@ public final class Executor {
 				sc.builtin = outer;
 			}
 		} catch (ExpansionError e) {
-			error(sc, "((: "+e.getMessage());
+			error(sc, (e.bare ? "" : "((: ")+e.getMessage());
 			return 1;
 		}
 	}
@@ -1103,7 +1109,7 @@ public final class Executor {
 			error(sc, "[[: "+e.getMessage());
 			return 2;
 		} catch (Arithmetic.ArithmeticError e) {
-			error(sc, "[[: "+e.getMessage());
+			error(sc, (e.bare ? "" : "[[: ")+e.getMessage());
 			return 1;
 		} catch (ExpansionError e) {
 			return expansionError(sc, e);
@@ -1127,7 +1133,8 @@ public final class Executor {
 			return !v.isEmpty();
 		}
 		case Ast.CondUnary u -> {
-			String v = ex.string(u.operand());
+			// (-v m[$k]: the subscript as in (( )))
+			String v = u.op().equals("-v") ? ex.arithmeticOperand(u.operand()) : ex.string(u.operand());
 			traceTest(sc, u.op()+" "+traced(v));
 			if( u.op().equals("-t") && !v.trim().matches("[-+]?[0-9]+")) {
 				// (status 2, as bash)
@@ -1137,7 +1144,9 @@ public final class Executor {
 		}
 		case Ast.CondBinary b -> {
 			if( tracing(sc)) {
-				traceTest(sc, traced(ex.string(b.left()))+" "+b.op()+" "+traced(ex.string(b.right())));
+				boolean arith = b.op().matches("-(eq|ne|lt|le|gt|ge)");
+				traceTest(sc, traced(arith ? ex.arithmeticOperand(b.left()) : ex.string(b.left()))+" "+b.op()+" "
+						+traced(arith ? ex.arithmeticOperand(b.right()) : ex.string(b.right())));
 			}
 			return binary(b, sc, ex);
 		}
@@ -1157,6 +1166,23 @@ public final class Executor {
 	}
 
 	private boolean binary(Ast.CondBinary b, ShellContext sc, Expander ex) {
+		if( b.op().matches("-(eq|ne|lt|le|gt|ge)")) {
+			// arithmetic: a[subscript] in the operands as in (( ))
+			Number x = Arithmetic.evaluate(ex.arithmeticOperand(b.left()), sc);
+			Number y = Arithmetic.evaluate(ex.arithmeticOperand(b.right()), sc);
+			int cmp = Double.compare(x.doubleValue(), y.doubleValue());
+			if( !(x instanceof Double) && !(y instanceof Double)) {
+				cmp = Long.compare(x.longValue(), y.longValue());
+			}
+			return switch (b.op()) {
+			case "-eq" -> cmp == 0;
+			case "-ne" -> cmp != 0;
+			case "-lt" -> cmp < 0;
+			case "-le" -> cmp <= 0;
+			case "-gt" -> cmp > 0;
+			default -> cmp >= 0;
+			};
+		}
 		String l = ex.string(b.left());
 		switch (b.op()) {
 		case "==":

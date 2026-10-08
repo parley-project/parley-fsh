@@ -38,7 +38,7 @@ public class Let extends ShellCommand{
 			try {
 				last = Arithmetic.evaluate(""+arg.getValue(ctx), ctx);
 			} catch (Arithmetic.ArithmeticError e) {
-				ctx.error("let: "+e.getMessage());
+				ctx.error((e.bare ? "" : "let: ")+e.getMessage());
 				return 1;
 			}
 		}

@@ -11,7 +11,7 @@ public final class Word extends Ast.Node {
 
 	/** a piece of a word */
 	public sealed interface Part permits Literal, Escaped, SingleQuoted, AnsiC, DoubleQuoted, Param,
-			ParamExpansion, CommandSub, FunctionSub, Backquote, ArithSub, ProcessSub {
+			ParamExpansion, CommandSub, FunctionSub, Backquote, ArithSub, ProcessSub, ArithSubscript {
 	}
 
 	/** text: unquoted (globs, braces, ~ count) or, inside "...", quoted */
@@ -61,6 +61,13 @@ public final class Word extends Ast.Node {
 	}
 
 	/** $(( ... )) or $[ ... ]: the expression (its $x, $( ) ... expand before it is evaluated) */
+	/**
+	 * [text] in an arithmetic expression: expanded once (as a word), its [ ] $ ` ~ \ ' " quoted
+	 * with \, so that a key with ] in it stays one (bash's expand_array_subscript)
+	 */
+	public record ArithSubscript(String text) implements Part {
+	}
+
 	public record ArithSub(Word expression) implements Part {
 	}
 

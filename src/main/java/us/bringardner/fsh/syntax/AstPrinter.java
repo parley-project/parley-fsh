@@ -309,6 +309,7 @@ public final class AstPrinter {
 				parts(a.expression().parts);
 				out.append("))");
 			}
+			case Word.ArithSubscript a -> out.append('[').append(a.text()).append(']');
 			case Word.ProcessSub ps -> {
 				out.append(ps.direction());
 				if( ps.body() == null ) {
