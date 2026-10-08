@@ -69,6 +69,46 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_ready
 JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setSignalKeys
   (JNIEnv *, jobject, jboolean);
 
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    setProgramMode
+ * Signature: (Z)V
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setProgramMode
+  (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    isTerminal
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isTerminal
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    giveTerminalTo
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_giveTerminalTo
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    setProcessGroup
+ * Signature: (JJ)V
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setProcessGroup
+  (JNIEnv *, jobject, jlong, jlong);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    stoppedBy
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy
+  (JNIEnv *, jobject, jlong);
+
 #ifdef __cplusplus
 }
 #endif

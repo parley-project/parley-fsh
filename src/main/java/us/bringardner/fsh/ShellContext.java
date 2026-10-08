@@ -1124,7 +1124,7 @@ $
 	public void sleep(long millis) {
 		long end = System.currentTimeMillis()+millis;
 		synchronized (pauseLock) {
-			while(getException() == null && !isPaused()) {
+			while(getException() == null && !isPaused() && (console == null || !console.hasPendingSignal())) {
 				long left = end-System.currentTimeMillis();
 				if( left <= 0 ) {
 					break;
@@ -1345,6 +1345,9 @@ $
 					}
 				}
 			}
+		}
+		if( console != null && console.hasPendingSignal()) {
+			console.runPendingTraps(this);
 		}
 		waitWhilePaused();
 		if( getException() != null ) {

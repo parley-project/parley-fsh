@@ -1,10 +1,15 @@
 #include <stdio.h>
+#include <string.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <termios.h>
 #include <unistd.h>
 #include <poll.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <fcntl.h>
 #include "NativeKeyboard.h"
 
 // getChar() results that are not keys (must match NativeKeyboard.java)
@@ -42,8 +47,13 @@ static void enableRawMode() {
 	if( rawMode || !isatty(STDIN_FILENO) ) {
 		return;
 	}
-	if( tcgetattr(STDIN_FILENO, &orig_termios) == -1 ) {
-		return;
+	// the terminal's own settings, saved once: a program that leaves it in another mode does not change them
+	static int saved = 0;
+	if( !saved ) {
+		if( tcgetattr(STDIN_FILENO, &orig_termios) == -1 ) {
+			return;
+		}
+		saved = 1;
 	}
 	static int registered = 0;
 	if( !registered ) {
@@ -57,7 +67,7 @@ static void enableRawMode() {
 	}
 	raw.c_cc[VMIN] = 1;
 	raw.c_cc[VTIME] = 0;
-	if( tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == 0 ) {
+	if( tcsetattr(STDIN_FILENO, TCSADRAIN, &raw) == 0 ) {
 		rawMode = 1;
 	}
 }
@@ -77,6 +87,81 @@ JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setSignalKeys(JNIE
 		}
 		tcsetattr(STDIN_FILENO, TCSANOW, &t);
 	}
+}
+
+static void takeTerminal(pid_t group);
+
+/* the shell had the terminal in raw mode when it lent it to a program */
+static int lentRaw = 0;
+
+/*
+ * on: a program gets the terminal (it reads and writes it itself), in the terminal's own mode,
+ * where Ctrl-C and Ctrl-Z signal it. off: the shell has it back, as it was.
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setProgramMode(JNIEnv *, jobject, jboolean on) {
+	if( on ) {
+		lentRaw = rawMode;
+		if( rawMode ) {
+			tcsetattr(STDIN_FILENO, TCSADRAIN, &orig_termios);
+			rawMode = 0;
+		}
+	} else {
+		// the shell's process group has the terminal again (if a job's group had it)
+		takeTerminal(getpgrp());
+		if( lentRaw ) {
+			lentRaw = 0;
+			enableRawMode();
+		}
+	}
+}
+
+/*
+ * Make group the terminal's foreground group (the shell may be in the background for this).
+ */
+static void takeTerminal(pid_t group) {
+	if( !isatty(STDIN_FILENO) || tcgetpgrp(STDIN_FILENO) == group ) {
+		return;
+	}
+	sigset_t block, old;
+	sigemptyset(&block);
+	sigaddset(&block, SIGTTOU);
+	pthread_sigmask(SIG_BLOCK, &block, &old);
+	tcsetpgrp(STDIN_FILENO, group);
+	pthread_sigmask(SIG_SETMASK, &old, NULL);
+}
+
+/*
+ * A job's process group gets the terminal (fg).
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_giveTerminalTo(JNIEnv *, jobject, jlong group) {
+	takeTerminal((pid_t) group);
+}
+
+/*
+ * Put a child in a process group (the child does it too: whichever is first).
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setProcessGroup(JNIEnv *, jobject, jlong pid, jlong group) {
+	setpgid((pid_t) pid, (pid_t) group);
+}
+
+/*
+ * @return the signal that stopped child pid since the last call, or 0. Only a stop is reported:
+ * the child's exit stays for whoever waits for it.
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy(JNIEnv *, jobject, jlong pid) {
+	siginfo_t info;
+	memset(&info, 0, sizeof(info));
+	if( waitid(P_PID, (id_t) pid, &info, WSTOPPED | WNOHANG) == 0 && info.si_pid == (pid_t) pid && info.si_code == CLD_STOPPED ) {
+		return info.si_status;
+	}
+	return 0;
+}
+
+/*
+ * @return true if standard input is a terminal
+ */
+JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isTerminal(JNIEnv *, jobject) {
+	return isatty(STDIN_FILENO) && isatty(STDOUT_FILENO) ? JNI_TRUE : JNI_FALSE;
 }
 
 #define bufferSize 300

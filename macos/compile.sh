@@ -16,3 +16,6 @@ mv us_bringardner_fsh_$name.h $name.h
 
 g++ -c -fPIC -I$idir/darwin -I$idir $name.cpp -o $name.o || exit 1
 g++ -dynamiclib -o libnativekeyboard.dylib $name.o -lc
+
+# the helper that runs a job's programs in a process group of their own
+cc -O2 -o fshexec fshexec.c

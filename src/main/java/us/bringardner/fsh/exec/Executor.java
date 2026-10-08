@@ -329,12 +329,7 @@ public final class Executor {
 			}
 			// a stage closes its stdout when done; the last one's is the caller's
 			CommandThread last = threads[n-1];
-			last.ctx.stdout = new PrintStream(last.ctx.stdout, true) {
-				@Override
-				public void close() {
-					flush();
-				}
-			};
+			last.ctx.stdout = new KeptOpen(last.ctx.stdout);
 			for(CommandThread t : threads) {
 				if( !lastInShell || t != last ) {
 					t.start();

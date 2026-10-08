@@ -86,6 +86,10 @@ public class Sleep extends ShellCommand{
 				if( ctx.getException()!=null) {
 					throw  ctx.getException();
 				}
+				if( ctx.console.hasPendingSignal()) {
+					// a trapped signal: as an external sleep it would get it (and end), then the trap runs
+					return 130;
+				}
 				if(ctx.isPaused()) {
 					// time spent suspended doesn't count
 					ctx.waitWhilePaused();

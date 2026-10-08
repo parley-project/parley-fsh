@@ -24,6 +24,129 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 */
 	private native void setSignalKeys(boolean on);
 
+	/** on: a program gets the terminal in its own mode; off: the shell has it back */
+	private native void setProgramMode(boolean on);
+
+	/** standard input and output are a terminal */
+	private native boolean isTerminal();
+
+	private native void giveTerminalTo(long group);
+
+	private native void setProcessGroup(long pid, long group);
+
+	private native int stoppedBy(long pid);
+
+	private static volatile String groupHelper;
+
+	/**
+	 * The helper that runs a program in a process group (fshexec, next to this library, or the
+	 * fsh.exec property), or null: then a job's programs share the shell's process group.
+	 */
+	public static String groupHelper() {
+		if( groupHelper == null ) {
+			String found = "";
+			if( terminal()) {
+				java.util.List<String> dirs = new java.util.ArrayList<>();
+				String prop = System.getProperty("fsh.exec");
+				if( prop != null ) {
+					dirs.add(new java.io.File(prop).getParent());
+				}
+				dirs.addAll(java.util.List.of(System.getProperty("java.library.path", "").split(java.io.File.pathSeparator)));
+				for(String dir : dirs) {
+					java.io.File f = new java.io.File(dir == null ? "." : dir, "fshexec");
+					if( f.isFile() && f.canExecute()) {
+						found = f.getAbsolutePath();
+						break;
+					}
+				}
+				if( !found.isEmpty()) {
+					try {
+						// the library has the calls it needs
+						new NativeKeyboard().stoppedBy(-1);
+					} catch (UnsatisfiedLinkError e) {
+						found = "";
+					}
+				}
+			}
+			groupHelper = found;
+		}
+		return groupHelper.isEmpty() ? null : groupHelper;
+	}
+
+	/** a job's process group gets the terminal (fg) */
+	public static void giveTerminal(long group) {
+		new NativeKeyboard().giveTerminalTo(group);
+	}
+
+	/** put child pid in process group (as the child does itself) */
+	public static void processGroup(long pid, long group) {
+		new NativeKeyboard().setProcessGroup(pid, group);
+	}
+
+	/** the signal that stopped child pid since the last call, or 0 */
+	public static int stopSignal(long pid) {
+		return new NativeKeyboard().stoppedBy(pid);
+	}
+
+	/** the programs that have the terminal now (see lendTerminal) */
+	private static final java.util.Set<Object> terminalUsers = new java.util.HashSet<>();
+	private static Boolean terminal;
+
+	/** standard input and output are a terminal (and this class can work it) */
+	public static boolean terminal() {
+		if( terminal == null ) {
+			boolean t = false;
+			if( availible ) {
+				try {
+					t = new NativeKeyboard().isTerminal();
+				} catch (UnsatisfiedLinkError e) {
+					// an older library
+				}
+			}
+			terminal = t;
+		}
+		return terminal;
+	}
+
+	/**
+	 * A program reads the terminal itself, as under bash: it gets it in the terminal's own mode
+	 * (where it echoes, edits lines, and Ctrl-C and Ctrl-Z signal the program), until each user
+	 * has given it back.
+	 */
+	public static void lendTerminal(Object user) {
+		synchronized (terminalUsers) {
+			if( terminalUsers.add(user) && terminalUsers.size() == 1 ) {
+				programMode(true);
+			}
+		}
+	}
+
+	/** user is done with the terminal (it ended, or was stopped) */
+	public static void reclaimTerminal(Object user) {
+		synchronized (terminalUsers) {
+			if( terminalUsers.remove(user) && terminalUsers.isEmpty()) {
+				programMode(false);
+			}
+		}
+	}
+
+	/** a program has the terminal now */
+	public static boolean isTerminalLent() {
+		synchronized (terminalUsers) {
+			return !terminalUsers.isEmpty();
+		}
+	}
+
+	private static void programMode(boolean on) {
+		if( availible ) {
+			try {
+				new NativeKeyboard().setProgramMode(on);
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+	}
+
 	/** what a key that stops or interrupts a job is read as when the shell has taken it */
 	public static final int KEY_INTR = -3;
 	public static final int CTRL_C = 3;
@@ -79,7 +202,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * job that does not read the keyboard runs; the other keys are kept for whoever reads next.
 	 */
 	public static void pollTyped() {
-		if( !availible ) {
+		if( !availible || isTerminalLent()) {
+			// a program reads the terminal itself
 			return;
 		}
 		synchronized (keyLock) {

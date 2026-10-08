@@ -73,4 +73,17 @@ public interface IJob {
 
 	/** the job's thread */
 	Thread getThread();
+
+	/** a program of the job has the terminal (NativeKeyboard.lendTerminal): given back when it is stopped */
+	void addTerminalUser(Object user);
+
+	void removeTerminalUser(Object user);
+
+	/** the job's programs that have the terminal */
+	java.util.Collection<Object> getTerminalUsers();
+
+	/** the process group of the job's programs (bash's job), or 0 */
+	long getProcessGroup();
+
+	void setProcessGroup(long group);
 }

@@ -49,12 +49,7 @@ final class ProcessSubstitutions {
 		ShellContext ctx = sc.isolatedSubShell();
 		if( direction == '>' ) {
 			// cmd writes where the shell writes; the thread must not close that when it ends
-			ctx.stdout = new PrintStream(sc.stdout, true) {
-				@Override
-				public void close() {
-					flush();
-				}
-			};
+			ctx.stdout = new KeptOpen(sc.stdout);
 		}
 		AtomicBoolean opened = new AtomicBoolean();
 		CommandThread thread = new CommandThread(ctx, new ShellTask() {

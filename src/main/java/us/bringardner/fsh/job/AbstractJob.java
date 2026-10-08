@@ -25,6 +25,8 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 
 	/** the programs the job's commands run now: stopped, continued and signalled with it */
 	private final Set<Process> processes = ConcurrentHashMap.newKeySet();
+	/** its programs that read the terminal themselves */
+	private final Set<Object> terminalUsers = ConcurrentHashMap.newKeySet();
 	/** the signal that ended the job (kill, Ctrl-C), or null */
 	private volatile Integer terminatedBy;
 	/** what its commands throw once a signal has ended the job */
@@ -140,6 +142,37 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	@Override
 	public void removeProcess(Process p) {
 		processes.remove(p);
+		if( processes.isEmpty()) {
+			// the group is gone with its last program
+			processGroup = 0;
+		}
+	}
+
+	private volatile long processGroup;
+
+	@Override
+	public long getProcessGroup() {
+		return processGroup;
+	}
+
+	@Override
+	public void setProcessGroup(long group) {
+		processGroup = group;
+	}
+
+	@Override
+	public void addTerminalUser(Object user) {
+		terminalUsers.add(user);
+	}
+
+	@Override
+	public void removeTerminalUser(Object user) {
+		terminalUsers.remove(user);
+	}
+
+	@Override
+	public java.util.Collection<Object> getTerminalUsers() {
+		return new java.util.ArrayList<>(terminalUsers);
 	}
 
 	@Override

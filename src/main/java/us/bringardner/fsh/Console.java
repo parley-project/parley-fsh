@@ -475,7 +475,10 @@ delimiter
 			Signal signal = new Signal(name);
 			try {
 				Signal.handle(signal,(s)->{
-					//raiseSignal(s.getNumber());					
+					Console c = shell;
+					if( c != null ) {
+						c.osSignal(s.getNumber(), name);
+					}
 				});	
 			} catch (Exception e) {
 				if( !e.getLocalizedMessage().startsWith("Signal already used ")) {
@@ -483,6 +486,116 @@ delimiter
 				}
 			}
 		}
+	}
+
+	/**
+	 * The shell program (not one inside another program) starts as bash does: in the directory
+	 * it was started in, with HOME from the environment.
+	 */
+	private void startAsBash() {
+		try {
+			String home = System.getenv("HOME");
+			if( home != null && !home.isEmpty()) {
+				environmentVariables.put("HOME", home);
+				homeDir = mountFactory.createFileSource(home);
+			}
+			FileSource start = mountFactory.createFileSource(System.getProperty("user.dir"));
+			if( start.isDirectory()) {
+				setCurrentDirectory(start);
+			}
+		} catch (IOException e) {
+			// it stays in HOME
+		}
+	}
+
+	/** the shell this program is (Console.main): signals for the process are its own; null when fsh runs inside another program */
+	private static volatile Console shell;
+	/** when SIGINT last came while a program had the terminal (System.nanoTime) */
+	private static volatile long lastInterrupt;
+
+	/**
+	 * Ctrl-C was typed for a program that had the terminal since nanos (System.nanoTime). The
+	 * program may end of it before the shell hears of it, so this waits a little for that.
+	 */
+	public static boolean interruptTypedSince(long nanos) {
+		long until = System.currentTimeMillis()+250;
+		while( true ) {
+			long last = lastInterrupt;
+			if( last != 0 && last-nanos >= 0 ) {
+				return true;
+			}
+			if( System.currentTimeMillis() >= until ) {
+				return false;
+			}
+			try {
+				Thread.sleep(5);
+			} catch (InterruptedException e) {
+				return false;
+			}
+		}
+	}
+
+	/** signals with a trap, run when the command that is running is done (as bash runs them) */
+	private final java.util.Queue<Integer> pendingSignals = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+	public boolean hasPendingSignal() {
+		return !pendingSignals.isEmpty();
+	}
+
+	/** run the traps of the signals that came */
+	public void runPendingTraps(ShellContext ctx) {
+		Integer signum;
+		while( (signum = pendingSignals.poll()) != null ) {
+			runOsTrap(signum, ctx);
+		}
+	}
+
+	/**
+	 * A signal for this process. Interactive: Ctrl-C and Ctrl-Z are keys the shell reads, except
+	 * while a program has the terminal; then they signal the program, and Ctrl-Z stops its job.
+	 * Other signals for an interactive shell are ignored, as bash ignores INT, QUIT, TERM and TSTP,
+	 * but SIGHUP ends it. A script runs its trap for the signal, or ends (128 + the signal).
+	 */
+	private void osSignal(int signum, String name) {
+		if( name.equals("CHLD") || name.equals("WINCH") || name.equals("CONT") || name.equals("URG") || name.equals("INFO")) {
+			return;
+		}
+		if( isInteractive && !name.equals("HUP")) {
+			if( name.equals("INT")) {
+				// (the program it ended may have given the terminal back already)
+				lastInterrupt = System.nanoTime();
+			} else if( NativeKeyboard.isTerminalLent()) {
+				IJob job = foregroundJobs.peekLast();
+				if( name.equals("TSTP") && job != null ) {
+					// the program stopped (the terminal echoed ^Z): so does its job
+					System_out.println();
+					System_out.flush();
+					Thread t = new Thread(() -> job.stopJob("Stopped"), "Ctrl-Z");
+					t.setDaemon(true);
+					t.start();
+				}
+			}
+			return;
+		}
+		if( osSignalHandlers.containsKey(signum)) {
+			pendingSignals.add(signum);
+			return;
+		}
+		if( name.equals("TSTP") || name.equals("TTIN") || name.equals("TTOU")) {
+			return;
+		}
+		if( isInteractive ) {
+			// SIGHUP: as bash, the jobs get it too
+			for(IJob job : jobManager.getJobs()) {
+				if( !job.isIgnoreSignal(ConsoleSignal.Hup)) {
+					job.signalJob(signum);
+				}
+			}
+		}
+		handleMetaSignal(ConsoleMetaSignal.Exit);
+		System_out.flush();
+		System_err.flush();
+		System.exit(128+signum);
 	}
 
 	public static synchronized void setNextPid(int pid) {
@@ -646,6 +759,8 @@ delimiter
 	public static void main(String args[]) throws IOException {
 
 			Console c = new Console();
+			shell = c;
+			c.startAsBash();
 			Runtime.getRuntime().addShutdownHook(new Thread(){
 				@Override
 				public void run(){
@@ -1110,6 +1225,10 @@ delimiter
 			while( true ) {
 				JobState state = job.getState();
 				if( state == JobState.Suspended ) {
+					// the shell has the terminal again
+					for(Object user : job.getTerminalUsers()) {
+						NativeKeyboard.reclaimTerminal(user);
+					}
 					if( !jobManager.contains(job)) {
 						addJob(job);
 					}
@@ -1186,6 +1305,13 @@ delimiter
 	public int foreground(IJob job) {
 		jobManager.touch(job);
 		job.setStopNoticeDue(false);
+		// its programs that had the terminal have it again
+		for(Object user : job.getTerminalUsers()) {
+			NativeKeyboard.lendTerminal(user);
+		}
+		if( job.getProcessGroup() != 0 && !job.getTerminalUsers().isEmpty()) {
+			NativeKeyboard.giveTerminal(job.getProcessGroup());
+		}
 		job.continueJob();
 		return waitForeground(job, false);
 	}

@@ -276,10 +276,39 @@ public final class Programs {
 			StreamCopier sc2 = null;
 			StreamCopier sc3 = null;
 
+			Object terminalUser = null;
+			us.bringardner.fsh.job.IJob job = ctx.job;
+
 			try {
 				String name = cmd.get(0);
 				// with umask or ulimit set, through sh so the program gets them
-				ProcessBuilder builder = new ProcessBuilder(us.bringardner.fsh.commands.ProcessSettings.wrap(ctx, cmd));
+				List<String> command = us.bringardner.fsh.commands.ProcessSettings.wrap(ctx, cmd);
+
+				// as under bash, a program in the foreground uses the shell's terminal (and its
+				// output and error files) itself, not through a pipe: vi, less and top work
+				boolean tty = NativeKeyboard.terminal();
+				boolean foreground = ctx.console.readsKeyboard(ctx);
+				boolean inheritIn = tty && foreground && isKeyboard(ctx.stdin);
+				boolean inheritOut = isShellStream(ctx.stdout, Console.System_out);
+				boolean inheritErr = isShellStream(ctx.stderr, Console.System_err);
+				// with job control, as bash: the job's programs are a process group of their own,
+				// which has the terminal while the job is in the foreground
+				String helper = ctx.console.isInteractive && job != null && new java.io.File(cmd.get(0)).isAbsolute()
+						? NativeKeyboard.groupHelper() : null;
+				boolean grouped = helper != null;
+				if( grouped ) {
+					List<String> run = new java.util.ArrayList<>();
+					run.add(helper);
+					run.add(String.valueOf(job.getProcessGroup()));
+					run.add(foreground ? "1" : "0");
+					run.addAll(command);
+					command = run;
+				} else if( tty && !foreground && ctx.console.isInteractive ) {
+					// a job in the background: Ctrl-C and Ctrl-Z typed for the foreground are not for it
+					command = ignoringTerminalSignals(command);
+				}
+
+				ProcessBuilder builder = new ProcessBuilder(command);
 				// the shell's exported variables, not the JVM's (export X=1 and X=1 cmd reach the program)
 				Map<String,String> env = builder.environment();
 				env.clear();
@@ -290,15 +319,52 @@ public final class Programs {
 					FileProxy cwd = (FileProxy) dir;
 					builder.directory(cwd.getTarget());
 				}
+				if( inheritIn ) {
+					builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+				}
+				if( inheritOut ) {
+					ctx.stdout.flush();
+					builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+				}
+				if( inheritErr ) {
+					ctx.stderr.flush();
+					builder.redirectError(ProcessBuilder.Redirect.INHERIT);
+				}
+				if( tty && foreground && (inheritIn || inheritOut || inheritErr)) {
+					terminalUser = new Object();
+					if( job != null ) {
+						job.addTerminalUser(terminalUser);
+					}
+					NativeKeyboard.lendTerminal(terminalUser);
+				}
+				long started = System.nanoTime();
 
-				Process p = builder.start();
+				Process p;
+				if( grouped ) {
+					synchronized (job) {
+						// the first program makes the group; the others of the job (a pipeline) join it
+						List<String> args = new java.util.ArrayList<>(builder.command());
+						args.set(1, String.valueOf(job.getProcessGroup()));
+						builder.command(args);
+						p = builder.start();
+						long group = job.getProcessGroup();
+						if( group == 0 ) {
+							group = p.pid();
+							job.setProcessGroup(group);
+						}
+						NativeKeyboard.processGroup(p.pid(), group);
+					}
+				} else {
+					p = builder.start();
+				}
 				// stopped (Ctrl-Z), continued and signalled with its job
-				us.bringardner.fsh.job.IJob job = ctx.job;
 				if( job != null ) {
 					job.addProcess(p);
 				}
 				process = p;
-				if (ctx.stdin instanceof NativeKeyboard) {
+				if( inheritIn ) {
+					// the program reads the terminal
+				} else if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
 					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
 				} else {
@@ -307,19 +373,45 @@ public final class Programs {
 				}
 
 				// stdout and stderr belong to the shell; the copiers only flush them
-				sc2 = new StreamCopier(ctx,p.getInputStream(),ctx.stdout,name+" stdout",true,false);
-				sc3 = new StreamCopier(ctx,p.getErrorStream(),ctx.stderr,name+" stderr",true,false);
+				if( !inheritOut ) {
+					sc2 = new StreamCopier(ctx,p.getInputStream(),ctx.stdout,name+" stdout",true,false);
+				}
+				if( !inheritErr ) {
+					sc3 = new StreamCopier(ctx,p.getErrorStream(),ctx.stderr,name+" stderr",true,false);
+				}
 
-				sc1.start();
-				sc2.start();
-				sc3.start();
+				if( sc1 != null ) {
+					sc1.start();
+				}
+				if( sc2 != null ) {
+					sc2.start();
+				}
+				if( sc3 != null ) {
+					sc3.start();
+				}
 
 				boolean killed = false;
-				while(!waitFor(p, 100)) {
+				while(!waitFor(p, grouped ? 50 : 100)) {
 					if( !killed && ctx.getException() != null) {
 						// the job was interrupted, terminated or killed
 						killed = true;
 						terminate(p);
+					}
+					int stop = grouped ? NativeKeyboard.stopSignal(p.pid()) : 0;
+					if( stop != 0 && job.getState() == us.bringardner.fsh.job.JobState.Running ) {
+						// Ctrl-Z (or reading the terminal in the background): the job stops, as in bash
+						String how = switch (String.valueOf(us.bringardner.fsh.job.ProcessSignals.name(stop))) {
+						case "TTIN" -> "Stopped (tty input)";
+						case "TTOU" -> "Stopped (tty output)";
+						case "STOP" -> "Stopped (signal)";
+						default -> "Stopped";
+						};
+						if( terminalUser != null ) {
+							// after the terminal's ^Z
+							Console.System_out.println();
+							Console.System_out.flush();
+						}
+						job.stopJob(how);
 					}
 				}
 				exitCode = p.exitValue();
@@ -328,12 +420,26 @@ public final class Programs {
 				drain(sc2);
 				drain(sc3);
 
+				if( terminalUser != null && job != null && exitCode == 128+INT && (grouped || Console.interruptTypedSince(started))) {
+					// Ctrl-C ended it: as bash, the rest of the command line does not run
+					NativeKeyboard.reclaimTerminal(terminalUser);
+					Console.System_out.println();
+					Console.System_out.flush();
+					job.signalJob(INT);
+				}
+
 			} catch (Throwable e) {
 				exitCode = 1;
 				error = e;
 			} finally {
-				if( process != null && ctx.job != null ) {
-					ctx.job.removeProcess(process);
+				if( terminalUser != null ) {
+					NativeKeyboard.reclaimTerminal(terminalUser);
+					if( job != null ) {
+						job.removeTerminalUser(terminalUser);
+					}
+				}
+				if( process != null && job != null ) {
+					job.removeProcess(process);
 				}
 				try {sc1.stop();}catch (Throwable e) {}
 				try {sc2.stop();}catch (Throwable e) {}
@@ -342,6 +448,33 @@ public final class Programs {
 
 			running = false;
 
+		}
+
+		private static final int INT = Math.max(2, us.bringardner.fsh.job.ProcessSignals.number("INT"));
+
+		/** the shell's own keyboard */
+		private static boolean isKeyboard(java.io.InputStream in) {
+			return in instanceof NativeKeyboard || in == Console.System_in;
+		}
+
+		/** the stream is the shell's own standard output (or error), not a pipe or a file it opened */
+		private static boolean isShellStream(java.io.OutputStream out, java.io.PrintStream shells) {
+			out = KeptOpen.unwrap(out);
+			return out != null && (out == shells || out == System.out && shells == Console.System_out || out == System.err && shells == Console.System_err);
+		}
+
+		/** cmd with SIGINT, SIGQUIT and SIGTSTP ignored (as bash's other process groups do not get them) */
+		private static List<String> ignoringTerminalSignals(List<String> cmd) {
+			if( FileSourceFactory.isWindows()) {
+				return cmd;
+			}
+			List<String> ret = new java.util.ArrayList<>();
+			ret.add("/bin/sh");
+			ret.add("-c");
+			ret.add("trap '' INT QUIT TSTP; exec \"$@\"");
+			ret.add("sh");
+			ret.addAll(cmd);
+			return ret;
 		}
 
 		private static boolean waitFor(Process p, long millis) {
@@ -366,7 +499,7 @@ public final class Programs {
 		 * Wait until a copier reaches the end of the process output, unless the job is being stopped.
 		 */
 		private void drain(StreamCopier copier) {
-			while(copier.isAlive() && ctx.getException() == null) {
+			while(copier != null && copier.isAlive() && ctx.getException() == null) {
 				try {
 					copier.join(100);
 				} catch (InterruptedException e) {
