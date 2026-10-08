@@ -1714,7 +1714,7 @@ public final class Expander {
 		}
 	}
 
-	/** an unescaped * or ?, a [ with a ] after it, or ?( *( +( @( !( */
+	/** an unescaped * or ?, a [ with a ] after it (and no / between), or ?( *( +( @( !( */
 	private static boolean isPattern(CharSequence p) {
 		for (int i = 0; i < p.length(); i++) {
 			char c = p.charAt(i);
@@ -1726,6 +1726,9 @@ public final class Expander {
 				for (int j = i+1; j < p.length(); j++) {
 					if( p.charAt(j) == '\\' ) {
 						j++;
+					} else if( p.charAt(j) == '/' ) {
+						// ([qwe/qwe] is not a bracket expression: a / is never in one)
+						break;
 					} else if( p.charAt(j) == ']' ) {
 						return true;
 					}

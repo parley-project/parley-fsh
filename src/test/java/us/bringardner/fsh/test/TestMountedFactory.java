@@ -345,7 +345,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		code = "mkdir -v /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"
 				;
 
-		String expect = "mkdir: could not create directory for /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10\n"				
+		String expect = "mkdir: /mem4/Level1/Level2/Level3/Level4/Level5/Level6/Level7/Level8/Level9/Level10: No such file or directory\n"				
 				;
 		boolean tmp = showError;showError=false;
 		res = executeCommand(code, "");

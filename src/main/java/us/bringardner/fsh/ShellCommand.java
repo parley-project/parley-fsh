@@ -584,8 +584,9 @@ public abstract class ShellCommand {
 	public static List<FileSource>  getFiles(ShellContext ctx,String path) throws IOException {
 		List<FileSource> ret = new ArrayList<>();
 		FileSource literal = ctx.console.createFileSource(path);
-		if( hasWildcard(path) && !literal.exists()) {
-			// (the shell expanded the patterns already: a name with * in it that exists is that file)
+		if( hasWildcard(path) && !literal.exists() && path.indexOf('\\') < 0 ) {
+			// (the shell expanded the patterns already: a name with * in it that exists is that file,
+			// and one with a \ is just that name: touch 'a\*b')
 			ret = glob(ctx, path);
 			if( ret.isEmpty()) {
 				ret.add(literal);
