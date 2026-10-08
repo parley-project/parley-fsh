@@ -492,7 +492,7 @@ public final class Parser {
 			while( Character.isDigit(ch(j))) {
 				j++;
 			}
-			if( (ch(j) == '<' || ch(j) == '>') && ch(j+1) != '(' ) {
+			if( (ch(j) == '<' || ch(j) == '>') && ch(j+1) != '(' && j-pos < 10 ) {
 				// (2>(cmd) is a word with a process substitution, as in bash)
 				t.kind = Kind.IO_NUMBER;
 				t.number = Integer.parseInt(src.substring(pos, j));
@@ -638,8 +638,8 @@ public final class Parser {
 				break;
 			case '<':
 			case '>':
-				if( !regex && !fragment ) {
-					// <(cmd) >(cmd)
+				if( !regex && (!fragment || ch(pos+1) == '(')) {
+					// <(cmd) >(cmd) (in ${x:-<(cmd)} too)
 					flush(w, lit);
 					char dir = c;
 					int open = pos+1;

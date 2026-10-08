@@ -71,7 +71,11 @@ final class Redirects {
 	}
 
 	/** the file name of a redirect: one word after expansion, or an ambiguous redirect */
-	private static String target(Ast.Redirect r, Expander ex) throws IOException {
+	static String target(Ast.Redirect r, Expander ex) throws IOException {
+		if( ex.posixScript()) {
+			// as bash: a script in posix mode does not glob a redirect's word
+			return ex.string(r.target);
+		}
 		List<String> words = ex.expand(r.target);
 		if( words.size() != 1 ) {
 			throw new IOException(r.target.raw+": ambiguous redirect");

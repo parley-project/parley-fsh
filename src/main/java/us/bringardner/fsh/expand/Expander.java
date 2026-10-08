@@ -144,6 +144,11 @@ public final class Expander {
 		return ret.toString();
 	}
 
+	/** set -o posix in a shell that is not interactive */
+	public boolean posixScript() {
+		return sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && !sc.console.isInteractive;
+	}
+
 	/** expanding a here-document's body (where $'..' in ${x:-word} is text) */
 	private boolean inHereDocument;
 
@@ -478,6 +483,10 @@ public final class Expander {
 		String arg2;
 		/** written as $name, not ${ } */
 		boolean simple;
+		/** ${!9} of an unset $9: no parameter at all (unset) */
+		boolean noTarget;
+		/** ${!ref}: !ref, as set -u's message names it */
+		String via;
 
 		static ParamExpr simple(String name) {
 			ParamExpr e = new ParamExpr();
@@ -489,6 +498,10 @@ public final class Expander {
 
 		/** the way bash names it in messages: name, a[1], 1 */
 		String display() {
+			if( simple && !name.isEmpty() && Character.isDigit(name.charAt(0))) {
+				// $9 (${9} is 9), as bash says it
+				return "$"+name;
+			}
 			return subscript == null ? name : name+"["+subscript+"]";
 		}
 
@@ -749,7 +762,11 @@ public final class Expander {
 		}
 		String op = e.op;
 		boolean conditional = op != null && op.matches(":?[-=?+]");
-		Val v = base(e, !conditional);
+		// (${x@a} and ${x@A} of an unset x are no error with set -u)
+		Object raw = e.prefix == 0 && e.subscript == null && isName(e.name) ? sc.getVariable(e.name) : null;
+		boolean attributes = "@".equals(op) && e.arg != null && (e.arg.startsWith("a") || e.arg.startsWith("A"))
+				&& raw != null && !(raw instanceof List<?> l && l.isEmpty()) && !(raw instanceof Map<?,?> m && m.isEmpty());
+		Val v = base(e, !conditional && !attributes);
 		if( op == null ) {
 			return emit(v, context, out);
 		}
@@ -844,9 +861,20 @@ public final class Expander {
 		plain.text = e.text;
 		plain.name = e.name;
 		plain.subscript = e.subscript;
-		Val v = base(plain, true);
+		Val v = base(plain, false);
 		String target = v.isList() ? String.join(" ", v.items) : v.scalar;
-		if( target == null || target.isEmpty()) {
+		if( target == null && !e.name.isEmpty() && Character.isDigit(e.name.charAt(0))) {
+			// ${!9:-word} of an unset $9: unset (bash's)
+			ParamExpr ret = new ParamExpr();
+			ret.text = e.text;
+			ret.name = "!"+e.name;
+			ret.noTarget = true;
+			ret.op = e.op;
+			ret.arg = e.arg;
+			ret.arg2 = e.arg2;
+			return ret;
+		}
+		if( target == null ) {
 			throw new ExpansionError(e.display()+": invalid indirect expansion");
 		}
 		ParamExpr ret = new ParamExpr();
@@ -855,6 +883,7 @@ public final class Expander {
 		if( end != target.length()) {
 			throw new ExpansionError(target+": invalid variable name");
 		}
+		ret.via = "!"+e.display();
 		ret.setParam(target, 0, end);
 		ret.op = e.op;
 		ret.arg = e.arg;
@@ -866,7 +895,9 @@ public final class Expander {
 	private Val base(ParamExpr e, boolean unbound) {
 		Val ret;
 		String n = e.name;
-		if( e.prefix == 'n' ) {
+		if( e.noTarget ) {
+			ret = Val.of(null);
+		} else if( e.prefix == 'n' ) {
 			ret = Val.of(sc.resolveName(n));
 		} else if( n.equals("@") || n.equals("*")) {
 			ret = Val.list(strings(sc.getPositionalParameterValues()), n.equals("*"));
@@ -892,7 +923,7 @@ public final class Expander {
 			}
 		}
 		if( unbound && ret.scalar == null && option(Console.Option.NullParameterIsError)) {
-			throw new ExpansionError(e.display()+": unbound variable", ExpansionError.Kind.FATAL);
+			throw new ExpansionError((e.via != null ? e.via : e.display())+": unbound variable", ExpansionError.Kind.FATAL);
 		}
 		return ret;
 	}
@@ -1004,6 +1035,13 @@ public final class Expander {
 				ret = true;
 				continue;
 			}
+			boolean at = p instanceof Word.Param pa && pa.name().equals("@") || p instanceof Word.ParamExpansion px && px.body().equals("@");
+			if( at && context != QUOTED && !ifs().isEmpty() && !ifs().equals(" \t\n") ) {
+				// as bash: ${x-$@} with IFS=: is the parameters joined with spaces, then split
+				out.add(new Piece(EXPANDED, String.join(" ", strings(sc.getPositionalParameterValues()))));
+				ret = true;
+				continue;
+			}
 			ret |= part(p, context == QUOTED ? QUOTED : EXPANDED, out);
 		}
 		if( parts.isEmpty() && context == QUOTED ) {
@@ -1103,7 +1141,8 @@ public final class Expander {
 			}
 			return v;
 		}
-		GlobPattern rx = GlobPattern.compile(patText);
+		// (shopt -s nocasematch: in any case, as bash's pattern substitution)
+		GlobPattern rx = GlobPattern.compile(patText, Boolean.TRUE.equals(sc.console.getShellOptions().get("nocasematch")));
 		return v.map(s -> replace(s, rx, e.op, rep));
 	}
 
@@ -1114,11 +1153,20 @@ public final class Expander {
 	 * (\&, '&', "&" in an unquoted ${ }).
 	 */
 	private void replacement(List<Word.Part> parts, boolean quoted, List<Object> rep, StringBuilder lit) {
-		for(Word.Part p : parts) {
+		// shopt -u patsub_replacement: & is just &
+		boolean patsub = !Boolean.FALSE.equals(sc.console.getShellOptions().get("patsub_replacement"));
+		for (int i = 0; i < parts.size(); i++) {
+			Word.Part p = parts.get(i);
 			String text;
 			boolean special;
+			boolean expanded = false;
 			if( p instanceof Word.Literal l ) {
 				text = l.text();
+				if( !quoted && i == 0 && rep.isEmpty() && lit.length() == 0 && (text.equals("~") || text.startsWith("~/"))) {
+					// ${x/a/~}: ~ is the home directory (in "..." too, as bash)
+					Object home = sc.getVariable("HOME");
+					text = (home == null ? "" : home)+text.substring(1);
+				}
 				special = !quoted;
 			} else if( p instanceof Word.DoubleQuoted d ) {
 				replacement(d.parts(), true, rep, lit);
@@ -1133,9 +1181,15 @@ public final class Expander {
 				part(p, QUOTED, pieces);
 				text = join(pieces);
 				special = !quoted;
+				// an unquoted $var's value: \\ is \ and \& is & (as bash's)
+				expanded = special;
 			}
-			for(char c : text.toCharArray()) {
-				if( c == '&' && special ) {
+			special &= patsub;
+			for (int k = 0; k < text.length(); k++) {
+				char c = text.charAt(k);
+				if( expanded && patsub && c == '\\' && k+1 < text.length() && (text.charAt(k+1) == '\\' || text.charAt(k+1) == '&')) {
+					lit.append(text.charAt(++k));
+				} else if( c == '&' && special ) {
 					rep.add(lit.toString());
 					lit.setLength(0);
 					rep.add(MATCH);
@@ -1297,7 +1351,25 @@ public final class Expander {
 	/** ${x@Q} and the other transformations */
 	private Val transform(Val v, ParamExpr e) {
 		char t = e.arg.charAt(0);
-		if( v.unset() && t != 'a' ) {
+		if( t == 'A' && (e.name.equals("@") || e.name.equals("*"))) {
+			// ${@@A}: set -- 'a' 'b'
+			StringBuilder ret = new StringBuilder("set --");
+			for(Object o : sc.getPositionalParameterValues()) {
+				ret.append(' ').append(quote(String.valueOf(o)));
+			}
+			return Val.of(ret.toString());
+		}
+		if( t == 'A' && ("@".equals(e.subscript) || "*".equals(e.subscript)) && sc.getVariable(e.name) instanceof List<?> l && l.isEmpty()
+				&& !sc.console.declaredUnset.contains(e.name)) {
+			// B=(); ${B[@]@A}
+			return Val.of("declare -"+attributes(e.name)+" "+e.name+"=()");
+		}
+		if( v.unset() && (t == 'a' || t == 'A')) {
+			// declare -r x (no value): its attributes, declare -r x
+			String flags = attributes(e.name);
+			return Val.of(t == 'a' || flags.isEmpty() ? flags : "declare -"+flags+" "+e.name);
+		}
+		if( v.unset()) {
 			return v.isList() ? v : Val.of("");
 		}
 		switch (t) {
@@ -1431,12 +1503,13 @@ public final class Expander {
 		if( sc.console.isReadonly(name)) {
 			ret.append('r');
 		}
+		if( sc.getEvironmentVariable(name) != null ) {
+			ret.append('x');
+		}
+		// (bash's order: a A i n r x c l u)
 		Character c = sc.caseAttribute(name);
 		if( c != null ) {
 			ret.append(c);
-		}
-		if( sc.getEvironmentVariable(name) != null ) {
-			ret.append('x');
 		}
 		return ret.toString();
 	}

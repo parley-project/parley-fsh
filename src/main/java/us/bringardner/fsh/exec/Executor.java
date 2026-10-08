@@ -1962,7 +1962,14 @@ public final class Executor {
 		int status = 0;
 		String path = "";
 		try {
-			path = expander(sc).string(s.redirects.get(0).target);
+			// (expanded as a redirect's word: $(< *.txt) of one file is that file)
+			try {
+				path = Redirects.target(s.redirects.get(0), expander(sc));
+			} catch (IOException e) {
+				error(sc, e.getMessage());
+				status = 1;
+				return "";
+			}
 			try (InputStream in = sc.getFileSource(path).getInputStream()) {
 				return new String(in.readAllBytes());
 			}

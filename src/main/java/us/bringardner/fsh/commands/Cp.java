@@ -72,11 +72,23 @@ public class Cp extends ShellCommand{
 	}
 
 	private void copyFileToFile(ShellContext ctx, List<Arguments> options, FileSource from, FileSource to) throws IOException {
+		boolean existed = to.exists();
 		try(InputStream in = from.getInputStream()) {
 			try(OutputStream out = to.getOutputStream()) {
 				copyStream(ctx,in,out);
 			}
 		}		
+		if( !existed && from instanceof us.bringardner.parley.files.fileproxy.FileProxy f
+				&& to instanceof us.bringardner.parley.files.fileproxy.FileProxy t ) {
+			// as cp: a new file gets the source's mode (less group and other write, as umask 022)
+			try {
+				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(f.getTarget().toPath());
+				mode.remove(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
+				mode.remove(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
+				java.nio.file.Files.setPosixFilePermissions(t.getTarget().toPath(), mode);
+			} catch (UnsupportedOperationException e) {
+			}
+		}
 	}
 
 

@@ -396,15 +396,16 @@ public final class Declarations {
 		if( sc.console.isInteger(name)) {
 			flags += "i";
 		}
-		Character c = sc.caseAttribute(name);
-		if( c != null ) {
-			flags += c;
-		}
+		// (bash's order: a A i n r x c l u)
 		if( sc.console.isReadonly(name)) {
 			flags += "r";
 		}
 		if( sc.getEvironmentVariable(name) != null ) {
 			flags += "x";
+		}
+		Character c = sc.caseAttribute(name);
+		if( c != null ) {
+			flags += c;
 		}
 		return flags;
 	}
