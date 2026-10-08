@@ -554,7 +554,25 @@ public final class Executor {
 			if( lastInShell ) {
 				sc.errTrapBlocked++;
 				try {
-					last.run();
+					// (in the shell itself: exit in it ends the shell, as bash's)
+					last.exitCode = command(p.commands.get(n-1), sc);
+				} catch (ExitException e) {
+					for(CommandThread t : threads) {
+						if( t != last ) {
+							try {
+								t.join(1000);
+							} catch (InterruptedException x) {
+							}
+						}
+					}
+					throw e;
+				} catch (us.bringardner.fsh.signal.ReturnException e) {
+					throw e;
+				} catch (FshException e) {
+					throw e;
+				} catch (RuntimeException e) {
+					error(sc, message(e));
+					last.exitCode = 1;
 				} finally {
 					sc.errTrapBlocked--;
 				}

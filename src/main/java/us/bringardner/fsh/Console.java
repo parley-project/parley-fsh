@@ -504,12 +504,19 @@ delimiter
 			String name = signals.get(i);
 			Signal signal = new Signal(name);
 			try {
-				Signal.handle(signal,(s)->{
+				sun.misc.SignalHandler handler = (s)->{
 					Console c = shell;
 					if( c != null ) {
 						c.osSignal(s.getNumber(), name);
 					}
-				});	
+				};
+				sun.misc.SignalHandler old = Signal.handle(signal, handler);
+				if( old == sun.misc.SignalHandler.SIG_IGN && !name.equals("PIPE") && !name.equals("CHLD")) {
+					// ignored when the shell started: it stays so, and cannot be trapped (bash's)
+					Signal.handle(signal, sun.misc.SignalHandler.SIG_IGN);
+					SignalState.IGNORED_AT_START.add(signal.getNumber());
+				}
+				SignalState.HANDLERS.put(signal.getNumber(), handler);
 			} catch (Exception e) {
 				if( !e.getLocalizedMessage().startsWith("Signal already used ")) {
 					System_err.println(e.getLocalizedMessage());
@@ -1500,6 +1507,8 @@ delimiter
 	}
 
 	public Console() {
+		// (trap -p shows the signals ignored when the shell started)
+		addIgnoredAtStart();
 		us.bringardner.fsh.syntax.Parser.posixMode = () -> isOptionEnabled(Option.Posix);
 		// (fsh, unlike bash, expands aliases in scripts without shopt -s expand_aliases)
 		us.bringardner.fsh.syntax.Parser.aliases = n -> {
@@ -3564,12 +3573,46 @@ delimiter
 
 	/** trap action SIG: the action replaces the one before; null removes it */
 	public void setTrap(ShellContext ctx, Signal signal, String action) {
+		if( SignalState.IGNORED_AT_START.contains(signal.getNumber())) {
+			// (ignored when the shell started: it cannot be trapped or reset)
+			return;
+		}
+		ignoreForPrograms(signal, action != null && action.isEmpty());
 		if( action == null ) {
 			osSignalHandlers.remove(signal.getNumber());
 		} else {
 			List<ConsoleSignalHandler> list = new CopyOnWriteArrayList<>();
 			list.add(new ConsoleSignalHandler(ctx, action));
 			osSignalHandlers.put(signal.getNumber(), list);
+		}
+	}
+
+	/** the signals ignored when the shell started, and the shell's own handlers */
+	/** (a holder: the static block that registers the handlers runs before the fields below it) */
+	private static final class SignalState {
+		static final java.util.Set<Integer> IGNORED_AT_START = java.util.concurrent.ConcurrentHashMap.newKeySet();
+		static final Map<Integer,sun.misc.SignalHandler> HANDLERS = new ConcurrentHashMap<>();
+	}
+
+	/**
+	 * trap '' SIG: the shell ignores it for real, so the programs it starts ignore it too (as
+	 * bash's SIG_IGN, which exec keeps); another trap gives it back to the shell's handler.
+	 */
+	private static void ignoreForPrograms(Signal signal, boolean ignore) {
+		sun.misc.SignalHandler handler = SignalState.HANDLERS.get(signal.getNumber());
+		if( handler == null || signal.getName().equals("INT") || signal.getName().equals("CHLD")) {
+			return;
+		}
+		try {
+			Signal.handle(signal, ignore ? sun.misc.SignalHandler.SIG_IGN : handler);
+		} catch (Exception e) {
+		}
+	}
+
+	/** trap -p: the signals ignored at start show as '' */
+	private void addIgnoredAtStart() {
+		for(int n : SignalState.IGNORED_AT_START) {
+			osSignalHandlers.computeIfAbsent(n, k -> new CopyOnWriteArrayList<>(List.of(new ConsoleSignalHandler(null, ""))));
 		}
 	}
 
