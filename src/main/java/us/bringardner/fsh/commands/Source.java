@@ -61,7 +61,9 @@ public class Source extends ShellCommand{
 			String path = ""+args[0].getValue(ctx);
 			path = expandTilde(ctx, path);
 			FileSource file = null;
-			boolean posix = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && ctx.viaCommand == 0;
+			boolean posix = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix);
+			// (command . file: not fatal)
+			boolean fatal = posix && ctx.viaCommand == 0;
 			if( path.indexOf('/') < 0 && (searchPath != null || us.bringardner.fsh.Glob.option(ctx, "sourcepath"))) {
 				// a name with no / is looked for on -p's path, or $PATH (shopt sourcepath), as in bash
 				Object dirs = searchPath != null ? searchPath : ctx.getVariable("PATH");
@@ -77,7 +79,7 @@ public class Source extends ShellCommand{
 				if( file == null && (searchPath != null || posix)) {
 					// (-p, or posix mode: not the current directory)
 					ctx.error(getName()+": "+path+": file not found");
-					if( posix ) {
+					if( fatal ) {
 						throw new ExitException(ctx, 1);
 					}
 					return 1;
@@ -91,7 +93,7 @@ public class Source extends ShellCommand{
 			if( !stdin && !file.exists()) {
 				// as bash says it (posix mode: the shell ends, . being a special builtin)
 				ctx.error(path+": No such file or directory");
-				if( posix ) {
+				if( fatal ) {
 					throw new ExitException(ctx, 1);
 				}
 				return 1;

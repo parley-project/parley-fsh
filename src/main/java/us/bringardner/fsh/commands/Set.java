@@ -92,7 +92,9 @@ public class Set extends ShellCommand{
 							return 1;
 						}
 						if( o == Option.Option) {
-							if(idx < args.length-1) {
+							// (set -o -B: -o lists the options, then -B is read, as bash does)
+							String next = idx < args.length-1 ? ""+args[idx+1].getValue(ctx) : null;
+							if(next != null && !next.startsWith("-") && !next.startsWith("+")) {
 								Argument a2 = args[++idx];
 								val = ""+a2.getValue(ctx);
 								Option o2 = Option.find(val);

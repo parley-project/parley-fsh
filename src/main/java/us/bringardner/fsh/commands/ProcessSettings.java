@@ -76,9 +76,12 @@ public class ProcessSettings {
 		}
 		Object[] r = sh(ctx, cmd.toString());
 		ctx.stdout.print(r[1]);
-		String err = ((String) r[2]).replaceFirst("^/bin/sh: (line \\d+: )?", "");
-		if( !err.isEmpty()) {
-			ctx.stderr.print(err);
+		// (sh's messages, said as the shell says its own)
+		for(String line : ((String) r[2]).split("\n")) {
+			line = line.replaceFirst("^/bin/sh: (line \\d+: )?", "");
+			if( !line.isEmpty()) {
+				ctx.error(line);
+			}
 		}
 		int status = (Integer) r[0];
 		if( status == 0 && sets ) {

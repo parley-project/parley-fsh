@@ -96,6 +96,11 @@ public class Hash extends ShellCommand {
 		for(; idx < args.length; idx++) {
 			String n = ""+args[idx].getValue(ctx);
 			if( pathname != null ) {
+				if( ctx.getFileSource(pathname).isDirectory()) {
+					ctx.error("hash: "+pathname+": Is a directory");
+					ret = 1;
+					continue;
+				}
 				table.put(n, new Object[] {pathname, new int[] {0}});
 			} else if( delete ) {
 				if( table.remove(n) == null ) {

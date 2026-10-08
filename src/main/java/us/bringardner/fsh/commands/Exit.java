@@ -19,12 +19,21 @@ public class Exit extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		
-		int ret = 0;
-		if( args.length>0) {
-			try {
-				ret = Integer.parseInt(args[0].getValue(ctx).toString());
-			} catch (Exception e) {
+		// with no status: the last command's, as bash's
+		long ret = ctx.console.getLastExitCode();
+		int first = args.length > 0 && "--".equals(""+args[0].getValue(ctx)) ? 1 : 0;
+		if( args.length > first ) {
+			String n = (""+args[first].getValue(ctx)).trim();
+			if( !n.matches("[-+]?[0-9]{1,18}")) {
+				// (not fatal, as in bash 5.3)
+				ctx.error(getName()+": "+n+": numeric argument required");
+				return 2;
 			}
+			if( args.length > first+1 ) {
+				ctx.error(getName()+": too many arguments");
+				return 1;
+			}
+			ret = Long.parseLong(n.startsWith("+") ? n.substring(1) : n);
 		}
 		us.bringardner.fsh.job.IJob typed = ctx.job;
 		if( ctx.console.isInteractive && typed instanceof us.bringardner.fsh.job.ForgroundJob && typed.getShellContext() == ctx ) {
@@ -37,7 +46,7 @@ public class Exit extends ShellCommand{
 			}
 		}
 		// a status is 0 to 255
-		throw new ExitException(ctx, ((ret % 256)+256) % 256);
+		throw new ExitException(ctx, (int) (((ret % 256)+256) % 256));
 	}
 
 }

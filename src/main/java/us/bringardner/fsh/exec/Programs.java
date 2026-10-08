@@ -47,6 +47,11 @@ public final class Programs {
 			}
 		}
 		if( exec != null ) {
+			if( !exec.exists()) {
+				// a remembered path (hash -p) that is not there
+				sc.error(exec.getAbsolutePath()+": No such file or directory");
+				return 127;
+			}
 			if( !exec.canExecute()) {
 				throw new NotExecutable(name);
 			}
@@ -613,7 +618,8 @@ public final class Programs {
 		Object [] known = ctx.console.hashTable.get(name);
 		if( known != null ) {
 			FileSource f = ctx.getFileSource(""+known[0]);
-			if( f.exists()) {
+			// (as bash: the remembered path is used, unless shopt checkhash finds it gone)
+			if( f.exists() || !us.bringardner.fsh.Glob.option(ctx, "checkhash")) {
 				((int []) known[1])[0]++;
 				return f;
 			}
