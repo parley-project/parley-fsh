@@ -604,7 +604,10 @@ public final class Executor {
 	/** cmd &: a job, in a subshell with no input */
 	private void background(Ast.AndOr ao, ShellContext sc) {
 		try {
-			ShellContext ctx = sc.subShell();
+			// (its own variables, directory and options, as a pipe stage: it runs while the shell
+			// goes on)
+			ShellContext ctx = sc.isolatedSubShell();
+			ctx.errTrapBlocked--;
 			// with no input: the shell's own (bash's /dev/null); input a command around it redirected
 			// it keeps (while read l; do { read x; } & done < file reads the file)
 			if( sc.stdin == sc.console.getStdIn() || sc.stdin instanceof us.bringardner.fsh.ProcessStdin
@@ -811,6 +814,21 @@ public final class Executor {
 	/** ( list ): a subshell, so its changes (x=1, cd, exit, set --, exec 3>f ...) stay inside */
 	private int subshell(Ast.Sequence body, ShellContext sc) throws IOException {
 		ShellContext sub = sc.subShell();
+		if( sc.isIsolated()) {
+			// in a pipe stage or job: its variables are its own already, and the shell's state is
+			// not put back from a copy (the shell goes on meanwhile)
+			int ret = 1;
+			try {
+				ret = list(body, sub);
+			} catch (ExitException e) {
+				ret = e.exitCode;
+			} catch (us.bringardner.fsh.signal.ReturnException e) {
+				ret = e.exitCode;
+			} catch (AbandonLine e) {
+				ret = e.status;
+			}
+			return ret;
+		}
 		Console.Snapshot saved = sc.console.snapshot();
 		List<String> trap = sc.console.beginSubshellTrap();
 		int ret = 1;

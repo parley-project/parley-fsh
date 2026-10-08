@@ -712,7 +712,7 @@ $
 		if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
 				&& console.pendingExports.remove(name)) {
 			// export x before x had a value
-			console.setEnvironmentVariable(name, ""+value);
+			putEnvironment(name, ""+value);
 		}
 		FunctionInvocation scope = localScope(name);
 		if( scope != null ) {
@@ -721,15 +721,15 @@ $
 			scope.local.put(name, value);
 		} else {
 			setGlobalVariable(name, value);
-			if( isolated == null && value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
-					&& console.getEvironmentVariables(name) != null ) {
+			if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
+					&& getEvironmentVariable(name) != null ) {
 				// an exported variable: its new value is exported
-				console.setEnvironmentVariable(name, ""+value);
+				putEnvironment(name, ""+value);
 			}
 			if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
 					&& console.isOptionEnabled(Console.Option.MarkAllForExport) && Character.isLetter(name.charAt(0)) ) {
 				// set -a: every variable that is set is exported
-				console.setEnvironmentVariable(name, ""+value);
+				putEnvironment(name, ""+value);
 			}
 		}
 	}
@@ -853,6 +853,10 @@ $
 		if( isolated != null ) {
 			boolean was = globalVariable(name) != null;
 			isolated.put(name, UNSET);
+			if( envOverlay != null && getEvironmentVariable(name) != null ) {
+				// (no longer exported here)
+				envOverlay.put(name, ENV_REMOVED);
+			}
 			return was;
 		}
 		val = console.variables.remove(name);
@@ -1339,9 +1343,9 @@ $
 		}
 		value = withCase(name, value);
 		setGlobalVariable(name, value);
-		if( isolated == null && value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>)
-				&& console.getEvironmentVariables(name) != null ) {
-			console.setEnvironmentVariable(name, ""+value);
+		if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>)
+				&& getEvironmentVariable(name) != null ) {
+			putEnvironment(name, ""+value);
 		}
 	}
 
@@ -1449,6 +1453,9 @@ $
 		if( stagePositional != null ) {
 			ret.stagePositional = new ArrayList<>(stagePositional);
 		}
+		if( envOverlay != null ) {
+			ret.envOverlay = new java.util.HashMap<>(envOverlay);
+		}
 		return ret;
 	}
 
@@ -1477,7 +1484,7 @@ $
 			// the shell's variables as they are now (a stage, a <(cmd): what the shell sets later
 			// is not seen, as after bash's fork)
 			ret.isolated = new java.util.HashMap<>();
-			for(Map.Entry<String,Object> e : console.getEnvironmentVariable().entrySet()) {
+			for(Map.Entry<String,Object> e : getEnvironmentVariables().entrySet()) {
 				if( e.getValue() != null ) {
 					ret.isolated.put(e.getKey(), e.getValue());
 				}
@@ -1488,6 +1495,9 @@ $
 				}
 			}
 			ret.snapshot = true;
+		}
+		if( ret.envOverlay == null ) {
+			ret.envOverlay = new java.util.HashMap<>();
 		}
 		return ret;
 	}
@@ -1529,17 +1539,36 @@ $
 	}
 
 	public Object getEvironmentVariable(String name) {		
+		if( envOverlay != null && envOverlay.containsKey(name)) {
+			Object v = envOverlay.get(name);
+			return v == ENV_REMOVED ? null : v;
+		}
 		return console.getEvironmentVariables(name);
+	}
+
+	/**
+	 * An isolated context's (a pipe stage's, a job's) own changes to the environment, over the
+	 * shell's (null: none; ENV_REMOVED: unset there): export in it is not the shell's.
+	 */
+	Map<String,Object> envOverlay;
+	private static final Object ENV_REMOVED = new Object();
+
+	private void putEnvironment(String name, Object value) {
+		if( envOverlay != null ) {
+			envOverlay.put(name, value == null ? ENV_REMOVED : value);
+		} else {
+			console.setEnvironmentVariable(name, value);
+		}
 	}
 
 	public void setEnvironmentVariable(String name,Object value) {
 		FunctionInvocation scope = localScope(name);
 		if( scope != null && !scope.envBefore.containsKey(name)) {
 			// (export of a local: the environment is put back when the function returns)
-			Object before = console.getEvironmentVariables(name);
+			Object before = getEvironmentVariable(name);
 			scope.envBefore.put(name, before == null ? UNSET_LOCAL : before);
 		}
-		console.setEnvironmentVariable(name, value);
+		putEnvironment(name, value);
 	}
 
 	/**
@@ -1549,7 +1578,7 @@ $
 	public void setGlobalEnvironment(String name, Object value) {
 		FunctionInvocation scope = localScope(name);
 		if( scope == null ) {
-			console.setEnvironmentVariable(name, value);
+			putEnvironment(name, value);
 		} else {
 			scope.envBefore.put(name, value == null ? UNSET_LOCAL : value);
 		}
@@ -1572,7 +1601,18 @@ $
 	}
 
 	public Map<String, Object> getEnvironmentVariables() {
-		return console.getEnvironmentVariable();
+		if( envOverlay == null ) {
+			return console.getEnvironmentVariable();
+		}
+		Map<String,Object> ret = new TreeMap<>(console.getEnvironmentVariable());
+		for(Map.Entry<String,Object> e : envOverlay.entrySet()) {
+			if( e.getValue() == ENV_REMOVED ) {
+				ret.remove(e.getKey());
+			} else {
+				ret.put(e.getKey(), e.getValue());
+			}
+		}
+		return java.util.Collections.unmodifiableMap(ret);
 	}
 
 	class FunctionInvocation {
@@ -1673,7 +1713,7 @@ $
 	public void exitFunction(ShellFunction functionDefStatement) {
 		FunctionInvocation inv = functionStack.pop();
 		for(Map.Entry<String,Object> e : inv.envBefore.entrySet()) {
-			console.setEnvironmentVariable(e.getKey(), e.getValue() == UNSET_LOCAL ? null : e.getValue());
+			putEnvironment(e.getKey(), e.getValue() == UNSET_LOCAL ? null : e.getValue());
 		}
 		if( inv.function != null && !callFrames.isEmpty()) {
 			callFrames.remove(callFrames.size()-1);
