@@ -1407,7 +1407,8 @@ public final class Parser {
 			return new SyntaxError(line, "syntax error: unexpected end of file");
 		}
 		String text = t.kind == Kind.NEWLINE ? "newline" : src.substring(t.start, t.end);
-		String in = closers.isEmpty() ? "" : " while looking for matching `"+closers.get(closers.size()-1)+"'";
+		// (not when the token is the closer itself: $( for x; do ) is plain, as bash's)
+		String in = closers.isEmpty() || text.equals(closers.get(closers.size()-1)) ? "" : " while looking for matching `"+closers.get(closers.size()-1)+"'";
 		return new SyntaxError(lineOf(t.start), "syntax error near unexpected token `"+text+"'"+in);
 	}
 

@@ -1794,6 +1794,11 @@ public final class Executor {
 		} catch (Exception e) {
 			error(sc, message(e));
 			status = 1;
+			if( opened == null && SPECIAL_BUILTINS.contains(name) && sc.getFunction(name) == null ) {
+				// a special builtin's redirect failed: in posix mode a script ends
+				sc.console.setLastExitCode(1);
+				sc.specialBuiltinFailed(1);
+			}
 		} finally {
 			if( !keepRedirects ) {
 				streams.restore(sc);
