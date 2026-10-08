@@ -303,13 +303,12 @@ public class TestExternal extends AbstractConsoleTest {
 	@Test
 	public void testExternal09() throws Exception{
 		setup("ExternalTestFiles");
+		// as bash's: set options, then -c's command
 		String [] args = {
-				"-ea ",
-				"-e",
+				"-ea",
 				"+ea",
-				"echo",
-				"hello",
-				"dude\n"
+				"-c",
+				"echo hello dude"
 		};
 
 		String in="";

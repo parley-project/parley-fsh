@@ -113,6 +113,16 @@ public final class Parser {
 		return new Parser(source).script();
 	}
 
+	/** parse a whole script whose first line is line firstLine of the input (read a command at a time) */
+	public static Sequence parse(String source, int firstLine) {
+		Parser p = new Parser(source);
+		p.firstLine = firstLine;
+		return p.script();
+	}
+
+	/** the line of the input the text starts on */
+	private int firstLine = 1;
+
 	private Sequence script() {
 		Sequence ret = list(Set.of(), Set.of());
 		Token t = peek();
@@ -230,7 +240,7 @@ public final class Parser {
 
 	private int lineOf(int offset) {
 		int i = Arrays.binarySearch(lineStarts, offset);
-		return i >= 0 ? i+1 : -i-1;
+		return (i >= 0 ? i+1 : -i-1)+firstLine-1;
 	}
 
 	private char ch(int i) {

@@ -73,13 +73,15 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("\\n", "\n");
 		expect.put("\\r", "\r");
 		expect.put("\\s", "fsh");
-		expect.put("\\h", InetAddress.getLocalHost().getHostName());
+		// the host name up to the first dot, as bash's
+		expect.put("\\h", InetAddress.getLocalHost().getHostName().replaceFirst("\\..*", ""));
 		expect.put("\\H", InetAddress.getLocalHost().getHostName());
 		expect.put("\\\\", "\\");
 		expect.put("\\\\ ", "\\ ");
 		expect.put("\\d", Dow_Mon_Day.format(date));
 		expect.put("\\j", "0");
-		expect.put("\\l", "fsh");
+		// the terminal's name, as bash's (tty when there is none)
+		expect.put("\\l", us.bringardner.fsh.NativeKeyboard.ttyName());
 		expect.put("\\t", String.format("%02d:%02d:%02d",
 				cal.get(Calendar.HOUR_OF_DAY),
 				cal.get(Calendar.MINUTE),
@@ -108,8 +110,8 @@ public class TestPrompt extends AbstractConsoleTest {
 		//PROMPT_DIRTRIM
 		expect.put("\\w",isWin?"~": "~"); //TOD: mac and linux both use "" NOT "~" so the shell matches
 		expect.put("\\W",isWin?"~": "~");
-		expect.put("\\!", "0");
-		expect.put("\\#", "0");
+		expect.put("\\!", ""+(console.history.size()+1));
+		expect.put("\\#", "1");
 		expect.put("\\$", "$");
 		expect.put("\\"+oval, "A");
 		
@@ -265,7 +267,8 @@ public class TestPrompt extends AbstractConsoleTest {
 	public void testPropmtPS1_04() throws IOException {
 		
 		String codes = "¢©®";
-		String prompt = "\\["+codes+"]";
+		// \[ and \] mark what the terminal does not show; they are not shown themselves
+		String prompt = "\\["+codes+"\\]";
 		String actual = console.expandPrompt(prompt,null);
 		assertEquals(codes, actual);
 		

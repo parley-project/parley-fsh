@@ -22,7 +22,11 @@ public class TestLoadProfile extends AbstractConsoleTest {
 
 	@Test
 	public void testSource01() throws IOException {
+		// ~/.fshrc is what an interactive shell runs at the start (a script does not)
 		Console c = new Console();
+		assertEquals(null, c.getVariable("var1"));
+		c.loadProfile();
+		console.loadProfile();
 		Object var1 = c.getVariable("var1");
 		// shell variables are text
 		assertEquals("1", var1);

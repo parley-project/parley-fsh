@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <fcntl.h>
 #include "NativeKeyboard.h"
@@ -155,6 +156,28 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy(JNIEnv *
 		return info.si_status;
 	}
 	return 0;
+}
+
+/*
+ * @return the name of standard input's terminal (/dev/ttys003), or null
+ */
+JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyName0(JNIEnv *env, jobject) {
+	const char *name = ttyname(STDIN_FILENO);
+	return name == NULL ? NULL : env->NewStringUTF(name);
+}
+
+/*
+ * @return what standard input is: 1 a pipe or socket, 2 a file, 0 something else (a terminal, /dev/null)
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_inputKind0(JNIEnv *, jobject) {
+	struct stat st;
+	if( fstat(STDIN_FILENO, &st) != 0 ) {
+		return 0;
+	}
+	if( S_ISFIFO(st.st_mode) || S_ISSOCK(st.st_mode) ) {
+		return 1;
+	}
+	return S_ISREG(st.st_mode) ? 2 : 0;
 }
 
 /*

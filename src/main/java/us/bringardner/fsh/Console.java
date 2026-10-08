@@ -735,6 +735,7 @@ delimiter
 	public static volatile boolean exitJvm = true;
 
 	public static void exit(Console console,int exitCode) {
+		console.runLogout();
 		if( console.isRunning()) {
 			console.stop();
 		}
@@ -769,7 +770,7 @@ delimiter
 			});
 
 			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
-			if( !NativeKeyboard.inputIsTerminal()) {
+			if( NativeKeyboard.inputIsPipeOrFile()) {
 				// a pipe or a file: read as bash reads it, and shared with the programs it runs
 				System_in = new ProcessStdin();
 			}
@@ -777,7 +778,7 @@ delimiter
 
 			int ret = c.execute(args);
 
-			if(ret==0 && c.isInteractive) {
+			if( c.readsTypedCommands()) {
 				c.setName("Console");
 				c.setDaemon(false);
 				c.start();
@@ -787,6 +788,7 @@ delimiter
 					} catch (InterruptedException e) {
 					}
 				}
+				c.runLogout();
 				System.exit(c.lastExitCode);
 			} else {
 				Console.exit(c,ret);
@@ -888,52 +890,366 @@ delimiter
 		this.debugContext = debugContext;
 	}
 
+	/** started as a login shell (-l, --login): the profile files at the start, ~/.fsh_logout at the end */
+	public boolean isLogin;
+	/** where the commands come from, for $-: 'c' (-c), 's' (standard input) or 0 (a script file) */
+	private char readsFrom;
+
+	/**
+	 * Start as bash starts with these arguments (see Invocation): the options, $0 and the
+	 * positional parameters, interactive or not, the startup files; then run -c's command, the
+	 * script file, or the commands on standard input (unless it is interactive: the caller then
+	 * reads them, see run).
+	 * @return the status
+	 */
 	public int execute(String ... args) {
-
-		//  called only from main and TestExecutionExternal
-		int ret = 0;
-		StringBuilder code = new StringBuilder();
-
-		// Convert arguments to code
-		int idx = 0;
-		Integer idx2=null;
-		for (; idx < args.length; idx++) {
-			String a = args[idx];
-			code.append(a);
-			code.append(' ');
-			if( idx2==null && (a.equals("-")||a.equals("--")|| !(a.startsWith("-")||a.startsWith("+")))) {
-				idx2 = idx;
+		Invocation inv;
+		try {
+			inv = Invocation.parse(args);
+		} catch (Invocation.Bad e) {
+			stdErr.println("fsh: "+e.getMessage());
+			if( e.getMessage().endsWith("invalid option")) {
+				stdErr.println(Invocation.USAGE);
 			}
+			return 2;
 		}
-
-		if(!code.isEmpty()) {
-			// set runtime options and the positional parameters
-			code.insert(0, "set -main ");
-			String tmp= code.toString().trim();
-			ret = executeScript(tmp);
-			code.setLength(0);
-		}
-
-
-		if( ret == 0 && idx2!=null) {
-			isInteractive = false;
-			//  execute the code...  this is NOT an interactive invocation
-			for (; idx2 < args.length; idx2++) {
-
-				String a = args[idx2];
-				code.append(a);
-				code.append(' ');
+		if( inv.help || inv.version ) {
+			stdOut.println("fsh, version "+VERSION);
+			if( inv.help ) {
+				stdOut.println(Invocation.USAGE);
 			}
-			String codeToRun = code.toString().trim();
-			ret = executeScript(codeToRun);
+			return 0;
+		}
+		for(String [] o : inv.options) {
+			boolean on = o[1].equals("-");
+			if( o[0].startsWith("shopt ")) {
+				executeQuietly("shopt "+(on ? "-s " : "-u ")+o[0].substring(6));
+				continue;
+			}
+			Option option = Option.find(o[0]);
+			if( option == Option.Unsupported || option == Option.Option ) {
+				if( o[0].length() == 1 ) {
+					stdErr.println("fsh: "+o[1]+o[0]+": invalid option");
+					stdErr.println(Invocation.USAGE);
+				} else {
+					// as bash says it
+					stdErr.println("fsh: line 0: fsh: "+o[0]+": invalid option name");
+				}
+				return 2;
+			}
+			setOption(option, on);
+		}
+		isLogin = inv.login;
+		shellOptions.put("login_shell", isLogin);
+
+		FshList params = new FshList();
+		if( inv.command != null ) {
+			// -c command [name [arguments]]: name is $0
+			readsFrom = 'c';
+			params.add(inv.args.isEmpty() ? "fsh" : inv.args.get(0));
+			for (int i = 1; i < inv.args.size(); i++) {
+				params.add(inv.args.get(i));
+			}
+		} else if( inv.file != null ) {
+			params.add(inv.file);
+			params.addAll(inv.args);
 		} else {
-			isInteractive = true;
+			readsFrom = 's';
+			params.add("fsh");
+			params.addAll(inv.args);
+		}
+		setPositionalParameters(true, params);
+
+		// interactive: -i, or commands from standard input that is the keyboard
+		isInteractive = inv.interactive || (inv.command == null && inv.file == null && isKeyboard(stdIn));
+		if( isInteractive ) {
 			// history expansion (!!, !$ ...) and the history are on in an interactive shell, as in bash
 			options.add(Option.HistExpand);
 			options.add(Option.History);
 		}
+		runStartupFiles(inv);
 
-		return ret;
+		if( inv.command != null ) {
+			inCommandString = true;
+			try {
+				return runCommands(inv.command);
+			} finally {
+				inCommandString = false;
+			}
+		}
+		if( inv.file != null ) {
+			return runFile(inv.file);
+		}
+		if( isInteractive ) {
+			return lastExitCode;
+		}
+		return runStandardInput();
+	}
+
+	/** after execute: the shell goes on to read typed commands (run) */
+	public boolean readsTypedCommands() {
+		return isInteractive && readsFrom == 's' && !stopping;
+	}
+
+	/** the option letters of $-, in bash's order (h is always on; i and m in an interactive shell) */
+	public String optionFlags() {
+		StringBuilder ret = new StringBuilder();
+		List<Option> on = getOptions();
+		for(char c : "abefhikmnprtuvxBCEHPT".toCharArray()) {
+			boolean set = switch (c) {
+			case 'h' -> true;
+			case 'i' -> isInteractive;
+			// job control: on a terminal
+			case 'm' -> isInteractive && NativeKeyboard.terminal();
+			default -> {
+				Option o = Option.find(String.valueOf(c));
+				yield o != Option.Unsupported && on.contains(o);
+			}
+			};
+			if( set ) {
+				ret.append(c);
+			}
+		}
+		if( readsFrom != 0 ) {
+			ret.append(readsFrom);
+		}
+		return ret.toString();
+	}
+
+	/**
+	 * The startup files, as bash reads its own: a login shell /etc/profile, then the first of
+	 * ~/.fsh_profile, ~/.fsh_login and ~/.profile (not with --noprofile); an interactive shell
+	 * that is not a login shell ~/.fshrc (or --rcfile's; not with --norc); a shell that is not
+	 * interactive the file $FSH_ENV names.
+	 */
+	public void runStartupFiles(Invocation inv) {
+		if( isLogin ) {
+			if( !inv.noprofile ) {
+				sourceStartup("/etc/profile");
+				for(String name : new String[] {".fsh_profile", ".fsh_login", ".profile"}) {
+					if( sourceStartup(home(name))) {
+						break;
+					}
+				}
+			}
+		} else if( isInteractive ) {
+			if( !inv.norc ) {
+				if( inv.rcfile != null ) {
+					sourceStartup(inv.rcfile);
+				} else {
+					loadProfile();
+				}
+			}
+		} else {
+			ShellContext sc = new ShellContext(this);
+			Object env = sc.getVariable("FSH_ENV");
+			if( env != null && !env.toString().isEmpty()) {
+				String path;
+				try {
+					// as BASH_ENV: its value is expanded
+					path = us.bringardner.fsh.exec.Executor.expandWord(sc, env.toString());
+				} catch (Exception e) {
+					path = env.toString();
+				}
+				sourceStartup(path);
+			}
+		}
+	}
+
+	/** a file in HOME */
+	private String home(String name) {
+		Object home = new ShellContext(this).getVariable("HOME");
+		return (home == null ? System.getProperty("user.home") : home.toString())+"/"+name;
+	}
+
+	/** source path if it is a readable file; true if it is */
+	private boolean sourceStartup(String path) {
+		java.io.File f = new java.io.File(path);
+		if( !f.isAbsolute()) {
+			try {
+				f = new java.io.File(getCurrentDirectory().getAbsolutePath(), path);
+			} catch (Exception e) {
+			}
+		}
+		if( !f.isFile() || !f.canRead()) {
+			return false;
+		}
+		InputStream in = stdIn;
+		boolean shared = isKeyboard(in) || in instanceof ProcessStdin || in instanceof SharedInput;
+		if( !shared ) {
+			// input that is not shared (an ssh channel): a program the file runs would take what
+			// is typed meanwhile, so it has none
+			stdIn = new java.io.ByteArrayInputStream(new byte[0]);
+		}
+		try {
+			executeQuietly("source "+singleQuoted(f.getPath()));
+		} finally {
+			stdIn = in;
+		}
+		return true;
+	}
+
+	/** run code as part of starting or leaving (not a script: its end does not run the EXIT trap) */
+	private void executeQuietly(String code) {
+		executeDepth++;
+		try {
+			executeScript0(code, 1);
+		} finally {
+			executeDepth--;
+		}
+	}
+
+	private static String singleQuoted(String s) {
+		return "'"+s.replace("'", "'\\''")+"'";
+	}
+
+	/** a login shell is leaving: ~/.fsh_logout, once */
+	public void runLogout() {
+		// as bash: an interactive login shell, or a login shell's exit builtin
+		if( isLogin && !loggedOut && (isInteractive || exitBuiltinRan)) {
+			loggedOut = true;
+			sourceStartup(home(".fsh_logout"));
+		}
+	}
+
+	private boolean loggedOut;
+	/** the exit builtin ended the shell */
+	private volatile boolean exitBuiltinRan;
+
+	/**
+	 * fsh file: the file's commands, with $0 the file. As bash, a name with no / that is not in
+	 * the current directory is looked for in PATH.
+	 */
+	private int runFile(String name) {
+		try {
+			ShellContext sc = new ShellContext(this);
+			FileSource file = sc.getFileSource(name);
+			if( !file.exists() && !name.contains("/")) {
+				FileSource found = us.bringardner.fsh.exec.Programs.which(name, sc);
+				if( found != null ) {
+					file = found;
+				}
+			}
+			java.io.File local = new java.io.File(name);
+			if( !file.exists() && local.isAbsolute() && local.isFile()) {
+				// the command line names a local file (the shell's files may be another file system)
+				return runCommands(java.nio.file.Files.readString(local.toPath()));
+			}
+			if( !file.exists()) {
+				stdErr.println("fsh: "+name+": No such file or directory");
+				return 127;
+			}
+			if( file.isDirectory()) {
+				stdErr.println("fsh: "+name+": Is a directory");
+				return 126;
+			}
+			String code;
+			try (InputStream in = file.getInputStream()) {
+				code = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+			}
+			return runCommands(code);
+		} catch (IOException e) {
+			stdErr.println("fsh: "+name+": "+e.getMessage());
+			return 126;
+		}
+	}
+
+	/**
+	 * Commands from standard input (not a terminal): read a line at a time, and each command run
+	 * once it is whole, as bash does, so what the commands read from standard input is the
+	 * lines after them.
+	 */
+	private int runStandardInput() {
+		InputStream in = stdIn;
+		return runCommands(() -> readRawLine(in));
+	}
+
+	/** -c's command, or a script's text: a command at a time, as bash runs them */
+	private int runCommands(String text) {
+		java.util.Iterator<String> lines = java.util.Arrays.asList(text.split("\n", -1)).iterator();
+		if( text.endsWith("\n")) {
+			// (no empty last line)
+			java.util.List<String> all = new java.util.ArrayList<>(java.util.Arrays.asList(text.split("\n", -1)));
+			all.remove(all.size()-1);
+			lines = all.iterator();
+		}
+		java.util.Iterator<String> it = lines;
+		return runCommands(() -> it.hasNext() ? it.next() : null);
+	}
+
+	/** true while -c's command runs (its syntax errors say -c:, as bash's) */
+	public volatile boolean inCommandString;
+
+	/**
+	 * Run the commands of the lines next gives (null at the end), each once it is whole: a
+	 * syntax error ends it (status 2), as it ends bash's script. The EXIT trap runs at the end.
+	 */
+	private int runCommands(java.util.function.Supplier<String> next) {
+		executeDepth++;
+		try {
+			StringBuilder code = new StringBuilder();
+			int line = 0;
+			int first = 1;
+			while( !stopping ) {
+				String l = next.get();
+				if( l == null ) {
+					if( !code.toString().isBlank()) {
+						// (an unfinished command: its syntax error)
+						lastExitCode = runChunk(code.toString(), first);
+					}
+					break;
+				}
+				line++;
+				if( code.length() == 0 && l.isBlank()) {
+					first = line+1;
+					continue;
+				}
+				code.append(l).append('\n');
+				if( us.bringardner.fsh.syntax.Parser.isComplete(code.toString())) {
+					int status = runChunk(code.toString(), first);
+					if( status < 0 ) {
+						// a syntax error ends the script
+						lastExitCode = 2;
+						break;
+					}
+					lastExitCode = status;
+					code.setLength(0);
+					first = line+1;
+				}
+			}
+		} finally {
+			if( --executeDepth == 0 ) {
+				runExitTrap();
+			}
+		}
+		return lastExitCode;
+	}
+
+	/** run a whole command; -1 if it has a syntax error (reported) */
+	private int runChunk(String code, int firstLine) {
+		try {
+			us.bringardner.fsh.syntax.Parser.parse(code, firstLine);
+		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
+			executeScript0(code, firstLine);
+			return -1;
+		}
+		return executeScript0(code, firstLine);
+	}
+
+	/** a line of in without its newline, read a byte at a time (nothing after it is taken); null at the end */
+	private static String readRawLine(InputStream in) {
+		java.io.ByteArrayOutputStream line = new java.io.ByteArrayOutputStream();
+		try {
+			int b;
+			while( (b = in.read()) >= 0 ) {
+				if( b == '\n' ) {
+					return line.toString(java.nio.charset.StandardCharsets.UTF_8);
+				}
+				line.write(b);
+			}
+		} catch (IOException e) {
+		}
+		return line.size() > 0 ? line.toString(java.nio.charset.StandardCharsets.UTF_8) : null;
 	}
 
 	public void setPositionalParameters(boolean isMain, List<Object> args) {
@@ -1023,8 +1339,9 @@ delimiter
 			if( defaultPath !=null) {
 				environmentVariables.put(PATH, getDefaultPath());
 			}
-			environmentVariables.put(VARIABLE_HISTSIZE, 500);
-			environmentVariables.put(VARIABLE_HISTFILE, "~/.fsh_history");
+			// (the environment's, as bash keeps them)
+			environmentVariables.putIfAbsent(VARIABLE_HISTSIZE, 500);
+			environmentVariables.putIfAbsent(VARIABLE_HISTFILE, "~/.fsh_history");
 
 
 			mountFactory = new VirtualFileSourceFactory();			
@@ -1043,16 +1360,27 @@ delimiter
 			////Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
 
 			variables.put(Prompt.BeforeExecute.name, "");
-			variables.put(Prompt.Primary.name, "\\s-\\v\\$ ");
-			variables.put(Prompt.Secondary.name, "> ");
-			variables.put(Prompt.Select.name, "#? ");
-			variables.put(Prompt.EchoCommand.name, "+ ");
+			if( !environmentVariables.containsKey(Prompt.Primary.name)) {
+				// (one from the environment stays, as in bash)
+				variables.put(Prompt.Primary.name, "\\s-\\v\\$ ");
+			}
+			if( !environmentVariables.containsKey(Prompt.Secondary.name)) {
+				// (one from the environment stays, as in bash)
+				variables.put(Prompt.Secondary.name, "> ");
+			}
+			if( !environmentVariables.containsKey(Prompt.Select.name)) {
+				// (one from the environment stays, as in bash)
+				variables.put(Prompt.Select.name, "#? ");
+			}
+			if( !environmentVariables.containsKey(Prompt.EchoCommand.name)) {
+				// (one from the environment stays, as in bash)
+				variables.put(Prompt.EchoCommand.name, "+ ");
+			}
 			variables.put(VARIABLE_HISTCHARS, "!^#");
 			positionalParameters.add("fsh");
 			options.add(Option.DoBraceExpantion);
 
 
-			loadProfile();
 
 
 		} catch (IOException e) {
@@ -1060,6 +1388,7 @@ delimiter
 			importFunctions();
 	}
 
+	/** ~/.fshrc: what an interactive shell (not a login shell) runs at the start */
 	public void loadProfile() {
 		try {
 
@@ -1071,10 +1400,8 @@ delimiter
 					file = old;
 				}
 			}
-			if( file.exists() && file.canGroupRead()) {
-				//TODO: remove one testing is complete
-				stdIn = System.in;
-				executeScript("source "+file);
+			if( file.exists()) {
+				sourceStartup(file.getAbsolutePath());
 			}
 
 		} catch (Exception e) {
@@ -1141,6 +1468,11 @@ delimiter
 
 	public void run() {
 		KeyboardReader kb = getKeyboadReader(true);
+		if( kb instanceof NativeKeyboard nk ) {
+			// a typed backslash stays in the command, as in bash's line editor (the parser reads
+			// it, and one at the end of a line asks for the next)
+			nk.setHonorEscape(false);
+		}
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
 		stdIn =  kb.getStdIn();
@@ -1343,6 +1675,7 @@ delimiter
 				stdOut.println(notice);
 			}
 			stdOut.flush();
+			runPromptCommand();
 			String code;
 			try {
 				code = readCommand(kb);
@@ -1372,6 +1705,7 @@ delimiter
 					ShellContext sc = new ShellContext(this);
 
 					ret = new ForgroundJob(sc,code);
+					commandNumber++;
 					previousLine = currentLine;
 					currentLine = ret;
 					ret.addJobStateChangeListner((job,from,to)->{
@@ -1409,7 +1743,7 @@ delimiter
 		Object val = getVariable(prompt.name);
 		if( val !=null ) {
 			try {
-				ret = expandPrompt(""+val,new Date());
+				ret = expandPrompt(new ShellContext(this), ""+val);
 			} catch (RuntimeException e) {
 				// a bad prompt must not stop the shell (it used to loop forever printing the error)
 				ret = ""+val;
@@ -1554,7 +1888,61 @@ delimiter
 		return ret;
 	}
 
+	/** a prompt string's backslash escapes (\\u, \\w, \\$ ...), as bash expands them */
 	public String expandPrompt(String val,Date date) {
+		return promptEscapes(val, date == null ? new Date() : date, false);
+	}
+
+	/**
+	 * A prompt string as bash expands it (PS0, PS1, PS2, PS3, ${x@P}): the backslash escapes,
+	 * then parameter, command and arithmetic expansion (what the escapes give is not expanded).
+	 */
+	public String expandPrompt(ShellContext sc, String val) {
+		if( !Boolean.TRUE.equals(shellOptions.get("promptvars"))) {
+			return promptEscapes(val, new Date(), false);
+		}
+		String escaped = promptEscapes(val, new Date(), true);
+		try {
+			return us.bringardner.fsh.exec.Executor.expandWord(sc, escaped);
+		} catch (RuntimeException e) {
+			return promptEscapes(val, new Date(), false);
+		}
+	}
+
+	/**
+	 * Before each primary prompt: PROMPT_COMMAND's commands (each element of it, if it is an
+	 * array), as bash runs them; $? stays the last command's.
+	 */
+	private void runPromptCommand() {
+		Object pc = new ShellContext(this).getVariable("PROMPT_COMMAND");
+		if( pc == null ) {
+			return;
+		}
+		java.util.List<String> commands = new java.util.ArrayList<>();
+		if( pc instanceof java.util.Collection<?> list ) {
+			for(Object o : list) {
+				commands.add(String.valueOf(o));
+			}
+		} else if( pc instanceof java.util.Map<?,?> map ) {
+			for(Object o : map.values()) {
+				commands.add(String.valueOf(o));
+			}
+		} else {
+			commands.add(pc.toString());
+		}
+		int status = lastExitCode;
+		for(String c : commands) {
+			if( !c.isBlank()) {
+				executeQuietly(c);
+				setLastExitCode(status);
+			}
+		}
+	}
+
+	/** the number of the command typed next (\\#) */
+	private int commandNumber = 1;
+
+	private String promptEscapes(String val, Date date, boolean quote) {
 		StringBuilder ret = new StringBuilder();
 
 		char [] chars = val.toCharArray();
@@ -1568,6 +1956,7 @@ delimiter
 				}
 
 				char next = chars[++idx];
+				int mark = ret.length();
 
 				switch (next) {
 
@@ -1587,7 +1976,8 @@ delimiter
 						for(idx++; idx < chars.length && chars[idx] != '}';idx++) {
 							tmp.append(chars[idx]);
 						}
-						String fmt = strftimeToJava(tmp.toString());
+						// an empty format is the locale's time (%X)
+						String fmt = strftimeToJava(tmp.length() == 0 ? "%X" : tmp.toString());
 						SimpleDateFormat df = new SimpleDateFormat(fmt);
 						ret.append(df.format(date));
 					} else {
@@ -1600,8 +1990,11 @@ delimiter
 				case 'e': ret.append((char)27); break;
 
 				// \h 	The host name, up to the first ‘.’.
-				case 'h':
-					ret.append(getLocalHostName());
+				case 'h': {
+					String host = getLocalHostName();
+					int dot = host.indexOf('.');
+					ret.append(dot > 0 ? host.substring(0, dot) : host);
+				}
 
 					break;
 					// \H 	The host name.
@@ -1630,7 +2023,7 @@ delimiter
 					ret.append(""+jobManager.getJobs().size());
 					break;
 					// \l	The base name of the shell’s terminal device name (e.g., "ttys0").
-				case 'l':ret.append("fsh"); 
+				case 'l':ret.append(NativeKeyboard.ttyName()); 
 				break;
 				// \n	A newline.
 				case 'n': ret.append("\n"); 
@@ -1642,9 +2035,8 @@ delimiter
 				case 's':
 					Object p = positionalParameters.get(0);
 					if(p !=null ) {
-						ret.append(""+p);
-					} else {
-						ret.append("");
+						String zero = ""+p;
+						ret.append(zero.substring(zero.lastIndexOf('/')+1));
 					}
 					break;
 
@@ -1684,22 +2076,38 @@ delimiter
 					// \w	The value of the PWD shell variable ($PWD), with $HOME abbreviated with a tilde (uses the $PROMPT_DIRTRIM variable).
 					// \W	The basename of $PWD, with $HOME abbreviated with a tilde.
 				case 'w':
-				case 'W':
-					// $HOME (was user.dir, the directory the shell started in)
-					ret.append(abbreviateHome(""+getVariable(VARIABLE_PWD), System.getProperty("user.home")));
+				case 'W': {
+					ShellContext vars = new ShellContext(this);
+					String pwd = ""+vars.getVariable(VARIABLE_PWD);
+					Object homeVar = vars.getVariable("HOME");
+					String home = homeVar == null ? "" : homeVar.toString();
+					if( next == 'W' ) {
+						// its last part; ~ for HOME itself
+						if( !home.isEmpty() && pwd.equals(home)) {
+							ret.append("~");
+						} else if( pwd.equals("/")) {
+							ret.append("/");
+						} else {
+							ret.append(pwd.substring(pwd.lastIndexOf('/')+1));
+						}
+					} else {
+						ret.append(dirTrim(abbreviateHome(pwd, home), vars.getVariable("PROMPT_DIRTRIM")));
+					}
+				}
 
 					break;
 
 					// \!	The history number of this command.
-				case '!': 
+				case '!':
+					ret.append(""+(history.size()+1));
+					break;
 					// \#	The command number of this command.
-				case '#': 
-					//  not really supported
-					ret.append(""+history.size());
+				case '#':
+					ret.append(""+commandNumber);
 					break;
 					// \$ If the effective uid is 0, #, otherwise $.
 				case '$':
-					ret.append("$");
+					ret.append("root".equals(System.getProperty("user.name")) ? "#" : "$");
 					break;
 					// \nnn	The character whose ASCII code is the octal value nnn.
 					// \\ A backslash.
@@ -1711,9 +2119,8 @@ delimiter
 					// \]End a sequence of non-printing characters.
 
 				case '[':
-					for(idx++; idx < chars.length && chars[idx] != ']'; idx++) {
-						ret.append(chars[idx]);
-					}
+				case ']':
+					// they only mark where the terminal shows nothing
 					break;
 
 				default:
@@ -1726,12 +2133,49 @@ delimiter
 					}
 				}
 
+				if( quote ) {
+					// what an escape gives is not expanded afterward
+					String piece = ret.substring(mark);
+					ret.setLength(mark);
+					for(char ch : piece.toCharArray()) {
+						if( ch == '\\' || ch == '$' || ch == '`' || ch == '"' ) {
+							ret.append('\\');
+						}
+						ret.append(ch);
+					}
+				}
 			} else {
 				ret.append(c);
 			}
 		}
 
 		return ret.toString();
+	}
+
+	/** PROMPT_DIRTRIM=n: \\w keeps the last n directories, after ... */
+	private static String dirTrim(String path, Object trim) {
+		int n;
+		try {
+			n = trim == null ? 0 : Integer.parseInt(trim.toString().trim());
+		} catch (NumberFormatException e) {
+			n = 0;
+		}
+		if( n <= 0 ) {
+			return path;
+		}
+		String head = path.startsWith("~") ? "~/" : "";
+		String rest = path.substring(head.length() == 0 ? 0 : 1);
+		String [] parts = rest.split("/");
+		java.util.List<String> dirs = new java.util.ArrayList<>();
+		for(String part : parts) {
+			if( !part.isEmpty()) {
+				dirs.add(part);
+			}
+		}
+		if( dirs.size() <= n ) {
+			return path;
+		}
+		return head+".../"+String.join("/", dirs.subList(dirs.size()-n, dirs.size()));
 	}
 
 	/** the job with process id id, or else the job numbered id */
@@ -2430,6 +2874,10 @@ delimiter
 		}
 		shellOptions.put("checkwinsize", true);
 		shellOptions.put("sourcepath", true);
+		// set by how the shell started (-l)
+		shellOptions.put("login_shell", false);
+		// a prompt's $x, $(cmd) and $((n)) are expanded
+		shellOptions.put("promptvars", true);
 	}
 
 	public Map<String,Boolean> getShellOptions() {
@@ -2560,7 +3008,11 @@ delimiter
 	 * elements match: /home/tony2 is not under /home/tony.
 	 */
 	public static String abbreviateHome(String pwd, String home) {
-		if( home == null || home.isEmpty() || !FileSourceFactory.isSameOrDescendant(home, pwd)) {
+		if( home != null && home.length() > 1 && home.endsWith("/")) {
+			home = home.substring(0, home.length()-1);
+		}
+		// (HOME=/ abbreviates nothing, as in bash)
+		if( home == null || home.isEmpty() || home.equals("/") || !(pwd.equals(home) || pwd.startsWith(home+"/"))) {
 			return pwd;
 		}
 		return "~"+pwd.substring(home.length());
@@ -2910,6 +3362,10 @@ delimiter
 	}
 
 	private int executeScript0(String code)  {
+		return executeScript0(code, 1);
+	}
+
+	private int executeScript0(String code, int firstLine)  {
 		int ret = 0;
 		ShellContext sc = new ShellContext(this);
 
@@ -2928,7 +3384,7 @@ delimiter
 			}
 
 			code = code.trim();
-			ret = us.bringardner.fsh.exec.Executor.script(sc, code);
+			ret = us.bringardner.fsh.exec.Executor.script(sc, code, firstLine);
 			if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
 				Console.exit(sc.console, ret);
 			}
@@ -2936,6 +3392,7 @@ delimiter
 
 		} catch(ExitException e) {
 			ret = e.exitCode;
+			exitBuiltinRan = true;
 			runExitTrap();
 			if(e.message!=null) {
 				sc.stderr.println(e.message);

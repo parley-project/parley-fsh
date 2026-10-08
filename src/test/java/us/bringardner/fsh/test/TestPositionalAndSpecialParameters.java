@@ -44,7 +44,8 @@ public class TestPositionalAndSpecialParameters extends AbstractConsoleTest{
 				"one two\n"
 				+ "2\n"
 				+ "0\n"
-				+ "B\n"
+				// a script's flags, as bash's: h and B
+				+ "hB\n"
 				// $$ is the shell's process id (the JVM's)
 				+ ProcessHandle.current().pid()+"\n"
 				+ "0\n"

@@ -48,8 +48,10 @@ public class FshShellFactory implements IShellFactory {
 				c.setStdIn(in);
 				c.setStdOut(term.getStdOut());
 				c.setStdErr(term.getStdErr());
-				int ret = c.execute();
-				if( ret != 0 || !c.isInteractive ) {
+				// as sshd starts bash: an interactive login shell on a terminal; without one, the
+				// commands come from the input
+				int ret = env.hasPty() ? c.execute("-i", "-l") : c.execute();
+				if( !c.readsTypedCommands()) {
 					return ret;
 				}
 				c.setName("ssh-shell-"+env.getUser());

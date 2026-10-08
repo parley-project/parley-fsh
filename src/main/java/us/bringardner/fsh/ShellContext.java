@@ -260,12 +260,7 @@ public class ShellContext {
 ($-, a hyphen.) Expands to the current option flags as specified upon invocation, by the set builtin command, 
 		or those set by the shell itself (such as the -i option).
 		 */
-		case '-':StringBuilder bufx = new StringBuilder();
-		for(Option flag : console.getOptions()) {
-			bufx.append(flag.label);
-		}
-
-		ret = bufx.toString();
+		case '-':ret = console.optionFlags();
 		break;
 		/*
 $

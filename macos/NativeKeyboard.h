@@ -95,6 +95,14 @@ JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isInputTermina
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    inputKind0
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_inputKind0
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    giveTerminalTo
  * Signature: (J)V
  */

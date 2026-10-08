@@ -1159,7 +1159,8 @@ public final class Expander {
 		case 'E':
 			return v.map(ShellContext::ansiC);
 		case 'P':
-			return v;
+			// as a prompt expands it
+			return v.map(s -> sc.console.expandPrompt(sc, s));
 		case 'U':
 			return v.map(String::toUpperCase);
 		case 'u':

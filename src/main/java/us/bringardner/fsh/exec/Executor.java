@@ -71,7 +71,7 @@ public final class Executor {
 		try {
 			seq = Parser.parse(code);
 		} catch (SyntaxError e) {
-			sc.stderr.println(prefix(sc, e.line)+e.getMessage());
+			syntaxError(sc, e, code, 1);
 			return 2;
 		}
 		return new Executor(code).list(seq, sc);
@@ -82,11 +82,21 @@ public final class Executor {
 	 * error stops it before anything runs (status 2).
 	 */
 	public static int script(ShellContext sc, String code) throws IOException {
+		return script(sc, code, 1);
+	}
+
+	/** text with its parameters, commands and arithmetic expanded (as in "...") */
+	public static String expandWord(ShellContext sc, String text) {
+		return expanderFor(sc).string(Parser.fragment(text, Parser.Fragment.QUOTED));
+	}
+
+	/** a script whose text starts on line firstLine of the input (commands read one at a time) */
+	public static int script(ShellContext sc, String code, int firstLine) throws IOException {
 		Ast.Sequence seq;
 		try {
-			seq = Parser.parse(code);
+			seq = Parser.parse(code, firstLine);
 		} catch (SyntaxError e) {
-			sc.stderr.println(prefix(sc, e.line)+e.getMessage());
+			syntaxError(sc, e, code, firstLine);
 			return 2;
 		}
 		Executor ex = new Executor(code);
@@ -135,6 +145,28 @@ public final class Executor {
 	// ------------------------------------------------------------------ messages
 
 	/** what comes before an error message found on line (see ShellContext.errorPrefix) */
+	/**
+	 * A syntax error, as bash reports it: the message, and for an unexpected token the line it is
+	 * on (fsh: line 2: `fi'). In -c's command, after $0 comes -c:.
+	 */
+	private static void syntaxError(ShellContext sc, SyntaxError e, String code, int firstLine) {
+		String prefix = prefix(sc, e.line);
+		if( sc.console.inCommandString && !sc.console.isInteractive ) {
+			String zero = String.valueOf(sc.getVariable("$0"));
+			if( prefix.startsWith(zero+": ")) {
+				prefix = zero+": -c: "+prefix.substring(zero.length()+2);
+			}
+		}
+		sc.stderr.println(prefix+e.getMessage());
+		if( e.getMessage().startsWith("syntax error near unexpected token")) {
+			String [] lines = code.split("\n", -1);
+			int i = e.line-firstLine;
+			if( i >= 0 && i < lines.length ) {
+				sc.stderr.println(prefix+"`"+lines[i]+"'");
+			}
+		}
+	}
+
 	static String prefix(ShellContext sc, int line) {
 		int saved = sc.line;
 		sc.line = line;

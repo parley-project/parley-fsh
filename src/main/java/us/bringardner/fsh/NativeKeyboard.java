@@ -33,6 +33,41 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** standard input is a terminal */
 	private native boolean isInputTerminal0();
 
+	private native String ttyName0();
+
+	/** the terminal's name without /dev/ (ttys003), as \\l shows it; "tty" if there is none */
+	public static String ttyName() {
+		if( availible ) {
+			try {
+				String name = new NativeKeyboard().ttyName0();
+				if( name != null ) {
+					return name.substring(name.lastIndexOf('/')+1);
+				}
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		return "tty";
+	}
+
+	/** standard input: 1 a pipe or socket, 2 a file, 0 something else */
+	private native int inputKind0();
+
+	/**
+	 * The process's standard input is a pipe or a file: commands are read from it (as a script)
+	 * and shared with the programs. (Without this library: there is no console and no screen.)
+	 */
+	public static boolean inputIsPipeOrFile() {
+		if( availible ) {
+			try {
+				return new NativeKeyboard().inputKind0() != 0;
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		return System.console() == null && java.awt.GraphicsEnvironment.isHeadless();
+	}
+
 	/** the process's standard input is a terminal (without this library: there is a console) */
 	public static boolean inputIsTerminal() {
 		if( availible ) {
