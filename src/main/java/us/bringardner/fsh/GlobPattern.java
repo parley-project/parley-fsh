@@ -17,6 +17,31 @@ public abstract class GlobPattern {
 	/** the whole of text matches */
 	public abstract boolean matches(String text);
 
+	/**
+	 * The whole of a file name matches; with period (bash's FNM_PERIOD) a leading . is matched
+	 * only by a . written in the pattern (not * ? [...] or !(..)).
+	 */
+	public boolean matches(String text, boolean period) {
+		if( !period || !text.startsWith(".")) {
+			return matches(text);
+		}
+		Run run = new Run(text);
+		run.period = true;
+		return run.seq(nodes(), 0, 0, text.length());
+	}
+
+	/** the parts, parsed again when needed */
+	List<Node> parsed;
+	String source;
+	boolean ignoreCase;
+
+	private List<Node> nodes() {
+		if( parsed == null ) {
+			parsed = parse(source, ignoreCase);
+		}
+		return parsed;
+	}
+
 	/** the regular expression, if there is one (null with !( )) */
 	public abstract Pattern regex();
 
@@ -26,8 +51,18 @@ public abstract class GlobPattern {
 
 	/** ignoreCase: nocaseglob, nocasematch */
 	public static GlobPattern compile(String glob, boolean ignoreCase) {
-		if( hasNegation(glob)) {
-			return new Matcher(parse(glob, ignoreCase));
+		GlobPattern ret = compile0(glob, ignoreCase);
+		ret.source = glob;
+		ret.ignoreCase = ignoreCase;
+		return ret;
+	}
+
+	private static GlobPattern compile0(String glob, boolean ignoreCase) {
+		if( hasNegation(glob) || glob.indexOf('[') >= 0 && glob.indexOf('(') >= 0 ) {
+			// (with [ in a group too: an unclosed one there makes it no group, as bash's)
+			Matcher m = new Matcher(parse(glob, ignoreCase));
+			m.parsed = m.nodes;
+			return m;
 		}
 		int flags = Pattern.DOTALL | (ignoreCase ? Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE : 0);
 		Pattern rx = Pattern.compile(ShellCommand.prepWildCards(glob, true), flags);
@@ -69,7 +104,7 @@ public abstract class GlobPattern {
 	}
 
 	/** one character: a literal, ?, or [...] */
-	private record Chars(Pattern one) implements Node {
+	private record Chars(Pattern one, boolean literal) implements Node {
 	}
 
 	private record Star() implements Node {
@@ -102,7 +137,7 @@ public abstract class GlobPattern {
 				ret.add(new Star());
 				break;
 			case '?':
-				ret.add(new Chars(Pattern.compile(".", flags)));
+				ret.add(new Chars(Pattern.compile(".", flags), false));
 				break;
 			case '\\':
 				if( i+1 < n ) {
@@ -130,7 +165,7 @@ public abstract class GlobPattern {
 					ret.add(literal(c, flags));
 					break;
 				}
-				ret.add(new Chars(Pattern.compile(ShellCommand.prepWildCards(glob.substring(i, end+1), true), flags)));
+				ret.add(new Chars(Pattern.compile(ShellCommand.prepWildCards(glob.substring(i, end+1), true), flags), false));
 				i = end;
 				break;
 			}
@@ -142,7 +177,7 @@ public abstract class GlobPattern {
 	}
 
 	private static Chars literal(char c, int flags) {
-		return new Chars(Pattern.compile(Pattern.quote(String.valueOf(c)), flags));
+		return new Chars(Pattern.compile(Pattern.quote(String.valueOf(c)), flags), true);
 	}
 
 	/** the ) that closes the ( at open, or -1 */
@@ -152,6 +187,13 @@ public abstract class GlobPattern {
 			char c = text.charAt(i);
 			if( c == '\\' ) {
 				i++;
+			} else if( c == '[' ) {
+				// a bracket expression: its ) is in it; with no ] the ( is not closed
+				int end = ShellCommand.bracketEnd(text, i);
+				if( end < 0 ) {
+					return -1;
+				}
+				i = end;
 			} else if( c == '(' ) {
 				depth++;
 			} else if( c == ')' && --depth == 0 ) {
@@ -207,6 +249,8 @@ public abstract class GlobPattern {
 	private static final class Run {
 		private final String text;
 		private final Map<String, Boolean> known = new HashMap<>();
+		/** the text's leading . is matched only by a literal . */
+		boolean period;
 
 		Run(String text) {
 			this.text = text;
@@ -229,6 +273,24 @@ public abstract class GlobPattern {
 
 		private boolean seq0(List<Node> nodes, int i, int pos, int end) {
 			Node node = nodes.get(i);
+			if( period && pos == 0 && pos < end ) {
+				// the leading .: only a . in the pattern takes it
+				switch (node) {
+				case Chars ch -> {
+					if( !ch.literal()) {
+						return false;
+					}
+				}
+				case Star s -> {
+					return seq(nodes, i+1, pos, end);
+				}
+				case Group g -> {
+					if( g.kind() == '!' ) {
+						return false;
+					}
+				}
+				}
+			}
 			switch (node) {
 			case Chars ch -> {
 				return pos < end && ch.one().matcher(text.substring(pos, pos+1)).matches() && seq(nodes, i+1, pos+1, end);

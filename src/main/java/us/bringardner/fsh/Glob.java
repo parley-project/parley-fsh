@@ -149,12 +149,11 @@ public class Glob {
 					continue;
 				}
 				GlobPattern rx = GlobPattern.compile(segment, option(ctx, "nocaseglob"));
-				// a name with a leading dot only for a pattern with one (in @(.a|b) too), or dotglob;
-				// . and .. too when globskipdots is off, as in bash
-				boolean explicitDot = startsWithDot(segment);
-				boolean hidden = explicitDot || dotglob(ctx);
+				// a name with a leading dot only where the pattern has a . for it (@(.a|b) too), or
+				// with dotglob; . and .. (when globskipdots is off) only so, as in bash
+				boolean dotglob = dotglob(ctx);
 				List<String> names = new ArrayList<>();
-				if( explicitDot && !option(ctx, "globskipdots")) {
+				if( !option(ctx, "globskipdots")) {
 					names.add(".");
 					names.add("..");
 				}
@@ -171,13 +170,11 @@ public class Glob {
 							}
 						}
 					}
-					if( kid == null || (name.startsWith(".") && !hidden)) {
+					if( kid == null ) {
 						continue;
 					}
-					if( (name.equals(".") || name.equals("..")) && !explicitDot ) {
-						continue;
-					}
-					if( rx.matches(name) && (!(last ? dirsOnly : true) || kid.isDirectory())) {
+					boolean period = name.equals(".") || name.equals("..") || name.startsWith(".") && !dotglob;
+					if( rx.matches(name, period) && (!(last ? dirsOnly : true) || kid.isDirectory())) {
 						next.add(join(path, name));
 					}
 				}
@@ -206,9 +203,22 @@ public class Glob {
 		Object v = ctx.getVariable("GLOBIGNORE");
 		List<String> ret = new ArrayList<>();
 		if( v != null ) {
-			for(String p : v.toString().split(":")) {
-				if( !p.isEmpty()) {
-					ret.add(p);
+			// split at the colons that are not in a [...] ([[:alnum:]] is one pattern)
+			String text = v.toString();
+			int start = 0;
+			for (int i = 0; i <= text.length(); i++) {
+				if( i < text.length() && text.charAt(i) == '\\' ) {
+					i++;
+				} else if( i < text.length() && text.charAt(i) == '[' ) {
+					int end = ShellCommand.bracketEnd(text, i);
+					if( end > 0 ) {
+						i = end;
+					}
+				} else if( i == text.length() || text.charAt(i) == ':' ) {
+					if( i > start ) {
+						ret.add(text.substring(start, i));
+					}
+					start = i+1;
 				}
 			}
 		}

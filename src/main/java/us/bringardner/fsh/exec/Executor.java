@@ -1059,7 +1059,7 @@ public final class Executor {
 		}
 		case Ast.CondUnary u -> {
 			String v = ex.string(u.operand());
-			traceTest(sc, u.op()+" "+v);
+			traceTest(sc, u.op()+" "+traced(v));
 			if( u.op().equals("-t") && !v.trim().matches("[-+]?[0-9]+")) {
 				// (status 2, as bash)
 				throw new BadRegex(v+": integer expected");
@@ -1068,11 +1068,16 @@ public final class Executor {
 		}
 		case Ast.CondBinary b -> {
 			if( tracing(sc)) {
-				traceTest(sc, ex.string(b.left())+" "+b.op()+" "+ex.string(b.right()));
+				traceTest(sc, traced(ex.string(b.left()))+" "+b.op()+" "+traced(ex.string(b.right())));
 			}
 			return binary(b, sc, ex);
 		}
 		}
+	}
+
+	/** a [[ ]] operand as set -x shows it: as it is, '' if empty */
+	private static String traced(String v) {
+		return v.isEmpty() ? "''" : v;
 	}
 
 	/** set -x: each test of [[ ]] as it is made, its words expanded */
@@ -1127,7 +1132,7 @@ public final class Executor {
 			String why = d.startsWith("Illegal character range") ? "invalid character range"
 					: d.startsWith("Unclosed group") || d.startsWith("Unmatched closing ')'") ? "parentheses not balanced"
 					: d.startsWith("Unclosed character class") ? "brackets ([ ]) not balanced"
-					: d.startsWith("Unexpected internal error") || d.contains("escape sequence") ? "trailing backslash (\\)"
+					: d.startsWith("Unexpected internal error") || d.contains("escape sequence") || d.contains("trailing backslash") ? "trailing backslash (\\)"
 					: d.substring(0, 1).toLowerCase()+d.substring(1);
 			throw new BadRegex("invalid regular expression `"+rx+"': "+why);
 		}
@@ -1144,18 +1149,126 @@ public final class Executor {
 	}
 
 	/** [:alpha:] in a bracket expression as Java's \p{Alpha} ([:^alpha:], an fsh extension, is \P{Alpha}) */
+	private static final String [][] CLASSES = {
+			{"word", "\\w", "\\W"}, {"ascii", "\\p{ASCII}", "\\P{ASCII}"}, {"lower", "\\p{Lower}", "\\P{Lower}"},
+			{"upper", "\\p{Upper}", "\\P{Upper}"}, {"alpha", "\\p{Alpha}", "\\P{Alpha}"}, {"digit", "\\p{Digit}", "\\P{Digit}"},
+			{"alnum", "\\p{Alnum}", "\\P{Alnum}"}, {"punct", "\\p{Punct}", "\\P{Punct}"}, {"graph", "\\p{Graph}", "\\P{Graph}"},
+			{"print", "\\p{Print}", "\\P{Print}"}, {"blank", "\\p{Blank}", "\\P{Blank}"}, {"cntrl", "\\p{Cntrl}", "\\P{Cntrl}"},
+			{"xdigit", "\\p{XDigit}", "\\P{XDigit}"}, {"space", "\\s", "\\S"}};
+
+	/**
+	 * A POSIX extended regular expression as Java's: its bracket expressions ([...]: a \ in one is
+	 * itself, [:class:], [=c=] and [.c.]; fsh's [:^class:] too) written for Java.
+	 */
 	private static String posixClasses(String rx) {
-		String [][] classes = {
-				{"word", "\\w", "\\W"}, {"ascii", "\\p{ASCII}", "\\P{ASCII}"}, {"lower", "\\p{Lower}", "\\P{Lower}"},
-				{"upper", "\\p{Upper}", "\\P{Upper}"}, {"alpha", "\\p{Alpha}", "\\P{Alpha}"}, {"digit", "\\p{Digit}", "\\P{Digit}"},
-				{"alnum", "\\p{Alnum}", "\\P{Alnum}"}, {"punct", "\\p{Punct}", "\\P{Punct}"}, {"graph", "\\p{Graph}", "\\P{Graph}"},
-				{"print", "\\p{Print}", "\\P{Print}"}, {"blank", "\\p{Blank}", "\\P{Blank}"}, {"cntrl", "\\p{Cntrl}", "\\P{Cntrl}"},
-				{"xdigit", "\\p{XDigit}", "\\P{XDigit}"}, {"space", "\\s", "\\S"}};
-		String ret = rx;
-		for(String [] c : classes) {
-			ret = ret.replace("[:^"+c[0]+":]", c[2]).replace("[:"+c[0]+":]", c[1]);
+		StringBuilder out = new StringBuilder();
+		int n = rx.length();
+		for (int i = 0; i < n; i++) {
+			char c = rx.charAt(i);
+			if( c == '\\' && i+1 < n ) {
+				out.append(c).append(rx.charAt(++i));
+				continue;
+			}
+			if( c == '[' ) {
+				int end = posixBracketEnd(rx, i);
+				if( end > 0 ) {
+					out.append(bracket(rx.substring(i+1, end)));
+					i = end;
+					continue;
+				}
+			}
+			out.append(c);
 		}
-		return ret;
+		return out.toString();
+	}
+
+	/** the ] that ends the bracket expression at open, or -1 */
+	private static int posixBracketEnd(String rx, int open) {
+		int n = rx.length();
+		int k = open+1;
+		if( k < n && rx.charAt(k) == '^' ) {
+			k++;
+		}
+		if( k < n && rx.charAt(k) == ']' ) {
+			k++;
+		}
+		for (; k < n; k++) {
+			char c = rx.charAt(k);
+			if( c == '[' && k+1 < n && ":=.".indexOf(rx.charAt(k+1)) >= 0 ) {
+				int close = rx.indexOf(rx.charAt(k+1)+"]", k+2);
+				if( close > 0 ) {
+					k = close+1;
+					continue;
+				}
+			}
+			if( c == ']' ) {
+				return k;
+			}
+		}
+		return -1;
+	}
+
+	/** a bracket expression's inside as a Java character class */
+	private static String bracket(String body) {
+		StringBuilder out = new StringBuilder("[");
+		int k = 0;
+		int n = body.length();
+		if( k < n && body.charAt(k) == '^' ) {
+			out.append('^');
+			k++;
+		}
+		boolean first = true;
+		while( k < n ) {
+			char c = body.charAt(k);
+			String item = null;
+			if( c == '[' && k+1 < n && ":=.".indexOf(body.charAt(k+1)) >= 0 ) {
+				char kind = body.charAt(k+1);
+				int close = body.indexOf(kind+"]", k+2);
+				if( close > 0 ) {
+					String name = body.substring(k+2, close);
+					k = close+2;
+					if( kind == ':' ) {
+						boolean negated = name.startsWith("^");
+						String cls = negated ? name.substring(1) : name;
+						String java = null;
+						for(String [] e : CLASSES) {
+							if( e[0].equals(cls)) {
+								java = negated ? e[2] : e[1];
+							}
+						}
+						if( java == null ) {
+							throw new PatternSyntaxException("Invalid character class", body, -1);
+						}
+						out.append(java);
+						first = false;
+						continue;
+					}
+					// [=c=] and [.c.]: the character
+					item = name;
+				}
+			}
+			if( item == null ) {
+				item = String.valueOf(c);
+				k++;
+			}
+			if( !item.isEmpty() && k+1 < n && body.charAt(k) == '-') {
+				// a range a-z
+				char to = body.charAt(k+1);
+				out.append(classChar(item.charAt(0))).append('-').append(classChar(to));
+				k += 2;
+			} else {
+				for(char ch : item.toCharArray()) {
+					out.append(classChar(ch));
+				}
+			}
+			first = false;
+		}
+		return out.append(']').toString();
+	}
+
+	/** a character as itself in a Java character class */
+	private static String classChar(char c) {
+		return "\\[]&^-".indexOf(c) >= 0 ? "\\"+c : String.valueOf(c);
 	}
 
 	// ------------------------------------------------------------------ functions

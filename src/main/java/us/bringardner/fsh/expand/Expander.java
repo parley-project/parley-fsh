@@ -129,16 +129,49 @@ public final class Expander {
 		List<Piece> pieces = new ArrayList<>();
 		word(w, pieces, TILDE_START);
 		StringBuilder ret = new StringBuilder();
+		// in a bracket expression (opened by an unquoted [) a quoted character is just itself, as
+		// bash's: [']'] is []]
+		boolean inBracket = false;
+		// characters of the bracket so far (a ] first is one of them), and in a [:class:]
+		int seen = 0;
+		char inClass = 0;
 		for(Piece p : pieces) {
-			if( p.kind == QUOTED || p.kind == BREAK ) {
-				for(char c : p.text.toCharArray()) {
-					if( "\\^$.|?*+()[]{}".indexOf(c) >= 0 ) {
+			boolean quoted = p.kind == QUOTED || p.kind == BREAK;
+			String t = p.text;
+			for (int i = 0; i < t.length(); i++) {
+				char c = t.charAt(i);
+				if( quoted ) {
+					if( inBracket ) {
+						seen++;
+					} else if( "\\^$.|?*+()[]{}".indexOf(c) >= 0 ) {
 						ret.append('\\');
 					}
 					ret.append(c);
+					continue;
 				}
-			} else {
-				ret.append(p.text);
+				ret.append(c);
+				if( !inBracket ) {
+					if( c == '\\' && i+1 < t.length()) {
+						ret.append(t.charAt(++i));
+					} else if( c == '[' ) {
+						inBracket = true;
+						seen = 0;
+					}
+				} else if( inClass != 0 ) {
+					if( c == ']' && ret.length() >= 2 && ret.charAt(ret.length()-2) == inClass ) {
+						inClass = 0;
+					}
+				} else if( c == '[' && i+1 < t.length() && ":=.".indexOf(t.charAt(i+1)) >= 0 ) {
+					inClass = t.charAt(i+1);
+					ret.append(t.charAt(++i));
+					seen++;
+				} else if( c == '^' && seen == 0 && ret.charAt(ret.length()-2) == '[' ) {
+					// (a ^ first: then a ] is still the first)
+				} else if( c == ']' && seen > 0 ) {
+					inBracket = false;
+				} else {
+					seen++;
+				}
 			}
 		}
 		return ret.toString();
