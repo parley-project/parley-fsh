@@ -1741,7 +1741,7 @@ delimiter
 				if( !endOfInput && isOptionEnabled(Option.History)) {
 					rememberCommand(code);
 				}
-				code = code.trim();
+				code = code.strip();
 				if( !code.isEmpty()) {
 					state = ConsoleState.Executing;
 
@@ -3029,6 +3029,44 @@ delimiter
 		}
 	}
 
+	/** RANDOM, SECONDS ... after unset: ordinary variables from then on, as in bash */
+	public final java.util.Set<String> unsetSpecials = ConcurrentHashMap.newKeySet();
+
+	/** bash's generator for $RANDOM (the minimal standard one), so RANDOM=n gives what bash gives */
+	private long randomSeed = (System.nanoTime() ^ ProcessHandle.current().pid()) & 0x7fffffffL;
+	private int lastRandom;
+
+	public synchronized void seedRandom(long seed) {
+		randomSeed = seed & 0xffffffffL;
+		lastRandom = 0;
+	}
+
+	/** the next $RANDOM: 0-32767, never the same twice in a row */
+	public synchronized int random() {
+		int ret;
+		do {
+			long r = randomSeed == 0 ? 123459876 : randomSeed;
+			long h = r/127773;
+			long l = r%127773;
+			long t = 16807*l-2836*h;
+			randomSeed = t < 0 ? t+0x7fffffff : t;
+			ret = (int) (((randomSeed >> 16) ^ (randomSeed & 65535)) & 32767);
+		} while( ret == lastRandom );
+		lastRandom = ret;
+		return ret;
+	}
+
+	/** $SECONDS counts from here (SECONDS=n moves it) */
+	private volatile long secondsStart = System.currentTimeMillis();
+
+	public long seconds() {
+		return (System.currentTimeMillis()-secondsStart)/1000;
+	}
+
+	public void setSeconds(long n) {
+		secondsStart = System.currentTimeMillis()-n*1000;
+	}
+
 	/** declare x, declare -a a: names declared with no value (unset takes them off) */
 	public final java.util.Set<String> declaredUnset = ConcurrentHashMap.newKeySet();
 
@@ -3373,7 +3411,7 @@ delimiter
 				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
 			}
 
-			code = code.trim();
+			code = code.strip();
 			return us.bringardner.fsh.exec.Executor.script(sc, code);
 
 		} catch(us.bringardner.fsh.signal.SignalException e) {
@@ -3489,7 +3527,7 @@ delimiter
 				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
 			}
 
-			code = code.trim();
+			code = code.strip();
 			ret = us.bringardner.fsh.exec.Executor.script(sc, code, firstLine);
 			if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
 				Console.exit(sc.console, ret);

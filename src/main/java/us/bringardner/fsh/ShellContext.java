@@ -141,8 +141,14 @@ public class ShellContext {
 			case 'v': ret.append('\u000b'); break;
 			case '\\': case '\'': case '"': case '?': ret.append(e); break;
 			case 'c':
+				if( idx+1 < n && text.charAt(idx+1) == '\\' && idx+2 < n && text.charAt(idx+2) == '\\' ) {
+					// \c\\ is control-backslash
+					idx++;
+				}
 				if( idx+1 < n ) {
-					ret.append((char)(text.charAt(++idx) & 0x1f));
+					// as bash's TOCTRL: \c? is DEL
+					char x = text.charAt(++idx);
+					ret.append(x == '?' ? (char) 0x7f : (char)(Character.toUpperCase(x) & 0x1f));
 				} else {
 					ret.append("\\c");
 				}
@@ -474,6 +480,22 @@ $
 		if( value != null && !(value instanceof List<?> l && l.isEmpty()) && !(value instanceof Map<?,?> m && m.isEmpty())) {
 			console.declaredUnset.remove(name);
 		}
+		if( (name.equals("RANDOM") || name.equals("SECONDS")) && !console.unsetSpecials.contains(name) && value != null
+				&& !(value instanceof List<?>) && !(value instanceof Map<?,?>)) {
+			// RANDOM=n seeds it, SECONDS=n counts from n (neither keeps the value itself)
+			long n;
+			try {
+				n = Long.parseLong(value.toString().trim());
+			} catch (NumberFormatException e) {
+				n = 0;
+			}
+			if( name.equals("RANDOM")) {
+				console.seedRandom(n);
+			} else {
+				console.setSeconds(n);
+			}
+			return;
+		}
 		if( name.equals("POSIXLY_CORRECT") && value != null ) {
 			// as bash: setting it turns on posix mode
 			console.setOption(Console.Option.Posix, true);
@@ -668,6 +690,15 @@ $
 		if( name.equals("BASHPID")) {
 			return ProcessHandle.current().pid();
 		}
+		if( name.equals("RANDOM") && !console.unsetSpecials.contains(name)) {
+			return console.random();
+		}
+		if( name.equals("SRANDOM") && !console.unsetSpecials.contains(name)) {
+			return Integer.toUnsignedLong(SECURE.nextInt());
+		}
+		if( name.equals("SECONDS") && !console.unsetSpecials.contains(name)) {
+			return console.seconds();
+		}
 		if( name.equals("BASH_SOURCE")) {
 			// the files being sourced, innermost first, then the script
 			FshList files = new FshList();
@@ -704,6 +735,8 @@ $
 		}
 		return ret;
 	}
+
+	private static final java.security.SecureRandom SECURE = new java.security.SecureRandom();
 
 	private static volatile String hostName;
 	private static volatile Long userId;

@@ -17,7 +17,7 @@ import us.bringardner.fsh.syntax.Ast;
  * name=(words)), and -p -f -F to print. In a function they make local variables (declare -g:
  * global), as in bash.
  */
-final class Declarations {
+public final class Declarations {
 
 	private final Executor executor;
 	private final ShellContext sc;
@@ -366,14 +366,18 @@ final class Declarations {
 			// declared, never given a value
 			return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name;
 		}
+		value.append(val instanceof Map<?,?> || val instanceof FshList ? arrayText(val) : quote(val));
+		return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name+"="+value;
+	}
+
+	/** an array as declare -p shows it: ([0]="a" [1]="b"), ([k]="v" ) */
+	public static String arrayText(Object val) {
+		StringBuilder value = new StringBuilder("(");
 		if( val instanceof Map<?,?> m ) {
-			value.append('(');
 			for(Map.Entry<?,?> e : m.entrySet()) {
 				value.append('[').append(key(String.valueOf(e.getKey()))).append("]=").append(quote(e.getValue())).append(' ');
 			}
-			value.append(')');
 		} else if( val instanceof FshList list ) {
-			value.append('(');
 			boolean first = true;
 			for(int idx : list.getIndexes()) {
 				if( !first ) {
@@ -382,11 +386,8 @@ final class Declarations {
 				first = false;
 				value.append('[').append(idx).append("]=").append(quote(list.get(idx)));
 			}
-			value.append(')');
-		} else {
-			value.append(quote(val));
 		}
-		return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name+"="+value;
+		return value.append(')').toString();
 	}
 
 	/** the attributes declare -p shows: a A i l u c r x */
@@ -410,6 +411,10 @@ final class Declarations {
 
 	/** an associative array's key: "quoted" if the shell would read it differently (as bash's) */
 	static String key(String k) {
+		if( k.chars().anyMatch(Character::isISOControl)) {
+			// $'..'
+			return quote(k);
+		}
 		boolean quote = k.startsWith("~") || k.startsWith("#");
 		for (int i = 0; i < k.length() && !quote; i++) {
 			quote = " \t\n'\"\\|&;()<>!{}*[?]^$`".indexOf(k.charAt(i)) >= 0;
@@ -428,7 +433,7 @@ final class Declarations {
 	}
 
 	/** "v", or $'v' when v has a character that does not print (as bash's ansic_quote) */
-	static String quote(Object v) {
+	public static String quote(Object v) {
 		String s = String.valueOf(v);
 		boolean ansi = false;
 		for (int i = 0; i < s.length() && !ansi; i++) {

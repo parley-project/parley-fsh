@@ -100,6 +100,10 @@ public class Unset extends ShellCommand{
 			} else if( functions ) {
 				ctx.removeFunction(text);
 			} else {
+				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS")) {
+					// as bash: no longer special
+					ctx.console.unsetSpecials.add(text);
+				}
 				boolean declared = ctx.console.declaredUnset.remove(text);
 				if( !ctx.unSetVariable(text, !reference) && !declared ) {
 					if( !variables ) {

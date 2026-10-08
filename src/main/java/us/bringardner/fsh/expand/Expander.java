@@ -144,10 +144,19 @@ public final class Expander {
 		return ret.toString();
 	}
 
+	/** expanding a here-document's body (where $'..' in ${x:-word} is text) */
+	private boolean inHereDocument;
+
 	/** the body of a here-document whose word was not quoted: $ ` and \ count, quotes are text */
 	public String hereDocument(String body) {
 		List<Piece> pieces = new ArrayList<>();
-		word(Parser.fragment(body, Fragment.HERE_DOCUMENT), pieces, TILDE_NONE);
+		boolean was = inHereDocument;
+		inHereDocument = true;
+		try {
+			word(Parser.fragment(body, Fragment.HERE_DOCUMENT), pieces, TILDE_NONE);
+		} finally {
+			inHereDocument = was;
+		}
 		return join(pieces);
 	}
 
@@ -378,6 +387,8 @@ public final class Expander {
 		case Word.DoubleQuoted d -> {
 			int before = out.size();
 			boolean content = d.parts().isEmpty();
+			boolean emptyAt = false;
+			boolean literal = false;
 			List<Word.Part> inner = d.parts();
 			for (int i = 0; i < inner.size(); i++) {
 				int used = indexed(inner, i, QUOTED, out);
@@ -390,7 +401,17 @@ public final class Expander {
 					i++;
 					continue;
 				}
-				content |= part(inner.get(i), QUOTED, out);
+				Word.Part q = inner.get(i);
+				boolean r = part(q, QUOTED, out);
+				// (false: a "$@" with nothing in it)
+				emptyAt |= !r;
+				literal |= (q instanceof Word.Literal l && !l.text().isEmpty()) || q instanceof Word.Escaped;
+				content |= r;
+			}
+			if( emptyAt && !literal && out.subList(before, out.size()).stream().allMatch(x -> x.text.isEmpty())) {
+				// "$empty$@" with no positional parameters: no word, as in bash
+				out.subList(before, out.size()).clear();
+				return false;
 			}
 			if( out.size() == before && content ) {
 				// "" and "$empty" are an empty word
@@ -746,6 +767,13 @@ public final class Expander {
 				}
 				String s = paramText(e.arg, context);
 				assign(e, s);
+				if( e.subscript == null ) {
+					// the value as the variable has it (declare -i: 4+3 is 7; declare -u: upper case)
+					Object now = sc.getVariable(e.name);
+					if( now != null && !(now instanceof List<?>) && !(now instanceof Map<?,?>)) {
+						s = now.toString();
+					}
+				}
 				return emit(Val.of(s), context, out);
 			}
 			case '?':
@@ -911,6 +939,10 @@ public final class Expander {
 		if( !isName(e.name)) {
 			throw new ExpansionError("$"+e.name+": cannot assign in this way");
 		}
+		if( sc.console.isInteger(e.name)) {
+			// declare -i: the value is arithmetic
+			value = String.valueOf(evaluate(value));
+		}
 		if( e.subscript == null ) {
 			sc.setVariable(e.name, value);
 			return;
@@ -957,7 +989,7 @@ public final class Expander {
 
 	/** the word of ${x:-word} (and :+ - +) into pieces: quoted in "...", otherwise split */
 	private boolean paramWord(String text, int context, List<Piece> out) {
-		Word w = Parser.fragment(text, context == QUOTED ? Fragment.QUOTED_PARAMETER : Fragment.WORD);
+		Word w = Parser.fragment(text, context == QUOTED || inHereDocument ? quotedParameter() : Fragment.WORD);
 		boolean ret = false;
 		int before = out.size();
 		List<Word.Part> parts = w.parts;
@@ -986,10 +1018,14 @@ public final class Expander {
 			return join(paramPieces(text));
 		}
 		List<Piece> ret = new ArrayList<>();
-		for(Word.Part p : Parser.fragment(text, Fragment.QUOTED_PARAMETER).parts) {
+		for(Word.Part p : Parser.fragment(text, quotedParameter()).parts) {
 			part(p, QUOTED, ret);
 		}
 		return join(ret);
+	}
+
+	private Fragment quotedParameter() {
+		return inHereDocument ? Fragment.HERE_PARAMETER : Fragment.QUOTED_PARAMETER;
 	}
 
 	/** the pieces of a word in ${ } (a subscript, an offset, the word of ${x:=word}) */
@@ -1281,11 +1317,18 @@ public final class Expander {
 		case 'a':
 			return v.map(s -> attributes(e.name));
 		case 'A': {
+			// as bash: name='v', or declare -FLAGS name='v'; a whole array as declare -p shows it
 			Object raw = sc.getVariable(e.name);
-			if( e.subscript == null && (raw instanceof List<?> || raw instanceof Map<?,?>)) {
-				return Val.of("declare -"+attributes(e.name)+" "+e.name+"="+keyValues(raw, true));
+			String flags = attributes(e.name);
+			boolean whole = "@".equals(e.subscript) || "*".equals(e.subscript);
+			if( whole && (raw instanceof List<?> || raw instanceof Map<?,?>)) {
+				return Val.of("declare -"+flags+" "+e.name+"="+us.bringardner.fsh.exec.Declarations.arrayText(raw));
 			}
-			return v.map(s -> e.name+"="+quote(s));
+			String head = flags.isEmpty() ? e.name : "declare -"+flags+" "+e.name;
+			if( v.scalar == null && !v.isList()) {
+				return Val.of(flags.isEmpty() ? "" : head);
+			}
+			return v.map(s -> head+"="+quote(s));
 		}
 		case 'K':
 		case 'k': {

@@ -43,8 +43,10 @@ public final class Parser {
 		WORD,
 		/** as the inside of "...": only \ (before $ ` " \), $ and ` count */
 		QUOTED,
-		/** as the word in "${x:-word}": as QUOTED, but "..." quotes again and \} is } */
+		/** as the word in "${x:-word}": as QUOTED, but "..." quotes again, \} is } and $'..' is read (extquote) */
 		QUOTED_PARAMETER,
+		/** as the word of ${x:-word} in a here-document: QUOTED_PARAMETER without $'..' */
+		HERE_PARAMETER,
 		/** as the string in "${x/pattern/string}": as QUOTED_PARAMETER, and \& is & */
 		QUOTED_REPLACEMENT,
 		/** "..." inside "${x:-word}": the quotes are removed and \ quotes any character, as bash's */
@@ -728,7 +730,7 @@ public final class Parser {
 	private List<Word.Part> doubleParts(Fragment mode) {
 		List<Word.Part> parts = new ArrayList<>();
 		StringBuilder lit = new StringBuilder();
-		String escapable = mode == Fragment.HERE_DOCUMENT ? "$`\\" : mode == Fragment.QUOTED_PARAMETER ? "$`\"\\}"
+		String escapable = mode == Fragment.HERE_DOCUMENT ? "$`\\" : mode == Fragment.QUOTED_PARAMETER || mode == Fragment.HERE_PARAMETER ? "$`\"\\}"
 				: mode == Fragment.QUOTED_REPLACEMENT ? "$`\"\\}&'" : "$`\"\\";
 		boolean any = mode == Fragment.QUOTED_AGAIN;
 		while( !atEnd(pos)) {
@@ -754,7 +756,11 @@ public final class Parser {
 				int close = src.indexOf('\'', pos+1);
 				parts.add(new Word.SingleQuoted(src.substring(pos+1, close)));
 				pos = close+1;
-			} else if( c == '"' && (mode == Fragment.QUOTED_PARAMETER || mode == Fragment.QUOTED_REPLACEMENT)) {
+			} else if( c == '$' && ch(pos+1) == '\'' && (mode == Fragment.QUOTED_PARAMETER || mode == Fragment.QUOTED_REPLACEMENT)) {
+				// "${x:-$'\t'}": $'..' is read in "${ }" (bash's extquote)
+				flushTo(parts, lit);
+				parts.add(readDollar(false));
+			} else if( c == '"' && (mode == Fragment.QUOTED_PARAMETER || mode == Fragment.HERE_PARAMETER || mode == Fragment.QUOTED_REPLACEMENT)) {
 				// "${x:-"a b"}": quotes inside quote again
 				flushTo(parts, lit);
 				pos++;
@@ -775,7 +781,12 @@ public final class Parser {
 				}
 			} else if( c == '`' ) {
 				flushTo(parts, lit);
-				parts.add(readBackquote());
+				Word.Backquote b = readBackquote();
+				if( mode != Fragment.HERE_DOCUMENT && mode != Fragment.HERE_PARAMETER ) {
+					// "`echo \"hi\"`": in "..." \" in it is "
+					b = new Word.Backquote(withoutQuoteEscapes(b.text()));
+				}
+				parts.add(b);
 			} else {
 				lit.append(c);
 				pos++;
@@ -876,6 +887,24 @@ public final class Parser {
 	}
 
 	/** `...` at pos, as written between the backquotes */
+	/** text with \" as " (\\ stays, for the backquote's own reading) */
+	private static String withoutQuoteEscapes(String text) {
+		StringBuilder ret = new StringBuilder();
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if( c == '\\' && i+1 < text.length()) {
+				char n = text.charAt(++i);
+				if( n != '"' ) {
+					ret.append(c);
+				}
+				ret.append(n);
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
+	}
+
 	private Word.Backquote readBackquote() {
 		int i = pos+1;
 		while( !atEnd(i) && ch(i) != '`' ) {
