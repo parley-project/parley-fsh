@@ -565,7 +565,9 @@ $
 			setPlain(name, value);
 			return;
 		}
-		if( value instanceof String v && rawVariable(name) instanceof NameRef r && r.target.isEmpty()) {
+		if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
+				&& rawVariable(name) instanceof NameRef r && r.target.isEmpty()) {
+			String v = String.valueOf(value);
 			// ref=name for a nameref with no value yet: what it names
 			if( !validReference(v)) {
 				variableError("`"+v+"': not a valid identifier");

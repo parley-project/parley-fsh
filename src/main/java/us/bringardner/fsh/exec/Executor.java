@@ -594,17 +594,27 @@ public final class Executor {
 		FshList fds = new FshList();
 		fds.add(String.valueOf(readFd));
 		fds.add(String.valueOf(writeFd));
-		// (a readonly name is said, and keeps its value)
+		// (a readonly name is said, and keeps its value; then NAME_PID is not set)
 		if( sc.console.isReadonly(sc.readonlyName(k.name))) {
 			error(sc, sc.readonlyName(k.name)+": readonly variable");
-		} else {
+		} else if( sc.console.isReadonly(sc.readonlyName(k.name+"_PID"))) {
 			sc.setVariable(k.name, fds);
-		}
-		if( sc.console.isReadonly(sc.readonlyName(k.name+"_PID"))) {
 			error(sc, sc.readonlyName(k.name+"_PID")+": readonly variable");
 		} else {
+			sc.setVariable(k.name, fds);
 			sc.setVariable(k.name+"_PID", String.valueOf(job.pid));
 		}
+		// when it is done and reaped, NAME and NAME_PID are unset (a readonly NAME is said)
+		sc.console.jobManager.whenRemoved(job, () -> {
+			String n = sc.readonlyName(k.name);
+			if( sc.console.isReadonly(n)) {
+				error(sc, n+": cannot unset: readonly variable");
+			} else {
+				sc.unSetVariable(k.name, true);
+			}
+			sc.console.clearReadonly(k.name+"_PID");
+			sc.unSetVariable(k.name+"_PID", true);
+		});
 		return 0;
 	}
 

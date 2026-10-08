@@ -20,17 +20,64 @@ public class Getopts extends ShellCommand{
 		super(name, help);
 	}
 
+	private static final String USAGE = "getopts: usage: getopts optstring name [arg ...]";
+
+	/** name was no name: said (each time), and the status is 1 */
+	private boolean badName;
+
+	private void bind(ShellContext ctx, String var, String value) {
+		if( !us.bringardner.fsh.exec.Executor.isName(var)) {
+			ctx.error("getopts: `"+var+"': not a valid identifier");
+			badName = true;
+			return;
+		}
+		ctx.setVariable(var, value);
+	}
+
+	/** (readonly or not, as bash's unbind_variable_noref) */
+	private static void unsetOptarg(ShellContext ctx) {
+		ctx.console.clearReadonly("OPTARG");
+		ctx.unSetVariable("OPTARG", false);
+	}
+
+	/** a readonly OPTARG is said, and getopts goes on */
+	private static void setOptarg(ShellContext ctx, String value) {
+		try {
+			ctx.setVariable("OPTARG", value);
+		} catch (ShellContext.ReadonlyException e) {
+			ctx.error(e.getMessage());
+		}
+	}
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		if( args.length < 2 ) {
-			ctx.error("getopts: usage: getopts optstring name [arg ...]");
+		badName = false;
+		int ret = options(ctx);
+		return badName ? 1 : ret;
+	}
+
+	private int options(ShellContext ctx) throws IOException {
+		// (options: none, -- ends them)
+		int first = 0;
+		if( args.length > 0 ) {
+			String a0 = ""+args[0].getValue(ctx);
+			if( a0.equals("--")) {
+				first = 1;
+			} else if( a0.startsWith("-") && a0.length() > 1 ) {
+				ctx.error("getopts: "+a0.substring(0, 2)+": invalid option");
+				ctx.stderr.println(USAGE);
+				return 2;
+			}
+		}
+		if( args.length-first < 2 ) {
+			ctx.stderr.println(USAGE);
 			return 2;
 		}
-		String optstring = ""+args[0].getValue(ctx);
-		String var = ""+args[1].getValue(ctx);
+		String optstring = ""+args[first].getValue(ctx);
+		String var = ""+args[first+1].getValue(ctx);
 		List<String> params = new ArrayList<>();
-		if( args.length > 2 ) {
-			for(int idx = 2; idx < args.length; idx++) {
+		if( args.length > first+2 ) {
+			for(int idx = first+2; idx < args.length; idx++) {
 				params.add(""+args[idx].getValue(ctx));
 			}
 		} else {
@@ -66,36 +113,43 @@ public class Getopts extends ShellCommand{
 		boolean wordDone = pos >= word.length();
 		int at = c == ':' ? -1 : optstring.indexOf(c);
 		if( at < 0 ) {
-			ctx.setVariable(var, "?");
+			// (said before name is set, as bash's)
 			if( quiet ) {
-				ctx.setVariable("OPTARG", ""+c);
+				bind(ctx, var, "?");
+				setOptarg(ctx, ""+c);
 			} else {
-				ctx.unSetVariable("OPTARG");
-				ctx.stderr.println(ctx.getVariable("$0")+": illegal option -- "+c);
+				unsetOptarg(ctx);
+				if( !"0".equals(String.valueOf(ctx.getVariable("OPTERR")).trim())) {
+					// (OPTERR=0: unsaid)
+					ctx.stderr.println(ctx.getVariable("$0")+": illegal option -- "+c);
+				}
+				bind(ctx, var, "?");
 			}
 		} else if( at+1 < optstring.length() && optstring.charAt(at+1) == ':' ) {
 			// the argument: the rest of this word, or the next word
 			if( !wordDone ) {
-				ctx.setVariable("OPTARG", word.substring(pos));
+				setOptarg(ctx, word.substring(pos));
 			} else if( optind < params.size()) {
 				optind++;
-				ctx.setVariable("OPTARG", params.get(optind-1));
+				setOptarg(ctx, params.get(optind-1));
 			} else {
 				if( quiet ) {
-					ctx.setVariable(var, ":");
-					ctx.setVariable("OPTARG", ""+c);
+					bind(ctx, var, ":");
+					setOptarg(ctx, ""+c);
 				} else {
-					ctx.setVariable(var, "?");
-					ctx.unSetVariable("OPTARG");
-					ctx.stderr.println(ctx.getVariable("$0")+": option requires an argument -- "+c);
+					unsetOptarg(ctx);
+					if( !"0".equals(String.valueOf(ctx.getVariable("OPTERR")).trim())) {
+						ctx.stderr.println(ctx.getVariable("$0")+": option requires an argument -- "+c);
+					}
+					bind(ctx, var, "?");
 				}
 				return next(ctx, optind+1, 0, 0);
 			}
-			ctx.setVariable(var, ""+c);
+			bind(ctx, var, ""+c);
 			return next(ctx, optind+1, 0, 0);
 		} else {
-			ctx.setVariable(var, ""+c);
-			ctx.unSetVariable("OPTARG");
+			bind(ctx, var, ""+c);
+			unsetOptarg(ctx);
 		}
 		return wordDone ? next(ctx, optind+1, 0, 0) : next(ctx, optind, pos, 0);
 	}
@@ -107,8 +161,10 @@ public class Getopts extends ShellCommand{
 	}
 
 	/** no more options: name is ?, status 1 */
-	private static int end(ShellContext ctx, String var, int optind) {
-		ctx.setVariable(var, "?");
+	private int end(ShellContext ctx, String var, int optind) {
+		// (no more options: OPTARG is unset too, as bash's)
+		unsetOptarg(ctx);
+		bind(ctx, var, "?");
 		next(ctx, optind, 0, 1);
 		return 1;
 	}

@@ -333,7 +333,10 @@ public final class Expander {
 			x.bare = e.bare;
 			throw x;
 		} catch (ShellContext.ReadonlyException e) {
-			throw new ExpansionError(e.getMessage());
+			// (said as the assignment would say it: no ((: before it)
+			ExpansionError x = new ExpansionError(e.getMessage());
+			x.bare = true;
+			throw x;
 		}
 	}
 

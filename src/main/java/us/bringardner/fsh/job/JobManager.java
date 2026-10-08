@@ -127,11 +127,25 @@ public class JobManager {
 		return current();
 	}
 
-	public synchronized void remove(IJob job) {
-		if( jobs.remove(job) && isDone(job)) {
-			finished.put((long) job.getPid(), job.getExitCode());
+	public void remove(IJob job) {
+		Runnable after;
+		synchronized (this) {
+			if( jobs.remove(job) && isDone(job)) {
+				finished.put((long) job.getPid(), job.getExitCode());
+			}
+			recent.remove(job);
+			after = isDone(job) ? onRemoved.remove(job) : null;
 		}
-		recent.remove(job);
+		if( after != null ) {
+			after.run();
+		}
+	}
+
+	/** what to do when a job that is done leaves the table (a coproc's variables are unset) */
+	private final java.util.Map<IJob,Runnable> onRemoved = new java.util.IdentityHashMap<>();
+
+	public synchronized void whenRemoved(IJob job, Runnable r) {
+		onRemoved.put(job, r);
 	}
 
 	/** wait (for all): the statuses of the jobs that left the table are forgotten, as in bash */

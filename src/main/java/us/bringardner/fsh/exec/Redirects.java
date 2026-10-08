@@ -207,6 +207,11 @@ final class Redirects {
 			fd++;
 		}
 		int bracket = name.indexOf('[');
+		if( bracket < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef nr && nr.target().isEmpty()) {
+			// a nameref with no value: a number is no name for it (said, and the redirect fails)
+			sc.error("`"+fd+"': not a valid identifier");
+			throw new RuntimeException(name+": cannot assign fd to variable");
+		}
 		if( bracket < 0 ) {
 			sc.setVariable(name, String.valueOf(fd));
 		} else {

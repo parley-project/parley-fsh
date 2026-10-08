@@ -315,6 +315,13 @@ public final class Declarations {
 					}
 				}
 			}
+			if( (assignment != null || text != null) && o.indexOf('n') < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef r0
+					&& r0.target().isEmpty() && sc.console.isReadonly(name)) {
+				// typeset r=v of a readonly nameref with no value
+				error(command, name+": readonly variable");
+				status = 1;
+				continue;
+			}
 			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef empty && empty.target().isEmpty()
 					&& !(local && sc.isInFunction() && !sc.isOwnLocal(name))) {
 				if( o.indexOf('a') >= 0 || o.indexOf('A') >= 0 ) {
@@ -324,6 +331,12 @@ public final class Declarations {
 					// declare r=v of a nameref with no value: v is what it names (one that is no name:
 					// said, and r is gone)
 					String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
+					if( !ShellContext.validReference(v) && local && sc.isInFunction() && sc.isOwnLocal(name)) {
+						// (a function's own: it stays, as bash's)
+						error(command, "`"+v+"': invalid variable name for name reference");
+						status = 1;
+						continue;
+					}
 					if( !ShellContext.validReference(v)) {
 						error(command, "`"+v+"': not a valid identifier");
 						sc.unSetVariable(name, false);
@@ -369,6 +382,11 @@ public final class Declarations {
 						continue;
 					}
 				}
+			}
+			if( remove && o.indexOf('r') >= 0 && sc.console.isReadonly(name) && sc.rawVariable(name) instanceof ShellContext.NameRef r1
+					&& r1.target().isEmpty()) {
+				// typeset +r of a readonly nameref that names nothing: nothing
+				continue;
 			}
 			if( remove && o.indexOf('r') >= 0 && sc.console.isReadonly(name)) {
 				// declare +r: readonly stays
@@ -432,6 +450,13 @@ public final class Declarations {
 				char which = l > u && l > c ? 'l' : u > c ? 'u' : 'c';
 				sc.setCaseAttribute(name, remove ? null : which, local);
 			}
+			if( o.indexOf('n') >= 0 && !remove && assignment != null && assignment.array != null && assignment.index == null ) {
+				// declare -n r=(a b): said, and r=(a b) is an array, as bash's
+				error(command, name+": reference variable cannot be an array");
+				status = 1;
+				executor.assign(assignment, sc, ex, local);
+				continue;
+			}
 			if( o.indexOf('n') >= 0 && !remove ) {
 				// a reference: the variable named by the value (with no value, the one it has now; a
 				// function's local one is new)
@@ -455,6 +480,14 @@ public final class Declarations {
 				}
 				if( assignment != null && assignment.index != null ) {
 					error(command, name+"["+assignment.index+"]: reference variable cannot be an array");
+					status = 1;
+					continue;
+				}
+				String named = text != null ? text : assignment != null && assignment.array == null && assignment.value != null ? ex.assignment(assignment.value) : null;
+				if( (raw instanceof List<?> || raw instanceof Map<?,?>) && named != null && !named.isEmpty()
+						&& !Executor.isName(named) && !SUBSCRIPTED.matcher(named).matches()) {
+					// (the name is looked at first)
+					error(command, "`"+named+"': invalid variable name for name reference");
 					status = 1;
 					continue;
 				}
@@ -508,6 +541,19 @@ public final class Declarations {
 					// declare -nx ref=var: ref=var is in the environment
 					sc.setEnvironmentVariable(name, target);
 				}
+				continue;
+			}
+			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef ref && sc.console.isReadonly(name)) {
+				// +n of a readonly nameref: only of one with no value yet (it stays readonly)
+				if( !ref.target().isEmpty() || assignment != null || text != null ) {
+					error(command, name+": readonly variable");
+					status = 1;
+					continue;
+				}
+				sc.console.clearReadonly(name);
+				sc.unSetVariable(name, false);
+				sc.console.declaredUnset.add(name);
+				sc.console.setReadonly(name);
 				continue;
 			}
 			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef ref ) {
@@ -678,6 +724,9 @@ public final class Declarations {
 					// declare x, declare -a a: declared, with no value yet (declare -p shows it so)
 					sc.console.declaredUnset.add(name);
 				}
+			} else if( val == null && remove && !local && sc.getVariable(name) == null && sc.rawVariable(name) == null ) {
+				// (declare +r x too)
+				sc.console.declaredUnset.add(name);
 			}
 			if( val instanceof String v && sc.rawVariable(name) instanceof ShellContext.NameRef r && r.target().isEmpty()
 					&& !ShellContext.validReference(v)) {
