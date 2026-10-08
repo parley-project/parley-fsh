@@ -88,7 +88,7 @@ final class Redirects {
 			if( !r.hereDoc.quoted ) {
 				body = ex.hereDocument(body);
 			}
-			setIn(sc, fd == null ? 0 : fd, new ByteArrayInputStream(body.getBytes()), opened);
+			setIn(sc, fd == null ? 0 : fd, new ReadBack(new ByteArrayInputStream(body.getBytes())), opened);
 			return;
 		}
 		switch (r.op) {
@@ -123,12 +123,14 @@ final class Redirects {
 			if( !file.exists()) {
 				throw new IOException(word+": No such file or directory");
 			}
-			setIn(sc, fd == null ? 0 : fd, file.getInputStream(), opened);
+			// a file (not a device or a named pipe, where a read can wait) is shared with the programs
+			InputStream in = file.getInputStream();
+			setIn(sc, fd == null ? 0 : fd, file.isFile() ? new ReadBack(in) : in, opened);
 			break;
 		}
 		case "<<<":
 			// a here-string: the word and a newline
-			setIn(sc, fd == null ? 0 : fd, new ByteArrayInputStream((ex.string(r.target)+"\n").getBytes()), opened);
+			setIn(sc, fd == null ? 0 : fd, new ReadBack(new ByteArrayInputStream((ex.string(r.target)+"\n").getBytes())), opened);
 			break;
 		case ">&": {
 			String word = target(r, ex);

@@ -277,6 +277,7 @@ public final class Programs {
 			StreamCopier sc3 = null;
 
 			Object terminalUser = null;
+			StdinFeeder feeder = null;
 			us.bringardner.fsh.job.IJob job = ctx.job;
 
 			try {
@@ -321,6 +322,12 @@ public final class Programs {
 				}
 				if( inheritIn ) {
 					builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+				} else {
+					// input the shell shares with it: what it does not read stays for the shell
+					feeder = StdinFeeder.of(ctx.stdin);
+					if( feeder != null ) {
+						builder.redirectInput(feeder.fifo);
+					}
 				}
 				if( inheritOut ) {
 					ctx.stdout.flush();
@@ -364,6 +371,8 @@ public final class Programs {
 				process = p;
 				if( inheritIn ) {
 					// the program reads the terminal
+				} else if( feeder != null ) {
+					feeder.start();
 				} else if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
 					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
@@ -419,6 +428,10 @@ public final class Programs {
 				// the process has exited, wait for the rest of its output
 				drain(sc2);
 				drain(sc3);
+				if( feeder != null ) {
+					feeder.finish();
+					feeder = null;
+				}
 
 				if( terminalUser != null && job != null && exitCode == 128+INT && (grouped || Console.interruptTypedSince(started))) {
 					// Ctrl-C ended it: as bash, the rest of the command line does not run
@@ -432,6 +445,10 @@ public final class Programs {
 				exitCode = 1;
 				error = e;
 			} finally {
+				if( feeder != null ) {
+					// it did not start, or failed
+					feeder.finish();
+				}
 				if( terminalUser != null ) {
 					NativeKeyboard.reclaimTerminal(terminalUser);
 					if( job != null ) {

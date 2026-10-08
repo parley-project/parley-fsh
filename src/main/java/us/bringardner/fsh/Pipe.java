@@ -20,7 +20,29 @@ public class Pipe {
 	private boolean writerClosed;
 	private boolean readerClosed;
 
-	public final InputStream in = new InputStream() {
+	/** what was put back (SharedInput.unread): read before the pipe's own bytes */
+	private byte [] pushed = new byte[0];
+
+	private final class Reader extends InputStream implements SharedInput {
+
+		@Override
+		public void unread(byte[] data, int off, int len) {
+			synchronized (Pipe.this) {
+				byte [] all = new byte[len+pushed.length];
+				System.arraycopy(data, off, all, 0, len);
+				System.arraycopy(pushed, 0, all, len, pushed.length);
+				pushed = all;
+				Pipe.this.notifyAll();
+			}
+		}
+
+		@Override
+		public boolean readyOrEnded() {
+			synchronized (Pipe.this) {
+				return pushed.length > 0 || count > 0 || writerClosed || readerClosed;
+			}
+		}
+
 		@Override
 		public int read() throws IOException {
 			byte [] one = new byte[1];
@@ -34,8 +56,14 @@ public class Pipe {
 				return 0;
 			}
 			synchronized (Pipe.this) {
-				while( count == 0 && !writerClosed && !readerClosed ) {
+				while( pushed.length == 0 && count == 0 && !writerClosed && !readerClosed ) {
 					waitHere();
+				}
+				if( pushed.length > 0 ) {
+					int n = Math.min(len, pushed.length);
+					System.arraycopy(pushed, 0, b, off, n);
+					pushed = java.util.Arrays.copyOfRange(pushed, n, pushed.length);
+					return n;
 				}
 				if( count == 0 ) {
 					return -1;
@@ -54,7 +82,7 @@ public class Pipe {
 		@Override
 		public int available() {
 			synchronized (Pipe.this) {
-				return count;
+				return pushed.length+count;
 			}
 		}
 
@@ -65,7 +93,9 @@ public class Pipe {
 				Pipe.this.notifyAll();
 			}
 		}
-	};
+	}
+
+	public final InputStream in = new Reader();
 
 	public final OutputStream out = new OutputStream() {
 		@Override

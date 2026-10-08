@@ -160,7 +160,7 @@ final class ProcessSubstitutions {
 	}
 
 	/** a new named pipe in the temporary directory, or null if there is no mkfifo */
-	private static File makeFifo() {
+	static File makeFifo() {
 		if( Boolean.FALSE.equals(haveMkfifo) || FileSourceFactory.isWindows()) {
 			return null;
 		}
