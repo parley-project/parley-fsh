@@ -14,6 +14,11 @@ public interface ShellFunction {
 	/** the function as declare -f and type print it, in bash's layout */
 	String declaration();
 
+	/** the function as bash puts it in the environment (export -f): () {  ...}, or null */
+	default String exportedBody() {
+		return null;
+	}
+
 	/** call it with these arguments ($1 ...); its status */
 	int invoke(Argument[] args, ShellContext ctx) throws IOException;
 

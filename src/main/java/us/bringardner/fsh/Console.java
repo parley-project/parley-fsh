@@ -1356,6 +1356,9 @@ delimiter
 
 	/** "() {  first;\n second\n}": a function's body as bash puts it in the environment */
 	public static String exportedBody(ShellFunction f) {
+		if( f.exportedBody() != null ) {
+			return f.exportedBody();
+		}
 		String [] lines = f.declaration().split("\n");
 		StringBuilder ret = new StringBuilder("() {  ");
 		// lines: "f () ", "{ ", the commands (indented 4), "}" and maybe its redirects
@@ -1741,7 +1744,7 @@ delimiter
 				if( !endOfInput && isOptionEnabled(Option.History)) {
 					rememberCommand(code);
 				}
-				code = code.strip();
+				code = code.stripLeading();
 				if( !code.isEmpty()) {
 					state = ConsoleState.Executing;
 
@@ -3415,7 +3418,7 @@ delimiter
 				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
 			}
 
-			code = code.strip();
+			code = code.stripLeading();
 			return us.bringardner.fsh.exec.Executor.script(sc, code);
 
 		} catch(us.bringardner.fsh.signal.SignalException e) {
@@ -3531,7 +3534,7 @@ delimiter
 				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
 			}
 
-			code = code.strip();
+			code = code.stripLeading();
 			ret = us.bringardner.fsh.exec.Executor.script(sc, code, firstLine);
 			if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
 				Console.exit(sc.console, ret);

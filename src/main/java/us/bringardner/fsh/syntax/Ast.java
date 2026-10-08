@@ -30,6 +30,8 @@ public final class Ast {
 		public final List<Item> items = new ArrayList<>();
 		/** the text it was read from, with its aliases expanded (what positions in it are in) */
 		public String source;
+		/** what bash warns about as it reads it: {line, message} */
+		public final List<Object []> warnings = new ArrayList<>();
 	}
 
 	/** an && || list, and whether a & after it runs it in the background */

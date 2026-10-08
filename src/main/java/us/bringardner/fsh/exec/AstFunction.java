@@ -85,34 +85,11 @@ final class AstFunction implements ShellFunction {
 	 */
 	@Override
 	public String declaration() {
-		List<String> lines = new ArrayList<>();
-		Ast.Command body = def.body;
-		if( body instanceof Ast.BraceGroup g ) {
-			for(Ast.Item item : g.body.items) {
-				String t = executor.text(item.command).trim();
-				while( t.endsWith(";")) {
-					t = t.substring(0, t.length()-1).trim();
-				}
-				if( item.background ) {
-					t += " &";
-				}
-				if( !t.isEmpty()) {
-					lines.add(t);
-				}
-			}
-		} else {
-			lines.add(executor.text(body).trim());
-		}
-		StringBuilder ret = new StringBuilder(getName()+" () \n{ \n");
-		for (int i = 0; i < lines.size(); i++) {
-			ret.append("    ").append(lines.get(i).replace("\n", "\n    ")).append(i < lines.size()-1 ? ";" : "").append('\n');
-		}
-		ret.append('}');
-		if( body instanceof Ast.BraceGroup && !body.redirects.isEmpty()) {
-			Ast.Redirect first = body.redirects.get(0);
-			Ast.Redirect last = body.redirects.get(body.redirects.size()-1);
-			ret.append(' ').append(executor.text(first.start, last.end).trim());
-		}
-		return ret.toString();
+		return CommandPrinter.function(executor, getName(), def.body);
+	}
+
+	@Override
+	public String exportedBody() {
+		return CommandPrinter.exported(executor, def.body);
 	}
 }

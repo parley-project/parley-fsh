@@ -583,10 +583,15 @@ public abstract class ShellCommand {
 
 	public static List<FileSource>  getFiles(ShellContext ctx,String path) throws IOException {
 		List<FileSource> ret = new ArrayList<>();
-		if( hasWildcard(path)) {
+		FileSource literal = ctx.console.createFileSource(path);
+		if( hasWildcard(path) && !literal.exists()) {
+			// (the shell expanded the patterns already: a name with * in it that exists is that file)
 			ret = glob(ctx, path);
+			if( ret.isEmpty()) {
+				ret.add(literal);
+			}
 		} else {
-			ret.add(ctx.console.createFileSource(path));
+			ret.add(literal);
 		}
 		if( ret.size()>1) {
 			// by path, as bash sorts a glob (files with the same name in different directories were

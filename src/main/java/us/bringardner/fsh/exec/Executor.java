@@ -87,6 +87,7 @@ public final class Executor {
 			if( seq == null ) {
 				return ret;
 			}
+			warnings(sc, seq);
 			ret = new Executor(seq.source).list(seq, sc);
 		}
 	}
@@ -126,7 +127,15 @@ public final class Executor {
 			if( seq == null ) {
 				return ret;
 			}
+			warnings(sc, seq);
 			ret = items(seq, new Executor(seq.source), sc, ret);
+		}
+	}
+
+	/** what bash warns about as it reads (a here-document's end of file) */
+	private static void warnings(ShellContext sc, Ast.Sequence seq) {
+		for(Object [] w : seq.warnings) {
+			sc.stderr.println(prefix(sc, (Integer) w[0])+w[1]);
 		}
 	}
 

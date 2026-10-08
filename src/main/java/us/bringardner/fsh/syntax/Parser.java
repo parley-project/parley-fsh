@@ -152,6 +152,8 @@ public final class Parser {
 			}
 			Sequence ret = p.oneLine();
 			ret.source = p.src;
+			ret.warnings.addAll(p.warnings);
+			p.warnings.clear();
 			return ret;
 		}
 
@@ -208,6 +210,7 @@ public final class Parser {
 			throw unexpected(t);
 		}
 		ret.source = src;
+		ret.warnings.addAll(warnings);
 		return ret;
 	}
 
@@ -1227,6 +1230,13 @@ public final class Parser {
 		return n;
 	}
 
+	/** warnings found while reading: {line, message}, as bash prints them (see Sequence.warnings) */
+	private final List<Object []> warnings = new ArrayList<>();
+
+	private String hereDocWarning(Redirect r) {
+		return "warning: here-document at line "+r.line+" delimited by end-of-file (wanted `"+r.hereDoc.delimiter+"')";
+	}
+
 	/** after a newline: the bodies of the here-documents started on the line before it */
 	private void readHereDocs() {
 		for(Redirect r : pendingHereDocs) {
@@ -1236,8 +1246,10 @@ public final class Parser {
 				if( atEnd(pos)) {
 					// bash warns and takes the rest of the file
 					hereDocumentOpen = true;
+					warnings.add(new Object[] {lineOf(pos)-(src.endsWith("\n") ? 1 : 0), hereDocWarning(r)});
 					break;
 				}
+				int lineStart = pos;
 				int nl = src.indexOf('\n', pos);
 				int lineEnd = nl < 0 ? src.length() : nl;
 				String line = src.substring(pos, lineEnd);
@@ -1261,6 +1273,13 @@ public final class Parser {
 					check = check.substring(t);
 				}
 				if( check.equals(h.delimiter)) {
+					break;
+				}
+				if( !closers.isEmpty() && closers.get(closers.size()-1).equals(")") && check.startsWith(h.delimiter)
+						&& check.substring(h.delimiter.length()).startsWith(")") && line.length() == lineEnd-lineStart ) {
+					// $(cat <<EOF ... EOF): the ) ends the here-document and the $( ), as in bash (with a warning)
+					warnings.add(new Object[] {lineOf(lineStart), hereDocWarning(r)});
+					pos = lineStart+(line.length()-check.length())+h.delimiter.length();
 					break;
 				}
 				body.append(h.stripTabs ? check : line).append('\n');
@@ -1545,8 +1564,14 @@ public final class Parser {
 		if( r.op.equals("<<") || r.op.equals("<<-")) {
 			HereDoc h = new HereDoc();
 			h.stripTabs = r.op.equals("<<-");
-			h.quoted = !target.word.isPlain() && target.word.parts.stream().anyMatch(p -> !(p instanceof Word.Literal));
+			// (quoted: a quote or \ in it, not just $ or `)
+			h.quoted = target.word.parts.stream().anyMatch(p -> p instanceof Word.SingleQuoted || p instanceof Word.DoubleQuoted
+					|| p instanceof Word.Escaped || p instanceof Word.AnsiC);
 			h.delimiter = unquote(target.word);
+			if( h.stripTabs ) {
+				// <<-'	END': the delimiter loses its leading tabs too (bash's)
+				h.delimiter = h.delimiter.replaceFirst("^\t+", "");
+			}
 			r.hereDoc = h;
 			pendingHereDocs.add(r);
 		} else {
@@ -1577,9 +1602,23 @@ public final class Parser {
 				}
 			} else if( p instanceof Word.Param pa ) {
 				ret.append('$').append(pa.name());
+			} else {
+				// $(..) `..` ${..}: as written (a delimiter is not expanded)
+				ret.append(written(p));
 			}
 		}
 		return ret.toString();
+	}
+
+	private static String written(Word.Part p) {
+		return switch (p) {
+		case Word.ParamExpansion x -> "${"+x.body()+"}";
+		case Word.CommandSub c -> "$("+c.text()+")";
+		case Word.Backquote b -> "`"+b.text()+"`";
+		case Word.ArithSub a -> "$(("+a.expression().raw+"))";
+		case Word.AnsiC a -> "$'"+a.text()+"'";
+		default -> "";
+		};
 	}
 
 	private Command simpleCommand() {
