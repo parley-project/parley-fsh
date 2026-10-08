@@ -600,7 +600,7 @@ public final class Expander {
 			return parameter(ParamExpr.simple(pa.name()), context, out);
 		}
 		case Word.ParamExpansion pe -> {
-			return parameter(ParamExpr.parse(pe.body()), context, out);
+			return parameter(ParamExpr.parse(pe.body(), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
 		}
 		case Word.CommandSub cs -> value(trimNewlines(host.commandOutput(cs.body(), cs.text(), false)), context, out);
 		case Word.Backquote b -> value(trimNewlines(host.commandOutput(null, b.text(), true)), context, out);
@@ -608,7 +608,21 @@ public final class Expander {
 			String v = host.functionOutput(fs.body(), fs.text(), fs.reply());
 			value(fs.reply() ? v : trimNewlines(v), context, out);
 		}
-		case Word.ArithSub a -> value(String.valueOf(arithmetic(a.expression())), context, out);
+		case Word.ArithSub a -> {
+			String n;
+			try {
+				n = String.valueOf(arithmetic(a.expression()));
+			} catch (ExpansionError x) {
+				if( x.kind != ExpansionError.Kind.FATAL && sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && !sc.console.isInteractive ) {
+					// (posix mode: a script ends, as bash's)
+					ExpansionError f = new ExpansionError(x.getMessage(), ExpansionError.Kind.FATAL);
+					f.bare = x.bare;
+					throw f;
+				}
+				throw x;
+			}
+			value(n, context, out);
+		}
 		case Word.ArithSubscript a -> {
 			// expanded as a word (quotes removed), then [ ] $ ` ~ \ ' " quoted with \
 			StringBuilder q = new StringBuilder("[");
@@ -694,6 +708,11 @@ public final class Expander {
 		}
 
 		static ParamExpr parse(String body) {
+			return parse(body, false);
+		}
+
+		/** (in posix mode ${!?} and ${!#...} are $! with an operator, as bash's) */
+		static ParamExpr parse(String body, boolean posix) {
 			ParamExpr e = new ParamExpr();
 			e.text = body;
 			int n = body.length();
@@ -714,6 +733,11 @@ public final class Expander {
 				}
 			} else if( c0 == '!' && n > 2 && "-=+?:".indexOf(body.charAt(1)) >= 0 ) {
 				// ${!-word}, ${!:-word}: $! with an operator (not indirection)
+			} else if( c0 == '!' && posix && (body.charAt(1) == '?' || body.charAt(1) == '#')) {
+				// (posix mode: $! with ? or #)
+			} else if( c0 == '!' && n == 2 && (body.charAt(1) == '$' || body.charAt(1) == '!')) {
+				// ${!$}, ${!!}: no indirection of those
+				throw e.bad();
 			} else if( c0 == '!' && n > 1 ) {
 				int end = paramEnd(body, 1);
 				if( end > 1 ) {
@@ -1063,7 +1087,9 @@ public final class Expander {
 		plain.subscript = e.subscript;
 		Val v = base(plain, false);
 		String target = v.isList() ? String.join(" ", v.items) : v.scalar;
-		if( target == null && !e.name.isEmpty() && Character.isDigit(e.name.charAt(0))) {
+		if( target == null && !e.name.isEmpty() && Character.isDigit(e.name.charAt(0))
+				|| (target == null || target.isEmpty()) && (e.name.equals("@") || e.name.equals("*"))) {
+			// (${!@} with no parameters: nothing, as bash's)
 			// ${!9:-word} of an unset $9: unset (bash's)
 			ParamExpr ret = new ParamExpr();
 			ret.text = e.text;

@@ -184,11 +184,45 @@ public class Set extends ShellCommand{
 				}
 				line.append(')');
 			} else {
-				String s = v == null ? "" : v.toString();
-				line.append(s.matches("[A-Za-z0-9_./:@%+,=-]*") && !s.isEmpty() ? s : us.bringardner.fsh.expand.Expander.quote(s));
+				line.append(valueText(v == null ? "" : v.toString(), ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)));
 			}
 			ctx.stdout.println(line);
 		}
+	}
+
+	/** a value as set shows it (bash's print_var_value): $'..' with control characters (not in posix mode), '..' with shell metacharacters, else as it is */
+	static String valueText(String s, boolean posix) {
+		boolean control = false;
+		for(char c : s.toCharArray()) {
+			control |= c < ' ' || c == 0x7f;
+		}
+		if( control && !posix ) {
+			return us.bringardner.fsh.expand.Expander.quote(s);
+		}
+		if( !containsShellMetas(s)) {
+			return s;
+		}
+		if( s.equals("'")) {
+			return "\\'";
+		}
+		return "'"+s.replace("'", "'\\''")+"'";
+	}
+
+	/** bash's sh_contains_shell_metas */
+	private static boolean containsShellMetas(String s) {
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if( " \t\n'\"\\|&;()<>!{}*[?]^$`".indexOf(c) >= 0 ) {
+				return true;
+			}
+			if( c == '~' && (i == 0 || s.charAt(i-1) == '=' || s.charAt(i-1) == ':')) {
+				return true;
+			}
+			if( c == '#' && i == 0 ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static String dq(Object v) {

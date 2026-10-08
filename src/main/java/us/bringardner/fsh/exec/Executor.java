@@ -275,7 +275,8 @@ public final class Executor {
 		error(sc, e.getMessage());
 		sc.console.setLastExitCode(1);
 		if( e.kind == ExpansionError.Kind.FATAL && !sc.console.isInteractive ) {
-			throw new ExitException(sc, e.status);
+			// (with -c, 127, as bash's)
+			throw new ExitException(sc, sc.console.readsFrom == 'c' && e.status == 1 ? 127 : e.status);
 		}
 		if( e.kind == ExpansionError.Kind.FAIL ) {
 			return 1;
@@ -2765,7 +2766,8 @@ public final class Executor {
 		int status = 0;
 		try {
 			saved = primary.console.snapshot();
-			if( !Glob.option(primary, "inherit_errexit")) {
+			// (posix mode keeps set -e in it, as bash's)
+			if( !Glob.option(primary, "inherit_errexit") && !primary.console.isOptionEnabled(Option.Posix)) {
 				primary.console.setOption(Option.ExitImediately, false);
 			}
 			status = list(seq, ctx);

@@ -94,9 +94,14 @@ public class Getopts extends ShellCommand{
 		}
 		// where in a word like -abc the next letter is (bash keeps this to itself; OPTIND set by the
 		// script starts again at the word's first letter)
+		if( optind < 1 ) {
+			// (OPTIND=0 or empty: from the start, as bash's)
+			optind = 1;
+			ctx.console.setGetoptsPosition(1, 0);
+		}
 		int pos = ctx.console.getoptsPosition(optind);
 
-		if( optind < 1 || optind > params.size()) {
+		if( optind > params.size()) {
 			return end(ctx, var, optind);
 		}
 		String word = params.get(optind-1);

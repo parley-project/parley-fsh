@@ -839,6 +839,13 @@ delimiter
 			}
 			c.setStdIn(System_in);
 
+			// called as sh (or with POSIXLY_CORRECT in the environment): posix mode, as bash's
+			String argv0 = System.getProperty("fsh.argv0", "");
+			String base = argv0.substring(argv0.lastIndexOf('/')+1);
+			if( base.equals("sh") || base.equals("-sh") || System.getenv("POSIXLY_CORRECT") != null ) {
+				c.setOption(Option.Posix, true);
+			}
+
 			int ret = c.execute(args);
 
 			if( c.readsTypedCommands()) {
@@ -956,7 +963,7 @@ delimiter
 	/** started as a login shell (-l, --login): the profile files at the start, ~/.fsh_logout at the end */
 	public boolean isLogin;
 	/** where the commands come from, for $-: 'c' (-c), 's' (standard input) or 0 (a script file) */
-	private char readsFrom;
+	public char readsFrom;
 
 	/**
 	 * Start as bash starts with these arguments (see Invocation): the options, $0 and the
@@ -1528,6 +1535,10 @@ delimiter
 			variables.put(VARIABLE_PWD, mountFactory.getCurrentDirectory().getAbsolutePath());
 			// (OLDPWD is unset until cd, as in bash)
 			variables.put(IFS, " \t\n");
+			// getopts starts at 1 and says what is wrong, as bash's (OPTIND is an integer)
+			variables.put("OPTIND", "1");
+			setInteger("OPTIND", true);
+			variables.put("OPTERR", "1");
 			////Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
 
 			variables.put(Prompt.BeforeExecute.name, "");
