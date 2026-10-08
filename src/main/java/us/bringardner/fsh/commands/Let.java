@@ -26,7 +26,14 @@ public class Let extends ShellCommand{
 			return 1;
 		}
 		Number last = 0L;
+		boolean first = true;
 		for(Argument arg : args) {
+			if( first && "--".equals(String.valueOf(arg.getValue(ctx))) && args.length > 1 ) {
+				// let -- expr
+				first = false;
+				continue;
+			}
+			first = false;
 			// each argument is one expression (already expanded): let x=2+3 "y = x * 2"
 			try {
 				last = Arithmetic.evaluate(""+arg.getValue(ctx), ctx);

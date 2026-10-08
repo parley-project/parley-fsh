@@ -94,7 +94,8 @@ public class TestWords extends AbstractConsoleTest {
 	@Test
 	public void testAlias() throws IOException {
 		expect("alias ll='ls -1'; alias ll", "alias ll='ls -1'\n");
-		expect("alias foo=bar; unalias foo; alias foo", "alias: foo: not found\n");
+		// (as bash: said on standard error, status 1)
+		expect("alias foo=bar; unalias foo; alias foo 2>/dev/null || echo not found $?", "not found 1\n");
 	}
 
 	@Test
@@ -339,7 +340,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("y27=1; ( y27=2; echo in $y27 ); echo $y27; x=$(y27=3; echo $y27); echo $x $y27", "in 2\n1\n3 1\n");
 		expect("( export Q27=1 ); echo \":$Q27:\"", "::\n");
 		expect("( f27() { echo f; } ); type f27 >/dev/null 2>&1 || echo gone", "gone\n");
-		expect("( alias a27=ls ); alias a27", "alias: a27: not found\n");
+		expect("( alias a27=ls ); alias a27 2>/dev/null || echo not found", "not found\n");
 		expect("set -- p q; ( set -- z ); echo $1", "p\n");
 		expect("z27=0; ( z27=1; ( z27=2 ); echo $z27 ); echo $z27", "1\n0\n");
 		// the status still comes out

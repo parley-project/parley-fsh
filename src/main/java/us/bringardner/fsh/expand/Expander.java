@@ -763,9 +763,12 @@ public final class Expander {
 		String op = e.op;
 		boolean conditional = op != null && op.matches(":?[-=?+]");
 		// (${x@a} and ${x@A} of an unset x are no error with set -u)
-		Object raw = e.prefix == 0 && e.subscript == null && isName(e.name) ? sc.getVariable(e.name) : null;
-		boolean attributes = "@".equals(op) && e.arg != null && (e.arg.startsWith("a") || e.arg.startsWith("A"))
-				&& raw != null && !(raw instanceof List<?> l && l.isEmpty()) && !(raw instanceof Map<?,?> m && m.isEmpty());
+		boolean attributes = false;
+		if( "@".equals(op) && e.arg != null && (e.arg.startsWith("a") || e.arg.startsWith("A"))) {
+			// (only looked at here: reading $RANDOM changes it)
+			Object raw = e.prefix == 0 && e.subscript == null && isName(e.name) ? sc.getVariable(e.name) : null;
+			attributes = raw != null && !(raw instanceof List<?> l && l.isEmpty()) && !(raw instanceof Map<?,?> m && m.isEmpty());
+		}
 		Val v = base(e, !conditional && !attributes);
 		if( op == null ) {
 			return emit(v, context, out);

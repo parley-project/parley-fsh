@@ -29,9 +29,12 @@ public class Unalias extends ShellCommand{
 					// invalid??
 					throw new IOException("Don't know what to do for '"+text+"'");
 				}
-			} else  {
+			} else if( ctx.console.getAlias(text) == null ) {
+				ctx.error("unalias: "+text+": not found");
+				ret = 1;
+			} else {
 				ctx.console.removeAlias(text);
-			}  
+			}
 		}
 		
 		return ret;

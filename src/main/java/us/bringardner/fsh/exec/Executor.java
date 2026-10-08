@@ -1878,14 +1878,18 @@ public final class Executor {
 				// ${| list; }: the output goes where it goes; the value is $REPLY
 				Object before = sc.getVariable("REPLY");
 				sc.setVariable("REPLY", null);
+				sc.enterNofork();
 				try {
-					status = list(body, sc);
+					// (REPLY is local to it, as in bash)
+					sc.setLocalVariable("REPLY", null);
+					status = noforkList(body);
 					Object v = sc.getVariable("REPLY");
 					return v == null ? "" : v.toString();
 				} catch (IOException e) {
 					status = 1;
 					return "";
 				} finally {
+					sc.exitFunction(null);
 					sc.setVariable("REPLY", before);
 					sc.console.substitutionDone(status);
 				}
@@ -1893,16 +1897,41 @@ public final class Executor {
 			PrintStream out = sc.stdout;
 			ByteArrayOutputStream bao = new ByteArrayOutputStream();
 			sc.stdout = new PrintStream(bao, true);
+			sc.enterNofork();
 			try {
-				status = list(body, sc);
+				status = noforkList(body);
 			} catch (IOException e) {
 				status = 1;
 			} finally {
+				sc.exitFunction(null);
 				sc.stdout.flush();
 				sc.stdout = out;
 				sc.console.substitutionDone(status);
 			}
 			return bao.toString();
+		}
+
+		/** the commands of ${ list; }: return ends them */
+		private int noforkList(Ast.Sequence body) throws IOException {
+			int loops = sc.loopDepth;
+			sc.loopDepth = 0;
+			// as $( ): set -e is off in it, unless posix mode or shopt -s inherit_errexit
+			boolean errexit = sc.console.isOptionEnabled(Option.ExitImediately);
+			boolean off = errexit && !sc.console.isOptionEnabled(Option.Posix)
+					&& !Boolean.TRUE.equals(sc.console.getShellOptions().get("inherit_errexit"));
+			if( off ) {
+				sc.console.setOption(Option.ExitImediately, false);
+			}
+			try {
+				return list(body, sc);
+			} catch (us.bringardner.fsh.signal.ReturnException e) {
+				return e.exitCode;
+			} finally {
+				sc.loopDepth = loops;
+				if( off ) {
+					sc.console.setOption(Option.ExitImediately, true);
+				}
+			}
 		}
 
 		@Override

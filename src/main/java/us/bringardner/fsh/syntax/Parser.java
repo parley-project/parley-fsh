@@ -270,6 +270,10 @@ public final class Parser {
 	private static final Set<String> BINARY_TESTS = Set.of("=", "==", "!=", "<", ">", "-eq", "-ne", "-lt", "-le", "-gt", "-ge", "-ef", "-nt", "-ot");
 
 	/** reserved words after which a command starts */
+	/** bash's reserved words */
+	private static final Set<String> RESERVED = Set.of("if", "then", "else", "elif", "fi", "case", "esac", "for", "select",
+			"while", "until", "do", "done", "in", "function", "time", "{", "}", "!", "[[", "]]", "coproc");
+
 	private static final Set<String> STARTERS = Set.of("if", "then", "else", "elif", "do", "while", "until", "{", "!", "time", "coproc");
 
 	/** reserved words that end a list (they may not start a command) */
@@ -288,6 +292,8 @@ public final class Parser {
 	private final List<Object []> activeAliases = new ArrayList<>();
 	/** an alias's value ended with a blank: the next word from here is checked too (-1: none) */
 	private int aliasNextAt = -1;
+	/** an alias of a word after one that ended with a blank: its value's first word starts here */
+	private int aliasAgainAt = -1;
 	/** the next token, read when first needed (so a here-document is known before its newline is read) */
 	private Token cur;
 	/**
@@ -385,15 +391,21 @@ public final class Parser {
 		boolean atStart = commandStart;
 		afterRedirect = false;
 		Token t = scanToken();
-		if( t.kind == Kind.WORD && aliasing && !redirectTarget && !casePattern ) {
+		if( t.kind == Kind.WORD && aliasing && !casePattern ) {
 			boolean next = aliasNextAt >= 0 && t.start >= aliasNextAt;
 			if( next ) {
 				aliasNextAt = -1;
 			}
-			String value = atStart || next ? alias(t) : null;
+			boolean again = aliasAgainAt >= 0 && t.start >= aliasAgainAt;
+			aliasAgainAt = -1;
+			String value = (atStart && !redirectTarget) || next || again ? alias(t) : null;
 			if( value != null ) {
 				// as bash: the alias's value is read in place of the word
 				splice(t, value);
+				if( next || again ) {
+					// (its first word is checked too: foo='echo ', bar=baz, baz=quux: foo bar is echo quux)
+					aliasAgainAt = t.start;
+				}
 				return scan();
 			}
 		}
@@ -432,6 +444,10 @@ public final class Parser {
 		if( name.isEmpty() || name.indexOf('=') >= 0 || name.indexOf('/') >= 0 ) {
 			return null;
 		}
+		if( RESERVED.contains(name) && posixMode.getAsBoolean()) {
+			// posix mode: a reserved word is not an alias
+			return null;
+		}
 		activeAliases.removeIf(a -> (Integer) a[1] <= t.start);
 		for(Object [] a : activeAliases) {
 			if( a[0].equals(name)) {
@@ -447,7 +463,12 @@ public final class Parser {
 	}
 
 	/** the text of word t is replaced by value; the next token is read from its start */
-	private void splice(Token t, String value) {
+	private void splice(Token t, String alias) {
+		String value = alias;
+		if( !value.isEmpty() && Character.isDigit(value.charAt(value.length()-1)) && (ch(t.end) == '<' || ch(t.end) == '>')) {
+			// foo='echo 0'; foo>&2: the 0 is a word, not the descriptor of >&2
+			value += " ";
+		}
 		int delta = value.length()-(t.end-t.start);
 		src = src.substring(0, t.start)+value+src.substring(t.end);
 		for(Object [] a : activeAliases) {
@@ -463,7 +484,7 @@ public final class Parser {
 				lineStarts[i] += delta;
 			}
 		}
-		if( value.endsWith(" ") || value.endsWith("\t")) {
+		if( alias.endsWith(" ") || alias.endsWith("\t")) {
 			aliasNextAt = t.start+value.length();
 		}
 		pos = t.start;

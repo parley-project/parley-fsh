@@ -2863,6 +2863,10 @@ delimiter
 
 
 	public void setOption(Option o,boolean enable) {
+		if( o == Option.Posix && enable ) {
+			// as bash: posix mode turns on expand_aliases
+			getShellOptions().put("expand_aliases", true);
+		}
 		if( !enable ) {
 			optionList().remove(o);
 		} else if(!optionList().contains(o)) {

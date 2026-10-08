@@ -39,12 +39,19 @@ public class Alias extends ShellCommand{
 				int eq = text.indexOf('=');
 				if( eq > 0 ) {
 					// name=value
-					ctx.console.setAlias(text.substring(0, eq), text.substring(eq+1));
+					String name = text.substring(0, eq);
+					if( name.chars().anyMatch(c -> " \t\n|&;()<>/$`=\\'\"".indexOf(c) >= 0)) {
+						// as bash's legal_alias_name
+						ctx.error("alias: `"+name+"': invalid alias name");
+						ret = 1;
+						continue;
+					}
+					ctx.console.setAlias(name, text.substring(eq+1));
 				} else {
 					Object val = ctx.console.getAlias(text);
 					if( val == null ) {
-						//alias: llll: not found
-						ctx.stdout.println("alias: "+text+": not found");
+						ctx.error("alias: "+text+": not found");
+						ret = 1;
 					} else {
 						printAlias(ctx,text,val);
 					}
@@ -56,7 +63,7 @@ public class Alias extends ShellCommand{
 	}
 
 	private void printAlias(ShellContext ctx, String name, Object val) {
-		ctx.stdout.println("alias "+name+"='"+val+"'");		
+		ctx.stdout.println("alias "+name+"='"+String.valueOf(val).replace("'", "'\\''")+"'");		
 	}
 
 }

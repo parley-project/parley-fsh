@@ -668,7 +668,13 @@ $
 			}
 			FshList names = new FshList();
 			for (int idx = functionStack.size()-1; idx >= 0; idx--) {
-				names.add(functionStack.get(idx).function.getName());
+				if( functionStack.get(idx).function != null ) {
+					names.add(functionStack.get(idx).function.getName());
+				}
+			}
+			if( names.isEmpty()) {
+				// (only ${ list; } frames)
+				return null;
 			}
 			names.add("main");
 			return names;
@@ -984,7 +990,7 @@ $
 			return null;
 		}
 		FunctionInvocation inv = functionStack.get(idx);
-		String from = idx > 0 ? functionStack.get(idx-1).function.getName() : "main";
+		String from = idx > 0 && functionStack.get(idx-1).function != null ? functionStack.get(idx-1).function.getName() : "main";
 		String file = sourceFiles.isEmpty() ? ""+getPositionalVariable(0) : sourceFiles.peekLast();
 		return new String[] {""+inv.callLine, from, file};
 	}
@@ -1015,6 +1021,12 @@ $
 		boolean returnTrap;
 		/** getopts' place (OPTIND, the letter in that word) when this was called */
 		int [] getopts = {1, 0};
+
+		/** ${ list; }: a frame for its locals and return, with the caller's parameters (function null) */
+		FunctionInvocation(List<Object> callerArgs) {
+			this.function = null;
+			this.args.addAll(callerArgs);
+		}
 
 		public FunctionInvocation(Object[] args2, ShellFunction function) throws IOException {
 			this.function = function;
@@ -1061,6 +1073,16 @@ $
 		}
 		inv.getopts = console.getoptsState();
 		functionStack.push(inv);		
+	}
+
+	/** ${ list; } runs as a function does (local, return), with the caller's $1 ... */
+	public void enterNofork() {
+		FunctionInvocation inv = new FunctionInvocation(new ArrayList<>());
+		// the caller's parameters themselves: shift and set -- in it change them
+		inv.args = functionStack.isEmpty() ? topPositional() : functionStack.peek().args;
+		inv.callLine = currentLine();
+		inv.getopts = console.getoptsState();
+		functionStack.push(inv);
 	}
 
 	public void exitFunction(ShellFunction functionDefStatement) {
