@@ -437,6 +437,13 @@ $
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
 		name = resolveName(name);
+		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && !console.unsetSpecials.contains(name)) {
+			@SuppressWarnings("unchecked")
+			Map<String,Object> m = (Map<String, Object>) getVariable(name);
+			m.put(String.valueOf(index), value);
+			setVariable(name, m);
+			return;
+		}
 		if( name.equals("DIRSTACK") && index instanceof Integer i && value != null ) {
 			// DIRSTACK[1]=/bin: that entry of pushd's stack
 			int size = console.dirStack.size();
@@ -552,6 +559,28 @@ $
 				console.seedRandom(n);
 			} else {
 				console.setSeconds(n);
+			}
+			return;
+		}
+		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && value instanceof Map<?,?> m && !console.unsetSpecials.contains(name)) {
+			// BASH_ALIASES[x]=y defines alias x (BASH_CMDS[x]=/bin/y: hash -p /bin/y x)
+			if( name.equals("BASH_ALIASES")) {
+				for(String old : new java.util.ArrayList<>(console.getAliases().keySet())) {
+					if( !m.containsKey(old)) {
+						console.removeAlias(old);
+					}
+				}
+				for(Map.Entry<?,?> e : m.entrySet()) {
+					console.setAlias(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+				}
+			} else {
+				console.hashTable.keySet().retainAll(m.keySet());
+				for(Map.Entry<?,?> e : m.entrySet()) {
+					Object[] was = console.hashTable.get(String.valueOf(e.getKey()));
+					if( was == null || !String.valueOf(e.getValue()).equals(was[0])) {
+						console.hashTable.put(String.valueOf(e.getKey()), new Object[] {String.valueOf(e.getValue()), new int[] {0}});
+					}
+				}
 			}
 			return;
 		}
@@ -840,6 +869,22 @@ $
 		}
 		if( name.equals("BASHPID")) {
 			return ProcessHandle.current().pid();
+		}
+		if( (name.equals("BASH_ARGC") || name.equals("BASH_ARGV")) && !console.unsetSpecials.contains(name) && console.getVariable(name) == null ) {
+			// (kept only with extdebug, as bash's: empty)
+			return new FshList();
+		}
+		if( name.equals("BASH_ALIASES") && !console.unsetSpecials.contains(name)) {
+			// the aliases, as an associative array
+			return new TreeMap<String,Object>(console.getAliases());
+		}
+		if( name.equals("BASH_CMDS") && !console.unsetSpecials.contains(name)) {
+			// hash's table of programs, as an associative array
+			Map<String,Object> ret = new TreeMap<>();
+			for(Map.Entry<String,Object[]> e : console.hashTable.entrySet()) {
+				ret.put(e.getKey(), e.getValue()[0]);
+			}
+			return ret;
 		}
 		if( name.equals("DIRSTACK")) {
 			// the current directory, then pushd's stack (the most recent first)
@@ -1349,6 +1394,11 @@ $
 	}
 
 	/** a scalar value as the variable's case attribute makes it */
+	/** a value assigned to name (or to one of its elements), as its -l -u -c attribute makes it */
+	public Object cased(String name, Object value) {
+		return withCase(resolveName(name).replaceAll("\\[.*", ""), value);
+	}
+
 	private Object withCase(String name, Object value) {
 		if( value == null || value instanceof List<?> || value instanceof Map<?,?> ) {
 			return value;
@@ -1547,6 +1597,15 @@ $
 		@SuppressWarnings("unchecked")
 		Map<String,Object> local = (Map<String, Object>) map.get(LOCAL_VARIABLES);
 		ret.putAll(local);
+		for(String dynamic : new String[] {"BASH_ALIASES", "BASH_CMDS", "BASH_ARGC", "BASH_ARGV", "BASH_LINENO", "BASH_SOURCE", "DIRSTACK", "FUNCNAME"}) {
+			if( !console.unsetSpecials.contains(dynamic) && !ret.containsKey(dynamic)) {
+				// (DIRSTACK as bash lists it before it is used: empty while pushd has nothing)
+				Object v = dynamic.equals("DIRSTACK") && console.dirStack.isEmpty() ? new FshList() : getVariable(dynamic);
+				if( v != null ) {
+					ret.put(dynamic, v);
+				}
+			}
+		}
 		Object zero = topPositional().get(0);
 		ret.put("$0", zero);
 

@@ -1498,6 +1498,18 @@ public final class Executor {
 			String prefix = tracing(sc) ? ps4(sc) : null;
 			java.util.Map<Ast.Assignment,String> before = new java.util.HashMap<>();
 			for(Ast.Assignment a : c.assignments) {
+				if( sc.console.isReadonly(sc.readonlyName(a.name)) && a.index != null && a.array == null
+						&& sc.getVariable(a.name) instanceof FshList list && !a.index.isBlank() && !a.index.equals("@") && !a.index.equals("*")) {
+					// c[-2]=v of a readonly array that has no element there: the subscript is the
+					// error (bash's)
+					long idx = ex.arithmetic(Parser.fragment(a.index, Parser.Fragment.WORD)).longValue();
+					long top = list.isEmpty() ? 0 : list.getIndexes().get(list.size()-1)+1;
+					if( idx < 0 && idx+top < 0 ) {
+						error(sc, a.name+"["+a.index+"]: bad array subscript");
+						sc.console.setLastExitCode(1);
+						throw new AbandonLine(c.line);
+					}
+				}
 				if( sc.console.isReadonly(sc.readonlyName(a.name))) {
 					error(sc, sc.readonlyName(a.name)+": readonly variable");
 					sc.console.setLastExitCode(1);
@@ -2013,7 +2025,7 @@ public final class Executor {
 		if( old instanceof FshList list && !local ) {
 			// x=v, x+=v of an array: its element 0
 			FshList copy = copy(list);
-			copy.set(0, elementValue(list.get(0), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc));
+			copy.set(0, sc.cased(a.name, elementValue(list.get(0), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc)));
 			return copy;
 		}
 		if( sc.console.isInteger(sc.readonlyName(a.name))) {
@@ -2057,7 +2069,7 @@ public final class Executor {
 
 	/** a[i]=v (i arithmetic, negative from the end) or m[key]=v */
 	void element(Ast.Assignment a, ShellContext sc, Expander ex, Object old, String v) {
-		if( a.index.isBlank() || a.index.equals("@") || a.index.equals("*")) {
+		if( a.index.isBlank() || !(old instanceof Map<?,?>) && (a.index.equals("@") || a.index.equals("*"))) {
 			throw new ExpansionError(a.name+"["+a.index+"]: bad array subscript");
 		}
 		Word sub = Parser.fragment(a.index, Parser.Fragment.WORD);
@@ -2086,6 +2098,7 @@ public final class Executor {
 		if( sc.console.isInteger(sc.readonlyName(a.name))) {
 			v = String.valueOf(arithmeticValue(v, sc));
 		}
+		v = String.valueOf(sc.cased(a.name, v));
 		if( old != null && !(old instanceof List<?>) && !(old instanceof Map<?,?>) && key instanceof Integer ) {
 			// x=1; x[1]=2: x becomes an array with 1 at 0
 			FshList list = new FshList();
@@ -2107,6 +2120,23 @@ public final class Executor {
 				}
 			}
 			boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
+			if( !a.array.isEmpty() && keyValue(a.array.get(0)) == null ) {
+				// m=(k1 v1 k2 v2): keys and values in turn (a key with no value gets ""), bash 5.1's
+				List<String> words = new ArrayList<>();
+				for(Word w : a.array) {
+					words.addAll(ex.expand(w));
+				}
+				for (int i = 0; i < words.size(); i += 2) {
+					String k = words.get(i);
+					String v = i+1 < words.size() ? words.get(i+1) : "";
+					if( k.isEmpty()) {
+						error(sc, a.name+": bad array subscript");
+						continue;
+					}
+					map.put(k, sc.cased(a.name, elementValue(map.get(k), v, false, integer, sc)));
+				}
+				return map;
+			}
 			for(Word w : a.array) {
 				boolean [] plus = new boolean[1];
 				Word [] kv = keyValue(w, plus);
@@ -2115,7 +2145,7 @@ public final class Executor {
 					continue;
 				}
 				String k = ex.string(kv[0]);
-				map.put(k, elementValue(map.get(k), ex.assignment(kv[1]), plus[0], integer, sc));
+				map.put(k, sc.cased(a.name, elementValue(map.get(k), ex.assignment(kv[1]), plus[0], integer, sc)));
 			}
 			return map;
 		}
@@ -2158,11 +2188,11 @@ public final class Executor {
 						continue;
 					}
 				}
-				list.set(idx, elementValue(list.get(idx), ex.assignment(kv[1]), plus[0], integer, sc));
+				list.set(idx, sc.cased(a.name, elementValue(list.get(idx), ex.assignment(kv[1]), plus[0], integer, sc)));
 				next = idx+1;
 			} else {
 				for(String s : ex.expand(w)) {
-					list.set(next++, elementValue(null, s, false, integer, sc));
+					list.set(next++, sc.cased(a.name, elementValue(null, s, false, integer, sc)));
 				}
 			}
 		}
@@ -2186,6 +2216,49 @@ public final class Executor {
 	static Word [] keyValue(Word w, boolean [] append) {
 		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal l) || !l.text().startsWith("[")) {
 			return null;
+		}
+		if( w.raw != null && w.raw.startsWith("[")) {
+			// as written: a quoted key may have [ and ] in it (["a]b"]=v)
+			String r = w.raw;
+			int depth = 0;
+			int close = -1;
+			for (int i = 0; i < r.length() && close < 0; i++) {
+				char c = r.charAt(i);
+				if( c == '\\' ) {
+					i++;
+				} else if( c == '\'' ) {
+					int end = r.indexOf('\'', i+1);
+					i = end < 0 ? r.length() : end;
+				} else if( c == '"' ) {
+					for(i++; i < r.length() && r.charAt(i) != '"'; i++) {
+						if( r.charAt(i) == '\\' ) {
+							i++;
+						}
+					}
+				} else if( c == '[' ) {
+					depth++;
+				} else if( c == ']' && --depth == 0 ) {
+					close = i;
+				}
+			}
+			if( close < 0 ) {
+				return null;
+			}
+			int valueAt;
+			if( r.startsWith("+=", close+1)) {
+				append[0] = true;
+				valueAt = close+3;
+			} else if( r.startsWith("=", close+1)) {
+				valueAt = close+2;
+			} else {
+				return null;
+			}
+			Word key = Parser.fragment(r.substring(1, close), Parser.Fragment.WORD);
+			key.raw = r.substring(1, close);
+			Word value = Parser.fragment(r.substring(valueAt), Parser.Fragment.WORD);
+			value.raw = r.substring(valueAt);
+			value.line = w.line;
+			return new Word[] {key, value};
 		}
 		String t = l.text();
 		int depth = 0;

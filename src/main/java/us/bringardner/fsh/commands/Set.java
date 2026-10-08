@@ -171,12 +171,9 @@ public class Set extends ShellCommand{
 			}
 			Object v = e.getValue();
 			StringBuilder line = new StringBuilder(name).append('=');
-			if( v instanceof java.util.Map<?,?> map ) {
-				line.append('(');
-				for(java.util.Map.Entry<?,?> kv : map.entrySet()) {
-					line.append('[').append(kv.getKey()).append("]=").append(dq(kv.getValue())).append(' ');
-				}
-				line.append(')');
+			if( v instanceof java.util.Map<?,?> || v instanceof us.bringardner.fsh.FshList ) {
+				// (as declare -p shows them: keys quoted as the shell reads them)
+				line.append(us.bringardner.fsh.exec.Declarations.arrayText(v));
 			} else if( v instanceof java.util.List<?> list ) {
 				line.append('(');
 				for(int i = 0; i < list.size(); i++) {

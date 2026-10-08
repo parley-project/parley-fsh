@@ -1008,6 +1008,10 @@ public final class Expander {
 		if( v instanceof Map<?,?> m ) {
 			String key = join(paramPieces(e.subscript));
 			if( key.isEmpty()) {
+				if( e.prefix == '#' ) {
+					// ${#m[$unset]}: an error (${m[$unset]} is said, and empty)
+					throw new ExpansionError("["+e.subscript+"]: bad array subscript");
+				}
 				host.warning(e.name+": bad array subscript");
 				return null;
 			}

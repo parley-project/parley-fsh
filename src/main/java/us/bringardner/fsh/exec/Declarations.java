@@ -112,6 +112,12 @@ public final class Declarations {
 				int eq = s.indexOf('=');
 				name = eq < 0 ? s : s.substring(0, eq);
 				java.util.regex.Matcher sub = SUBSCRIPTED.matcher(name);
+				if( sub.matches() && !balanced(sub.group(2))) {
+					// declare 'a[foo[bar]=v': the [ is not closed
+					error(command, "`"+s+"': not a valid identifier");
+					status = 1;
+					continue;
+				}
 				if( sub.matches() && o.indexOf('n') >= 0 && !remove ) {
 					error(command, name+": reference variable cannot be an array");
 					status = 1;
@@ -121,7 +127,15 @@ public final class Declarations {
 					if( eq < 0 ) {
 						// declare -a b[256]: the array b (the subscript is ignored)
 						name = sub.group(1);
-						if( !(sc.getVariable(name) instanceof List<?>) && !(sc.getVariable(name) instanceof Map<?,?>) && o.indexOf('A') < 0 ) {
+						if( o.indexOf('A') >= 0 && !(sc.getVariable(name) instanceof Map<?,?>)) {
+							// declare -A m[200]: the associative array m
+							sc.console.declaredUnset.add(name);
+							if( local ) {
+								sc.setLocalVariable(name, new TreeMap<String,Object>());
+							} else {
+								sc.setVariable(name, new TreeMap<String,Object>());
+							}
+						} else if( !(sc.getVariable(name) instanceof List<?>) && !(sc.getVariable(name) instanceof Map<?,?>) && o.indexOf('A') < 0 ) {
 							Object was = sc.getVariable(name);
 							FshList list = new FshList();
 							if( was != null ) {
@@ -154,6 +168,14 @@ public final class Declarations {
 						// declare -a ref[1]=v: ref is an array again (bash's)
 						sc.error("warning: "+element.name+": removing nameref attribute");
 						sc.unSetVariable(element.name, false);
+					}
+					if( o.indexOf('A') >= 0 && !(sc.getVariable(element.name) instanceof Map<?,?>)) {
+						// declare -A m["k"]=v: the associative array m, then its element
+						if( local ) {
+							sc.setLocalVariable(element.name, new TreeMap<String,Object>());
+						} else {
+							sc.setVariable(element.name, new TreeMap<String,Object>());
+						}
 					}
 					executor.element(element, sc, ex, sc.getVariable(element.name), s.substring(eq+1));
 					continue;
@@ -362,11 +384,14 @@ public final class Declarations {
 				}
 				continue;
 			}
-			boolean arrays = !remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0);
+			Object existing = local && !sc.isOwnLocal(name) ? null : sc.getVariable(name);
+			// (declare a='(1 2)' of an array that is there: its words, as bash does)
+			boolean arrays = !remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0 || existing instanceof List<?> || existing instanceof Map<?,?>);
 			if( arrays && (text != null || assignment != null && assignment.array == null && !assignment.append && assignment.value != null)) {
 				// declare -a x='(1 2)': the value is read as x=(1 2) (as bash still does)
 				String t = assignment == null ? text : values.get(n) != null ? (String) values.get(n) : ex.assignment(assignment.value);
-				Ast.Assignment c = t.startsWith("(") && t.endsWith(")") ? compound(name, t) : null;
+				// (not for an element: declare a[1]='(x)' is the text)
+				Ast.Assignment c = t.startsWith("(") && t.endsWith(")") && (assignment == null || assignment.index == null) ? compound(name, t) : null;
 				if( c != null ) {
 					assignment = c;
 					values.set(n, null);
@@ -395,10 +420,17 @@ public final class Declarations {
 						sc.error("warning: "+name+": removing nameref attribute");
 						sc.unSetVariable(name, false);
 					}
+					if( !(existing instanceof List<?>) && !(existing instanceof Map<?,?>) && assignment.value != null && assignment.value.raw != null
+							&& (assignment.value.raw.startsWith("'") || assignment.value.raw.startsWith("\"")) ) {
+						String v = ex.assignment(assignment.value);
+						if( v.startsWith("(") && v.endsWith(")")) {
+							sc.error("warning: "+name+"["+assignment.index+"]="+v+": quoted compound array assignment deprecated");
+						}
+					}
 					executor.assign(assignment, sc, ex, false);
 					continue;
 				} else {
-					val = executor.value(assignment, sc, ex, local && !assignment.append, o.indexOf('A') >= 0);
+					val = executor.value(assignment, sc, ex, local && !assignment.append, o.indexOf('A') >= 0 || existing instanceof Map<?,?>);
 				}
 			} else if( text != null ) {
 				val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(text, sc)) : text;
@@ -410,7 +442,17 @@ public final class Declarations {
 				}
 			}
 			Object old = local ? null : sc.getVariable(name);
-			if( arrays && val instanceof String v && o.indexOf('A') < 0 && !(old instanceof Map<?,?>)) {
+			if( arrays && val instanceof String v && (o.indexOf('A') >= 0 || old instanceof Map<?,?>)) {
+				// declare -A m=v: the element "0"
+				Map<String,Object> map = new TreeMap<>();
+				if( old instanceof Map<?,?> m ) {
+					for(Map.Entry<?,?> e : m.entrySet()) {
+						map.put(String.valueOf(e.getKey()), e.getValue());
+					}
+				}
+				map.put("0", v);
+				val = map;
+			} else if( arrays && val instanceof String v && o.indexOf('A') < 0 && !(old instanceof Map<?,?>)) {
 				// declare -a x=v: element 0
 				FshList list = old instanceof FshList f ? copyOf(f) : new FshList();
 				list.set(0, v);
@@ -524,6 +566,19 @@ public final class Declarations {
 		return ret;
 	}
 
+	/** a subscript's [ and ] pair up */
+	private static boolean balanced(String subscript) {
+		int depth = 0;
+		for(char c : subscript.toCharArray()) {
+			if( c == '[' ) {
+				depth++;
+			} else if( c == ']' && --depth < 0 ) {
+				return false;
+			}
+		}
+		return depth == 0;
+	}
+
 	/** name[subscript], name[subscript]= or name[subscript]+= (group 3) */
 	private static final java.util.regex.Pattern SUBSCRIPTED = java.util.regex.Pattern.compile("([A-Za-z_][A-Za-z_0-9]*)\\[(.*)\\](\\+)?", java.util.regex.Pattern.DOTALL);
 
@@ -536,9 +591,13 @@ public final class Declarations {
 		if( names.isEmpty()) {
 			TreeSet<String> all = new TreeSet<>(sc.getVariables().keySet());
 			all.addAll(sc.console.declaredUnset);
+			if( !sc.isInFunction() && !sc.console.unsetSpecials.contains("FUNCNAME")) {
+				// (declared, with no value outside a function)
+				all.add("FUNCNAME");
+			}
 			String wanted = o.replaceAll("[^aAiluc rxn]", "").replace(" ", "");
 			for(String n : all) {
-				if( Executor.isName(n) && (sc.getVariable(n) != null || sc.console.declaredUnset.contains(n) || sc.rawVariable(n) instanceof ShellContext.NameRef)) {
+				if( Executor.isName(n) && (sc.getVariable(n) != null || sc.console.declaredUnset.contains(n) || n.equals("FUNCNAME") || sc.rawVariable(n) instanceof ShellContext.NameRef)) {
 					String flags = flags(n, sc.getVariable(n));
 					boolean has = true;
 					for(char c : wanted.toCharArray()) {
@@ -553,12 +612,16 @@ public final class Declarations {
 		int ret = 0;
 		for(String name : names) {
 			Object val = sc.getVariable(name);
+			if( name.equals("DIRSTACK") && sc.console.dirStack.isEmpty() && !sc.console.unsetSpecials.contains(name)) {
+				// (as bash shows it before it is used)
+				val = new FshList();
+			}
 			if( command.equals("readonly") && items.isEmpty() && sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
 				// set -o posix: readonly -a a=(..), readonly x="1"
 				String d = declaration(name, val).substring("declare -".length());
 				String flags = d.substring(0, d.indexOf(' ')).replace("r", "");
 				sc.stdout.println("readonly "+(flags.isEmpty() ? "" : "-"+flags+" ")+d.substring(d.indexOf(' ')+1));
-			} else if( val == null && (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name))) {
+			} else if( val == null && (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name) || name.equals("FUNCNAME") && !sc.console.unsetSpecials.contains(name))) {
 				sc.stdout.println(declaration(name, val));
 			} else if( val == null && !(sc.rawVariable(name) instanceof ShellContext.NameRef)) {
 				error(command.equals("readonly") ? "declare" : command, name+": not found");
@@ -579,7 +642,7 @@ public final class Declarations {
 			return "declare -"+flags(name, val)+" "+name+(target.isEmpty() ? "" : "="+quote(target));
 		}
 		String flags = flags(name, val);
-		if( (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name)) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
+		if( (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name) || val == null && name.equals("FUNCNAME")) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
 			// declared, never given a value
 			return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name;
 		}
@@ -609,7 +672,7 @@ public final class Declarations {
 
 	/** the attributes declare -p shows: a A i l u c r x */
 	private String flags(String name, Object val) {
-		String flags = val instanceof Map<?,?> ? "A" : val instanceof List<?> ? "a" : "";
+		String flags = val instanceof Map<?,?> ? "A" : val instanceof List<?> || val == null && name.equals("FUNCNAME") ? "a" : "";
 		if( sc.console.isInteger(name)) {
 			flags += "i";
 		}

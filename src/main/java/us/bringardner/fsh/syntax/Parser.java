@@ -1808,8 +1808,14 @@ public final class Parser {
 				}
 			}
 			if( !atEnd(pos) && !isMeta(ch(pos))) {
-				// x=(a)b: bash reads on to the end of the word (and ignores the rest)
+				// x=(a b)c: not an array, the text as written is the value (bash's)
 				readWord(false);
+				a.array = null;
+				a.value = fragment(src.substring(value.start, pos), Fragment.WORD);
+				a.value.start = value.start;
+				a.value.end = pos;
+				a.value.line = value.line;
+				a.value.raw = src.substring(value.start, pos);
 			}
 			a.end = pos;
 		} else {

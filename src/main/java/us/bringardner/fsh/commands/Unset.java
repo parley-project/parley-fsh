@@ -78,13 +78,10 @@ public class Unset extends ShellCommand{
 				// unset 'a[1]' or 'm[key]': one element
 				Object val = ctx.getVariable(m.group(1));
 				boolean all = m.group(2).equals("@") || m.group(2).equals("*");
-				if( all && (val instanceof java.util.Map<?,?> || val instanceof java.util.List<?>)) {
-					// unset 'a[@]': every element (a stays an array)
-					if( val instanceof java.util.Map<?,?> map ) {
-						map.clear();
-					} else {
-						((java.util.List<?>) val).clear();
-					}
+				if( all && val instanceof java.util.List<?> ) {
+					// unset 'a[@]': every element (a stays an array; for an associative one, bash 5.3
+					// unsets the key @ or *)
+					((java.util.List<?>) val).clear();
 				} else if( val != null && !(val instanceof java.util.Map<?,?>) && !(val instanceof java.util.List<?>)) {
 					// a scalar is its element 0
 					if( !all && us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).longValue() == 0 ) {
@@ -105,12 +102,16 @@ public class Unset extends ShellCommand{
 					}
 					if( index >= 0 ) {
 						((java.util.List<?>) val).remove(index);
+					} else {
+						// unset 'a[-10]' past the start
+						ctx.error("unset: ["+m.group(2)+"]: bad array subscript");
+						ret = 1;
 					}
 				}
 			} else if( functions ) {
 				ctx.removeFunction(text);
 			} else {
-				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS")) {
+				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS") || text.equals("BASH_ALIASES") || text.equals("BASH_CMDS")) {
 					// as bash: no longer special
 					ctx.console.unsetSpecials.add(text);
 				}
