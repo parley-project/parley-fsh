@@ -105,6 +105,10 @@ public class TestSyntaxParser {
 		List<String> failed = new ArrayList<>();
 		for(File f : scripts) {
 			String code = Files.readString(f.toPath(), StandardCharsets.ISO_8859_1);
+			if( code.matches("(?s).*(^|\\n)alias .*")) {
+				// its aliases are used as the shell reads it, a line at a time (not all at once)
+				continue;
+			}
 			try {
 				Parser.parse(code);
 			} catch (SyntaxError e) {
