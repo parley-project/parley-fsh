@@ -431,6 +431,7 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.Readarray());
 		registerCommand(new us.bringardner.fsh.commands.Shopt());
 		registerCommand(new us.bringardner.fsh.commands.Type());
+		registerCommand(new us.bringardner.fsh.commands.Hash());
 		registerCommand(new us.bringardner.fsh.commands.Builtin());
 		registerCommand(new us.bringardner.fsh.commands.CommandCmd());
 		registerCommand(new us.bringardner.fsh.commands.Caller());
@@ -3035,6 +3036,9 @@ delimiter
 			caseVariables.put(name, attr);
 		}
 	}
+
+	/** hash: name -> {path, int[] {hits}}, the programs found on PATH (PATH=... forgets them) */
+	public final Map<String,Object []> hashTable = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>());
 
 	/** RANDOM, SECONDS ... after unset: ordinary variables from then on, as in bash */
 	public final java.util.Set<String> unsetSpecials = ConcurrentHashMap.newKeySet();

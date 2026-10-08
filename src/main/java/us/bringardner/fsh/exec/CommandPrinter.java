@@ -344,14 +344,32 @@ final class CommandPrinter {
 				commandSubs(w.parts, subs);
 			}
 		}
-		return normalized(executor.text(a).trim(), subs);
+		String ret = normalized(executor.text(a).trim(), subs);
+		return a.value == null ? ret : ansiC(ret, a.value.parts);
 	}
 
 	/** a word as written, with the commands of a $( ) in it printed as bash keeps them */
 	private String word(Word w) {
 		List<Word.CommandSub> subs = new ArrayList<>();
 		commandSubs(w.parts, subs);
-		return normalized(w.raw == null ? "" : w.raw, subs);
+		return ansiC(normalized(w.raw == null ? "" : w.raw, subs), w.parts);
+	}
+
+	/** $'..' as bash keeps it: the characters, in '..' */
+	private static String ansiC(String ret, List<Word.Part> parts) {
+		int from = 0;
+		for(Word.Part p : parts) {
+			if( p instanceof Word.AnsiC a ) {
+				String written = "$'"+a.text()+"'";
+				int at = ret.indexOf(written, from);
+				if( at >= 0 ) {
+					String kept = "'"+us.bringardner.fsh.ShellContext.ansiC(a.text()).replace("'", "'\\''")+"'";
+					ret = ret.substring(0, at)+kept+ret.substring(at+written.length());
+					from = at+kept.length();
+				}
+			}
+		}
+		return ret;
 	}
 
 	private String normalized(String raw, List<Word.CommandSub> subs) {

@@ -47,23 +47,17 @@ public class CommandCmd extends ShellCommand{
 		String n = ""+args[idx].getValue(ctx);
 		if( mode != null ) {
 			// what n is, as type says it (-V), or briefly (-v)
-			FileSource file = ctx.console.builtin(n) != null || ctx.getFunction(n) != null || ctx.console.getAlias(n) != null ? null : Programs.which(n, ctx);
-			String out = null;
-			if( ctx.console.getAlias(n) != null ) {
-				out = mode.equals("-v") ? "alias "+n+"='"+ctx.console.getAlias(n)+"'" : n+" is aliased to `"+ctx.console.getAlias(n)+"'";
-			} else if( ctx.getFunction(n) != null ) {
-				out = mode.equals("-v") ? n : n+" is a function";
-			} else if( ctx.console.builtin(n) != null) {
-				out = mode.equals("-v") ? n : n+" is a shell builtin";
-			} else if( file != null ) {
-				out = mode.equals("-v") ? file.getAbsolutePath() : n+" is "+file.getAbsolutePath();
-			}
-			if( out == null ) {
+			List<String[]> ways = Type.describe(ctx, n, false, false, false);
+			if( ways.isEmpty()) {
 				if( mode.equals("-V")) {
 					ctx.error("command: "+n+": not found");
 				}
 				return 1;
 			}
+			String [] w = ways.get(0);
+			String out = mode.equals("-V") ? w[1]
+					: w[0].equals("alias") ? "alias "+n+"='"+String.valueOf(ctx.console.getAlias(n)).replace("'", "'\\''")+"'"
+					: w[0].equals("file") ? w[2] : n;
 			ctx.stdout.println(out);
 			return 0;
 		}

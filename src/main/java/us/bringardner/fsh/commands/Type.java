@@ -1,23 +1,35 @@
 package us.bringardner.fsh.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.ShellFunction;
 
 public class Type extends ShellCommand{
 	static String name = "type";
-	static String help = "type [-t|-p|-P] name ...\n"
+	static String help = "type [-afptP] name [name ...]\n"
 			+ "	Say how each name would be run: alias, keyword, function, builtin or file.\n"
-			+ "	-t prints only that word; -p and -P print the file's path. Exit status 1 if a name is not found."
+			+ "	-t prints only that word; -p prints the file's path (if it is a file), -P looks on PATH\n"
+			+ "	whatever the name is; -a prints every way, -f leaves out functions. Exit status 1 if a\n"
+			+ "	name is not found."
 			;
 
-	private static final Set<String> KEYWORDS = Set.of("if", "then", "else", "elif", "fi", "case", "esac", "for",
-			"select", "while", "until", "do", "done", "in", "function", "time", "{", "}", "!", "[[", "]]");
+	static final String USAGE = "type: usage: type [-afptP] name [name ...]";
+
+	/** builtins the shell runs itself (not commands of their own) */
+	private static final Set<String> SHELL_BUILTINS = Set.of("break", "continue", "declare", "typeset", "local", ".");
+
+	/** posix's special builtins */
+	private static final Set<String> SPECIAL = Set.of("break", ":", ".", "continue", "eval", "exec", "exit", "export",
+			"readonly", "return", "set", "shift", "times", "trap", "unset");
+
+	static final Set<String> KEYWORDS = Set.of("if", "then", "else", "elif", "fi", "case", "esac", "for",
+			"select", "while", "until", "do", "done", "in", "function", "time", "{", "}", "!", "[[", "]]", "coproc");
 
 	public Type() {
 		super(name, help);
@@ -25,47 +37,127 @@ public class Type extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		boolean terse = false;
-		boolean path = false;
-		int ret = 0;
-		for(int idx = 0; idx < args.length; idx++) {
-			String n = ""+args[idx].getValue(ctx);
-			switch (n) {
-			case "-t": terse = true; continue;
-			case "-p":
-			case "-P": path = true; continue;
-			default:
+		boolean terse = false, path = false, forcePath = false, all = false, noFunctions = false;
+		int idx = 0;
+		for(; idx < args.length; idx++) {
+			String a = ""+args[idx].getValue(ctx);
+			if( a.equals("--")) {
+				idx++;
+				break;
 			}
-			String kind = null;
-			String text = null;
-			Object alias = ctx.console.getAlias(n);
-			ShellFunction function = ctx.getFunction(n);
-			if( !path && alias != null ) {
-				kind = "alias";
-				text = n+" is aliased to `"+alias+"'";
-			} else if( !path && KEYWORDS.contains(n)) {
-				kind = "keyword";
-				text = n+" is a shell keyword";
-			} else if( !path && function != null ) {
-				kind = "function";
-				text = n+" is a function\n"+function.declaration();
-			} else if( !path && ctx.console.builtin(n) != null && !n.startsWith("__")) {
-				kind = "builtin";
-				text = n+" is a shell builtin";
-			} else {
-				FileSource file = us.bringardner.fsh.exec.Programs.which(n, ctx);
-				if( file != null ) {
-					kind = "file";
-					text = path ? file.getAbsolutePath() : n+" is "+file.getAbsolutePath();
+			if( !a.startsWith("-") || a.length() == 1 ) {
+				break;
+			}
+			for (int k = 1; k < a.length(); k++) {
+				switch (a.charAt(k)) {
+				case 't': terse = true; break;
+				case 'p': path = true; break;
+				case 'P': forcePath = true; break;
+				case 'a': all = true; break;
+				case 'f': noFunctions = true; break;
+				default:
+					ctx.error("type: -"+a.charAt(k)+": invalid option");
+					ctx.stderr.println(USAGE);
+					return 2;
 				}
 			}
-			if( kind == null ) {
-				if( !terse && !path ) {
+		}
+		int ret = 0;
+		for(; idx < args.length; idx++) {
+			String n = ""+args[idx].getValue(ctx);
+			List<String[]> ways = describe(ctx, n, all, noFunctions, forcePath);
+			if( ways.isEmpty()) {
+				if( !terse && !path && !forcePath ) {
 					ctx.error("type: "+n+": not found");
 				}
 				ret = 1;
-			} else {
-				ctx.stdout.println(terse ? kind : text);
+				continue;
+			}
+			for(String [] w : ways) {
+				if( terse ) {
+					ctx.stdout.println(w[0]);
+				} else if( path || forcePath ) {
+					if( w[0].equals("file")) {
+						ctx.stdout.println(w[2]);
+					}
+				} else {
+					ctx.stdout.println(w[1]);
+				}
+			}
+		}
+		return ret;
+	}
+
+	/**
+	 * How name would be run: {kind, what type says, the path for a file}, the first way only
+	 * unless all. noFunctions: type -f; searchPath: only as a program on PATH (type -P).
+	 */
+	static List<String[]> describe(ShellContext ctx, String n, boolean all, boolean noFunctions, boolean searchPath) throws IOException {
+		List<String[]> ret = new ArrayList<>();
+		if( !searchPath ) {
+			Object alias = ctx.console.getAlias(n);
+			if( alias != null ) {
+				ret.add(new String[] {"alias", n+" is aliased to `"+alias+"'", null});
+				if( !all ) {
+					return ret;
+				}
+			}
+			if( KEYWORDS.contains(n)) {
+				ret.add(new String[] {"keyword", n+" is a shell keyword", null});
+				if( !all ) {
+					return ret;
+				}
+			}
+			ShellFunction function = noFunctions ? null : ctx.getFunction(n);
+			if( function != null ) {
+				ret.add(new String[] {"function", n+" is a function\n"+function.declaration(), null});
+				if( !all ) {
+					return ret;
+				}
+			}
+			if( ctx.console.builtin(n) != null && !n.startsWith("__") || SHELL_BUILTINS.contains(n)) {
+				// (posix mode names its special builtins so)
+				boolean special = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && SPECIAL.contains(n);
+				ret.add(new String[] {"builtin", n+" is a "+(special ? "special " : "")+"shell builtin", null});
+				if( !all ) {
+					return ret;
+				}
+			}
+		}
+		if( !n.contains("/")) {
+			Object [] known = searchPath && !all ? null : ctx.console.hashTable.get(n);
+			if( known != null && !all ) {
+				// as bash: it is looked up (and counted) through the table
+				((int []) known[1])[0]++;
+				ret.add(new String[] {"file", n+" is hashed ("+known[0]+")", ""+known[0]});
+				return ret;
+			}
+		}
+		for(String f : files(ctx, n, all)) {
+			ret.add(new String[] {"file", n+" is "+f, f});
+		}
+		return ret;
+	}
+
+	/** name as a program: its path as bash says it (PATH's directory, as written, then /name), or every one (all) */
+	private static List<String> files(ShellContext ctx, String n, boolean all) throws IOException {
+		List<String> ret = new ArrayList<>();
+		if( n.contains("/")) {
+			FileSource f = us.bringardner.fsh.exec.Programs.which(n, ctx);
+			if( f != null ) {
+				ret.add(n);
+			}
+			return ret;
+		}
+		Object p = ctx.getVariable("PATH");
+		for(String dir : (p == null ? "" : p.toString()).split(":", -1)) {
+			String d = dir.isEmpty() ? "." : dir;
+			FileSource f = ctx.getFileSource(d+"/"+n);
+			if( f.exists() && f.isFile() && f.canExecute()) {
+				ret.add(d.endsWith("/") ? d+n : d+"/"+n);
+				if( !all ) {
+					break;
+				}
 			}
 		}
 		return ret;

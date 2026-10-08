@@ -38,7 +38,7 @@ public final class Programs {
 
 	/** run name with args; status 127 (and bash's message) if there is no such program */
 	static int run(String name, List<String> args, ShellContext sc) throws IOException {
-		FileSource exec = which(name, sc);
+		FileSource exec = hashed(name, sc);
 		if( exec == null && !name.contains("/")) {
 			// fsh runs a program in the current directory without ./ (bash does not)
 			FileSource here = sc.getFileSource(name);
@@ -594,6 +594,29 @@ public final class Programs {
 	/**
 	 * @return the program name runs (a path, or found in PATH), or null
 	 */
+	/**
+	 * which, through the shell's table of the programs it has found (hash): a remembered one that
+	 * is still there is used (and counted); one found on PATH is remembered.
+	 */
+	public static FileSource hashed(String name, ShellContext ctx) throws IOException {
+		if( name.contains("/")) {
+			return which(name, ctx);
+		}
+		Object [] known = ctx.console.hashTable.get(name);
+		if( known != null ) {
+			FileSource f = ctx.getFileSource(""+known[0]);
+			if( f.exists()) {
+				((int []) known[1])[0]++;
+				return f;
+			}
+		}
+		FileSource ret = which(name, ctx);
+		if( ret != null ) {
+			ctx.console.hashTable.put(name, new Object[] {ret.getAbsolutePath(), new int[] {1}});
+		}
+		return ret;
+	}
+
 	public static FileSource which(String execName, ShellContext ctx) throws IOException {
 		if( execName.contains("/")) {
 			FileSource file = ctx.getFileSource(execName);
@@ -605,7 +628,12 @@ public final class Programs {
 		if( tmpExt!=null) {
 			exts = tmpExt.toString().split(""+factory.getPathSeperatorChar());
 		}
-		for(String path : (""+ctx.getEvironmentVariable("PATH")).split(""+factory.getPathSeperatorChar())) {
+		Object pathVar = ctx.getVariable("PATH");
+		// (no PATH, or an empty part of it: the current directory, as bash's)
+		for(String path : (pathVar == null ? "" : ""+pathVar).split(""+factory.getPathSeperatorChar(), -1)) {
+			if( path.isEmpty()) {
+				path = ".";
+			}
 			FileSource file = findExecutable(execName,path,exts,ctx);
 			if( file !=null && file.isFile()) {
 				return file;

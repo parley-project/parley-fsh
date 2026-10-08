@@ -496,6 +496,10 @@ $
 			}
 			return;
 		}
+		if( name.equals("PATH")) {
+			// as bash: a new PATH forgets the remembered programs
+			console.hashTable.clear();
+		}
 		if( name.equals("POSIXLY_CORRECT") && value != null ) {
 			// as bash: setting it turns on posix mode
 			console.setOption(Console.Option.Posix, true);
