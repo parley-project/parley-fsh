@@ -1282,8 +1282,16 @@ public final class Executor {
 						continue;
 					}
 					if( sc.console.isOptionEnabled(Console.Option.Posix) && SPECIAL_BUILTINS.contains(name) && sc.getFunction(name) == null ) {
-						// posix mode: an assignment before a special builtin stays
+						// posix mode: an assignment before a special builtin stays (past the
+						// temporary ones of the commands it is in: var=1 f, with var=2 return in f)
 						sc.setVariable(a.name, v);
+						for(List<Object[]> outer : sc.console.temporaryAssignments) {
+							for(Object[] o : outer) {
+								if( o[0].equals(a.name)) {
+									o[1] = v;
+								}
+							}
+						}
 						continue;
 					}
 					saved.add(new Object[] {a.name, sc.console.getVariable(a.name), sc.getEvironmentVariable(a.name)});
@@ -1295,10 +1303,14 @@ public final class Executor {
 				return expansionError(sc, e);
 			}
 		}
+		if( saved != null ) {
+			sc.console.temporaryAssignments.push(saved);
+		}
 		try {
 			return run(name, args, c, sc, ex);
 		} finally {
 			if( saved != null ) {
+				sc.console.temporaryAssignments.remove(saved);
 				restore(saved, sc);
 			}
 		}

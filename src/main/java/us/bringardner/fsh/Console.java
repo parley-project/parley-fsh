@@ -672,6 +672,9 @@ delimiter
 		return cmdCnt++;
 	}
 
+	/** the variables commands running now were given (var=1 cmd), with what they will get back */
+	public final java.util.Deque<List<Object[]>> temporaryAssignments = new java.util.concurrent.ConcurrentLinkedDeque<>();
+
 	/** this thread runs a pipe stage or a background job (not the shell's own commands) */
 	public static final ThreadLocal<Boolean> IN_COMMAND_THREAD = ThreadLocal.withInitial(() -> false);
 
