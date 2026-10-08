@@ -2359,7 +2359,16 @@ public final class Executor {
 				return;
 			}
 		}
-		Object v = value(a, sc, ex, local, false);
+		Object v;
+		try {
+			v = value(a, sc, ex, local, false);
+		} catch (ExpansionError e) {
+			if( a.array != null && !a.append && !local && !(sc.getVariable(a.name) instanceof Map<?,?>) && !sc.console.isReadonly(sc.readonlyName(a.name))) {
+				// name=( [bad]=v ): said, and name is an empty array (bash's)
+				sc.setVariable(a.name, new FshList());
+			}
+			throw e;
+		}
 		if( v == null ) {
 			return;
 		}
