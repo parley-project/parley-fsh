@@ -190,7 +190,7 @@ public class Read extends ShellCommand{
 	 * empty field), and the last field is the rest of the line as written (a:b:c into two names
 	 * gives a and b:c).
 	 */
-	static List<String> split(String line, String ifs, int max) {
+	public static List<String> split(String line, String ifs, int max) {
 		List<String> ret = new ArrayList<>();
 		if( ifs.isEmpty()) {
 			ret.add(line);

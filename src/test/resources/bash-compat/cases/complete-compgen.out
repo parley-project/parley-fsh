@@ -1,0 +1,33 @@
+beta
+st=0
+pre-alpha-suf
+f1
+f2
+d1
+d2
+f2
+f1
+two
+three
+st=1
+myvar_one
+myvar_two
+f_a
+f_b
+nullglob
+pipefail
+SIGTERM
+function
+x-zz
+y-
+compgen
+complete -W 'start stop' svc
+complete -o nospace -F _c mycmd
+complete -o dirnames -d cdx
+st=1
+st=1
+st=2
+st=2
+st=1
+f1
+f2

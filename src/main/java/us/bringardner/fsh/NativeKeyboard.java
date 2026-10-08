@@ -624,7 +624,84 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	}
 	
 
+	/** the interactive shell's prompt: read with the line editor (else the plain reader, as read uses) */
+	private boolean lineEditing;
+
+	public void setLineEditing(boolean on) {
+		lineEditing = on;
+	}
+
+	private native int columns0();
+
+	/** the terminal's width (else $COLUMNS, else 80) */
+	public static int columns() {
+		if( availible ) {
+			try {
+				int c = new NativeKeyboard().columns0();
+				if( c > 0 ) {
+					return c;
+				}
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		try {
+			return Integer.parseInt(System.getenv().getOrDefault("COLUMNS", "80"));
+		} catch (NumberFormatException e) {
+			return 80;
+		}
+	}
+
+	/** the keys typed, for the line editor */
+	private final LineEditor.Keys editorKeys = new LineEditor.Keys() {
+		@Override
+		public int next() {
+			int k = key();
+			while( k == KEY_NONE ) {
+				k = key();
+			}
+			return k;
+		}
+
+		@Override
+		public int nextWithin(long millis) {
+			long until = System.currentTimeMillis()+millis;
+			while( true ) {
+				synchronized (keyLock) {
+					Integer k = typedAhead.poll();
+					if( k != null ) {
+						return k;
+					}
+					if( ready() > 0 ) {
+						return getChar();
+					}
+				}
+				if( System.currentTimeMillis() >= until ) {
+					return KEY_NONE;
+				}
+				try {
+					Thread.sleep(2);
+				} catch (InterruptedException e) {
+					return KEY_NONE;
+				}
+			}
+		}
+	};
+
 	public  String readLine(Console console) throws IOException {
+		if( lineEditing && availible && System.in == Console.System_in) {
+			java.util.List<String> history = new java.util.ArrayList<>();
+			for(Console.HistoryEntry e : console.history) {
+				history.add(e.command);
+			}
+			LineEditor editor = new LineEditor(editorKeys, System.out, history);
+			editor.setColumns(columns());
+			editor.setCompleter(new Completion(console));
+			String text = editLineText;
+			editLineText = null;
+			String ret = editor.readLine(prompt == null ? "" : prompt);
+			return text == null || ret == null ? ret : ret;
+		}
 		if( availible && System.in == Console.System_in) {
 			return readLineNative(console);
 		} else {

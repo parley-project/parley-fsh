@@ -426,6 +426,7 @@ delimiter
 
 		registerCommand(new Wait());
 		registerCommand(new us.bringardner.fsh.commands.Compgen());
+		registerCommand(new us.bringardner.fsh.commands.Complete());
 		registerCommand(new us.bringardner.fsh.commands.Times());
 		registerCommand(new us.bringardner.fsh.commands.Enable());
 		registerCommand(new us.bringardner.fsh.commands.Umask());
@@ -1472,6 +1473,7 @@ delimiter
 			// a typed backslash stays in the command, as in bash's line editor (the parser reads
 			// it, and one at the end of a line asks for the next)
 			nk.setHonorEscape(false);
+			nk.setLineEditing(true);
 		}
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
@@ -2862,6 +2864,22 @@ delimiter
 
 	public void setLastExitCode(int code) {
 		lastExitCode = code;
+	}
+
+	/** complete's specs, by command (-D, -E, -I for the default, an empty line, a command's name) */
+	private final Map<String, Completion.Spec> completions = new java.util.TreeMap<>();
+
+	public Map<String, Completion.Spec> getCompletions() {
+		return completions;
+	}
+
+	/** the spec for command (its path, then its name), else complete -D's, or null */
+	public Completion.Spec getCompletion(String command) {
+		Completion.Spec ret = completions.get(command);
+		if( ret == null && command.contains("/")) {
+			ret = completions.get(command.substring(command.lastIndexOf('/')+1));
+		}
+		return ret != null ? ret : completions.get("-D");
 	}
 
 	/** shopt's options, by name */

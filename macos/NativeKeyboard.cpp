@@ -159,6 +159,17 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy(JNIEnv *
 }
 
 /*
+ * @return the terminal's width in columns (standard output's), or 0
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_columns0(JNIEnv *, jobject) {
+	struct winsize ws;
+	if( ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 ) {
+		return ws.ws_col;
+	}
+	return 0;
+}
+
+/*
  * @return the name of standard input's terminal (/dev/ttys003), or null
  */
 JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyName0(JNIEnv *env, jobject) {

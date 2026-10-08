@@ -95,6 +95,14 @@ JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isInputTermina
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    ttyName0
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyName0
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    inputKind0
  * Signature: ()I
  */
@@ -124,6 +132,14 @@ JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_setProcessGroup
  */
 JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy
   (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    columns0
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_columns0
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }
