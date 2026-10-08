@@ -145,6 +145,10 @@ public class TestLineEditor {
 		e.setCompleter(c);
 		assertEquals("echo file", e.readLine("$ "));
 		assertTrue(shown.toString().contains("fileone  filetwo\n"), shown.toString());
+		for(String name : new String[] {"dirA", "fileone", "filetwo", "with space"}) {
+			new File(dir, name).delete();
+		}
+		dir.delete();
 	}
 
 	private static String complete(Completion c, String line) throws Exception {
