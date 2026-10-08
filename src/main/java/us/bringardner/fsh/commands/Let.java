@@ -4,8 +4,8 @@ import java.io.IOException;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.Arithmetic;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.expand.Arithmetic;
 
 public class Let extends ShellCommand{
 	static String name = "let";

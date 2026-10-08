@@ -118,7 +118,7 @@ public class TestLs extends AbstractConsoleTest {
 		console.setStdErr(new PrintStream(bae));
 		console.setStdIn(new ByteArrayInputStream(new byte[0]));
 		
-		console.executeUsingAntlr(command);
+		console.executeScript(command);
 		String err = new String(bae.toByteArray());
 		
 		String actual = new String(bao.toByteArray());
@@ -429,7 +429,7 @@ public class TestLs extends AbstractConsoleTest {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		c.setStdOut(new PrintStream(out, true));
 		c.setStdErr(new PrintStream(out, true));
-		assertEquals(0, c.executeUsingAntlr("ls -1"));
+		assertEquals(0, c.executeScript("ls -1"));
 		assertEquals("AbcFileA.js\nAbcFileB.php\nAbcFileC.txt\nAbcFileD.properties\nFolder01\n", out.toString());
 	}
 

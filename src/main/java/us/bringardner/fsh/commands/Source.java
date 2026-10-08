@@ -1,9 +1,7 @@
 package us.bringardner.fsh.commands;
 
-import us.bringardner.fsh.antlr.signal.ExitException;
-import us.bringardner.fsh.antlr.signal.ReturnException;
-import us.bringardner.fsh.antlr.FileSourceShVisitorImpl;
-import us.bringardner.fsh.antlr.Statement;
+import us.bringardner.fsh.signal.ExitException;
+import us.bringardner.fsh.signal.ReturnException;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.InputStream;
@@ -84,7 +82,7 @@ public class Source extends ShellCommand{
 				ctx.sourceDepth++;
 				ctx.sourceFiles.addLast(path);
 				try {
-					ret = ctx.console.runCode(ctx, code, true);
+					ret = ctx.console.runCode(ctx, code);
 				} catch (ReturnException e) {
 					ret = e.exitCode;
 				} finally {

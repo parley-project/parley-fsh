@@ -6,7 +6,7 @@ import java.util.List;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
+import us.bringardner.fsh.Argument;
 
 public class Dirs extends DirStack{
 	static String name = "dirs";

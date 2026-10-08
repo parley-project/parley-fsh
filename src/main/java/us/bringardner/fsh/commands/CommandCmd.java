@@ -10,7 +10,7 @@ import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.statement.CommandStatement;
+import us.bringardner.fsh.exec.Programs;
 
 /**
  * command [-v|-V] name [args]: run name as a builtin or program, not a function.
@@ -47,7 +47,7 @@ public class CommandCmd extends ShellCommand{
 		String n = ""+args[idx].getValue(ctx);
 		if( mode != null ) {
 			// what n is, as type says it (-V), or briefly (-v)
-			FileSource file = ctx.console.builtin(n) != null || ctx.getFunction(n) != null || ctx.console.getAlias(n) != null ? null : CommandStatement.which(n, ctx);
+			FileSource file = ctx.console.builtin(n) != null || ctx.getFunction(n) != null || ctx.console.getAlias(n) != null ? null : Programs.which(n, ctx);
 			String out = null;
 			if( ctx.console.getAlias(n) != null ) {
 				out = mode.equals("-v") ? "alias "+n+"='"+ctx.console.getAlias(n)+"'" : n+" is aliased to `"+ctx.console.getAlias(n)+"'";
@@ -76,10 +76,10 @@ public class CommandCmd extends ShellCommand{
 		for(int i = idx; i < args.length; i++) {
 			cmd.add(""+args[i].getValue(ctx));
 		}
-		FileSource file = CommandStatement.which(n, ctx);
+		FileSource file = Programs.which(n, ctx);
 		if( file != null ) {
 			cmd.set(0, file.getAbsolutePath());
 		}
-		return CommandStatement.execute(cmd, ctx);
+		return Programs.execute(cmd, ctx);
 	}
 }

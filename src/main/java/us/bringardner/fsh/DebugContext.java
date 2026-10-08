@@ -14,7 +14,6 @@ package us.bringardner.fsh;
 
 import java.awt.Point;
 
-import org.antlr.v4.runtime.ParserRuleContext;
 
 
 public class DebugContext  implements DebugController {
@@ -47,12 +46,12 @@ public class DebugContext  implements DebugController {
 		this.currentState = currentState;
 	}
 
-	public synchronized void before(ParserRuleContext context,ShellContext ctx) {
+	public synchronized void before(us.bringardner.fsh.syntax.Ast.Node node,ShellContext ctx) {
 		// do nothing by default
 		
 	}
 	
-	public synchronized void after(ParserRuleContext context,ShellContext ctx) {
+	public synchronized void after(us.bringardner.fsh.syntax.Ast.Node node,ShellContext ctx) {
 		// do nothing by default
 		
 	}

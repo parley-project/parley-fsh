@@ -14,20 +14,11 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import us.bringardner.fsh.parser.FileSourceShParser.ArgVariableContext;
-import us.bringardner.fsh.parser.FileSourceShParser.Array_indexContext;
-import us.bringardner.fsh.parser.FileSourceShParser.Associative_indexContext;
-import us.bringardner.fsh.parser.FileSourceShParser.StringContext;
-import us.bringardner.fsh.parser.FileSourceShParser.VariableContext;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.Console.Option;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.Expression;
-import us.bringardner.fsh.antlr.FileSourceShPreProcessorVisitorImpl;
-import us.bringardner.fsh.antlr.FileSourceShPreProcessorVisitorImpl.Quoting;
-import us.bringardner.fsh.antlr.Statement;
-import us.bringardner.fsh.antlr.signal.FshException;
-import us.bringardner.fsh.antlr.statement.CommandStatement;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.signal.FshException;
+import us.bringardner.fsh.exec.Programs;
 
 public class ShellContext {
 
@@ -44,7 +35,8 @@ public class ShellContext {
 	public Integer exitCode; 
 	private Stack<Map<Object,Object>> commandStack = new Stack<>();
 	private List<String> activeAlias = new ArrayList<>();
-	private Stack<Statement> statementStack = new Stack<>();
+	/** the commands the executor is running, innermost last (for a debugger) */
+	private final Stack<us.bringardner.fsh.syntax.Ast.Node> nodeStack = new Stack<>();
 	private AtomicBoolean pause = new AtomicBoolean();
 	private AtomicReference<RuntimeException> exeption = new AtomicReference<>();
 
@@ -117,24 +109,6 @@ public class ShellContext {
 	}
 
 
-	public String expandString(StringContext context)  {
-		if( context.SQ_STRING() != null ) {
-			String tmp = context.SQ_STRING().getText();
-			return tmp.substring(1, tmp.length()-1);				
-		} else if( context.DQ_STRING() !=null) {
-
-			String tmp = dq(context.DQ_STRING().getText());
-			String ret = FileSourceShPreProcessorVisitorImpl.processString(tmp.substring(1,tmp.length()-1), this, Quoting.DOUBLE_QUOTED);
-			return ret;
-		} else if( context.ESC()!=null) {
-			String tmp = context.ESC().getText().substring(1);
-			return tmp;
-		} else if( context.ANSI_STRING()!=null) {
-			String tmp = context.ANSI_STRING().getText();
-			return ansiC(tmp.substring(2, tmp.length()-1));
-		}
-		throw new RuntimeException("No valid string for "+context.getText());
-	}
 
 	/** a double-quoted string as written ("..."), without the $ of $"..." */
 	public static String dq(String token) {
@@ -321,25 +295,6 @@ $
 		return ret;
 	}
 
-	public Object getVariable(VariableContext ctx)  {
-		String name = ctx.getText();
-
-		if( ctx.idOnly !=null ) {
-			String tmp = ctx.idOnly.getText();
-			Object val = getValue(tmp);
-			if( val == null) {
-				return ctx.idOnly.getText();
-			} 
-		} else 
-
-			if( ctx.VARIABLE() !=null) {
-				name = ctx.VARIABLE().getText();
-			} else if( ctx.ID()!=null) {
-				name = ctx.ID().getText();
-			} 
-
-		return index(getVariable(name), ctx.associative_index(), ctx.array_index());
-	}
 
 	/**
 	 * The text a variable expands to: an unset variable (null) is empty, as in bash, or an error
@@ -356,7 +311,7 @@ $
 			throw new RuntimeException(msg);
 		}
 		stderr.println(msg);
-		throw new us.bringardner.fsh.antlr.signal.ExitException(this, 1);
+		throw new us.bringardner.fsh.signal.ExitException(this, 1);
 	}
 
 	public String expand(Object value, String name) {
@@ -369,17 +324,6 @@ $
 		return value.toString();
 	}
 
-	/**
-	 * A variable that is part of a word ($name, $1, $? ... with an optional index).
-	 */
-	public Object getVariable(ArgVariableContext ctx)  {
-		Object ret = getVariable(ctx.VARIABLE().getText());
-		if( ctx.associative_index() == null && ctx.array_index() == null ) {
-			// $a of an array is its element 0, as in bash
-			return firstElement(ret);
-		}
-		return index(ret, ctx.associative_index(), ctx.array_index());
-	}
 
 	/** an array or map copied (so changing one does not change the other); anything else as it is */
 	public static Object copyValue(Object val) {
@@ -409,55 +353,7 @@ $
 		return val;
 	}
 
-	private Object index(Object ret, Associative_indexContext associativeIndex, Array_indexContext arrayIndex) {
-		if( associativeIndex!=null) {
-			// $a[0], $m[key] (an fsh form; bash has ${a[0]}): the expanded subscript, arithmetic
-			// for an indexed array
-			String text = associativeIndex.getText();
-			text = us.bringardner.fsh.antlr.FileSourceShPreProcessorVisitorImpl.processString(text.substring(1, text.length()-1), this);
-			if( ret instanceof Map<?,?> ) {
-				return ((Map<?,?>) ret).get(text);
-			}
-			if( ret instanceof List<?> ) {
-				int ii = us.bringardner.fsh.antlr.Arithmetic.evaluate(text, this).intValue();
-				List<?> list = (List<?>) ret;
-				if( ii < 0 ) {
-					ii += list.size();
-				}
-				return ii >= 0 && ii < list.size() ? list.get(ii) : null;
-			}
-			return text.equals("0") ? ret : null;
-		}
 
-		if( arrayIndex!=null) {
-			Expression expr = new Expression(arrayIndex.expression());
-			Object idx = expr.evaluate(this);
-			if (idx instanceof Number) {
-				int ii = ((Number) idx).intValue();
-				if (ret instanceof List) {
-					ret = ((List<?>) ret).get(ii);					
-				}
-			} else {
-
-				if (ret instanceof Map) {
-					ret = ((Map<?, ?>) ret).get(idx);					
-				}
-			}			
-		}
-
-
-
-		return ret;
-	}
-
-	public void setVariable(VariableContext variable,Object value) {
-		String name = variable.getText();
-		if( variable.ID()!=null ) {
-			name = variable.ID().getText();
-		}
-
-		setVariable(name, value);				
-	}
 
 	/**
 	 * A pipe stage's own variables (null: the shell's are used): its assignments go here, so they
@@ -1117,7 +1013,7 @@ $
 		if( line > 0 ) {
 			return line;
 		}
-		return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
+		return nodeStack.isEmpty() ? 0 : nodeStack.peek().line;
 	}
 
 	/** the line the new executor is running (0: none, the statement stack says) */
@@ -1221,66 +1117,9 @@ $
 		}
 	}
 
-	public void enterStatement(Statement stmt) throws IOException {
-		statementStack.push(stmt);
-		if( console!=null ) {
-			console.debugContext.before(stmt.getContext(), this);
-			if(console.debugContext.isBreakpoint(stmt.getLine(), this)				 
-					|| console.debugContext.getCurrentState()==DebugContext.RunState.StepOver
-					|| console.debugContext.getCurrentState()==DebugContext.RunState.StepInto
-					) {
-				console.debugContext.setCurrentState(DebugContext.RunState.AtBreakpoint);
-				do {
-					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-					}					
-				} while(console.debugContext.getCurrentState() == DebugContext.RunState.AtBreakpoint);					
-			}	
 
 
-			if( console.isOptionEnabled(Option.PrintCommandTrace)) {
-				if (stmt instanceof CommandStatement) {
-					CommandStatement cmd = (CommandStatement) stmt;
-					// set -x: on standard error, as in bash
-					String ps4 = ""+console.getVariable(Console.VARIABLE_PS4);
-					StringBuilder line = new StringBuilder(ps4).append(cmd.getName());
-					for(Argument a : cmd.getArgs()) {
-						line.append(' ').append(a.getValue(this));
-					}
-					stderr.println(line);
-				}				
-			}
-		}
 
-		waitWhilePaused();
-		if(exeption.get() != null) {
-			throw exeption.get();
-		}
-	}
-
-	public void exitStatement(int ret,Statement stmt)  {
-		statementStack.pop();		
-		console.debugContext.after(stmt.getContext(), this);
-		if(exeption.get() != null) {
-			throw exeption.get();
-		}
-	}
-
-	public Statement getLastStatement() {
-		return statementStack.peek();
-	}
-
-	public List<Statement> getStatementStack(int max) {
-		List<Statement> ret = new ArrayList<>();
-		int sz = statementStack.size();
-		int idx = sz-1;
-		while( idx < sz && ret.size()< max) {
-			ret.add(statementStack.get(idx--));
-		}
-
-		return ret;
-	}
 
 	// only for debugging
 	public Map<String,Object> getVariables() {
@@ -1415,10 +1254,61 @@ $
 			sub.setPositionalParameters(true, tmp);
 			sub.setDebugContext(console.getDebugContext());
 
-			int ret = sub.executeUsingAntlr(code);
+			int ret = sub.executeScript(code);
 
 			return ret;				
 		}
 	}
 
+
+	/**
+	 * The executor starts a command: a debugger sees it (and stops at a breakpoint or a step);
+	 * a stop or suspend of the job takes effect here.
+	 */
+	public void enterNode(us.bringardner.fsh.syntax.Ast.Node node) {
+		nodeStack.push(node);
+		if( console != null ) {
+			DebugContext debug = console.debugContext;
+			debug.before(node, this);
+			if( debug.isBreakpoint(new java.awt.Point(node.line, 0), this)
+					|| debug.getCurrentState() == DebugContext.RunState.StepOver
+					|| debug.getCurrentState() == DebugContext.RunState.StepInto ) {
+				debug.setCurrentState(DebugContext.RunState.AtBreakpoint);
+				while( debug.getCurrentState() == DebugContext.RunState.AtBreakpoint ) {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+					}
+				}
+			}
+		}
+		waitWhilePaused();
+		if( exeption.get() != null ) {
+			throw exeption.get();
+		}
+	}
+
+	/** the executor is done with a command */
+	public void exitNode(us.bringardner.fsh.syntax.Ast.Node node) {
+		if( !nodeStack.isEmpty()) {
+			nodeStack.pop();
+		}
+		if( console != null ) {
+			console.debugContext.after(node, this);
+		}
+	}
+
+	/** the command running (null if none) */
+	public us.bringardner.fsh.syntax.Ast.Node getLastNode() {
+		return nodeStack.isEmpty() ? null : nodeStack.peek();
+	}
+
+	/** the commands running, innermost first, at most max */
+	public List<us.bringardner.fsh.syntax.Ast.Node> getNodeStack(int max) {
+		List<us.bringardner.fsh.syntax.Ast.Node> ret = new ArrayList<>();
+		for (int i = nodeStack.size()-1; i >= 0 && ret.size() < max; i--) {
+			ret.add(nodeStack.get(i));
+		}
+		return ret;
+	}
 }

@@ -40,8 +40,10 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 ## Layout
 
 - `src/main/java/us/bringardner/fsh` — the shell (`Console` is the entry point)
-- `generated/us/bringardner/fsh/parser` — the parser ANTLR generates from
-  `Antlr4/` (regenerate with `Antlr4/build.sh`)
+- `.../fsh/syntax` — reads a script into its syntax tree, as bash does
+- `.../fsh/expand` — word expansion (braces, parameters, `$( )`, splitting, globbing)
+- `.../fsh/exec` — runs the syntax tree
+- `.../fsh/commands` — the builtins
 
 ## The IDE
 

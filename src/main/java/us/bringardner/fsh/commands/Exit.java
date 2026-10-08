@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.signal.ExitException;
+import us.bringardner.fsh.signal.ExitException;
 
 public class Exit extends ShellCommand{
 	static String name = "exit";

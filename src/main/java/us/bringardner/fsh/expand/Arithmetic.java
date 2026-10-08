@@ -1,4 +1,4 @@
-package us.bringardner.fsh.antlr;
+package us.bringardner.fsh.expand;
 
 import java.util.List;
 import java.util.Map;
@@ -77,69 +77,6 @@ public class Arithmetic {
 			throw a.error("arithmetic syntax error in expression");
 		}
 		return ret;
-	}
-
-	/**
-	 * @return the expression in $(( expression )) or (( expression ))
-	 */
-	public static String body(String token) {
-		if( token.startsWith("$[")) {
-			// $[ expression ], the old form
-			return token.substring(2, token.length()-1);
-		}
-		int open = token.startsWith("$") ? 3 : 2;
-		return token.substring(open, token.length()-2);
-	}
-
-	/**
-	 * $(( )) in a word: as in bash, an error ends the script (status 1).
-	 */
-	public static Number expansion(String token, ShellContext ctx) {
-		try {
-			return expandAndEvaluate(body(token), ctx);
-		} catch (ArithmeticError e) {
-			ctx.stderr.println(e.getMessage());
-			throw new us.bringardner.fsh.antlr.signal.ExitException(ctx, 1);
-		}
-	}
-
-	/**
-	 * Split for (( init; condition; step )) into its three parts (; inside parentheses does not count).
-	 */
-	public static String [] forParts(String body) {
-		String [] ret = new String[3];
-		int part = 0;
-		int depth = 0;
-		int start = 0;
-		for (int idx = 0; idx < body.length(); idx++) {
-			char c = body.charAt(idx);
-			if( c == '(' ) {
-				depth++;
-			} else if( c == ')' ) {
-				depth--;
-			} else if( c == ';' && depth == 0 ) {
-				if( part == 2 ) {
-					throw new ArithmeticError("((: "+body+": syntax error: too many ;");
-				}
-				ret[part++] = body.substring(start, idx);
-				start = idx+1;
-			}
-		}
-		if( part != 2 ) {
-			throw new ArithmeticError("((: "+body+": syntax error: expected init; condition; step");
-		}
-		ret[2] = body.substring(start);
-		return ret;
-	}
-
-	/**
-	 * Expand $x, ${x} and $(cmd) in text, then evaluate it.
-	 */
-	public static Number expandAndEvaluate(String text, ShellContext ctx) {
-		String expanded = text.indexOf('$') >= 0 || text.indexOf('`') >= 0
-				? FileSourceShPreProcessorVisitorImpl.processString(text, ctx)
-				: text;
-		return evaluate(expanded, ctx);
 	}
 
 	// ---------------------------------------------------------------- errors

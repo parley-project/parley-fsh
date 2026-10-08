@@ -12,11 +12,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.antlr.v4.runtime.ParserRuleContext;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.fsh.antlr.Argument;
+import us.bringardner.fsh.Argument;
 
 
 public abstract class ShellCommand {
@@ -33,16 +32,6 @@ public abstract class ShellCommand {
 	String name;
 	String help;
 	protected Argument[] args;
-	protected ParserRuleContext context;
-
-	public ParserRuleContext getContext() {
-		return context;
-	}
-
-	public void setContext(ParserRuleContext context) {
-		this.context = context;
-	}
-
 	public Argument[] getArgs() {
 		return args;
 	}

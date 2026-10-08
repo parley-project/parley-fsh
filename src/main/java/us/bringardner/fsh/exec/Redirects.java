@@ -267,7 +267,7 @@ final class Redirects {
 			};
 		} else if( n == 1 ) {
 			sc.stdout.flush();
-			sc.stdout = new us.bringardner.fsh.antlr.Statement.ClosedStream();
+			sc.stdout = new us.bringardner.fsh.ClosedStream();
 		} else if( n == 2 ) {
 			sc.stderr.flush();
 			sc.stderr = new PrintStream(OutputStream.nullOutputStream());

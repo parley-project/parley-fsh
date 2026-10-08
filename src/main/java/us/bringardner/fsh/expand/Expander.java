@@ -14,7 +14,7 @@ import us.bringardner.fsh.Console;
 import us.bringardner.fsh.FshList;
 import us.bringardner.fsh.Glob;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Arithmetic;
+import us.bringardner.fsh.expand.Arithmetic;
 import us.bringardner.fsh.syntax.Ast;
 import us.bringardner.fsh.syntax.Parser;
 import us.bringardner.fsh.syntax.Parser.Fragment;

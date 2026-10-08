@@ -167,7 +167,7 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 		console.setStdErr(new PrintStream(ret.bae));
 		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 
-		ret.exitCode=console.executeUsingAntlr(command);
+		ret.exitCode=console.executeScript(command);
 
 		if(showError && ret.bae.size()!=0) {
 			System.out.println(new String(ret.bae.toByteArray()));
@@ -218,7 +218,7 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 		console.setStdOut(out);
 		console.setStdErr(err);
 
-		ret.exitCode=console.executeUsingAntlr(command);
+		ret.exitCode=console.executeScript(command);
 		List<IJob> jobs = console.jobManager.getJobs();
 		long start = System.currentTimeMillis();
 

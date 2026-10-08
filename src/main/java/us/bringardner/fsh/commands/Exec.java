@@ -4,8 +4,8 @@ import java.io.IOException;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.signal.ExitException;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.signal.ExitException;
 
 public class Exec extends ShellCommand{
 	static String name = "exec";
@@ -75,7 +75,7 @@ public class Exec extends ShellCommand{
 				if( c ) {
 					// clear env
 				}
-				ret = ctx.console.executeUsingAntlr(code);
+				ret = ctx.console.executeScript(code);
 				throw new ExitException(ctx, ret);
 			} else {
 				ret = 1;

@@ -1,4 +1,4 @@
-package us.bringardner.fsh.antlr.signal;
+package us.bringardner.fsh.signal;
 
 public class FshException extends RuntimeException {
 

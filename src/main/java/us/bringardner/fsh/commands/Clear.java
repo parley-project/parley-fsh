@@ -8,7 +8,7 @@ import us.bringardner.fsh.ConsoleFrame;
 import us.bringardner.fsh.KeyboardReader;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.statement.CommandStatement;
+import us.bringardner.fsh.exec.Programs;
 
 public class Clear extends ShellCommand{
 	static String name = "clear";
@@ -28,7 +28,7 @@ public class Clear extends ShellCommand{
 			frame.clear();			
 		} else {
 			List<String> cmd = Arrays.asList("clear");
-			ret = CommandStatement.execute(cmd, ctx);			
+			ret = Programs.execute(cmd, ctx);			
 		}
 		
 		return ret;

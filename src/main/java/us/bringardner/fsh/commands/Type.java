@@ -53,7 +53,7 @@ public class Type extends ShellCommand{
 				kind = "builtin";
 				text = n+" is a shell builtin";
 			} else {
-				FileSource file = us.bringardner.fsh.antlr.statement.CommandStatement.which(n, ctx);
+				FileSource file = us.bringardner.fsh.exec.Programs.which(n, ctx);
 				if( file != null ) {
 					kind = "file";
 					text = path ? file.getAbsolutePath() : n+" is "+file.getAbsolutePath();

@@ -118,7 +118,7 @@ final class Declarations {
 			if( assignment != null ) {
 				if( values.get(n) != null ) {
 					String v = (String) values.get(n);
-					val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.antlr.Arithmetic.evaluate(v, sc)) : v;
+					val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc)) : v;
 				} else if( assignment.index != null ) {
 					executor.assign(assignment, sc, ex, false);
 					continue;
@@ -126,7 +126,7 @@ final class Declarations {
 					val = executor.value(assignment, sc, ex, local && !assignment.append, o.indexOf('A') >= 0);
 				}
 			} else if( text != null ) {
-				val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.antlr.Arithmetic.evaluate(text, sc)) : text;
+				val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(text, sc)) : text;
 			}
 			Object old = local ? null : sc.getVariable(name);
 			if( val == null && !remove ) {

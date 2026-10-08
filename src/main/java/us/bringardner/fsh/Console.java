@@ -34,8 +34,6 @@ import javax.management.JMRuntimeException;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTree;
 
 import sun.misc.Signal;
 import us.bringardner.parley.core.util.ThreadSafeDateFormat;
@@ -44,14 +42,10 @@ import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.parley.files.fileproxy.FileProxy;
 import us.bringardner.fsh.ShellContext.LoopControl;
-import us.bringardner.fsh.antlr.FileSourceShVisitorImpl;
-import us.bringardner.fsh.antlr.Statement;
-import us.bringardner.fsh.antlr.signal.ExitException;
-import us.bringardner.fsh.antlr.signal.FshException;
-import us.bringardner.fsh.antlr.statement.BackgroundStatement;
-import us.bringardner.fsh.antlr.statement.CommandStatement;
-import us.bringardner.fsh.antlr.statement.LoopStatement.LoopControlException;
-import us.bringardner.fsh.antlr.statement.PipeStatement;
+import us.bringardner.fsh.signal.ExitException;
+import us.bringardner.fsh.signal.FshException;
+import us.bringardner.fsh.exec.Programs;
+import us.bringardner.fsh.signal.LoopControlException;
 import us.bringardner.fsh.commands.Alias;
 import us.bringardner.fsh.commands.Bg;
 import us.bringardner.fsh.commands.Cd;
@@ -466,7 +460,7 @@ delimiter
 				}
 				for(ConsoleSignalHandler h : tmp2) {
 					try {
-						int ec = h.ctx.console.executeUsingAntlr(h.action);
+						int ec = h.ctx.console.executeScript(h.action);
 						if( ec !=0) {
 							h.ctx.stderr.println("Signal handler "+h.action+" exit code="+ec);
 						}
@@ -537,16 +531,9 @@ delimiter
 		public long start;
 		public long end;
 		public Exception error;
-		public Statement cmd;
-		/** what runs, for the new executor (cmd is null then) */
+		/** what runs */
 		public ShellTask task;
 		public ShellContext ctx;
-
-		public CommandThread(ShellContext ctx,Statement cmd) {
-			this.ctx = ctx;
-			this.cmd = cmd;
-			setName("Command "+getCmdCnt());
-		}
 
 		public CommandThread(ShellContext ctx, ShellTask task) {
 			this.ctx = ctx;
@@ -573,22 +560,8 @@ delimiter
 		}
 
 		public String toString() {
-			if( task != null ) {
-				return task.text();
-			}
-			// the command as written (joining the tokens gave sleep   1)
-			ParserRuleContext p = cmd.getContext();
-			if( p.start != null && p.stop != null && p.stop.getStopIndex() >= p.start.getStartIndex()) {
-				return p.start.getInputStream().getText(
-						org.antlr.v4.runtime.misc.Interval.of(p.start.getStartIndex(), p.stop.getStopIndex())).trim();
-			}
-			StringBuilder ret = new StringBuilder();
-			for(ParseTree pp : p.children) {
-				ret.append(pp.getText()+" ");
-			}
-
-			return ret.toString().trim();
-		} 
+			return task.text();
+		}
 
 		@Override
 		public void run() {
@@ -599,7 +572,7 @@ delimiter
 					// a pipe stage: its own directory and options
 					ctx.console.enterStage();
 				}
-				exitCode = task != null ? task.run(ctx) : cmd.process(ctx);
+				exitCode = task.run(ctx);
 			} catch (Exception e) {
 				error = e;
 				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
@@ -639,55 +612,17 @@ delimiter
 			default:
 				break;
 			}
-			if( task != null ) {
-				List<CommandThread> kids = task.children();
-				if( !kids.isEmpty()) {
-					for(CommandThread kid : kids) {
-						kid.handleSignal(signal);
-					}
-				} else if( signal == ConsoleSignal.Hup || signal == ConsoleSignal.Interupt || signal == ConsoleSignal.Terminate || signal == ConsoleSignal.Kill ) {
-					ctx.setExecption(new LoopControlException(LoopControl.Break,-1));
-				} else if( signal == ConsoleSignal.Suspend ) {
-					ctx.setExecption(new SuspendException(null));
+			List<CommandThread> kids = task.children();
+			if( !kids.isEmpty()) {
+				for(CommandThread kid : kids) {
+					kid.handleSignal(signal);
 				}
-			} else if (cmd instanceof PipeStatement) {
-				PipeStatement stmt = (PipeStatement) cmd;
-				CommandThread[] kids = stmt.getCommandThreads();
-				if( kids !=null) {
-					for(CommandThread kid : kids) {
-						kid.handleSignal(signal);
-					}
-				}
-			} else if (cmd instanceof BackgroundStatement) {
-				BackgroundStatement stmt = (BackgroundStatement) cmd;
-				CommandThread thread = stmt.getCommandThread();
-				if( thread !=null) {
-					thread.handleSignal(signal);
-				}
-			} else if (cmd instanceof CommandStatement) {
-				//CommandStatement stmt = (CommandStatement) cmd;
-				switch (signal) {
-				case ChildStopped: break;
-				case Continue: break;
-				case Hup: 
-				case Interupt:
-				case Terminate:
-				case Kill: 
-					ctx.setExecption(new LoopControlException(LoopControl.Break,-1));
-					break;
-				case Suspend:
-					ctx.setExecption(new SuspendException(null));
-					break;
-				default:
-					throw new IllegalArgumentException("Unexpected value: " + signal);
-				}
-
-			} else {
-				System_err.println("Unexpected staement class="+cmd.getClass());
+			} else if( signal == ConsoleSignal.Hup || signal == ConsoleSignal.Interupt || signal == ConsoleSignal.Terminate || signal == ConsoleSignal.Kill ) {
+				ctx.setExecption(new LoopControlException(LoopControl.Break,-1));
+			} else if( signal == ConsoleSignal.Suspend ) {
+				ctx.setExecption(new SuspendException(null));
 			}
 		}
-
-		
 	}
 
 
@@ -864,7 +799,7 @@ delimiter
 			// set runtime options and the positional parameters
 			code.insert(0, "set -main ");
 			String tmp= code.toString().trim();
-			ret = executeUsingAntlr(tmp);
+			ret = executeScript(tmp);
 			code.setLength(0);
 		}
 
@@ -879,7 +814,7 @@ delimiter
 				code.append(' ');
 			}
 			String codeToRun = code.toString().trim();
-			ret = executeUsingAntlr(codeToRun);
+			ret = executeScript(codeToRun);
 		} else {
 			isInteractive = true;
 		}
@@ -958,7 +893,7 @@ delimiter
 			if( file.exists() && file.canGroupRead()) {
 				//TODO: remove one testing is complete
 				stdIn = System.in;
-				executeUsingAntlr("source "+file);
+				executeScript("source "+file);
 			}
 
 		} catch (Exception e) {
@@ -1145,10 +1080,6 @@ delimiter
 					}
 
 					ShellContext sc = new ShellContext(this);
-					String ppCode = preProcess(code, sc);
-					if( isOptionEnabled(Option.PrintCommandTrace)) {
-						stdOut.println(ppCode);
-					}
 
 					ret = new ForgroundJob(sc,code);					
 					ret.addJobStateChangeListner((job,from,to)->{
@@ -1205,10 +1136,6 @@ delimiter
 					}
 
 					code = code.trim();
-					String ppCode = preProcess(code, sc);
-					if( isOptionEnabled(Option.PrintCommandTrace)) {
-						sc.stdout.println(ppCode);
-					}
 
 					IJob job = new ForgroundJob(sc,code);
 					currentJob.set(job);
@@ -1844,156 +1771,15 @@ delimiter
 
 
 
-	/**
-	 * 
-	 * @param code
-	 * @return
-	 */
-	public String preProcess(String code,ShellContext ctx) {
-
-		// (-eq -ne -lt ... were rewritten as == != < ... everywhere, so echo -ne printed != and
-		// ls -lt dir read from dir; the grammar reads them in tests)
-		String ret00 = convertHash(code);
-		return hereDocuments(ret00);
-	}
-
-	/** here-document bodies by the id that replaces their word (<<EOF becomes <<HEREDOC12) */
-	private final Map<String,String> hereBodies = new ConcurrentHashMap<>();
-	private final java.util.Set<String> quotedHere = ConcurrentHashMap.newKeySet();
-	private static final java.util.concurrent.atomic.AtomicLong hereCount = new java.util.concurrent.atomic.AtomicLong();
-	private static final Pattern HERE_START = Pattern.compile("(?<!<)<<(?!<)(-?)[ \\t]*('[^'\\n]*'|\"[^\"\\n]*\"|[^\\s;&|<>()]+)");
-
-	/**
-	 * @return the body of a here-document, or null
-	 */
-	public String getHereDocument(String id) {
-		return hereBodies.get(id);
-	}
-
-	/**
-	 * @return true if the word was quoted (<<'EOF'): the body is used as written, with no expansion
-	 */
-	public boolean isHereDocumentQuoted(String id) {
-		return quotedHere.contains(id);
-	}
-
-	/**
-	 * Take the bodies of here-documents out of the code, as bash reads them: the lines after the
-	 * command, up to a line that is the word (with <<- leading tabs are removed, from the body and
-	 * from that line). A quoted word ('EOF', "EOF", \EOF) means the body is not expanded.
-	 */
-	String hereDocuments(String code) {
-		if( code.indexOf("<<") < 0 ) {
-			return code;
-		}
-		String [] lines = code.split("\n", -1);
-		StringBuilder ret = new StringBuilder();
-		for (int idx = 0; idx < lines.length; idx++) {
-			String line = lines[idx];
-			Matcher m = HERE_START.matcher(line);
-			StringBuilder out = new StringBuilder();
-			int last = 0;
-			List<String[]> pending = new ArrayList<>();
-			while( m.find()) {
-				String before = line.substring(0, m.start());
-				if( inArithmeticOrQuotes(before)) {
-					continue;
-				}
-				String word = m.group(2);
-				boolean quoted = word.indexOf('\'') >= 0 || word.indexOf('"') >= 0 || word.indexOf('\\') >= 0;
-				String delim = word.replace("'", "").replace("\"", "").replace("\\", "");
-				String id = "HEREDOC"+hereCount.incrementAndGet();
-				out.append(line, last, m.start()).append("<<").append(id);
-				last = m.end();
-				pending.add(new String[] {id, delim, m.group(1), quoted ? "q" : ""});
-			}
-			out.append(line.substring(last));
-			ret.append(out);
-			// the bodies follow, in order
-			for(String [] here : pending) {
-				boolean dash = here[2].equals("-");
-				StringBuilder body = new StringBuilder();
-				while( ++idx < lines.length ) {
-					String bl = lines[idx];
-					if( dash ) {
-						bl = bl.replaceFirst("^\t+", "");
-					}
-					if( bl.equals(here[1])) {
-						break;
-					}
-					body.append(bl).append('\n');
-				}
-				hereBodies.put(here[0], body.toString());
-				if( !here[3].isEmpty()) {
-					quotedHere.add(here[0]);
-				}
-			}
-			if( idx < lines.length-1 ) {
-				ret.append('\n');
-			}
-		}
-		return ret.toString();
-	}
-
-	/** true if text ends inside quotes or inside (( )), where << is not a here-document */
-	private static boolean inArithmeticOrQuotes(String text) {
-		boolean single = false;
-		boolean dbl = false;
-		int depth = 0;
-		for (int idx = 0; idx < text.length(); idx++) {
-			char c = text.charAt(idx);
-			if( c == '\\' && !single ) {
-				idx++;
-			} else if( c == '\'' && !dbl ) {
-				single = !single;
-			} else if( c == '"' && !single ) {
-				dbl = !dbl;
-			} else if( !single && !dbl && text.startsWith("((", idx)) {
-				depth++;
-				idx++;
-			} else if( !single && !dbl && text.startsWith("))", idx) && depth > 0 ) {
-				depth--;
-				idx++;
-			}
-		}
-		return single || dbl || depth > 0;
-	}
 
 
 
 
-	public static final Pattern convertHashRx = Pattern.compile("\\$\\{"
-			+ "[^\\}]*"
-			+ "#"
-			+ "[^\\}]*"
-			+ "\\}");
 
-	/**
-	 * Inside ${ }, # is written as | (Parameter reads ${|x} as ${#x}: parsed by itself, # would
-	 * start a comment). Only the #s of each ${ } itself, not of one nested in it, and the braces
-	 * nest (${s#"${s%%x}"}).
-	 */
-	public String convertHash(String code) {
-		if( code.indexOf("${") < 0 ) {
-			return code;
-		}
-		StringBuilder ret = new StringBuilder(code);
-		java.util.Deque<Integer> open = new java.util.ArrayDeque<>();
-		for (int idx = 0; idx < ret.length(); idx++) {
-			char c = ret.charAt(idx);
-			if( c == '\\' ) {
-				idx++;
-			} else if( c == '$' && idx+1 < ret.length() && ret.charAt(idx+1) == '{' ) {
-				open.push(idx);
-				idx++;
-			} else if( c == '}' && !open.isEmpty()) {
-				open.pop();
-			} else if( c == '#' && !open.isEmpty() && isHashOperator(ret.substring(open.peek()+2, idx))) {
-				ret.setCharAt(idx, '|');
-			}
-		}
-		return ret.toString();
-	}
+
+
+
+
 
 	/**
 	 * The # that are operators: ${#x}, ${x#pat} ${x##pat}, ${x/#pat/r}, ${!#}. A # in a pattern
@@ -2351,7 +2137,7 @@ delimiter
 					String code = actions.get(idx);
 
 					try {
-						executeUsingAntlr(code);
+						executeScript(code);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -2555,8 +2341,8 @@ delimiter
 		String savedCommand = ctx.currentCommand;
 		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
-			runCode(ctx, action, false);
-		} catch (us.bringardner.fsh.antlr.signal.FshException e) {
+			runCode(ctx, action);
+		} catch (us.bringardner.fsh.signal.FshException e) {
 			throw e;
 		} catch (Exception e) {
 			ctx.stderr.println(e.getMessage());
@@ -2607,9 +2393,9 @@ delimiter
 		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
 			for(String code : actions) {
-				runCode(ctx, code, false);
+				runCode(ctx, code);
 			}
-		} catch (us.bringardner.fsh.antlr.signal.FshException e) {
+		} catch (us.bringardner.fsh.signal.FshException e) {
 			throw e;
 		} catch (Exception e) {
 			ctx.stderr.println(e.getMessage());
@@ -2761,25 +2547,15 @@ delimiter
 
 	}
 
-	/** run scripts with the new front end (us.bringardner.fsh.syntax and .exec); -Dfsh.frontend=old: the ANTLR one */
-	public static volatile boolean newFrontEnd = !"old".equals(System.getProperty("fsh.frontend"));
-
 	/**
-	 * Run code in ctx, in the front end in use (a trap's action, a sourced file).
-	 * @param preProcess the old front end's preprocessor runs first (source)
+	 * Run code in ctx (a trap's action, a sourced file, find -exec): a syntax error is reported,
+	 * status 2.
 	 */
-	public int runCode(ShellContext ctx, String code, boolean preProcess) throws Exception {
-		if( newFrontEnd ) {
-			return us.bringardner.fsh.exec.Executor.run(ctx, code);
-		}
-		int ret = 0;
-		for(Statement s : FileSourceShVisitorImpl.parse(preProcess ? preProcess(code.trim(), ctx) : code)) {
-			ret = s.process(ctx);
-		}
-		return ret;
+	public int runCode(ShellContext ctx, String code) throws IOException {
+		return us.bringardner.fsh.exec.Executor.run(ctx, code);
 	}
 
-	public int executeUsingAntlr(ShellContext sc,String code)  {
+	public int executeScript(ShellContext sc,String code)  {
 		int ret = 0;
 		try {
 
@@ -2788,22 +2564,7 @@ delimiter
 			}
 
 			code = code.trim();
-			if( newFrontEnd ) {
-				return us.bringardner.fsh.exec.Executor.script(sc, code);
-			}
-			String ppCode = preProcess(code, sc);
-			// (set -x traces each command as it runs; the code is not printed here)
-
-			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
-			for(int idx=0, sz=stmts.size(); idx < sz; idx++ ) {
-				Statement	stmt = stmts.get(idx);
-				handleMetaSignal(ConsoleMetaSignal.Debug);
-				ret = stmt.process(sc);
-				// the caller (Console.run) handles the ERR trap and exit for -e
-				if( ret !=0 && isOptionEnabled(Option.ExitImediately)) {
-					return ret;
-				}
-			}
+			return us.bringardner.fsh.exec.Executor.script(sc, code);
 
 		} catch(ExitException e) {
 			ret = e.exitCode;
@@ -2831,7 +2592,7 @@ delimiter
 		return ret;
 	}
 
-	/** how deep executeUsingAntlr is (eval and source call it too): the EXIT trap runs at the end of the outermost */
+	/** how deep executeScript is (eval and source call it too): the EXIT trap runs at the end of the outermost */
 	private int executeDepth = 0;
 
 	/**
@@ -2861,7 +2622,7 @@ delimiter
 		if( actions != null ) {
 			for(String action : actions) {
 				try {
-					executeUsingAntlr(action);
+					executeScript(action);
 				} catch (Exception e) {
 					getStdErr().println(e.getMessage());
 				}
@@ -2869,10 +2630,10 @@ delimiter
 		}
 	}
 
-	public int executeUsingAntlr(String code)  {
+	public int executeScript(String code)  {
 		executeDepth++;
 		try {
-			return executeUsingAntlr0(code);
+			return executeScript0(code);
 		} finally {
 			if( --executeDepth == 0 && !isInteractive ) {
 				// the script has ended
@@ -2881,7 +2642,7 @@ delimiter
 		}
 	}
 
-	private int executeUsingAntlr0(String code)  {
+	private int executeScript0(String code)  {
 		int ret = 0;
 		ShellContext sc = new ShellContext(this);
 
@@ -2900,35 +2661,11 @@ delimiter
 			}
 
 			code = code.trim();
-			if( newFrontEnd ) {
-				ret = us.bringardner.fsh.exec.Executor.script(sc, code);
-				if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
-					Console.exit(sc.console, ret);
-				}
-				return ret;
+			ret = us.bringardner.fsh.exec.Executor.script(sc, code);
+			if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
+				Console.exit(sc.console, ret);
 			}
-			String ppCode = preProcess(code, sc);
-			// (set -x traces each command as it runs; the code is not printed here)
-
-			List<Statement> stmts = FileSourceShVisitorImpl.parse(ppCode);
-			for(int idx=0, sz=stmts.size(); idx < sz; idx++ ) {
-				Statement	stmt = stmts.get(idx);
-				handleMetaSignal(ConsoleMetaSignal.Debug);
-				ret = stmt.process(sc);			
-				if( ret !=0) {
-					// (the ERR trap ran as the statement failed: see Statement.process)
-					if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
-						break;
-					}					
-				}
-			}		
-			if( ret!=0) {
-				// (ERR ran after the failed statement)
-				if(isInteractive && isOptionEnabled(Option.ExitImediately)) {
-					Console.exit(sc.console,ret);
-				}
-				return ret;
-			}
+			return ret;
 
 		} catch(ExitException e) {
 			ret = e.exitCode;

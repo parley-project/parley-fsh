@@ -198,7 +198,7 @@ public class Find extends ShellCommand{
 			}
 			int rc;
 			try {
-				rc = sc.console.runCode(sc, code.toString().trim(), false);
+				rc = sc.console.runCode(sc, code.toString().trim());
 			} catch (IOException e) {
 				throw e;
 			} catch (Exception e) {

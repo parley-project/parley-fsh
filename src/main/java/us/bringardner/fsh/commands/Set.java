@@ -8,7 +8,7 @@ import us.bringardner.fsh.Console.Option;
 import us.bringardner.fsh.FshList;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
+import us.bringardner.fsh.Argument;
 
 public class Set extends ShellCommand{
 	/*

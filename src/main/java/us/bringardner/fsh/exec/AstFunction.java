@@ -6,8 +6,8 @@ import java.util.List;
 
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.ShellFunction;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.signal.ReturnException;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.signal.ReturnException;
 import us.bringardner.fsh.syntax.Ast;
 
 /**

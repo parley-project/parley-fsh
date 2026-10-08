@@ -156,7 +156,7 @@ public class TestBashCompat extends AbstractConsoleTest {
 			console.setStdIn(new ByteArrayInputStream(new byte[0]));
 			console.setCurrentDirectory(console.createFileSource(dir.getAbsolutePath()));
 
-			Future<Integer> f = runner.submit(() -> console.executeUsingAntlr(code));
+			Future<Integer> f = runner.submit(() -> console.executeScript(code));
 			try {
 				ret.exitCode = f.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 			} catch (TimeoutException e) {

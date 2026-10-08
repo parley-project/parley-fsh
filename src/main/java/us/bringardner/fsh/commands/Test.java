@@ -6,7 +6,8 @@ import java.util.List;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.DoubleBracket;
+import us.bringardner.parley.files.FileSource;
+import java.util.regex.Pattern;
 
 /**
  * test expr (and [ expr ]), as in bash: the words are already expanded, and how they are read
@@ -203,7 +204,7 @@ public class Test extends ShellCommand{
 	}
 
 	private boolean unary(String op, String val) {
-		return DoubleBracket.unaryTest(op, val, ctx);
+		return unaryTest(op, val, ctx);
 	}
 
 	private boolean binary(String a, String op, String b) {
@@ -215,7 +216,7 @@ public class Test extends ShellCommand{
 		case ">": return a.compareTo(b) > 0;
 		case "-nt":
 		case "-ot":
-		case "-ef": return DoubleBracket.fileCompare(a, op, b, ctx);
+		case "-ef": return fileCompare(a, op, b, ctx);
 		default:
 			int cmp = Long.compare(integer(a), integer(b));
 			switch (op) {
@@ -236,4 +237,69 @@ public class Test extends ShellCommand{
 			throw new TestError(s+": integer expected");
 		}
 	}
+
+	/** -n -z -v and the file tests (also used by test and [ ]) */
+	public static boolean unaryTest(String op, String val, ShellContext ctx) {
+		switch (op) {
+		case "-n": return !val.isEmpty();
+		case "-z": return val.isEmpty();
+		case "-v": {
+			java.util.regex.Matcher m = Pattern.compile("([a-zA-Z_][a-zA-Z_0-9]*)\\[(.+)\\]").matcher(val);
+			if( m.matches()) {
+				// -v a[1], -v m[key]: that element is set
+				Object arr = ctx.getVariable(m.group(1));
+				if( arr instanceof java.util.Map<?,?> ) {
+					return ((java.util.Map<?,?>) arr).containsKey(m.group(2));
+				}
+				if( arr instanceof java.util.List<?> ) {
+					int idx = us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).intValue();
+					return ((java.util.List<?>) arr).get(idx) != null;
+				}
+				return false;
+			}
+			return ctx.getVariable(val) != null;
+		}
+		case "-o": {
+			// a set -o option is on
+			us.bringardner.fsh.Console.Option o = us.bringardner.fsh.Console.Option.find(val);
+			return o != us.bringardner.fsh.Console.Option.Unsupported && o != us.bringardner.fsh.Console.Option.Option
+					&& ctx.console.isOptionEnabled(o);
+		}
+		case "-t": return false;
+		}
+		try {
+			FileSource file = ctx.getFileSource(val);
+			switch (op) {
+			case "-e":
+			case "-a": return file.exists();
+			case "-f": return file.isFile();
+			case "-d": return file.isDirectory();
+			case "-s": return file.exists() && file.length() > 0;
+			case "-r": return file.exists() && file.canRead();
+			case "-w": return file.exists() && file.canWrite();
+			case "-x": return file.exists() && file.canExecute();
+			case "-h":
+			case "-L": return file.exists() && file.getLinkedTo() != null;
+			default: return false;
+			}
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
+	/** f1 -nt -ot -ef f2 (also used by test and [ ]) */
+	public static boolean fileCompare(String a, String op, String b, ShellContext ctx) {
+		try {
+			FileSource f1 = ctx.getFileSource(a);
+			FileSource f2 = ctx.getFileSource(b);
+			switch (op) {
+			case "-nt": return f1.exists() && (!f2.exists() || f1.lastModified() > f2.lastModified());
+			case "-ot": return f2.exists() && (!f1.exists() || f1.lastModified() < f2.lastModified());
+			default: return f1.exists() && f2.exists() && f1.getCanonicalPath().equals(f2.getCanonicalPath());
+			}
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
 }

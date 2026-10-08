@@ -21,32 +21,6 @@ public class Glob {
 	private Glob() {
 	}
 
-	/**
-	 * The words a word becomes: braces, splitting and pathname expansion (as for a command's
-	 * arguments, and array values a=(*.c)).
-	 */
-	public static List<String> expandWord(us.bringardner.fsh.parser.FileSourceShParser.ArgumentContext word, ShellContext ctx) throws IOException {
-		List<us.bringardner.fsh.antlr.Argument> fields = us.bringardner.fsh.antlr.Argument.expandWord(word, ctx, true);
-		if( fields == null ) {
-			fields = List.of(new us.bringardner.fsh.antlr.Argument(word));
-		}
-		List<String> ret = new ArrayList<>();
-		for(us.bringardner.fsh.antlr.Argument a : fields) {
-			String value = ""+a.getValue(ctx);
-			List<String> matches = a.hasUnquotedWildcard() ? expand(value, ctx) : List.of();
-			if( matches.isEmpty()) {
-				if( a.hasUnquotedWildcard()) {
-					failglob(value, ctx);
-				}
-				if( !(a.hasUnquotedWildcard() && option(ctx, "nullglob"))) {
-					ret.add(value);
-				}
-			} else {
-				ret.addAll(matches);
-			}
-		}
-		return ret;
-	}
 
 	/**
 	 * shopt -s failglob: a pattern that matches nothing is an error. As in bash it ends a script
@@ -58,7 +32,7 @@ public class Glob {
 			if( ctx.console.isInteractive ) {
 				throw new RuntimeException("no match: "+pattern);
 			}
-			throw new us.bringardner.fsh.antlr.signal.ExitException(ctx, 1);
+			throw new us.bringardner.fsh.signal.ExitException(ctx, 1);
 		}
 	}
 

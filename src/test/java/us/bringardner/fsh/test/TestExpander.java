@@ -9,13 +9,11 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.Glob;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.statement.CommandSubstitutionStatement;
 import us.bringardner.fsh.expand.ExpansionError;
 import us.bringardner.fsh.expand.Expander;
 import us.bringardner.fsh.syntax.Ast;
@@ -26,7 +24,6 @@ import us.bringardner.fsh.syntax.Parser;
  * src/test/resources/expand/cases.txt is a word and bash's output for printf '<%s>' with it (or
  * for an assignment, a case pattern, a =~ or a here-document), recorded with bash 5.3.
  * <p>
- * Until the new executor is in, the setup lines run in the old one, and so do $( ).
  */
 public class TestExpander {
 
@@ -54,7 +51,7 @@ public class TestExpander {
 			i++;
 			Console c = new Console();
 			ShellContext sc = new ShellContext(c);
-			c.executeUsingAntlr(sc, setup.toString());
+			c.executeScript(sc, setup.toString());
 			while( i < lines.size() && !lines.get(i).startsWith("### setup")) {
 				String line = lines.get(i++);
 				int tab = line.lastIndexOf('\t');
@@ -76,24 +73,7 @@ public class TestExpander {
 
 	/** the word line expanded as the case says, printed the way the recorded output is */
 	private static String run(ShellContext sc, String line) {
-		Expander ex = new Expander(sc, new Expander.Host() {
-			@Override
-			public String commandOutput(Ast.Sequence body, String text, boolean backquote) {
-				CommandSubstitutionStatement s = new CommandSubstitutionStatement(new ParserRuleContext());
-				s.execute(backquote ? CommandSubstitutionStatement.backtickCode(text) : text, sc);
-				return s.getStdout();
-			}
-
-			@Override
-			public String functionOutput(Ast.Sequence body, String text, boolean reply) {
-				return commandOutput(body, text, false);
-			}
-
-			@Override
-			public String processSubstitution(char direction, Ast.Sequence body, String text) {
-				return "/dev/fd/63";
-			}
-		});
+		Expander ex = us.bringardner.fsh.exec.Executor.expanderFor(sc);
 		try {
 			if( line.startsWith("A:")) {
 				Ast.SimpleCommand cmd = (Ast.SimpleCommand) first(Parser.parse("v="+line.substring(2)));

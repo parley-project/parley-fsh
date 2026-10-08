@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.signal.ReturnException;
+import us.bringardner.fsh.signal.ReturnException;
 
 public class Return extends ShellCommand{
 	static String name = "return";

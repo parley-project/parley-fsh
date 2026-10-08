@@ -27,16 +27,14 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.ShellContext.LoopControl;
 import us.bringardner.fsh.ShellFunction;
 import us.bringardner.fsh.ShellTask;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.Arithmetic;
-import us.bringardner.fsh.antlr.DoubleBracket;
-import us.bringardner.fsh.antlr.Statement.ClosedStream;
-import us.bringardner.fsh.antlr.signal.ExitException;
-import us.bringardner.fsh.antlr.signal.FshException;
-import us.bringardner.fsh.antlr.signal.ReturnException;
-import us.bringardner.fsh.antlr.statement.CommandStatement;
-import us.bringardner.fsh.antlr.statement.CommandSubstitutionStatement;
-import us.bringardner.fsh.antlr.statement.LoopStatement.LoopControlException;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.expand.Arithmetic;
+import us.bringardner.fsh.ClosedStream;
+import us.bringardner.fsh.signal.ExitException;
+import us.bringardner.fsh.signal.FshException;
+import us.bringardner.fsh.signal.ReturnException;
+import us.bringardner.fsh.exec.Programs;
+import us.bringardner.fsh.signal.LoopControlException;
 import us.bringardner.fsh.commands.Read;
 import us.bringardner.fsh.expand.ExpansionError;
 import us.bringardner.fsh.expand.Expander;
@@ -156,6 +154,11 @@ public final class Executor {
 
 	private Expander expander(ShellContext sc) {
 		return new Expander(sc, new Host(sc));
+	}
+
+	/** an Expander for words in sc, whose $( ) run here */
+	public static Expander expanderFor(ShellContext sc) {
+		return new Executor("").expander(sc);
 	}
 
 	// ------------------------------------------------------------------ lists
@@ -404,17 +407,14 @@ public final class Executor {
 
 	/** one command, with the redirects after it */
 	int command(Ast.Command c, ShellContext sc) throws IOException {
-		sc.waitWhilePaused();
-		RuntimeException stop = sc.getException();
-		if( stop != null ) {
-			throw stop;
-		}
 		if( sc.console.isOptionEnabled(Option.NoExec) && !sc.console.isInteractive ) {
 			// set -n: nothing runs any more (not even set +n), as in bash
 			return 0;
 		}
 		int outputSubstitutions = sc.pendingOutputSubstitutions.size();
 		try {
+			// a debugger stops here; a stop or suspend of the job takes effect
+			sc.enterNode(c);
 			if( c instanceof Ast.SimpleCommand s ) {
 				return simple(s, sc);
 			}
@@ -441,6 +441,7 @@ public final class Executor {
 				Redirects.close(opened);
 			}
 		} finally {
+			sc.exitNode(c);
 			// >(cmd) in its words: cmd reads what was written
 			while( sc.pendingOutputSubstitutions.size() > outputSubstitutions ) {
 				String [] p = sc.pendingOutputSubstitutions.remove(outputSubstitutions);
@@ -791,7 +792,7 @@ public final class Executor {
 			return !ex.string(w.word()).isEmpty();
 		}
 		case Ast.CondUnary u -> {
-			return DoubleBracket.unaryTest(u.op(), ex.string(u.operand()), sc);
+			return us.bringardner.fsh.commands.Test.unaryTest(u.op(), ex.string(u.operand()), sc);
 		}
 		case Ast.CondBinary b -> {
 			return binary(b, sc, ex);
@@ -816,7 +817,7 @@ public final class Executor {
 		case "-nt":
 		case "-ot":
 		case "-ef":
-			return DoubleBracket.fileCompare(l, b.op(), ex.string(b.right()), sc);
+			return us.bringardner.fsh.commands.Test.fileCompare(l, b.op(), ex.string(b.right()), sc);
 		default: {
 			Number x = Arithmetic.evaluate(l, sc);
 			Number y = Arithmetic.evaluate(ex.string(b.right()), sc);
@@ -1455,7 +1456,7 @@ public final class Executor {
 			Executor ex = Executor.this;
 			Ast.Sequence seq = body;
 			if( seq == null ) {
-				String code = backquote ? CommandSubstitutionStatement.backtickCode(text) : text;
+				String code = backquote ? backtickCode(text) : text;
 				try {
 					seq = Parser.parse(code);
 				} catch (SyntaxError e) {
@@ -1533,6 +1534,23 @@ public final class Executor {
 		public void warning(String message) {
 			error(sc, message);
 		}
+	}
+
+	/**
+	 * The command in `...`: as in bash, \` \\ and \$ there stand for the character (so
+	 * `echo \`date\`` nests); another backslash is kept.
+	 */
+	static String backtickCode(String code) {
+		StringBuilder ret = new StringBuilder();
+		for (int i = 0; i < code.length(); i++) {
+			char c = code.charAt(i);
+			if( c == '\\' && i+1 < code.length() && "`\\$".indexOf(code.charAt(i+1)) >= 0 ) {
+				ret.append(code.charAt(++i));
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
 	}
 
 	/** $(< file): the file's text, without running anything; null if seq is not that */

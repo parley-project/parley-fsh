@@ -6,7 +6,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import us.bringardner.fsh.ConsoleSignal;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.SignalEnabledThread;
-import us.bringardner.fsh.antlr.signal.ExitException;
+import us.bringardner.fsh.signal.ExitException;
 
 public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	

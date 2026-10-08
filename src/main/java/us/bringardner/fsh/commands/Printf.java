@@ -71,7 +71,7 @@ public class Printf extends ShellCommand{
 			// -v 'a[1]', -v 'm[key]'
 			Object cur = ctx.getVariable(element.group(1));
 			Object key = cur instanceof java.util.Map<?,?> ? element.group(2)
-					: (Object) us.bringardner.fsh.antlr.Arithmetic.expandAndEvaluate(element.group(2), ctx).intValue();
+					: (Object) us.bringardner.fsh.expand.Arithmetic.evaluate(element.group(2), ctx).intValue();
 			ctx.setVariable(element.group(1), key, out.toString());
 		} else if( var != null ) {
 			ctx.setVariable(var, out.toString());

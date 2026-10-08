@@ -6,7 +6,7 @@ import java.util.List;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.statement.JobControlStatement;
+import us.bringardner.fsh.job.JobSpecs;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobManager;
 import us.bringardner.fsh.job.JobState;
@@ -48,7 +48,7 @@ public class Bg extends ShellCommand{
 		//  %[0-9] is parse as signed number rather that jobSpec
 		for (int idx = 0; idx < args.length; idx++) {
 			String tmp = ""+args[idx].getValue(ctx);
-			int i = JobControlStatement.parseJobSpec(jm, tmp);
+			int i = JobSpecs.parse(jm, tmp);
 			if( i >=0) {
 				jobs.add(i);
 			}

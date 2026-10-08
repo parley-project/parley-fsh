@@ -25,7 +25,7 @@ public class ForgroundJob extends AbstractJob {
 		ShellContext ctx = getShellContext();
 		setState(JobState.Running);		
 		console = ctx.console;
-		int ret=console.executeUsingAntlr(ctx,code);
+		int ret=console.executeScript(ctx,code);
 		setState(JobState.Termnated);
 		return ret;
 	}

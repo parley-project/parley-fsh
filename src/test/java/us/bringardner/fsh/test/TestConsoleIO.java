@@ -21,7 +21,7 @@ import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ConsoleIO;
 import us.bringardner.fsh.FshList;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
+import us.bringardner.fsh.Argument;
 import us.bringardner.fsh.job.ForgroundJob;
 
 /** The UI-neutral console: output to a view, typed input, line editing. No UI toolkit. */

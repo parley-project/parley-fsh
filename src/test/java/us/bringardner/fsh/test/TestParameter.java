@@ -11,9 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.FileSourceShPreProcessorVisitorImpl;
 
 public class TestParameter extends AbstractConsoleTest {
+
+	/** text expanded as a word (its blanks kept) */
+	private static String expand(String code, ShellContext ctx) {
+		return us.bringardner.fsh.exec.Executor.expanderFor(ctx).string(
+				us.bringardner.fsh.syntax.Parser.fragment(code, us.bringardner.fsh.syntax.Parser.Fragment.WORD));
+	}
+
 
 	@Test
 	public void testParameter01() throws IOException {
@@ -21,7 +27,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("name", "tony");
 		String expect = "hello tony";
 		String code = "hello ${name-unset}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);
 
@@ -33,7 +39,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//ctx.setVariable("name", "tony");
 		String expect = "hello unset";
 		String code = "hello ${name-unset}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);
 
@@ -44,7 +50,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("name", "tony");
 		String expect = "hello tony";
 		String code = "hello ${name:-unset}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);
 
@@ -56,7 +62,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//ctx.setVariable("name", "tony");
 		String expect = "hello unset";
 		String code = "hello ${name:-unset}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -67,7 +73,7 @@ public class TestParameter extends AbstractConsoleTest {
 		//ctx.setVariable("name", "tony");
 		String expect = "hello tony";
 		String code = "hello ${name:=tony}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 		String val = ""+ctx.getVariable("name");
@@ -87,7 +93,7 @@ public class TestParameter extends AbstractConsoleTest {
 
 		String expectErr = "bad stuff is happending";
 		String code = "echo hello ${name:?"+expectErr+"}";
-		exitCode= ctx.console.executeUsingAntlr(code);
+		exitCode= ctx.console.executeScript(code);
 		
 
 		//ctx.setVariable("name", "tony");
@@ -108,7 +114,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "7890abcdefgh";
 		String code = "${string:7}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 
@@ -121,7 +127,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("start", "7");
 		String expect = "7890abcdefgh";
 		String code = "${string:$start}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 
@@ -133,7 +139,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "";
 		String code = "${string:7:0}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 
@@ -147,7 +153,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "78";
 		String code = "${string:7:2}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 
@@ -158,7 +164,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "7890abcdef";
 		String code = "${string:7:-2}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);	
 
@@ -170,7 +176,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "bcdefgh";
 		String code = "${string: -7}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -181,7 +187,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "";
 		String code = "${string: -7:0}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -192,7 +198,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "bc";
 		String code = "${string: -7:2}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -203,7 +209,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("string", "01234567890abcdefgh");
 		String expect = "bcdef";
 		String code = "${string: -7:-2}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -214,7 +220,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("array",0, "01234567890abcdefgh");
 		String expect = "bc";
 		String code = "${array[0]: -7:2}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}
@@ -225,7 +231,7 @@ public class TestParameter extends AbstractConsoleTest {
 		ctx.setVariable("array",0, "01234567890abcdefgh");
 		String expect = "bcdef";
 		String code = "${array[0]: -7:-2}";
-		String actual = FileSourceShPreProcessorVisitorImpl.processString(code, ctx);
+		String actual = expand(code, ctx);
 		//System.out.println("actual = "+actual);
 		assertEquals(expect, actual);		
 	}

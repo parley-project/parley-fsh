@@ -31,7 +31,7 @@ public class Eval extends ShellCommand{
 		}
 		String code = buf.toString().trim();
 		if( !code.isEmpty()) {
-			ret = ctx.console.executeUsingAntlr(code);
+			ret = ctx.console.executeScript(code);
 		}
 		
 		return ret;

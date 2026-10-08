@@ -35,7 +35,7 @@ public class Builtin extends ShellCommand{
 		return run(con, Arrays.copyOfRange(args, 1, args.length), ctx);
 	}
 
-	static int run(Constructor<? extends ShellCommand> con, us.bringardner.fsh.antlr.Argument[] args, ShellContext ctx) throws IOException {
+	static int run(Constructor<? extends ShellCommand> con, us.bringardner.fsh.Argument[] args, ShellContext ctx) throws IOException {
 		try {
 			ShellCommand cmd = con.newInstance();
 			cmd.setArgs(args);

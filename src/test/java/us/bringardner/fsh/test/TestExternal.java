@@ -21,9 +21,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.InteractiveInput;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.FileSourceShVisitorImpl;
-import us.bringardner.fsh.antlr.Statement;
-import us.bringardner.fsh.antlr.signal.ExitException;
+import us.bringardner.fsh.signal.ExitException;
 
 
 public class TestExternal extends AbstractConsoleTest {
@@ -409,7 +407,7 @@ public class TestExternal extends AbstractConsoleTest {
 		TypedInput typed = new TypedInput();
 		sc.stdin = typed;
 
-		assertEquals(0, c.executeUsingAntlr(sc, "/bin/echo hi"));
+		assertEquals(0, c.executeScript(sc, "/bin/echo hi"));
 		assertEquals("hi\n", out.toString());
 
 		// the next line belongs to the shell, not to the finished command
@@ -429,11 +427,10 @@ public class TestExternal extends AbstractConsoleTest {
 		ShellContext sc = new ShellContext(c);
 		sc.stdin = new ByteArrayInputStream(new byte[0]);
 
-		Statement sleep = FileSourceShVisitorImpl.parse("/bin/sleep 47").get(0);
-		// run the statement directly: Console.exit would call System.exit off the JUnit thread
+		// run the command directly: Console.exit would call System.exit off the JUnit thread
 		Thread job = new Thread(() -> {
 			try {
-				sleep.process(sc);
+				us.bringardner.fsh.exec.Executor.run(sc, "/bin/sleep 47");
 			} catch (Exception e) {
 				// ExitException is expected
 			}

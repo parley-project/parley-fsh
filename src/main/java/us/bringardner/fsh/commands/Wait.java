@@ -6,8 +6,8 @@ import java.util.List;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.statement.JobControlStatement;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.job.JobSpecs;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobState;
 import us.bringardner.fsh.job.JobManager;
@@ -83,7 +83,7 @@ public class Wait extends ShellCommand{
 					}
 				}
 			} else {
-				int id = JobControlStatement.parseJobSpec(jm, val);
+				int id = JobSpecs.parse(jm, val);
 				IJob job = jm.getJob(id);
 				if( job!=null) {
 					jobs.add(job);

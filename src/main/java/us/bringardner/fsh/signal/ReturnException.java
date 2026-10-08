@@ -1,4 +1,4 @@
-package us.bringardner.fsh.antlr.signal;
+package us.bringardner.fsh.signal;
 
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.commands.Return;

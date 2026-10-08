@@ -9,8 +9,8 @@ import java.util.Map.Entry;
 import us.bringardner.fsh.ConsoleSignal;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Argument;
-import us.bringardner.fsh.antlr.statement.JobControlStatement;
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.job.JobSpecs;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobManager;
 
@@ -77,7 +77,7 @@ public class Kill extends ShellCommand{
 				processes.add(Long.parseLong(val));
 			} else {
 				
-				int id = JobControlStatement.parseJobSpec(jm, val);
+				int id = JobSpecs.parse(jm, val);
 				IJob job = jm.getJob(id);
 				if( job==null) {
 					ctx.stderr.println("kill: ("+val+") - No such process");
@@ -194,7 +194,7 @@ public class Kill extends ShellCommand{
 				// ignored by default
 				return 0;
 			}
-			throw new us.bringardner.fsh.antlr.signal.ExitException(ctx, 128+signum);
+			throw new us.bringardner.fsh.signal.ExitException(ctx, 128+signum);
 		}
 		java.util.Optional<ProcessHandle> p = ProcessHandle.of(pid);
 		if( p.isEmpty() || !p.get().isAlive()) {

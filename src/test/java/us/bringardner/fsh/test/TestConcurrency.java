@@ -15,9 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.FileSourceShVisitorImpl;
-import us.bringardner.fsh.antlr.Statement;
-import us.bringardner.fsh.antlr.signal.ExitException;
+import us.bringardner.fsh.signal.ExitException;
 
 public class TestConcurrency {
 
@@ -35,10 +33,9 @@ public class TestConcurrency {
 	 * Run a statement on its own thread (Console.exit would call System.exit off the JUnit thread).
 	 */
 	private static Thread start(String code, ShellContext ctx) throws Exception {
-		Statement stmt = FileSourceShVisitorImpl.parse(code).get(0);
 		Thread t = new Thread(() -> {
 			try {
-				stmt.process(ctx);
+				us.bringardner.fsh.exec.Executor.run(ctx, code);
 			} catch (Exception e) {
 				// ExitException is expected
 			}

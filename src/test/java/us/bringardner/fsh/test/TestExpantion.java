@@ -1,11 +1,9 @@
 package us.bringardner.fsh.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static us.bringardner.fsh.test.TestVisitor.parse;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.List;
 
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
@@ -13,7 +11,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.Statement;
+import us.bringardner.fsh.exec.Executor;
 
 
 @TestMethodOrder(OrderAnnotation.class)
@@ -34,9 +32,6 @@ public class TestExpantion {
 		//conf # :rri491aak452
 		//desk 740-922-0774
 		//System.out.println(cmd);
-		List<Statement> stmts = parse(cmd);
-		assertEquals(5, stmts.size());
-
 		Console console = new Console();
 		ShellContext ctx = new ShellContext(console);
 		
@@ -45,9 +40,7 @@ public class TestExpantion {
 		ctx.stdout=(new PrintStream(bao));
 		
 		
-		for(Statement stmt : stmts) {
-			stmt.process(ctx);
-		}
+		Executor.run(ctx, cmd);
 		
 		String expect = "this is a double quoted string value\n"
 				+ "this is a single quoted string $v\n";

@@ -82,8 +82,7 @@
 	</profiles>
 
 	<build>
-		<!-- Eclipse has resources/ and generated/ (the generated ANTLR parser) as source
-		     folders; Maven has to be told, or it can't build the project (BJL-25).
+		<!-- Eclipse has resources/ as a source folder; Maven has to be told (BJL-25).
 		     The IDE (and its images) moved to fsh-ide (BJL-88). -->
 		<resources>
 			<resource>
@@ -94,25 +93,6 @@
 			</resource>
 		</resources>
 		<plugins>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.6.0</version>
-				<executions>
-					<execution>
-						<id>add-generated-parser</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>add-source</goal>
-						</goals>
-						<configuration>
-							<sources>
-								<source>generated</source>
-							</sources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -174,7 +154,6 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- The parser in generated/ needs only the ANTLR runtime -->
 		<!-- Only for us.bringardner.fsh.ssh (fsh as the shell of a parley-ssh server). Optional: a
 		     program that runs an SshServer has parley-ssh already, and fsh itself doesn't need it. -->
 		<dependency>
@@ -182,18 +161,6 @@
 			<artifactId>parley-ssh</artifactId>
 			<version>${parley.version}</version>
 			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.antlr</groupId>
-			<artifactId>antlr4-runtime</artifactId>
-			<version>4.13.2</version>
-		</dependency>
-		<!-- The full tool, for the test utilities that regenerate the parser (AntlrBuild*) -->
-		<dependency>
-			<groupId>org.antlr</groupId>
-			<artifactId>antlr4</artifactId>
-			<version>4.13.2</version>
-			<scope>test</scope>
 		</dependency>
 
 		<!-- The tests use JUnit 5 (plus JUnit 4's Assert in places) -->
