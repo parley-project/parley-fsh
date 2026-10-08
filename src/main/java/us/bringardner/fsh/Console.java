@@ -121,12 +121,12 @@ public class Console extends SignalEnabledThread {
 	public static class FileDiscriptor {
 
 		/** the source of a copy of another descriptor (exec 3>&1): closing the copy leaves the stream open */
-		private static final Object SHARED = new Object();
+		public static final Object SHARED = new Object();
 
-		int id;
-		InputStream in;
-		PrintStream out;
-		Object source;
+		public int id;
+		public InputStream in;
+		public PrintStream out;
+		public Object source;
 
 		public static FileDiscriptor shared(int id, PrintStream out) {
 			return new FileDiscriptor(id, out, SHARED);
@@ -3726,6 +3726,9 @@ delimiter
 	/**
 	 * Forget a file descriptor without closing its stream (n>&m- moved it to n).
 	 */
+	/** {name}>file descriptors, which stay after the command that opened them */
+	public final Map<Integer,FileDiscriptor> keptFds = new java.util.concurrent.ConcurrentHashMap<>();
+
 	public FileDiscriptor removeFileDistcriptor(int id) {
 		getFiles();
 		return files.remove(id);

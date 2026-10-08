@@ -654,6 +654,9 @@ public final class Executor {
 		int writeFd = freeDescriptor(sc, 60, readFd);
 		sc.console.setFileDistcriptor(new Console.FileDiscriptor(readFd, fromCoproc.in, null));
 		sc.console.setFileDistcriptor(new Console.FileDiscriptor(writeFd, new PrintStream(toCoproc.out, true), null));
+		// (they stay after the command they are in)
+		sc.console.keptFds.put(readFd, sc.console.getFileDistcriptor(readFd));
+		sc.console.keptFds.put(writeFd, sc.console.getFileDistcriptor(writeFd));
 		ShellContext ctx = sc.subShell();
 		ctx.stdin = toCoproc.in;
 		ctx.stdout = new PrintStream(fromCoproc.out, true);
@@ -1610,8 +1613,9 @@ public final class Executor {
 				early.restore(sc);
 				throw e;
 			} catch (Exception e) {
-				early.restore(sc);
+				// (said where standard error is by then: 2>&1 >&bad says it on the 1)
 				error(sc, message(e));
+				early.restore(sc);
 				sc.console.setLastExitCode(1);
 				return 1;
 			}
@@ -1848,7 +1852,7 @@ public final class Executor {
 				// on the shell's standard error, not the command's (2>&1 does not take it)
 				trace(name, args, sc);
 			}
-			opened = Redirects.apply(c.redirects, sc, ex);
+			opened = Redirects.apply(c.redirects, sc, ex, keepRedirects);
 			ret = dispatch(name, args, sc, ex);
 		} catch (ReturnException e) {
 			status = e.exitCode;

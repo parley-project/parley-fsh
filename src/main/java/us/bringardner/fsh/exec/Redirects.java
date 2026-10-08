@@ -28,16 +28,75 @@ final class Redirects {
 	private Redirects() {
 	}
 
-	/** the streams of a context, to put back after a command */
-	record Saved(InputStream in, PrintStream out, PrintStream err) {
+	/**
+	 * The streams of a context, and where its redirects' changes to the shell's descriptors above
+	 * 2 begin, to put back after a command (cmd 4>file, cmd 4>&- are the command's; only exec
+	 * keeps them, and {name} ones stay, as in bash).
+	 */
+	record Saved(InputStream in, PrintStream out, PrintStream err, int mark) {
 		static Saved of(ShellContext sc) {
-			return new Saved(sc.stdin, sc.stdout, sc.stderr);
+			return new Saved(sc.stdin, sc.stdout, sc.stderr, CHANGES.get().size());
 		}
 
 		void restore(ShellContext sc) {
 			sc.stdin = in;
 			sc.stdout = out;
 			sc.stderr = err;
+			// (this thread's changes since, last first)
+			List<Object[]> changes = CHANGES.get();
+			for (int i = changes.size()-1; i >= mark; i--) {
+				int id = (Integer) changes.get(i)[0];
+				FileDiscriptor before = (FileDiscriptor) changes.get(i)[1];
+				changes.remove(i);
+				FileDiscriptor current = sc.console.getFiles().get(id);
+				if( current == before || current != null && sc.console.keptFds.get(id) == current ) {
+					continue;
+				}
+				if( current != null ) {
+					// (one the command opened: closed; the shell's is not)
+					sc.console.removeFileDistcriptor(id);
+					closeQuietly(sc, current);
+				}
+				if( before != null ) {
+					sc.console.getFiles().put(id, before);
+				}
+			}
+		}
+	}
+
+	/** the descriptors above 2 the redirects of the running commands changed: {id, what it was} */
+	private static final ThreadLocal<List<Object[]>> CHANGES = ThreadLocal.withInitial(ArrayList::new);
+
+	/** a descriptor's stream a command opened (not a copy of another one) */
+	private static void closeQuietly(ShellContext sc, FileDiscriptor fd) {
+		if( fd.source == FileDiscriptor.SHARED ) {
+			if( fd.out != null ) {
+				fd.out.flush();
+			}
+			return;
+		}
+		try {
+			if( fd.out != null ) {
+				fd.out.close();
+			}
+			if( fd.in != null ) {
+				fd.in.close();
+			}
+		} catch (IOException e) {
+		}
+	}
+
+	/** the redirects being applied are exec's, which stay (others are put back: the shell's streams are not closed) */
+	private static final ThreadLocal<Boolean> PERMANENT = ThreadLocal.withInitial(() -> false);
+
+	/** descriptor n gets fd: exec closes the one it had; a command's stays for when it is put back */
+	private static void setDescriptor(ShellContext sc, FileDiscriptor fd) {
+		if( PERMANENT.get()) {
+			sc.console.setFileDistcriptor(fd);
+			sc.console.keptFds.remove(fd.id);
+		} else {
+			CHANGES.get().add(new Object[] {fd.id, sc.console.getFileDistcriptor(fd.id)});
+			sc.console.getFiles().put(fd.id, fd);
 		}
 	}
 
@@ -47,7 +106,14 @@ final class Redirects {
 	 * Streams given to a descriptor above 2 stay open until it is closed (exec 3>&-).
 	 */
 	static List<Closeable> apply(List<Ast.Redirect> redirects, ShellContext sc, Expander ex) throws IOException {
+		return apply(redirects, sc, ex, false);
+	}
+
+	/** permanent: exec's redirects (the descriptors they replace or close are closed for good) */
+	static List<Closeable> apply(List<Ast.Redirect> redirects, ShellContext sc, Expander ex, boolean permanent) throws IOException {
 		List<Closeable> opened = new ArrayList<>();
+		boolean was = PERMANENT.get();
+		PERMANENT.set(permanent);
 		try {
 			for(Ast.Redirect r : redirects) {
 				redirect(r, sc, ex, opened);
@@ -55,6 +121,8 @@ final class Redirects {
 		} catch (IOException | RuntimeException e) {
 			close(opened);
 			throw e;
+		} finally {
+			PERMANENT.set(was);
 		}
 		return opened;
 	}
@@ -104,9 +172,12 @@ final class Redirects {
 				close(sc, fd);
 				throw e;
 			}
-			if( us.bringardner.fsh.Glob.option(sc, "varredir_close")) {
+			if( us.bringardner.fsh.Glob.option(sc, "varredir_close") && !PERMANENT.get()) {
 				// shopt -s varredir_close: closed when the command is done (exec keeps it)
-				opened.add(() -> close(sc, fd));
+				opened.add(() -> sc.console.closeFileDistcriptor(fd));
+			} else if( sc.console.getFileDistcriptor(fd) != null ) {
+				// (it stays after the command)
+				sc.console.keptFds.put(fd, sc.console.getFileDistcriptor(fd));
 			}
 		}
 	}
@@ -292,7 +363,7 @@ final class Redirects {
 			} else if( n == 2 ) {
 				sc.stderr = ps;
 			} else {
-				sc.console.setFileDistcriptor(FileDiscriptor.shared(n, ps));
+				setDescriptor(sc, FileDiscriptor.shared(n, ps));
 			}
 		} else {
 			InputStream in = getIn(sc, m);
@@ -302,7 +373,7 @@ final class Redirects {
 			if( n == 0 ) {
 				sc.stdin = in;
 			} else {
-				sc.console.setFileDistcriptor(FileDiscriptor.shared(n, in));
+				setDescriptor(sc, FileDiscriptor.shared(n, in));
 			}
 		}
 		if( move && m > 2 ) {
@@ -344,8 +415,13 @@ final class Redirects {
 		} else if( n == 2 ) {
 			sc.stderr.flush();
 			sc.stderr = new PrintStream(OutputStream.nullOutputStream());
-		} else {
+		} else if( PERMANENT.get()) {
 			sc.console.closeFileDistcriptor(n);
+			sc.console.keptFds.remove(n);
+		} else {
+			// (put back after the command)
+			CHANGES.get().add(new Object[] {n, sc.console.getFileDistcriptor(n)});
+			sc.console.removeFileDistcriptor(n);
 		}
 	}
 
@@ -357,7 +433,7 @@ final class Redirects {
 			sc.stderr = out;
 			opened.add(out);
 		} else {
-			sc.console.setFileDistcriptor(new FileDiscriptor(n, out, file));
+			setDescriptor(sc, new FileDiscriptor(n, out, file));
 		}
 	}
 
@@ -366,7 +442,7 @@ final class Redirects {
 			sc.stdin = in;
 			opened.add(in);
 		} else {
-			sc.console.setFileDistcriptor(new FileDiscriptor(n, in, null));
+			setDescriptor(sc, new FileDiscriptor(n, in, null));
 		}
 	}
 
@@ -389,7 +465,7 @@ final class Redirects {
 			};
 			FileDiscriptor fd = new FileDiscriptor(n, in, null);
 			fd.setOut(new PrintStream(out, true));
-			sc.console.setFileDistcriptor(fd);
+			setDescriptor(sc, fd);
 			if( n == 0 ) {
 				sc.stdin = in;
 			}
@@ -423,7 +499,7 @@ final class Redirects {
 		};
 		FileDiscriptor fd = new FileDiscriptor(n, in, rad);
 		fd.setOut(new PrintStream(out));
-		sc.console.setFileDistcriptor(fd);
+		setDescriptor(sc, fd);
 		if( n == 0 ) {
 			sc.stdin = in;
 		}
