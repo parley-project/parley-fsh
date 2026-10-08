@@ -1448,6 +1448,11 @@ public final class Executor {
 			}
 			try {
 				for(Ast.Assignment a : c.assignments) {
+					if( a.index != null ) {
+						// x[0]=v cmd: no element is given to a command (bash's)
+						error(sc, "`"+a.name+"["+a.index+"]': not a valid identifier");
+						continue;
+					}
 					String v = a.value == null ? "" : ex.assignment(a.value);
 					if( a.append ) {
 						Object before = ShellContext.firstElement(sc.getVariable(a.name));

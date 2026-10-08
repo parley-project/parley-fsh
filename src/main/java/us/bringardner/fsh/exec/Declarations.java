@@ -75,8 +75,11 @@ public final class Declarations {
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
 			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0);
 		}
-		if( isLocal && items.isEmpty() && o.isEmpty()) {
-			// local: the function's own variables
+		if( isLocal && items.isEmpty() && (o.isEmpty() || o.equals("p"))) {
+			// local, local -p: the function's own variables (local - first)
+			if( sc.hasLocalOptions()) {
+				sc.stdout.println("local -");
+			}
 			for(String n : new TreeSet<>(sc.ownLocalNames())) {
 				Object v = sc.getVariable(n);
 				if( v != null || sc.rawVariable(n) instanceof ShellContext.NameRef ) {
@@ -190,6 +193,11 @@ public final class Declarations {
 					}
 				}
 			}
+			if( name.equals("-") && isLocal && assignment == null && text == null ) {
+				// local -: the set -o options are the function's (put back when it returns)
+				sc.localOptions();
+				continue;
+			}
 			if( !Executor.isName(name)) {
 				error(command, "`"+(item instanceof String s ? s : name)+"': not a valid identifier");
 				status = 1;
@@ -271,6 +279,10 @@ public final class Declarations {
 						sc.error(name+": readonly variable");
 					}
 				} else {
+					if( assignment != null && assignment.array != null ) {
+						// (local x=(..) of a readonly x: the assignment says it too, as bash's)
+						sc.error(name+": readonly variable");
+					}
 					error(command, name+": readonly variable");
 				}
 				status = 1;
@@ -396,6 +408,14 @@ public final class Declarations {
 				}
 				continue;
 			}
+			if( local && sc.isInFunction() && !sc.isOwnLocal(name) && us.bringardner.fsh.Glob.option(sc, "localvar_inherit")) {
+				// shopt -s localvar_inherit: the local starts with the value (and attributes) it has
+				Object inherited = sc.getVariable(name);
+				if( inherited != null ) {
+					sc.localAttributes(name);
+					sc.setLocalVariable(name, copy(inherited));
+				}
+			}
 			Object existing = local && !sc.isOwnLocal(name) ? null : sc.getVariable(name);
 			// (declare a='(1 2)' of an array that is there: its words, as bash does)
 			boolean arrays = !remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0 || existing instanceof List<?> || existing instanceof Map<?,?>);
@@ -425,6 +445,11 @@ public final class Declarations {
 			if( assignment != null ) {
 				if( values.get(n) != null ) {
 					String v = (String) values.get(n);
+					if( assignment.append && sc.isOwnLocal(name)) {
+						// local x+=v of a value it started with (localvar_inherit)
+						Object before = ShellContext.firstElement(sc.getVariable(name));
+						v = sc.console.isInteger(name) ? (before == null ? "0" : before)+"+("+v+")" : (before == null ? "" : before)+v;
+					}
 					val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc)) : v;
 				} else if( assignment.index != null ) {
 					if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
@@ -456,10 +481,16 @@ public final class Declarations {
 			// declare -g in a function: the global (readonly and export: a local if there is one)
 			boolean toGlobal = o.indexOf('g') >= 0 && sc.isInFunction()
 					&& !((command.equals("readonly") || command.equals("export")) && sc.hasLocal(name));
-			Object old = local ? null : toGlobal ? sc.globalRaw(name) : sc.getVariable(name);
+			Object old = local ? (sc.isOwnLocal(name) ? sc.getVariable(name) : null) : toGlobal ? sc.globalRaw(name) : sc.getVariable(name);
+			if( o.indexOf('a') >= 0 && o.indexOf('A') < 0 && !remove && old instanceof Map<?,?> ) {
+				// declare -a of an associative array
+				error(command, name+": cannot convert associative to indexed array");
+				status = 1;
+				continue;
+			}
 			if( o.indexOf('A') >= 0 && !remove && old instanceof FshList ) {
-				// declare -A of an indexed array
-				if( sc.isInFunction()) {
+				// declare -A of an indexed array (an assignment says so too)
+				if( sc.isInFunction() && (assignment != null || text != null)) {
 					sc.error(ShellContext.firstElement(sc.getVariable("FUNCNAME"))+": "+name+": cannot convert indexed to associative array");
 				}
 				error(command, name+": cannot convert indexed to associative array");
@@ -485,7 +516,12 @@ public final class Declarations {
 			if( val == null && !remove ) {
 				// declare -A m, declare -a a: an empty array (an existing one stays)
 				if( o.indexOf('A') >= 0 && !(old instanceof Map<?,?>)) {
-					val = new TreeMap<String,Object>();
+					// (a value it has is its element "0")
+					TreeMap<String,Object> map = new TreeMap<>();
+					if( old != null && !(old instanceof List<?>)) {
+						map.put("0", old);
+					}
+					val = map;
 				} else if( o.indexOf('a') >= 0 && !(old instanceof List<?>)) {
 					// declare -a x: an existing value becomes its element 0
 					FshList list = new FshList();
@@ -555,6 +591,21 @@ public final class Declarations {
 		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
 		}
 		return null;
+	}
+
+	/** a value to start a local with (an array: its own copy) */
+	private static Object copy(Object v) {
+		if( v instanceof FshList f ) {
+			return copyOf(f);
+		}
+		if( v instanceof Map<?,?> m ) {
+			Map<String,Object> ret = new TreeMap<>();
+			for(Map.Entry<?,?> e : m.entrySet()) {
+				ret.put(String.valueOf(e.getKey()), e.getValue());
+			}
+			return ret;
+		}
+		return v;
 	}
 
 	private static FshList copyOf(FshList list) {
@@ -685,7 +736,8 @@ public final class Declarations {
 			return "declare -"+flags(name, val)+" "+name+(target.isEmpty() ? "" : "="+quote(target));
 		}
 		String flags = flags(name, val);
-		if( (sc.console.declaredUnset.contains(name) || sc.isDeclaredLocal(name) || val == null && name.equals("FUNCNAME")) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
+		boolean declaredOnly = sc.hasLocal(name) ? sc.isDeclaredLocal(name) : sc.console.declaredUnset.contains(name);
+		if( (declaredOnly || val == null && name.equals("FUNCNAME")) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
 			// declared, never given a value
 			return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name;
 		}
@@ -752,7 +804,7 @@ public final class Declarations {
 		}
 		boolean quote = k.startsWith("~") || k.startsWith("#");
 		for (int i = 0; i < k.length() && !quote; i++) {
-			quote = " \t\n'\"\\|&;()<>!{}*[?]^$`".indexOf(k.charAt(i)) >= 0;
+			quote = " \t\n'\"\\|&;()<>!{}*[?]^$`@".indexOf(k.charAt(i)) >= 0;
 		}
 		if( !quote ) {
 			return k;

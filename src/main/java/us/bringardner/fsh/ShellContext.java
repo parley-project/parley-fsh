@@ -602,6 +602,10 @@ $
 				error("BASH_XTRACEFD: "+value+": invalid value for trace file descriptor");
 			}
 		}
+		if( name.equals("IGNOREEOF") && !console.isOptionEnabled(Console.Option.IgnoreEof)) {
+			// as bash: IGNOREEOF set is set -o ignoreeof
+			console.enableOptionQuietly(Console.Option.IgnoreEof, value != null);
+		}
 		if( name.equals("POSIXLY_CORRECT") && value != null ) {
 			// as bash: setting it turns on posix mode
 			console.setOption(Console.Option.Posix, true);
@@ -727,6 +731,11 @@ $
 			throw new ReadonlyException(name);
 		}
 		FunctionInvocation scope = localScope(name);
+		if( scope != null && scope != functionStack.peek()) {
+			// a caller's local: gone, so what is below it (the global) is seen again (bash's)
+			scope.local.remove(name);
+			return true;
+		}
 		if( scope != null ) {
 			scope.local.put(name, UNSET_LOCAL);
 			return true;
@@ -1132,6 +1141,18 @@ $
 	}
 
 	/** name is a local variable of the running function itself (not a caller's) */
+	/** local -: the set -o options are put back when the running function returns */
+	public void localOptions() {
+		if( !functionStack.isEmpty() && functionStack.peek().savedOptions == null ) {
+			functionStack.peek().savedOptions = console.snapshotOptions();
+		}
+	}
+
+	/** local - was done in the running function */
+	public boolean hasLocalOptions() {
+		return !functionStack.isEmpty() && functionStack.peek().savedOptions != null;
+	}
+
 	/** local x: x's readonly and integer attributes before, kept to put back when the function returns */
 	public void localAttributes(String name) {
 		if( !functionStack.isEmpty()) {
@@ -1347,6 +1368,8 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
+		/** local -: the set -o options when it ran (put back when it returns), or null */
+		List<Console.Option> savedOptions;
 		/** readonly and integer of the names it made locals of, before (put back when it returns) */
 		final Map<String,boolean[]> attributesBefore = new java.util.HashMap<>();
 		/** local -l / -u attributes of this function's variables */
@@ -1425,6 +1448,10 @@ $
 
 	public void exitFunction(ShellFunction functionDefStatement) {
 		FunctionInvocation inv = functionStack.pop();
+		if( inv.savedOptions != null ) {
+			// local -: the options as they were
+			console.restoreOptions(inv.savedOptions);
+		}
 		for(Map.Entry<String,boolean[]> e : inv.attributesBefore.entrySet()) {
 			// (local -r x, local -i x: the attributes were the local's)
 			if( e.getValue()[0] ) {

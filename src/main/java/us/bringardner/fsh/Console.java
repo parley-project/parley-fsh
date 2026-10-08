@@ -2983,6 +2983,30 @@ delimiter
 		}
 	}
 
+	/** an option on or off, without what setOption does besides */
+	public void enableOptionQuietly(Option o, boolean enable) {
+		if( !enable ) {
+			optionList().remove(o);
+		} else if( !optionList().contains(o)) {
+			optionList().add(o);
+		}
+	}
+
+	/** the set -o options on now (local - keeps them, to put back) */
+	public List<Option> snapshotOptions() {
+		return new ArrayList<>(optionList());
+	}
+
+	/** set -o options as they were (a function with local - returns) */
+	public void restoreOptions(List<Option> saved) {
+		for(Option o : Option.values()) {
+			boolean want = saved.contains(o);
+			if( want != optionList().contains(o)) {
+				setOption(o, want);
+			}
+		}
+	}
+
 	/** $SHELLOPTS: the set -o options that are on, by name, : between */
 	public String shellOpts() {
 		java.util.TreeSet<String> on = new java.util.TreeSet<>();

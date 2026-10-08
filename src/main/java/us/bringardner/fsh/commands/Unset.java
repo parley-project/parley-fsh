@@ -121,6 +121,10 @@ public class Unset extends ShellCommand{
 				}
 				ctx.console.pendingExports.remove(text);
 				boolean declared = ctx.console.declaredUnset.remove(text);
+				if( text.equals("IGNOREEOF")) {
+					// (set +o ignoreeof)
+					ctx.console.enableOptionQuietly(us.bringardner.fsh.Console.Option.IgnoreEof, false);
+				}
 				if( !ctx.unSetVariable(text, !reference) && !declared ) {
 					if( !variables ) {
 						// as in bash, a name that is no variable may be a function

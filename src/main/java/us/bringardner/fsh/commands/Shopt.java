@@ -97,13 +97,18 @@ public class Shopt extends ShellCommand{
 			}
 		}
 		if( !quiet ) {
-			print(ctx, show, null, setOptions, print, false);
+			// (named ones: in 20 columns, set -o's too)
+			print(ctx, show, null, setOptions, print, false, true);
 		}
 		return ret;
 	}
 
 	/** the options (only those on or off: which), as shopt or set -o shows them */
 	private static void print(ShellContext ctx, Map<String,Boolean> options, Boolean which, boolean setOptions, boolean print, boolean quiet) {
+		print(ctx, options, which, setOptions, print, quiet, false);
+	}
+
+	private static void print(ShellContext ctx, Map<String,Boolean> options, Boolean which, boolean setOptions, boolean print, boolean quiet, boolean named) {
 		if( quiet ) {
 			return;
 		}
@@ -115,7 +120,7 @@ public class Shopt extends ShellCommand{
 				ctx.stdout.println(setOptions ? "set "+(e.getValue() ? "-o " : "+o ")+e.getKey() : "shopt "+(e.getValue() ? "-s " : "-u ")+e.getKey());
 			} else {
 				// (as bash: set -o's names in 15 columns, shopt's in 20)
-				ctx.stdout.printf(setOptions ? "%-15s\t%s\n" : "%-20s\t%s\n", e.getKey(), e.getValue() ? "on" : "off");
+				ctx.stdout.printf(setOptions && !named ? "%-15s\t%s\n" : "%-20s\t%s\n", e.getKey(), e.getValue() ? "on" : "off");
 			}
 		}
 	}
