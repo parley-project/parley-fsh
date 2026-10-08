@@ -140,6 +140,10 @@ final class CommandPrinter {
 				ret = c;
 			}
 		}
+		if( ret == null ) {
+			// (time or ! with no command)
+			ret = new Node();
+		}
 		ret.invert = p.negated;
 		ret.time = p.timed;
 		ret.timePosix = p.timePosix;
@@ -199,6 +203,10 @@ final class CommandPrinter {
 		}
 		if( n.invert ) {
 			out.append("! ");
+		}
+		if( n.command == null && n.connector == null ) {
+			// (time or ! alone: bash leaves the space after it)
+			return;
 		}
 		if( n.command == null ) {
 			connection(n);

@@ -1527,12 +1527,16 @@ public final class Parser {
 		boolean prefixed = false;
 		while( true ) {
 			Token t = peek();
-			if( isWord(t, "time") && !p.timed ) {
+			if( isWord(t, "time")) {
+				// (time time ...: timed once; -p and -- may follow it, as bash's)
 				take();
 				p.timed = true;
 				if( isWord(peek(), "-p")) {
 					take();
 					p.timePosix = true;
+				}
+				if( isWord(peek(), "--")) {
+					take();
 				}
 			} else if( isWord(t, "!")) {
 				take();

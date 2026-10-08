@@ -415,15 +415,88 @@ public final class Executor {
 		return c instanceof Ast.SimpleCommand || c instanceof Ast.Subshell || c instanceof Ast.Arith || c instanceof Ast.Cond;
 	}
 
-	/** time: as bash prints it, on standard error */
+	/** time: as bash prints it, on standard error, in $TIMEFORMAT (bash's print_formatted_time) */
 	private static void time(Ast.Pipeline p, long start, ShellContext sc) {
-		double secs = (System.nanoTime()-start)/1e9;
+		long micros = (System.nanoTime()-start)/1000;
+		String format;
 		if( p.timePosix ) {
-			sc.stderr.printf("real %.2f%nuser 0.00%nsys 0.00%n", secs);
+			format = "real %2R\nuser %2U\nsys %2S";
 		} else {
-			long min = (long) (secs/60);
-			sc.stderr.printf("%nreal\t%dm%.3fs%nuser\t0m0.000s%nsys\t0m0.000s%n", min, secs-min*60);
+			Object f = sc.getVariable("TIMEFORMAT");
+			format = f != null ? String.valueOf(ShellContext.firstElement(f)) : "\nreal\t%3lR\nuser\t%3lU\nsys\t%3lS";
 		}
+		if( format.isEmpty()) {
+			return;
+		}
+		// (the CPU time of the programs is not known here: user and sys are 0)
+		StringBuilder out = new StringBuilder();
+		for (int i = 0; i < format.length(); i++) {
+			char c = format.charAt(i);
+			if( c != '%' || i+1 == format.length()) {
+				out.append(c);
+			} else if( format.charAt(i+1) == '%' ) {
+				out.append('%');
+				i++;
+			} else if( format.charAt(i+1) == 'P' ) {
+				out.append(timeText(2, false, 0));
+				i++;
+			} else {
+				int prec = 3;
+				boolean lng = false;
+				i++;
+				if( i < format.length() && Character.isDigit(format.charAt(i))) {
+					prec = Math.min(6, format.charAt(i++)-'0');
+				}
+				if( i < format.length() && format.charAt(i) == 'l' ) {
+					lng = true;
+					i++;
+				}
+				char k = i < format.length() ? format.charAt(i) : 0;
+				if( k == 'R' || k == 'E' ) {
+					out.append(timeText(prec, lng, micros));
+				} else if( k == 'U' || k == 'S' ) {
+					out.append(timeText(prec, lng, 0));
+				} else {
+					error(sc, "TIMEFORMAT: `"+(k == 0 ? "" : String.valueOf(k))+"': invalid format character");
+					return;
+				}
+			}
+		}
+		sc.stderr.println(out);
+		sc.stderr.flush();
+	}
+
+	/** bash's mkfmt: seconds with prec places (rounded), as [m]mSS.FFFs when lng */
+	private static String timeText(int prec, boolean lng, long micros) {
+		long sec = micros/1000000;
+		long frac = micros%1000000;
+		if( prec != 6 ) {
+			long[] maxvals = {1, 10, 100, 1000, 10000, 100000, 10000000};
+			long max = maxvals[6-prec];
+			long f = frac/max;
+			if( frac%max >= max/2 ) {
+				f++;
+			}
+			frac = f*(1000000/maxvals[prec]);
+		}
+		StringBuilder ret = new StringBuilder();
+		if( lng ) {
+			ret.append(sec/60).append('m');
+			sec %= 60;
+		}
+		ret.append(sec);
+		if( prec != 0 ) {
+			long[] precs = {0, 100000, 10000, 1000, 100, 10, 1};
+			ret.append('.');
+			for (int i = 1; i <= prec; i++) {
+				ret.append(frac/precs[i]);
+				frac %= precs[i];
+			}
+		}
+		if( lng ) {
+			ret.append('s');
+		}
+		return ret.toString();
 	}
 
 	/**
