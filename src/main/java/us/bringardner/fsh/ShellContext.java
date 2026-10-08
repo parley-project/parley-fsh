@@ -451,6 +451,12 @@ $
 			variableError("`"+name+"': not a valid identifier");
 			return;
 		}
+		if( name.equals("BASH_ALIASES") && !console.unsetSpecials.contains(name)
+				&& String.valueOf(index).chars().anyMatch(c -> " \t\n|&;()<>/$`=\\'\"".indexOf(c) >= 0)) {
+			// (as alias says it: bash's legal_alias_name)
+			error("`"+index+"': invalid alias name");
+			return;
+		}
 		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && !console.unsetSpecials.contains(name)) {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> m = (Map<String, Object>) getVariable(name);

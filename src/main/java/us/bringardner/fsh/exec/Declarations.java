@@ -603,7 +603,9 @@ public final class Declarations {
 				// (for an element only with -a or -A: declare a[1]='(x)' is the text)
 				boolean parens = t.startsWith("(") && t.endsWith(")");
 				boolean creating = o.indexOf('a') >= 0 || o.indexOf('A') >= 0;
-				Ast.Assignment c = parens && (assignment == null || assignment.index == null || creating) ? compound(name, t) : null;
+				// (readonly 'a=(3)' without -a is a plain assignment: element 0 is (3), as bash's)
+				boolean plainAssignment = (command.equals("readonly") || command.equals("export")) && !creating;
+				Ast.Assignment c = parens && !plainAssignment && (assignment == null || assignment.index == null || creating) ? compound(name, t) : null;
 				if( parens && c == null && !creating && !(existing instanceof List<?> || existing instanceof Map<?,?>)) {
 					sc.error("warning: "+name+"["+assignment.index+"]="+t+": quoted compound array assignment deprecated");
 				}

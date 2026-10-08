@@ -395,6 +395,18 @@ public class Test extends ShellCommand{
 			// (no file has no name)
 			return false;
 		}
+		java.util.regex.Matcher devfd = java.util.regex.Pattern.compile("/dev/fd/([0-9]+)").matcher(val);
+		if( devfd.matches() && Integer.parseInt(devfd.group(1)) > 2 ) {
+			// /dev/fd/n is the shell's descriptor n (its file, if it was opened on one)
+			us.bringardner.fsh.Console.FileDiscriptor d = ctx.console.getFileDistcriptor(Integer.parseInt(devfd.group(1)));
+			if( d == null ) {
+				return false;
+			}
+			if( !(d.source instanceof FileSource f)) {
+				return op.equals("-e") || op.equals("-a");
+			}
+			val = f.getAbsolutePath();
+		}
 		java.util.Map<String,Object> st = stat(ctx, val, !op.equals("-h") && !op.equals("-L"));
 		if( st != null || isLocal(ctx, val)) {
 			if( st == null ) {
