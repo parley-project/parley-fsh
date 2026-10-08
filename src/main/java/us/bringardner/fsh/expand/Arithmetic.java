@@ -902,6 +902,10 @@ public class Arithmetic {
 			// (quoted when it was expanded: as it is)
 			return unbackslash(sub);
 		}
+		if( us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")) {
+			// (expanded once already, as the words of let and (( )) are: as it is)
+			return sub;
+		}
 		if( expandSubscript != null && (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0 || sub.indexOf('\'') >= 0)) {
 			return expandSubscript.apply(ctx, sub);
 		}

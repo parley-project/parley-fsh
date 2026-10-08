@@ -1158,7 +1158,8 @@ public final class Expander {
 			}
 			return m.get(key);
 		}
-		long idx = evaluate(join(paramPieces(e.subscript))).longValue();
+		// (as in $(( )): no ~, and '...' is not removed)
+		long idx = evaluate(arithmeticText(Parser.arithmeticFragment(e.subscript))).longValue();
 		if( idx < 0 ) {
 			long size = v instanceof FshList f ? (f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1)
 					: v instanceof List<?> l ? l.size() : v == null ? 0 : 1;

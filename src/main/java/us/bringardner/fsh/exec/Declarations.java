@@ -529,8 +529,13 @@ public final class Declarations {
 			if( arrays && (text != null || assignment != null && assignment.array == null && !assignment.append && assignment.value != null)) {
 				// declare -a x='(1 2)': the value is read as x=(1 2) (as bash still does)
 				String t = assignment == null ? text : values.get(n) != null ? (String) values.get(n) : ex.assignment(assignment.value);
-				// (not for an element: declare a[1]='(x)' is the text)
-				Ast.Assignment c = t.startsWith("(") && t.endsWith(")") && (assignment == null || assignment.index == null) ? compound(name, t) : null;
+				// (for an element only with -a or -A: declare a[1]='(x)' is the text)
+				boolean parens = t.startsWith("(") && t.endsWith(")");
+				boolean creating = o.indexOf('a') >= 0 || o.indexOf('A') >= 0;
+				Ast.Assignment c = parens && (assignment == null || assignment.index == null || creating) ? compound(name, t) : null;
+				if( parens && c == null && !creating && !(existing instanceof List<?> || existing instanceof Map<?,?>)) {
+					sc.error("warning: "+name+"["+assignment.index+"]="+t+": quoted compound array assignment deprecated");
+				}
 				if( c != null ) {
 					assignment = c;
 					values.set(n, null);
@@ -574,14 +579,22 @@ public final class Declarations {
 					executor.assign(assignment, sc, ex, false);
 					continue;
 				} else {
-					val = executor.value(assignment, sc, ex, local && !assignment.append, o.indexOf('A') >= 0 || existing instanceof Map<?,?>);
+					try {
+						val = executor.value(assignment, sc, ex, local && !assignment.append, o.indexOf('A') >= 0 || existing instanceof Map<?,?>);
+					} catch (us.bringardner.fsh.expand.ExpansionError e) {
+						if( assignment.array != null && !local && existing == null && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0)) {
+							// declare -a x=(...) that fails: x is there, an empty array (bash's)
+							sc.setVariable(name, o.indexOf('A') >= 0 ? new TreeMap<String,Object>() : new FshList());
+						}
+						throw e;
+					}
 				}
 			} else if( text != null ) {
 				val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(text, sc)) : text;
 				if( !local && sc.getVariable(name) instanceof FshList f ) {
 					// readonly 'a=(3)' of an array: its element 0
 					FshList list = copyOf(f);
-					list.set(0, val);
+					list.set(0, inCase(o, name, (String) val, sc));
 					val = list;
 				}
 			}
@@ -617,7 +630,7 @@ public final class Declarations {
 			} else if( arrays && val instanceof String v && o.indexOf('A') < 0 && !(old instanceof Map<?,?>)) {
 				// declare -a x=v: element 0
 				FshList list = old instanceof FshList f ? copyOf(f) : new FshList();
-				list.set(0, v);
+				list.set(0, inCase(o, name, v, sc));
 				val = list;
 			}
 			if( val == null && !remove ) {
@@ -971,5 +984,11 @@ public final class Declarations {
 	/** name has a temporary assignment for the running command */
 	private static boolean isTemporary(ShellContext sc, String name) {
 		return sc.commandTemporaries.stream().anyMatch(t -> t[0].equals(name));
+	}
+
+	/** v in the case name is declared with (declare -l a=V), or has */
+	private static String inCase(String o, String name, String v, ShellContext sc) {
+		return o.indexOf('u') >= 0 ? v.toUpperCase() : o.indexOf('l') >= 0 ? v.toLowerCase()
+				: o.indexOf('c') >= 0 && !v.isEmpty() ? v.substring(0, 1).toUpperCase()+v.substring(1).toLowerCase() : String.valueOf(sc.cased(name, v));
 	}
 }

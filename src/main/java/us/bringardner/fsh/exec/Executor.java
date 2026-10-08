@@ -2278,7 +2278,8 @@ public final class Executor {
 
 	/** a[i]=v (i arithmetic, negative from the end) or m[key]=v */
 	void element(Ast.Assignment a, ShellContext sc, Expander ex, Object old, String v) {
-		if( a.index.isBlank() || !(old instanceof Map<?,?>) && (a.index.equals("@") || a.index.equals("*"))) {
+		// (a[ ]=v is element 0, or the key " ")
+		if( a.index.isEmpty() || !(old instanceof Map<?,?>) && (a.index.equals("@") || a.index.equals("*"))) {
 			throw new ExpansionError(a.name+"["+a.index+"]: bad array subscript");
 		}
 		Word sub = Parser.fragment(a.index, Parser.Fragment.WORD);

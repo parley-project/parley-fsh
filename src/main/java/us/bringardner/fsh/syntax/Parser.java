@@ -2196,6 +2196,14 @@ public final class Parser {
 		return parts.toArray(new Word[0]);
 	}
 
+	/** text read as the inside of $(( )): an indexed array's subscript */
+	public static Word arithmeticFragment(String text) {
+		Parser p = new Parser(text);
+		p.commandStart = false;
+		p.aliasing = false;
+		return p.arithWord(0, text.length());
+	}
+
 	/**
 	 * The arithmetic expression in [from, to) (blanks around it trimmed) as a word: its $x, $( ),
 	 * `...` are parts and its double quotes are removed, as in bash. pos is not changed.

@@ -29,20 +29,7 @@ public class Popd extends DirStack {
 			if( a.equals("-n")) {
 				nocd = true;
 			} else if( a.equals("--")) {
-				if( idx+1 < args.length ) {
-					String next = ""+args[idx+1].getValue(ctx);
-					if( next.startsWith("+") || next.startsWith("-")) {
-						Long n = number(next);
-						if( n == null ) {
-							ctx.error("popd: "+next+": invalid number");
-							usage(ctx, USAGE);
-							return 2;
-						}
-						which = n;
-						direction = next.charAt(0);
-						whichWord = next;
-					}
-				}
+				// (what follows is not looked at, as in bash)
 				break;
 			} else if( a.startsWith("+") || a.startsWith("-")) {
 				Long n = number(a);
