@@ -52,8 +52,12 @@ final class AstFunction implements ShellFunction {
 		// it (unless set -T)
 		sc.loopDepth = 0;
 		sc.debugBlocked++;
-		if( sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.FuncTrace)) {
-			// with set -T the DEBUG trap runs as the function starts, as in bash
+		if( sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.FuncTrace) || sc.debugTrapHere()) {
+			// with set -T (or declare -ft) the DEBUG trap runs as the function starts, as in bash,
+			// on the line its body starts on
+			if( def.body.line > 0 ) {
+				sc.line = def.body.line;
+			}
 			sc.console.runTrap(us.bringardner.fsh.Console.ConsoleMetaSignal.Debug, sc);
 		}
 		try {

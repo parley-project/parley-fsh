@@ -37,6 +37,16 @@ public final class Programs {
 	}
 
 	/** run name with args; status 127 (and bash's message) if there is no such program */
+	/** a child of the shell itself ended: its SIGCHLD trap runs after this command */
+	static void childEnded(ShellContext ctx) {
+		if( !ctx.isIsolated() && !Console.IN_COMMAND_THREAD.get()) {
+			int chld = us.bringardner.fsh.job.ProcessSignals.number("CHLD");
+			if( chld > 0 && ctx.console.hasTrap(chld)) {
+				ctx.console.queueSignal(chld);
+			}
+		}
+	}
+
 	static int run(String name, List<String> args, ShellContext sc) throws IOException {
 		FileSource exec = hashed(name, sc);
 		if( exec == null && !name.contains("/")) {
@@ -478,6 +488,7 @@ public final class Programs {
 					}
 				}
 				exitCode = p.exitValue();
+				childEnded(ctx);
 
 				// the process has exited, wait for the rest of its output
 				drain(sc2);

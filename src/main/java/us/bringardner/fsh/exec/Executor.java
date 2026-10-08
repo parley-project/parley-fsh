@@ -346,6 +346,11 @@ public final class Executor {
 				}
 			} else {
 				ret = pipe(p, sc);
+				// the shell's line: the pipeline's last command's ($LINENO in an ERR trap)
+				Ast.Node last = p.commands.get(p.commands.size()-1);
+				if( last.line > 0 ) {
+					sc.line = last.line;
+				}
 			}
 		} finally {
 			if( cond ) {
@@ -1557,7 +1562,16 @@ public final class Executor {
 		case "eval": {
 			String code = String.join(" ", strings(args)).trim();
 			// (read as bash reads it: a newline at its end)
-			return code.isEmpty() ? 0 : run(sc, code+"\n", "eval", Math.max(1, sc.currentLine()));
+			if( code.isEmpty()) {
+				return 0;
+			}
+			// (set -x shows its commands one level in)
+			sc.substitutionLevel++;
+			try {
+				return run(sc, code+"\n", "eval", Math.max(1, sc.currentLine()));
+			} finally {
+				sc.substitutionLevel--;
+			}
 		}
 		case "declare":
 		case "typeset":
@@ -1618,6 +1632,10 @@ public final class Executor {
 			}
 			cmd.setArgs(arguments(strings(args)));
 			int ret = cmd.process(sc);
+			if( !BASH_BUILTINS.contains(name)) {
+				// a program in bash (sleep, ls ...): its end is a child's end for a SIGCHLD trap
+				Programs.childEnded(sc);
+			}
 			if( name.equals("alias")) {
 				for(String a : strings(args)) {
 					int eq = a.indexOf('=');
@@ -1696,6 +1714,14 @@ public final class Executor {
 	 * arithmetic, an associative array's is text; declare -i makes a value arithmetic.
 	 */
 	/** posix's special builtins */
+	/** bash's builtins: fsh's other builtins are programs there */
+	static final java.util.Set<String> BASH_BUILTINS = java.util.Set.of(".", ":", "[", "alias", "bg", "bind", "break",
+			"builtin", "caller", "cd", "command", "compgen", "complete", "compopt", "continue", "declare", "dirs",
+			"disown", "echo", "enable", "eval", "exec", "exit", "export", "false", "fc", "fg", "getopts", "hash",
+			"help", "history", "jobs", "kill", "let", "local", "logout", "mapfile", "popd", "printf", "pushd", "pwd",
+			"read", "readarray", "readonly", "return", "set", "shift", "shopt", "source", "suspend", "test", "times",
+			"trap", "true", "type", "typeset", "ulimit", "umask", "unalias", "unset", "wait");
+
 	static final java.util.Set<String> SPECIAL_BUILTINS = java.util.Set.of("break", ":", ".", "continue", "eval", "exec", "exit",
 			"export", "readonly", "return", "set", "shift", "times", "trap", "unset");
 

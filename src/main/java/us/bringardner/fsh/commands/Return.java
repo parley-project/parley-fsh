@@ -23,6 +23,10 @@ public class Return extends ShellCommand{
 		}
 		// with no number, the status of the last command (as in bash)
 		int ret = ctx.console.getLastExitCode();
+		if( args.length == 0 && ctx.trapStatus != null && ctx.functionDepth() == ctx.trapFunctionDepth ) {
+			// return in a trap's action: the status from before the trap (bash's)
+			ret = ctx.trapStatus;
+		}
 		if( args.length>0) {
 			try {
 				ret = Integer.parseInt(args[0].getValue(ctx).toString());

@@ -136,6 +136,16 @@ public class Wait extends ShellCommand{
 				if( ctx.getException()!=null) {
 					throw ctx.getException();
 				}
+				if( ctx.console.hasPendingSignal()) {
+					// a signal with a trap: its trap runs, and wait ends (128 + the signal), as bash's
+					int sig = ctx.console.nextPendingSignal();
+					ctx.console.runOsTrap(sig, ctx);
+					if( sig != us.bringardner.fsh.job.ProcessSignals.number("CHLD") || ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
+						return 128+sig;
+					}
+					// SIGCHLD: wait goes on after the trap (bash, not in posix mode)
+					continue;
+				}
 				for(IJob job : jobs) {
 					if( !complete.contains(job.getPid())) {
 						// finished: terminated (started but not yet running is not finished)

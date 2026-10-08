@@ -296,6 +296,14 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 				l.JobStateChanged(this, lastState,state);
 			}
 		}
+		if( state == JobState.Termnated && lastState != JobState.Termnated && lastState != JobState.Notified
+				&& this instanceof BackgroundJob && ctx != null && ctx.console != null ) {
+			// a background job ended: the shell's SIGCHLD trap runs (between its commands)
+			int chld = ProcessSignals.number("CHLD");
+			if( chld > 0 && ctx.console.hasTrap(chld)) {
+				ctx.console.queueSignal(chld);
+			}
+		}
 	}
 
 	public abstract void interuptJob();

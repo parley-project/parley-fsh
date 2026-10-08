@@ -568,6 +568,23 @@ delimiter
 		return !pendingSignals.isEmpty();
 	}
 
+	/** a trap is set for the signal */
+	public boolean hasTrap(int signum) {
+		List<ConsoleSignalHandler> h = osSignalHandlers.get(signum);
+		return h != null && !h.isEmpty();
+	}
+
+	/** the next signal that came (its trap not run yet), or -1 */
+	public int nextPendingSignal() {
+		Integer s = pendingSignals.poll();
+		return s == null ? -1 : s;
+	}
+
+	/** the signal came: its trap runs when the shell is between commands */
+	public void queueSignal(int signum) {
+		pendingSignals.add(signum);
+	}
+
 	/** run the traps of the signals that came */
 	public void runPendingTraps(ShellContext ctx) {
 		Integer signum;
@@ -655,6 +672,9 @@ delimiter
 		return cmdCnt++;
 	}
 
+	/** this thread runs a pipe stage or a background job (not the shell's own commands) */
+	public static final ThreadLocal<Boolean> IN_COMMAND_THREAD = ThreadLocal.withInitial(() -> false);
+
 	public static class CommandThread extends SignalEnabledThread {
 		public int exitCode=-1212;
 		public long start;
@@ -696,6 +716,7 @@ delimiter
 		public void run() {
 			started = running = true;
 			start = System.currentTimeMillis();
+			IN_COMMAND_THREAD.set(true);
 			try {
 				if( ctx.isIsolated()) {
 					// a pipe stage: its own directory and options
@@ -713,6 +734,8 @@ delimiter
 			if( terminatedBy != null ) {
 				// ended by kill: 128 + the signal, as in bash (143 for TERM)
 				exitCode = 128+terminatedBy;
+			} else if( ctx.isIsolated()) {
+				exitCode = ctx.console.endStage(ctx, exitCode);
 			}
 			ctx.stdout.flush();
 			close(ctx.console,ctx.stdout);
@@ -2844,6 +2867,9 @@ delimiter
 		FileSource cwd;
 		List<Option> options;
 		Map<String,Boolean> shellOptions;
+		/** the stage's own EXIT trap (it does not change the shell's) */
+		List<String> exitTrap;
+		boolean ownExitTrap;
 	}
 
 	private final InheritableThreadLocal<StageState> stage = new InheritableThreadLocal<>();
@@ -3239,6 +3265,12 @@ delimiter
 
 	/** trap action EXIT/ERR/RETURN/DEBUG: the action replaces the one before; null removes it */
 	public void setTrap(ConsoleMetaSignal signal, String action) {
+		StageState st = stage.get();
+		if( signal == ConsoleMetaSignal.Exit && st != null ) {
+			st.ownExitTrap = true;
+			st.exitTrap = action == null ? null : new CopyOnWriteArrayList<>(List.of(action));
+			return;
+		}
 		if( action == null ) {
 			signalHandlers.remove(signal);
 		} else {
@@ -3271,6 +3303,13 @@ delimiter
 		Integer savedLine = ctx.trapLine;
 		String savedCommand = ctx.currentCommand;
 		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
+		// $BASH_TRAPSIG: the signal's number while its trap runs
+		Object savedSig = ctx.getVariable("BASH_TRAPSIG");
+		ctx.setVariable("BASH_TRAPSIG", String.valueOf(signum));
+		Integer savedTrapStatus = ctx.trapStatus;
+		int savedTrapDepth = ctx.trapFunctionDepth;
+		ctx.trapStatus = saved;
+		ctx.trapFunctionDepth = ctx.functionDepth();
 		try {
 			runCode(ctx, action);
 		} catch (us.bringardner.fsh.signal.FshException e) {
@@ -3281,6 +3320,9 @@ delimiter
 			setLastExitCode(saved);
 			ctx.trapLine = savedLine;
 			ctx.currentCommand = savedCommand;
+			ctx.setVariable("BASH_TRAPSIG", savedSig);
+			ctx.trapStatus = savedTrapStatus;
+			ctx.trapFunctionDepth = savedTrapDepth;
 		}
 		return true;
 	}
@@ -3288,8 +3330,9 @@ delimiter
 	/** the traps, as trap -p prints them: {name, action}, EXIT first, then by signal number */
 	public List<String[]> traps() {
 		List<String[]> ret = new ArrayList<>();
+		StageState st = stage.get();
 		java.util.function.BiConsumer<ConsoleMetaSignal,String> meta = (s, name) -> {
-			List<String> a = signalHandlers.get(s);
+			List<String> a = s == ConsoleMetaSignal.Exit && st != null && st.ownExitTrap ? st.exitTrap : signalHandlers.get(s);
 			if( a != null && !a.isEmpty()) {
 				ret.add(new String[] {name, a.get(a.size()-1)});
 			}
@@ -3476,7 +3519,13 @@ delimiter
 	 * status 2.
 	 */
 	public int runCode(ShellContext ctx, String code) throws IOException {
-		return us.bringardner.fsh.exec.Executor.run(ctx, code);
+		// (set -x shows a trap's commands one level in, as bash's)
+		ctx.substitutionLevel++;
+		try {
+			return us.bringardner.fsh.exec.Executor.run(ctx, code);
+		} finally {
+			ctx.substitutionLevel--;
+		}
 	}
 
 	public int executeScript(ShellContext sc,String code)  {
@@ -3557,6 +3606,29 @@ delimiter
 		}
 		if( shells != null ) {
 			signalHandlers.put(ConsoleMetaSignal.Exit, shells);
+		}
+		return ret;
+	}
+
+	/** a pipe stage ends: the EXIT trap it set runs (an exit in it gives the stage's status) */
+	public int endStage(ShellContext ctx, int status) {
+		StageState st = stage.get();
+		if( st == null || st.exitTrap == null ) {
+			return status;
+		}
+		List<String> actions = st.exitTrap;
+		st.exitTrap = null;
+		int ret = status;
+		setLastExitCode(status);
+		for(String action : actions) {
+			try {
+				us.bringardner.fsh.exec.Executor.run(ctx, action);
+			} catch (ExitException e) {
+				ret = e.exitCode;
+				break;
+			} catch (Exception e) {
+				getStdErr().println(e.getMessage());
+			}
 		}
 		return ret;
 	}

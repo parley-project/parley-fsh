@@ -776,6 +776,14 @@ $
 
 	/** exec -a name, exec -l: the argv[0] the next program gets (null: its path) */
 	public String programArgv0;
+	/** a trap's action runs: the status before it, and how deep in functions it began (return uses them) */
+	public Integer trapStatus;
+	public int trapFunctionDepth;
+
+	public int functionDepth() {
+		return functionStack.size();
+	}
+
 	/** running a builtin through command (its failure does not end a posix shell) */
 	public int viaCommand;
 
@@ -1516,6 +1524,8 @@ $
 		try (InputStream in = file.getInputStream()) {
 			String code = new String(in.readAllBytes());
 			Console sub = new Console();
+			// (it starts where this shell is, as a program would)
+			sub.setCurrentDirectory(console.getCurrentDirectory());
 			sub.setStdIn(stdin);
 			sub.setStdErr(stderr);
 			sub.setStdOut(stdout);

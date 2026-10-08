@@ -223,6 +223,11 @@ public class Kill extends ShellCommand{
 	 */
 	private static int signalProcess(ShellContext ctx, long pid, int signum) {
 		if( pid == ProcessHandle.current().pid()) {
+			if( signum != 0 && (ctx.isIsolated() || us.bringardner.fsh.Console.IN_COMMAND_THREAD.get()) && ctx.console.hasTrap(signum)) {
+				// from a background job: the shell runs the trap where it is, between its commands
+				ctx.console.queueSignal(signum);
+				return 0;
+			}
 			if( signum == 0 || ctx.console.runOsTrap(signum, ctx)) {
 				return 0;
 			}

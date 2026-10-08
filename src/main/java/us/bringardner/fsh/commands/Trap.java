@@ -80,6 +80,8 @@ public class Trap extends ShellCommand implements SignalHandler {
 	}
 
 	
+	static final String USAGE = "trap: usage: trap [-Plp] [[action] signal_spec ...]";
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		java.util.List<String> words = new java.util.ArrayList<>();
@@ -88,22 +90,42 @@ public class Trap extends ShellCommand implements SignalHandler {
 		}
 		boolean print = words.isEmpty();
 		boolean list = false;
+		// -P: the actions only
+		boolean actions = false;
+		boolean p = false;
 		while( !words.isEmpty() && words.get(0).startsWith("-") && words.get(0).length() > 1 ) {
 			String opt = words.remove(0);
 			if( opt.equals("--")) {
 				break;
 			}
 			for(char c : opt.substring(1).toCharArray()) {
-				if( c == 'p' || c == 'P' ) {
+				if( c == 'p' ) {
 					print = true;
+					p = true;
+				} else if( c == 'P' ) {
+					print = true;
+					actions = true;
 				} else if( c == 'l' ) {
 					list = true;
 				} else {
 					ctx.error("trap: -"+c+": invalid option");
-					ctx.error("trap: usage: trap [-lp] [[action] signal_spec ...]");
+					ctx.stderr.println(USAGE);
 					return 2;
 				}
 			}
+		}
+		if( p && actions ) {
+			ctx.error("trap: cannot specify both -p and -P");
+			return 2;
+		}
+		if( actions && words.isEmpty()) {
+			ctx.error("trap: -P requires at least one signal name");
+			return 2;
+		}
+		if( !print && !list && words.size() == 1 && words.get(0).isEmpty()) {
+			// trap '': an action and no signal
+			ctx.stderr.println(USAGE);
+			return 2;
 		}
 		if( list ) {
 			ctx.stdout.print(listing());
@@ -117,10 +139,15 @@ public class Trap extends ShellCommand implements SignalHandler {
 			}
 			for(String[] t : ctx.console.traps()) {
 				if( only.isEmpty() || only.contains(t[0])) {
-					ctx.stdout.println("trap -- '"+t[1].replace("'", "'\\''")+"' "+t[0]);
+					ctx.stdout.println(actions ? t[1] : "trap -- '"+t[1].replace("'", "'\\''")+"' "+t[0]);
 				}
 			}
 			return 0;
+		}
+		if( words.size() == 1 && !validSignal(words.get(0)) && !words.get(0).equals("-")) {
+			// one word that is not a signal: no action for it
+			ctx.stderr.println(USAGE);
+			return 2;
 		}
 		// trap action sig ...; trap sig (one word) and trap - sig ... reset
 		String action = words.size() == 1 ? "-" : words.remove(0);
@@ -147,6 +174,15 @@ public class Trap extends ShellCommand implements SignalHandler {
 			}
 		}
 		return ret;
+	}
+
+	/** a signal or EXIT ERR RETURN DEBUG */
+	private static boolean validSignal(String w) {
+		String n = normalName(w);
+		if( ConsoleMetaSignal.find(n) != ConsoleMetaSignal.UnKnown ) {
+			return true;
+		}
+		return n.startsWith("SIG") && getLocalSignals().containsValue(n.substring(3));
 	}
 
 	/** EXIT ERR RETURN DEBUG, or SIGNAME for a signal given by name or number; as given if neither */
