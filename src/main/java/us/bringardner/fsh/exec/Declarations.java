@@ -271,6 +271,17 @@ public final class Declarations {
 				status = 1;
 				continue;
 			}
+			if( (text != null || assignment != null) && o.indexOf('n') >= 0 && o.indexOf('i') >= 0 && !remove ) {
+				// declare -in r=v: the value is a number, no name: nothing is made (bash's, unsaid)
+				status = 1;
+				continue;
+			}
+			if( text == null && assignment == null && o.indexOf('n') < 0 && !remove && !isLocal
+					&& !(local && !sc.hasLocal(name)) && sc.rawVariable(name) instanceof ShellContext.NameRef
+					&& sc.resolveName(name).indexOf('[') > 0 ) {
+				// declare -A r of a nameref to an element (r=a[1]): nothing, as bash's
+				continue;
+			}
 			if( local && text == null && assignment == null && sc.commandTemporaries != null
 					&& isTemporary(sc, name) && sc.getVariable(name) instanceof String tv ) {
 				// var=value declare var in a function: the local takes the temporary value, as bash's
@@ -345,6 +356,16 @@ public final class Declarations {
 						element.index = t.substring(name.length()+1, t.length()-1);
 						String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
 						executor.element(element, sc, ex, sc.getVariable(name), v);
+						continue;
+					} else if( t.indexOf('[') > 0 && t.endsWith("]") && (assignment != null && assignment.array == null || text != null)
+							&& o.indexOf('a') < 0 && o.indexOf('A') < 0 ) {
+						// declare r=v, r+=v with r -> a[1]: that element (+= adds to it)
+						Ast.Assignment element = new Ast.Assignment();
+						element.name = t.substring(0, t.indexOf('['));
+						element.index = t.substring(t.indexOf('[')+1, t.length()-1);
+						element.append = text == null && assignment.append;
+						String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
+						executor.element(element, sc, ex, sc.getVariable(element.name), v);
 						continue;
 					}
 				}
@@ -557,12 +578,15 @@ public final class Declarations {
 			if( assignment != null ) {
 				if( values.get(n) != null ) {
 					String v = (String) values.get(n);
-					if( assignment.append && sc.isOwnLocal(name)) {
+					// (through a nameref: what it names, an element's array's -i)
+					boolean ref = o.indexOf('n') < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef;
+					boolean integer = sc.console.isInteger(ref ? sc.readonlyName(name) : name);
+					if( assignment.append && (sc.isOwnLocal(name) || ref)) {
 						// local x+=v of a value it started with (localvar_inherit)
 						Object before = ShellContext.firstElement(sc.getVariable(name));
-						v = sc.console.isInteger(name) ? String.valueOf(Executor.integerAppend(before, v, sc)) : (before == null ? "" : before)+v;
+						v = integer ? String.valueOf(Executor.integerAppend(before, v, sc)) : (before == null ? "" : before)+v;
 					}
-					val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc)) : v;
+					val = integer ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc)) : v;
 				} else if( assignment.index != null ) {
 					if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
 						// declare -a ref[1]=v: ref is an array again (bash's)

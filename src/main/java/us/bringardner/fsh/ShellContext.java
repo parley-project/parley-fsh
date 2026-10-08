@@ -443,6 +443,11 @@ $
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
 		name = resolveName(name);
+		if( name.indexOf('[') > 0 ) {
+			// r[k]=v of a nameref to an element (r=a[1])
+			variableError("`"+name+"': not a valid identifier");
+			return;
+		}
 		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && !console.unsetSpecials.contains(name)) {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> m = (Map<String, Object>) getVariable(name);
@@ -459,6 +464,41 @@ $
 			return;
 		}
 		console.declaredUnset.remove(name);
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			// a function's local array: its element (a copy, as subshells share the value)
+			Object cur = scope.local.get(name);
+			Object val;
+			if( cur instanceof Map<?,?> m ) {
+				Map<String,Object> map = new TreeMap<>();
+				for(Map.Entry<?,?> e : m.entrySet()) {
+					map.put(String.valueOf(e.getKey()), e.getValue());
+				}
+				map.put(""+index, value);
+				val = map;
+			} else if( index instanceof Integer idx ) {
+				FshList list = new FshList();
+				if( cur instanceof FshList f ) {
+					for(int i : f.getIndexes()) {
+						list.set(i, f.get(i));
+					}
+				} else if( cur instanceof List<?> l ) {
+					for (int i = 0; i < l.size(); i++) {
+						list.set(i, l.get(i));
+					}
+				} else if( cur != null && cur != UNSET_LOCAL ) {
+					list.set(0, cur);
+				}
+				list.set(idx, value);
+				val = list;
+			} else {
+				Map<String,Object> map = new TreeMap<>();
+				map.put(""+index, value);
+				val = map;
+			}
+			scope.local.put(name, val);
+			return;
+		}
 		Object val = globalVariable(name);
 		if( isolated != null && !isolated.containsKey(name)) {
 			// the shell's array: change a copy
@@ -541,6 +581,45 @@ $
 		}
 		if( !(value instanceof NameRef)) {
 			name = resolveName(name);
+			int b = name.indexOf('[');
+			if( b > 0 && name.endsWith("]")) {
+				// through a nameref to an element (r=a[1]): that element; an array is no value for it
+				if( value instanceof List<?> || value instanceof Map<?,?> ) {
+					variableError("`"+name+"': not a valid identifier");
+					return;
+				}
+				String base = name.substring(0, b);
+				String sub = name.substring(b+1, name.length()-1);
+				if( value == null ) {
+					return;
+				}
+				Object cur = getVariable(base);
+				value = withCase(base, value);
+				if( cur instanceof Map<?,?> m ) {
+					Map<String,Object> copy = new TreeMap<>();
+					for(Map.Entry<?,?> e : m.entrySet()) {
+						copy.put(String.valueOf(e.getKey()), e.getValue());
+					}
+					copy.put(sub, value);
+					setVariable(base, copy);
+					return;
+				}
+				int idx = (int) us.bringardner.fsh.expand.Arithmetic.evaluate(sub, this).longValue();
+				FshList copy = new FshList();
+				if( cur instanceof FshList f ) {
+					for(int i : f.getIndexes()) {
+						copy.set(i, f.get(i));
+					}
+				} else if( cur != null ) {
+					copy.set(0, cur);
+				}
+				if( idx < 0 ) {
+					idx += copy.isEmpty() ? 0 : copy.getIndexes().get(copy.size()-1)+1;
+				}
+				copy.set(idx, value);
+				setVariable(base, copy);
+				return;
+			}
 			value = withCase(name, value);
 		}
 		if( console.isReadonly(name)) {
