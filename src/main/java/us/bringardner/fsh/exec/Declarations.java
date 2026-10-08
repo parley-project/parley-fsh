@@ -550,7 +550,7 @@ public final class Declarations {
 					if( assignment.append && sc.isOwnLocal(name)) {
 						// local x+=v of a value it started with (localvar_inherit)
 						Object before = ShellContext.firstElement(sc.getVariable(name));
-						v = sc.console.isInteger(name) ? (before == null ? "0" : before)+"+("+v+")" : (before == null ? "" : before)+v;
+						v = sc.console.isInteger(name) ? String.valueOf(Executor.integerAppend(before, v, sc)) : (before == null ? "" : before)+v;
 					}
 					val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc)) : v;
 				} else if( assignment.index != null ) {

@@ -200,7 +200,21 @@ public final class Expander {
 
 	/** an arithmetic expression ($(( )), (( )), the parts of for (( ))): expanded, then evaluated */
 	public Number arithmetic(Word w) {
-		return evaluate(arithmeticText(w));
+		return evaluate(arithmeticText(w)+trailingBlanks(w));
+	}
+
+	/** an indexed array's subscript in a[sub]=v: expanded and evaluated as it is (quotes kept) */
+	public Number subscript(Word w) {
+		try {
+			return Arithmetic.evaluateLiteral(arithmeticText(w), sc);
+		} catch (Arithmetic.ArithmeticError e) {
+			throw new ExpansionError(e.getMessage());
+		}
+	}
+
+	/** the blanks after an arithmetic expression as written (bash's errors show them) */
+	public static String trailingBlanks(Word w) {
+		return w.raw == null ? "" : w.raw.substring(w.raw.stripTrailing().length());
 	}
 
 	/** an arithmetic expression expanded ($x, $( ) ...), not yet evaluated (what set -x shows) */
@@ -214,6 +228,8 @@ public final class Expander {
 	public Number evaluate(String text) {
 		try {
 			return Arithmetic.evaluate(text, sc);
+		} catch (Arithmetic.Unbound e) {
+			throw new ExpansionError(e.getMessage(), ExpansionError.Kind.FATAL);
 		} catch (Arithmetic.ArithmeticError e) {
 			throw new ExpansionError(e.getMessage());
 		} catch (ShellContext.ReadonlyException e) {
@@ -716,9 +732,22 @@ public final class Expander {
 			int ternary = 0;
 			for (int i = 0; i < s.length(); i++) {
 				char c = s.charAt(i);
-				if( c == '(' || c == '[' ) {
+				if( c == '\\' ) {
+					i++;
+				} else if( c == '\'' ) {
+					// (quoted: no : in it counts)
+					int end = s.indexOf('\'', i+1);
+					i = end < 0 ? s.length() : end;
+				} else if( c == '"' ) {
+					for(i++; i < s.length() && s.charAt(i) != '"'; i++) {
+						if( s.charAt(i) == '\\' ) {
+							i++;
+						}
+					}
+				} else if( c == '(' || c == '[' || c == '{' ) {
+					// (${x:-0} and $(cmd) in it too)
 					depth++;
-				} else if( c == ')' || c == ']' ) {
+				} else if( c == ')' || c == ']' || c == '}' ) {
 					depth--;
 				} else if( c == '?' && depth == 0 ) {
 					ternary++;
@@ -1048,6 +1077,10 @@ public final class Expander {
 	private void assign(ParamExpr e, String value) {
 		if( !isName(e.name)) {
 			throw new ExpansionError("$"+e.name+": cannot assign in this way");
+		}
+		if( sc.console.isReadonly(sc.readonlyName(e.name))) {
+			// ${v:=x} of a readonly v: an error (said as the shell's)
+			throw new ExpansionError(sc.readonlyName(e.name)+": readonly variable");
 		}
 		if( sc.console.isInteger(e.name)) {
 			// declare -i: the value is arithmetic

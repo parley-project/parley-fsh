@@ -3452,6 +3452,8 @@ delimiter
 		inProcess.push(signal);
 		Integer savedLine = ctx.trapLine;
 		String savedCommand = ctx.currentCommand;
+		// (the line the shell is on: the command the trap ran for goes on with it)
+		int shellLine = ctx.line;
 		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
 			for(String code : actions) {
@@ -3466,6 +3468,7 @@ delimiter
 			setLastExitCode(saved);
 			ctx.trapLine = savedLine;
 			ctx.currentCommand = savedCommand;
+			ctx.line = shellLine;
 		}
 	}
 

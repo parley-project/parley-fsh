@@ -864,7 +864,7 @@ public final class Executor {
 			// (the blanks after it as written: bash's (( i++  )))
 			trace(sc, sc.stderr, "(( "+text.trim()+w.raw.substring(w.raw.stripTrailing().length())+" ))");
 		}
-		return ex.evaluate(text);
+		return ex.evaluate(text+Expander.trailingBlanks(w));
 	}
 
 	/** select name in words: a numbered menu on standard error, a choice read from standard input */
@@ -1067,7 +1067,14 @@ public final class Executor {
 				String trail = inner.substring(inner.stripTrailing().length());
 				trace(sc, sc.stderr, "(( "+lead+expr+trail+" ))");
 			}
-			return Arithmetic.isTrue(ex.evaluate(expr)) ? 0 : 1;
+			// (what it says starts with ((:)
+			String outer = sc.builtin;
+			sc.builtin = "((";
+			try {
+				return Arithmetic.isTrue(ex.evaluate(expr+Expander.trailingBlanks(a.expression))) ? 0 : 1;
+			} finally {
+				sc.builtin = outer;
+			}
 		} catch (ExpansionError e) {
 			error(sc, "((: "+e.getMessage());
 			return 1;
@@ -1490,7 +1497,7 @@ public final class Executor {
 					String v = a.value == null ? "" : ex.assignment(a.value);
 					if( a.append ) {
 						Object before = ShellContext.firstElement(sc.getVariable(a.name));
-						v = sc.console.isInteger(sc.readonlyName(a.name)) ? String.valueOf(arithmeticValue((before == null ? "0" : before)+"+("+v+")", sc))
+						v = sc.console.isInteger(sc.readonlyName(a.name)) ? String.valueOf(integerAppend(before, v, sc))
 								: (before == null ? "" : before.toString())+v;
 					}
 					if( tracing(sc)) {
@@ -2149,11 +2156,7 @@ public final class Executor {
 			return copy;
 		}
 		if( sc.console.isInteger(sc.readonlyName(a.name))) {
-			Number n = arithmeticValue(v, sc);
-			if( a.append ) {
-				Object before = ShellContext.firstElement(old);
-				n = arithmeticValue((before == null ? "0" : before)+"+("+n+")", sc);
-			}
+			Number n = a.append ? integerAppend(ShellContext.firstElement(old), v, sc) : arithmeticValue(v, sc);
 			return String.valueOf(n);
 		}
 		if( a.append ) {
@@ -2167,6 +2170,16 @@ public final class Executor {
 			return copy;
 		}
 		return v;
+	}
+
+	/** x+=v of an integer x: x's value, then v's, evaluated each on its own (as bash does), added */
+	static Number integerAppend(Object before, String v, ShellContext sc) {
+		Number old = arithmeticValue(before == null ? "0" : before.toString(), sc);
+		Number add = arithmeticValue(v, sc);
+		if( old instanceof Double || add instanceof Double ) {
+			return old.doubleValue()+add.doubleValue();
+		}
+		return old.longValue()+add.longValue();
 	}
 
 	private static Number arithmeticValue(String text, ShellContext sc) {
@@ -2201,7 +2214,7 @@ public final class Executor {
 			}
 			key = k;
 		} else {
-			long idx = ex.arithmetic(sub).longValue();
+			long idx = ex.subscript(sub).longValue();
 			if( idx < 0 ) {
 				long top = old instanceof FshList f && !f.isEmpty() ? f.getIndexes().get(f.size()-1)+1 : old instanceof List<?> l ? l.size() : 0;
 				idx += top;
@@ -2213,9 +2226,8 @@ public final class Executor {
 		}
 		if( a.append ) {
 			Object before = old instanceof Map<?,?> m ? m.get(key) : old instanceof List<?> l && key instanceof Integer i ? (l instanceof FshList f ? f.get(i) : i < l.size() ? l.get(i) : null) : null;
-			v = sc.console.isInteger(sc.readonlyName(a.name)) ? (before == null ? "0" : before)+"+("+v+")" : (before == null ? "" : before.toString())+v;
-		}
-		if( sc.console.isInteger(sc.readonlyName(a.name))) {
+			v = sc.console.isInteger(sc.readonlyName(a.name)) ? String.valueOf(integerAppend(before, v, sc)) : (before == null ? "" : before.toString())+v;
+		} else if( sc.console.isInteger(sc.readonlyName(a.name))) {
 			v = String.valueOf(arithmeticValue(v, sc));
 		}
 		v = String.valueOf(sc.cased(a.name, v));
@@ -2322,7 +2334,7 @@ public final class Executor {
 	/** an array literal's value: [k]+=v adds to (or appends to) what is there; -i evaluates it */
 	private static Object elementValue(Object before, String v, boolean append, boolean integer, ShellContext sc) {
 		if( integer ) {
-			return String.valueOf(arithmeticValue(append && before != null ? before+"+("+v+")" : v, sc));
+			return String.valueOf(append && before != null ? integerAppend(before, v, sc) : arithmeticValue(v, sc));
 		}
 		return append && before != null ? before+v : v;
 	}

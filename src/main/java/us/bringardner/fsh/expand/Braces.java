@@ -174,6 +174,10 @@ public final class Braces {
 			long dir = from <= to ? step : -step;
 			for (long n = from; from <= to ? n <= to : n >= to; n += dir) {
 				ret.add(pad(n, width));
+				if( dir > 0 ? n > Long.MAX_VALUE-dir : n < Long.MIN_VALUE-dir ) {
+					// (the next would wrap around)
+					break;
+				}
 			}
 			return ret;
 		}

@@ -47,7 +47,7 @@ public class Shift extends ShellCommand{
 		if( n < 0 || n > tmp.size()) {
 			// as in bash: nothing is shifted, the status is 1 (said for a negative count, or with
 			// shopt -s shift_verbose)
-			if( n < 0 || us.bringardner.fsh.Glob.option(ctx, "shift_verbose")) {
+			if( n < 0 || us.bringardner.fsh.Glob.option(ctx, "shift_verbose") || ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
 				ctx.error("shift: "+n+": shift count out of range");
 			}
 			return 1;

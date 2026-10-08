@@ -23,6 +23,9 @@ import us.bringardner.fsh.ShellContext;
  * Numbers are decimal, 0x hex, 0 octal or base#digits (2 to 64). A name is a variable: unset or empty
  * is 0, and a value that is itself an expression is evaluated. name[expr] is an array element.
  * <p>
+ * It is read as bash's expr.c reads it (its tokens, and its errors: the expression, what is wrong,
+ * and the text from the token it was at).
+ * <p>
  * Not bash: a number with a decimal point (2.5) is a double, and so is any result that uses one
  * ($((5.0/2)) is 2.5). Bash has no decimals, so this changes no script that works in bash.
  * <p>
@@ -38,12 +41,40 @@ public class Arithmetic {
 		}
 	}
 
-	private static final int MAX_DEPTH = 64;
+	/** set -u: an unset variable in an expression (it ends the shell, as bash's) */
+	public static class Unbound extends ArithmeticError {
+		private static final long serialVersionUID = 1L;
+		public Unbound(String name) {
+			super(name+": unbound variable");
+		}
+	}
+
+	private static final int MAX_DEPTH = 1024;
+
+	// tokens: a character stands for itself; these are the others
+	private static final int EOF = 0;
+	private static final int STR = 256, NUM = 257, EQEQ = 258, NEQ = 259, LEQ = 260, GEQ = 261, LSH = 262, RSH = 263,
+			LAND = 264, LOR = 265, POWER = 266, OP_ASSIGN = 267, PREINC = 268, PREDEC = 269, POSTINC = 270, POSTDEC = 271,
+			COND = 272;
 
 	private final String text;
 	private final ShellContext ctx;
 	private final int depth;
-	private int pos;
+
+	/** where the next token starts */
+	private int tp;
+	/** where the last token read starts (an error names the text from there) */
+	private int lasttp;
+	private int curtok;
+	private int lasttok;
+	/** the name (with its [subscript]) of the last STR token */
+	private String tokstr;
+	/** the value of the last NUM or STR token */
+	private Number tokval = ZERO;
+	/** the operator of OP_ASSIGN (+ for +=, LSH for <<=) */
+	private int assigntok;
+	/** above 0: what is read is not evaluated (the side of && || ?: not taken) */
+	private int noeval;
 
 	private Arithmetic(String text, ShellContext ctx, int depth) {
 		this.text = text;
@@ -55,91 +86,290 @@ public class Arithmetic {
 	 * Evaluate text, which has already been expanded. Empty text is 0.
 	 */
 	public static Number evaluate(String text, ShellContext ctx) {
-		// $(( "3" + 1 )): double quotes are removed, as in bash
-		if( text.indexOf('"') >= 0 ) {
-			text = text.replace("\"", "");
-		}
+		// ($(( "3" + 1 )): the quotes were removed when it was expanded)
+		return evaluate(text, ctx, 0);
+	}
+
+	/** text as it is (an array subscript in a[\" \"]=v keeps its quotes, and is an error then) */
+	public static Number evaluateLiteral(String text, ShellContext ctx) {
 		return evaluate(text, ctx, 0);
 	}
 
 	private static Number evaluate(String text, ShellContext ctx, int depth) {
-		if( depth > MAX_DEPTH ) {
-			throw new ArithmeticError(text+": expression recursion level exceeded");
-		}
 		Arithmetic a = new Arithmetic(text, ctx, depth);
-		a.skipSpace();
-		if( a.pos >= text.length()) {
-			return 0L;
+		if( depth > MAX_DEPTH ) {
+			throw a.evalerror("expression recursion level exceeded");
 		}
-		Number ret = a.comma(true);
-		a.skipSpace();
-		if( a.pos < text.length()) {
-			throw a.error("arithmetic syntax error in expression");
+		if( text.isBlank()) {
+			return ZERO;
+		}
+		a.readtok();
+		Number ret = a.expcomma();
+		if( a.curtok != EOF ) {
+			throw a.evalerror("arithmetic syntax error in expression");
 		}
 		return ret;
 	}
 
 	// ---------------------------------------------------------------- errors
 
-	/** where the last number or variable read starts: bash names it in an error about a value */
-	private int lastToken = -1;
+	/** where the text ends for an error (while a number is read: at its end, as bash's) */
+	private int errorEnd = -1;
 
-	private ArithmeticError errorAtLast(String msg) {
-		if( lastToken < 0 ) {
-			return error(msg);
-		}
-		int end = lastToken;
-		while( end < text.length() && (Character.isLetterOrDigit(text.charAt(end)) || "_#@.".indexOf(text.charAt(end)) >= 0)) {
-			end++;
-		}
-		return new ArithmeticError(text.trim()+": "+msg+" (error token is \""+text.substring(lastToken, end)+"\")");
+	/** as bash's evalerror: the expression, the message, and the text from the last token */
+	private ArithmeticError evalerror(String msg) {
+		String shown = errorEnd >= 0 ? text.substring(0, errorEnd) : text;
+		String token = lasttp >= 0 && lasttp < shown.length() ? shown.substring(lasttp) : "";
+		return new ArithmeticError(shown.stripLeading()+": "+msg+" (error token is \""+token+"\")");
 	}
 
-	/** where the last operator read starts: at the end of the text, bash names it in an error */
-	private int lastOperator = -1;
+	// ---------------------------------------------------------------- tokens
 
-	private ArithmeticError error(String msg) {
-		String rest = text.substring(Math.min(pos, text.length())).trim();
-		if( rest.isEmpty() && lastOperator >= 0 && msg.endsWith("operand expected")) {
-			rest = text.substring(lastOperator).trim();
-		}
-		return new ArithmeticError(text.trim()+": "+msg+(rest.isEmpty() ? "" : " (error token is \""+rest+"\")"));
+	private static boolean whitespace(char c) {
+		return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 	}
 
-	// ---------------------------------------------------------------- scanning
-
-	private void skipSpace() {
-		while( pos < text.length() && Character.isWhitespace(text.charAt(pos))) {
-			pos++;
-		}
+	private static boolean nameStart(char c) {
+		return Character.isLetter(c) || c == '_';
 	}
 
-	/** consume op if it is next (and is not the start of a longer operator in notFollowedBy) */
-	private boolean take(String op, String notFollowedBy) {
-		skipSpace();
-		if( text.startsWith(op, pos)) {
-			int end = pos+op.length();
-			if( notFollowedBy != null && end < text.length() && notFollowedBy.indexOf(text.charAt(end)) >= 0 ) {
-				return false;
+	private char at(int i) {
+		return i < text.length() ? text.charAt(i) : '\0';
+	}
+
+	/** the state readtok changes (to look ahead and come back) */
+	private int[] saveTok() {
+		return new int[] {tp, lasttp, curtok, lasttok, assigntok};
+	}
+
+	private void restoreTok(int[] s, String str, Number val) {
+		tp = s[0];
+		lasttp = s[1];
+		curtok = s[2];
+		lasttok = s[3];
+		assigntok = s[4];
+		tokstr = str;
+		tokval = val;
+	}
+
+	/** bash's readtok: the next token into curtok (and tokstr/tokval) */
+	private void readtok() {
+		int cp = tp;
+		while( cp < text.length() && whitespace(text.charAt(cp))) {
+			cp++;
+		}
+		if( cp >= text.length()) {
+			lasttok = curtok;
+			curtok = EOF;
+			tp = cp;
+			return;
+		}
+		char c = text.charAt(cp++);
+		lasttp = tp = cp-1;
+		int tok;
+		if( nameStart(c)) {
+			while( cp < text.length() && (Character.isLetterOrDigit(text.charAt(cp)) || text.charAt(cp) == '_')) {
+				cp++;
 			}
-			lastOperator = pos;
-			pos = end;
-			return true;
+			if( at(cp) == '[' ) {
+				int e = skipSubscript(cp);
+				if( e < 0 ) {
+					throw evalerror("bad array subscript");
+				}
+				cp = e+1;
+			}
+			String name = text.substring(tp, cp);
+			// what comes next: name = ... does not evaluate name (it may be unset, or not a number)
+			int[] saved = saveTok();
+			Number savedVal = tokval;
+			int savedNoeval = noeval;
+			tp = cp;
+			noeval = 1;
+			tokstr = name;
+			readtok();
+			int peektok = curtok;
+			restoreTok(saved, name, savedVal);
+			noeval = savedNoeval;
+			tp = cp;
+			tokstr = name;
+			if( lasttok == PREINC || lasttok == PREDEC || peektok != '=' ) {
+				tokval = streval(name);
+			} else {
+				tokval = ZERO;
+			}
+			lasttok = curtok;
+			curtok = STR;
+			return;
 		}
-		return false;
+		if( Character.isDigit(c) || c == '.' && Character.isDigit(at(cp))) {
+			while( cp < text.length() && (Character.isLetterOrDigit(text.charAt(cp)) || "#@_.".indexOf(text.charAt(cp)) >= 0)) {
+				cp++;
+			}
+			errorEnd = cp;
+			tokval = strlong(text.substring(tp, cp));
+			errorEnd = -1;
+			lasttok = curtok;
+			curtok = NUM;
+			tp = cp;
+			return;
+		}
+		char c1 = at(cp);
+		if( c == '=' && c1 == '=' ) {
+			tok = EQEQ;
+			cp++;
+		} else if( c == '!' && c1 == '=' ) {
+			tok = NEQ;
+			cp++;
+		} else if( c == '>' && c1 == '=' ) {
+			tok = GEQ;
+			cp++;
+		} else if( c == '<' && c1 == '=' ) {
+			tok = LEQ;
+			cp++;
+		} else if( c == '<' && c1 == '<' ) {
+			cp++;
+			if( at(cp) == '=' ) {
+				assigntok = LSH;
+				tok = OP_ASSIGN;
+				cp++;
+			} else {
+				tok = LSH;
+			}
+		} else if( c == '>' && c1 == '>' ) {
+			cp++;
+			if( at(cp) == '=' ) {
+				assigntok = RSH;
+				tok = OP_ASSIGN;
+				cp++;
+			} else {
+				tok = RSH;
+			}
+		} else if( c == '&' && c1 == '&' ) {
+			tok = LAND;
+			cp++;
+		} else if( c == '|' && c1 == '|' ) {
+			tok = LOR;
+			cp++;
+		} else if( c == '*' && c1 == '*' ) {
+			cp++;
+			if( at(cp) == '=' ) {
+				// (**=: fsh's too)
+				assigntok = POWER;
+				tok = OP_ASSIGN;
+				cp++;
+			} else {
+				tok = POWER;
+			}
+		} else if( (c == '-' || c == '+') && c1 == c && curtok == STR ) {
+			tok = c == '-' ? POSTDEC : POSTINC;
+			cp++;
+		} else if( (c == '-' || c == '+') && c1 == c && curtok == NUM && (lasttok == PREINC || lasttok == PREDEC)) {
+			// --x++
+			throw evalerror(c+""+c+": assignment requires lvalue");
+		} else if( (c == '-' || c == '+') && c1 == c ) {
+			// ++ before a name is ++x; otherwise it is + +
+			int xp = cp+1;
+			while( xp < text.length() && whitespace(text.charAt(xp))) {
+				xp++;
+			}
+			if( nameStart(at(xp))) {
+				tok = c == '-' ? PREDEC : PREINC;
+				cp++;
+			} else {
+				tok = c;
+			}
+		} else if( c1 == '=' && "*/%+-&^|".indexOf(c) >= 0 ) {
+			assigntok = c;
+			tok = OP_ASSIGN;
+			cp++;
+		} else {
+			tok = c;
+		}
+		lasttok = curtok;
+		curtok = tok;
+		tp = cp;
 	}
 
-	private boolean take(String op) {
-		return take(op, null);
+	/** the ] that closes the [ at open (nested ones skipped), or -1 */
+	private int skipSubscript(int open) {
+		int depth = 0;
+		for (int i = open; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if( c == '[' ) {
+				depth++;
+			} else if( c == ']' && --depth == 0 ) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
-	private boolean peek(String op) {
-		skipSpace();
-		return text.startsWith(op, pos);
+	/** bash's strlong: decimal, 0x hex, 0 octal or base#digits; 2.5 is a double */
+	private Number strlong(String num) {
+		if( num.indexOf('.') >= 0 && num.indexOf('#') < 0 ) {
+			try {
+				return Double.parseDouble(num);
+			} catch (NumberFormatException e) {
+				throw evalerror("arithmetic syntax error: invalid arithmetic operator");
+			}
+		}
+		int base = 10;
+		int i = 0;
+		if( num.charAt(0) == '0' ) {
+			i = 1;
+			if( num.length() > 1 && (num.charAt(1) == 'x' || num.charAt(1) == 'X')) {
+				base = 16;
+				i = 2;
+			} else {
+				base = 8;
+			}
+		}
+		long val = 0;
+		boolean foundBase = false;
+		int digits = 0;
+		for (; i < num.length(); i++) {
+			char c = num.charAt(i);
+			if( c == '#' ) {
+				// (0#4 and 2#1#1 are no number; 99#1 is no base)
+				if( foundBase || base != 10 ) {
+					throw evalerror("invalid number");
+				}
+				if( val < 2 || val > 64 ) {
+					throw evalerror("invalid arithmetic base");
+				}
+				base = (int) val;
+				val = 0;
+				foundBase = true;
+				digits = 0;
+				continue;
+			}
+			int v;
+			if( Character.isDigit(c)) {
+				v = c-'0';
+			} else if( c >= 'a' && c <= 'z' ) {
+				v = c-'a'+10;
+			} else if( c >= 'A' && c <= 'Z' ) {
+				v = base <= 36 ? c-'A'+10 : c-'A'+36;
+			} else if( c == '@' ) {
+				v = 62;
+			} else if( c == '_' ) {
+				v = 63;
+			} else {
+				throw evalerror("invalid number");
+			}
+			if( v >= base ) {
+				throw evalerror("value too great for base");
+			}
+			val = val*base+v;
+			digits++;
+		}
+		if( foundBase && digits == 0 ) {
+			throw evalerror("invalid integer constant");
+		}
+		return val;
 	}
 
-	// ---------------------------------------------------------------- grammar
-	// each level takes eval: false while skipping the side not taken by && || ?: (no assignments then)
+	// ---------------------------------------------------------------- grammar (bash's expr.c)
 
 	private static final Number ZERO = 0L;
 	private static final Number ONE = 1L;
@@ -153,127 +383,169 @@ public class Arithmetic {
 		return b ? ONE : ZERO;
 	}
 
-	private Number comma(boolean eval) {
-		Number ret = assignment(eval);
-		while( take(",")) {
-			ret = assignment(eval);
+	private Number expcomma() {
+		Number value = expassign();
+		while( curtok == ',' ) {
+			readtok();
+			value = expassign();
 		}
-		return ret;
+		return value;
 	}
 
-	private static final String [] ASSIGN_OPS = {"<<=", ">>=", "**=", "*=", "/=", "%=", "+=", "-=", "&=", "^=", "|=", "="};
-
-	private Number assignment(boolean eval) {
-		int start = pos;
-		skipSpace();
-		// look ahead without side effects (a[i++] = 1 must not run i++ twice)
-		if( lvalue(false) != null ) {
-			skipSpace();
-			for(String op : ASSIGN_OPS) {
-				int opStart = pos;
-				if( op.equals("=") ? take("=", "=") : take(op)) {
-					pos = start;
-					skipSpace();
-					Lvalue lv = lvalue(eval);
-					skipSpace();
-					pos = opStart+op.length();
-					Number right = assignment(eval);
-					if( !eval ) {
-						return ZERO;
-					}
-					Number val = op.equals("=") ? right : apply(op.substring(0, op.length()-1), lv.get(), right);
-					lv.set(val);
-					return val;
+	private Number expassign() {
+		Number value = expcond();
+		if( curtok == '=' || curtok == OP_ASSIGN ) {
+			boolean special = curtok == OP_ASSIGN;
+			if( lasttok != STR ) {
+				throw evalerror("attempted assignment to non-variable");
+			}
+			int op = assigntok;
+			Number lvalue = value;
+			if( tokstr == null ) {
+				throw evalerror("syntax error in variable assignment");
+			}
+			String lhs = tokstr;
+			readtok();
+			value = expassign();
+			if( special ) {
+				if( (op == '/' || op == '%') && !isTrue(value)) {
+					throw evalerror("division by 0");
 				}
+				value = apply(op, lvalue, value);
 			}
-		}
-		pos = start;
-		return conditional(eval);
-	}
-
-	private Number conditional(boolean eval) {
-		Number cond = logicalOr(eval);
-		if( take("?")) {
-			Number a = assignment(eval && isTrue(cond));
-			if( !take(":")) {
-				throw error("`:' expected for conditional expression");
+			if( noeval == 0 ) {
+				bind(lhs, value);
 			}
-			Number b = assignment(eval && !isTrue(cond));
-			return isTrue(cond) ? a : b;
+			tokstr = null;
 		}
-		return cond;
+		return value;
 	}
 
-	private Number logicalOr(boolean eval) {
-		Number ret = logicalAnd(eval);
-		while( take("||")) {
-			Number right = logicalAnd(eval && !isTrue(ret));
-			ret = bool(isTrue(ret) || isTrue(right));
-		}
-		return ret;
-	}
-
-	private Number logicalAnd(boolean eval) {
-		Number ret = bitOr(eval);
-		while( take("&&")) {
-			Number right = bitOr(eval && isTrue(ret));
-			ret = bool(isTrue(ret) && isTrue(right));
-		}
-		return ret;
-	}
-
-	private Number bitOr(boolean eval) {
-		Number ret = bitXor(eval);
-		while( take("|", "|=")) {
-			ret = apply("|", ret, bitXor(eval));
-		}
-		return ret;
-	}
-
-	private Number bitXor(boolean eval) {
-		Number ret = bitAnd(eval);
-		while( take("^", "=")) {
-			ret = apply("^", ret, bitAnd(eval));
-		}
-		return ret;
-	}
-
-	private Number bitAnd(boolean eval) {
-		Number ret = equality(eval);
-		while( take("&", "&=")) {
-			ret = apply("&", ret, equality(eval));
-		}
-		return ret;
-	}
-
-	private Number equality(boolean eval) {
-		Number ret = relational(eval);
-		while( true ) {
-			if( take("==")) {
-				ret = bool(compare(ret, relational(eval)) == 0);
-			} else if( take("!=")) {
-				ret = bool(compare(ret, relational(eval)) != 0);
-			} else {
-				return ret;
+	private Number expcond() {
+		Number cval = explor();
+		Number rval = cval;
+		if( curtok == '?' ) {
+			boolean c = isTrue(cval);
+			readtok();
+			if( curtok == EOF || curtok == ':' ) {
+				throw evalerror("expression expected");
 			}
+			if( !c ) {
+				noeval++;
+			}
+			Number val1 = expcomma();
+			if( !c ) {
+				noeval--;
+			}
+			if( curtok != ':' ) {
+				throw evalerror("`:' expected for conditional expression");
+			}
+			readtok();
+			if( curtok == EOF ) {
+				throw evalerror("expression expected");
+			}
+			if( c ) {
+				noeval++;
+			}
+			Number val2 = expcond();
+			if( c ) {
+				noeval--;
+			}
+			rval = c ? val1 : val2;
+			lasttok = COND;
 		}
+		return rval;
 	}
 
-	private Number relational(boolean eval) {
-		Number ret = shift(eval);
-		while( true ) {
-			if( take("<=")) {
-				ret = bool(compare(ret, shift(eval)) <= 0);
-			} else if( take(">=")) {
-				ret = bool(compare(ret, shift(eval)) >= 0);
-			} else if( take("<", "<")) {
-				ret = bool(compare(ret, shift(eval)) < 0);
-			} else if( take(">", ">")) {
-				ret = bool(compare(ret, shift(eval)) > 0);
-			} else {
-				return ret;
+	private Number explor() {
+		Number val1 = expland();
+		while( curtok == LOR ) {
+			boolean skip = isTrue(val1);
+			if( skip ) {
+				noeval++;
 			}
+			readtok();
+			Number val2 = expland();
+			if( skip ) {
+				noeval--;
+			}
+			val1 = bool(isTrue(val1) || isTrue(val2));
+			lasttok = LOR;
 		}
+		return val1;
+	}
+
+	private Number expland() {
+		Number val1 = expbor();
+		while( curtok == LAND ) {
+			boolean skip = !isTrue(val1);
+			if( skip ) {
+				noeval++;
+			}
+			readtok();
+			Number val2 = expbor();
+			if( skip ) {
+				noeval--;
+			}
+			val1 = bool(isTrue(val1) && isTrue(val2));
+			lasttok = LAND;
+		}
+		return val1;
+	}
+
+	private Number expbor() {
+		Number val1 = expbxor();
+		while( curtok == '|' ) {
+			readtok();
+			val1 = apply('|', val1, expbxor());
+			lasttok = NUM;
+		}
+		return val1;
+	}
+
+	private Number expbxor() {
+		Number val1 = expband();
+		while( curtok == '^' ) {
+			readtok();
+			val1 = apply('^', val1, expband());
+			lasttok = NUM;
+		}
+		return val1;
+	}
+
+	private Number expband() {
+		Number val1 = exp5();
+		while( curtok == '&' ) {
+			readtok();
+			val1 = apply('&', val1, exp5());
+			lasttok = NUM;
+		}
+		return val1;
+	}
+
+	private Number exp5() {
+		Number val1 = exp4();
+		while( curtok == EQEQ || curtok == NEQ ) {
+			int op = curtok;
+			readtok();
+			Number val2 = exp4();
+			val1 = bool(op == EQEQ ? compare(val1, val2) == 0 : compare(val1, val2) != 0);
+			lasttok = NUM;
+		}
+		return val1;
+	}
+
+	private Number exp4() {
+		Number val1 = expshift();
+		while( curtok == LEQ || curtok == GEQ || curtok == '<' || curtok == '>' ) {
+			int op = curtok;
+			readtok();
+			Number val2 = expshift();
+			int cmp = compare(val1, val2);
+			val1 = bool(op == LEQ ? cmp <= 0 : op == GEQ ? cmp >= 0 : op == '<' ? cmp < 0 : cmp > 0);
+			lasttok = NUM;
+		}
+		return val1;
 	}
 
 	private static int compare(Number a, Number b) {
@@ -283,221 +555,179 @@ public class Arithmetic {
 		return Long.compare(a.longValue(), b.longValue());
 	}
 
-	private Number shift(boolean eval) {
-		Number ret = additive(eval);
-		while( true ) {
-			if( take("<<", "=")) {
-				ret = apply("<<", ret, additive(eval));
-			} else if( take(">>", "=")) {
-				ret = apply(">>", ret, additive(eval));
-			} else {
-				return ret;
-			}
+	private Number expshift() {
+		Number val1 = exp3();
+		while( curtok == LSH || curtok == RSH ) {
+			int op = curtok;
+			readtok();
+			val1 = apply(op, val1, exp3());
+			lasttok = NUM;
 		}
+		return val1;
 	}
 
-	private Number additive(boolean eval) {
-		Number ret = multiplicative(eval);
-		while( true ) {
-			if( take("+", "+=")) {
-				ret = apply("+", ret, multiplicative(eval));
-			} else if( take("-", "-=")) {
-				ret = apply("-", ret, multiplicative(eval));
-			} else {
-				return ret;
-			}
+	private Number exp3() {
+		Number val1 = exp2();
+		while( curtok == '+' || curtok == '-' ) {
+			int op = curtok;
+			readtok();
+			val1 = apply(op, val1, exp2());
+			lasttok = NUM;
 		}
+		return val1;
 	}
 
-	private Number multiplicative(boolean eval) {
-		Number ret = power(eval);
-		while( true ) {
-			String op;
-			if( take("*", "*=")) {
-				op = "*";
-			} else if( take("/", "=")) {
-				op = "/";
-			} else if( take("%", "=")) {
-				op = "%";
-			} else {
-				return ret;
-			}
-			Number right = power(eval);
-			ret = eval ? apply(op, ret, right) : ZERO;
-		}
-	}
-
-	private Number power(boolean eval) {
-		Number base = unary(eval);
-		if( take("**", "=")) {
-			Number exp = power(eval);
-			return eval ? apply("**", base, exp) : ZERO;
-		}
-		return base;
-	}
-
-	private Number unary(boolean eval) {
-		skipSpace();
-		if( take("++")) {
-			return incDec(eval, 1, true);
-		} else if( take("--")) {
-			return incDec(eval, -1, true);
-		} else if( take("-")) {
-			Number n = unary(eval);
-			return n instanceof Double ? (Number)(-n.doubleValue()) : (Number)(-n.longValue());
-		} else if( take("+")) {
-			return unary(eval);
-		} else if( take("!", "=")) {
-			return bool(!isTrue(unary(eval)));
-		} else if( take("~")) {
-			return ~unary(eval).longValue();
-		}
-		return postfix(eval);
-	}
-
-	private Number incDec(boolean eval, int by, boolean prefix) {
-		skipSpace();
-		Lvalue lv = lvalue(eval);
-		if( lv == null ) {
-			throw error("arithmetic syntax error: operand expected");
-		}
-		if( !eval ) {
-			return ZERO;
-		}
-		Number old = lv.get();
-		Number now = apply("+", old, (long)by);
-		lv.set(now);
-		return prefix ? now : old;
-	}
-
-	private Number postfix(boolean eval) {
-		skipSpace();
-		int start = pos;
-		Lvalue lv = lvalue(eval);
-		if( lv != null ) {
-			lastToken = start;
-			if( take("++")) {
-				if( !eval ) {
-					return ZERO;
+	private Number exp2() {
+		Number val1 = exppower();
+		while( curtok == '*' || curtok == '/' || curtok == '%' ) {
+			int op = curtok;
+			readtok();
+			Number val2 = exppower();
+			if( (op == '/' || op == '%') && !isTrue(val2)) {
+				if( noeval == 0 ) {
+					throw evalerror("division by 0");
 				}
-				Number old = lv.get();
-				lv.set(apply("+", old, 1L));
-				return old;
-			} else if( take("--")) {
-				if( !eval ) {
-					return ZERO;
+				val2 = ONE;
+			}
+			val1 = apply(op, val1, val2);
+			lasttok = NUM;
+		}
+		return val1;
+	}
+
+	private Number exppower() {
+		Number val1 = exp1();
+		while( curtok == POWER ) {
+			readtok();
+			Number val2 = exppower();
+			lasttok = NUM;
+			val1 = apply(POWER, val1, val2);
+		}
+		return val1;
+	}
+
+	private Number exp1() {
+		if( curtok == '!' ) {
+			readtok();
+			Number v = bool(!isTrue(exp1()));
+			lasttok = NUM;
+			return v;
+		} else if( curtok == '~' ) {
+			readtok();
+			Number v = ~exp1().longValue();
+			lasttok = NUM;
+			return v;
+		} else if( curtok == '-' ) {
+			readtok();
+			Number n = exp1();
+			lasttok = NUM;
+			return n instanceof Double ? (Number) (-n.doubleValue()) : (Number) (-n.longValue());
+		} else if( curtok == '+' ) {
+			readtok();
+			Number n = exp1();
+			lasttok = NUM;
+			return n;
+		}
+		return exp0();
+	}
+
+	private Number exp0() {
+		Number val;
+		if( curtok == PREINC || curtok == PREDEC ) {
+			int stok = lasttok = curtok;
+			readtok();
+			if( curtok != STR ) {
+				throw evalerror("identifier expected after pre-increment or pre-decrement");
+			}
+			Number v2 = apply('+', tokval, (long) (stok == PREINC ? 1 : -1));
+			if( noeval == 0 ) {
+				bind(tokstr, v2);
+			}
+			val = v2;
+			// (so that --x=7 is an error)
+			curtok = NUM;
+			readtok();
+		} else if( curtok == '(' ) {
+			readtok();
+			val = expcomma();
+			if( curtok != ')' ) {
+				throw evalerror("missing `)'");
+			}
+			readtok();
+		} else if( curtok == NUM || curtok == STR ) {
+			val = tokval;
+			if( curtok == STR ) {
+				// x++ or x--
+				int[] saved = saveTok();
+				String name = tokstr;
+				Number savedVal = tokval;
+				int savedNoeval = noeval;
+				noeval = 1;
+				readtok();
+				int stok = curtok;
+				if( stok == POSTINC || stok == POSTDEC ) {
+					tokstr = name;
+					noeval = savedNoeval;
+					lasttok = STR;
+					Number v2 = apply('+', val, (long) (stok == POSTINC ? 1 : -1));
+					if( noeval == 0 ) {
+						bind(name, v2);
+					}
+					// (so that x++=7 is an error)
+					curtok = NUM;
+				} else {
+					restoreTok(saved, name, savedVal);
+					noeval = savedNoeval;
 				}
-				Number old = lv.get();
-				lv.set(apply("-", old, 1L));
-				return old;
 			}
-			return eval ? lv.get() : ZERO;
+			readtok();
+		} else {
+			throw evalerror("arithmetic syntax error: operand expected");
 		}
-		pos = start;
-		return primary(eval);
+		return val;
 	}
 
-	private Number primary(boolean eval) {
-		skipSpace();
-		if( pos >= text.length()) {
-			throw error("arithmetic syntax error: operand expected");
-		}
-		char c = text.charAt(pos);
-		if( c == '(' ) {
-			pos++;
-			Number ret = comma(eval);
-			if( !take(")")) {
-				throw error("missing `)'");
-			}
-			return ret;
-		}
-		if( Character.isDigit(c) || (c == '.' && pos+1 < text.length() && Character.isDigit(text.charAt(pos+1)))) {
-			return number();
-		}
-		throw error("arithmetic syntax error: operand expected");
-	}
-
-	private Number number() {
-		int start = pos;
-		lastToken = start;
-		while( pos < text.length() && (Character.isLetterOrDigit(text.charAt(pos)) || text.charAt(pos) == '#'
-				|| text.charAt(pos) == '@' || text.charAt(pos) == '_' || text.charAt(pos) == '.')) {
-			pos++;
-		}
-		String tok = text.substring(start, pos);
-		try {
-			return parseNumber(tok);
-		} catch (NumberFormatException e) {
-			pos = start;
-			throw error("value too great for base");
-		}
-	}
-
-	/** decimal, 0x hex, 0 octal or base#digits, as in bash; 2.5 is a double */
-	static Number parseNumber(String tok) {
-		if( tok.indexOf('.') >= 0 && tok.indexOf('#') < 0 ) {
-			return Double.parseDouble(tok);
-		}
-		int hash = tok.indexOf('#');
-		if( hash > 0 ) {
-			int base = Integer.parseInt(tok.substring(0, hash));
-			String digits = tok.substring(hash+1);
-			if( base < 2 || base > 64 || digits.isEmpty()) {
-				throw new NumberFormatException(tok);
-			}
-			long ret = 0;
-			for(char d : digits.toCharArray()) {
-				int v = digitValue(d, base);
-				if( v < 0 || v >= base ) {
-					throw new NumberFormatException(tok);
-				}
-				ret = ret*base+v;
-			}
-			return ret;
-		}
-		if( tok.startsWith("0x") || tok.startsWith("0X")) {
-			return Long.parseUnsignedLong(tok.substring(2), 16);
-		}
-		if( tok.length() > 1 && tok.startsWith("0")) {
-			return Long.parseLong(tok.substring(1), 8);
-		}
-		return Long.parseLong(tok);
-	}
-
-	/** digits of bases above 10: a-z, then A-Z (or a-z again up to 36), @ and _ */
-	private static int digitValue(char d, int base) {
-		if( d >= '0' && d <= '9' ) {
-			return d-'0';
-		} else if( d >= 'a' && d <= 'z' ) {
-			return d-'a'+10;
-		} else if( d >= 'A' && d <= 'Z' ) {
-			return base <= 36 ? d-'A'+10 : d-'A'+36;
-		} else if( d == '@' ) {
-			return 62;
-		} else if( d == '_' ) {
-			return 63;
-		}
-		return -1;
-	}
+	// ---------------------------------------------------------------- arithmetic
 
 	/** a op b: in doubles if either is one (except the bit operators, which are whole numbers) */
-	private Number apply(String op, Number a, Number b) {
-		if( (a instanceof Double || b instanceof Double) && "+-*/%**".contains(op)) {
+	private Number apply(int op, Number a, Number b) {
+		if( op == POWER ) {
+			if( !(a instanceof Double || b instanceof Double)) {
+				long y = b.longValue();
+				if( y == 0 ) {
+					return ONE;
+				}
+				if( y < 0 ) {
+					throw evalerror("exponent less than 0");
+				}
+				long x = a.longValue();
+				long ret = 1;
+				while( y > 0 ) {
+					if( (y & 1) != 0 ) {
+						ret *= x;
+					}
+					x *= x;
+					y >>= 1;
+				}
+				return ret;
+			}
+			return Math.pow(a.doubleValue(), b.doubleValue());
+		}
+		if( (a instanceof Double || b instanceof Double) && op < 256 && "+-*/%".indexOf(op) >= 0 ) {
 			double x = a.doubleValue();
 			double y = b.doubleValue();
 			switch (op) {
-			case "+": return x+y;
-			case "-": return x-y;
-			case "*": return x*y;
-			case "**": return Math.pow(x, y);
-			case "/":
+			case '+': return x+y;
+			case '-': return x-y;
+			case '*': return x*y;
+			case '/':
 				if( y == 0 ) {
-					throw errorAtLast("division by 0");
+					throw evalerror("division by 0");
 				}
 				return x/y;
 			default:
 				if( y == 0 ) {
-					throw errorAtLast("division by 0");
+					throw evalerror("division by 0");
 				}
 				return x%y;
 			}
@@ -505,126 +735,150 @@ public class Arithmetic {
 		long x = a.longValue();
 		long y = b.longValue();
 		switch (op) {
-		case "*": return x*y;
-		case "/":
+		case '*': return x*y;
+		case '/':
 			if( y == 0 ) {
-				throw errorAtLast("division by 0");
+				throw evalerror("division by 0");
 			}
 			return x/y;
-		case "%":
+		case '%':
 			if( y == 0 ) {
-				throw errorAtLast("division by 0");
+				throw evalerror("division by 0");
 			}
 			return x%y;
-		case "**":
-			if( y < 0 ) {
-				throw errorAtLast("exponent less than 0");
-			}
-			long ret = 1;
-			for (long i = 0; i < y; i++) {
-				ret *= x;
-			}
-			return ret;
-		case "+": return x+y;
-		case "-": return x-y;
-		case "<<": return x << y;
-		case ">>": return x >> y;
-		case "&": return x & y;
-		case "^": return x ^ y;
-		case "|": return x | y;
+		case '+': return x+y;
+		case '-': return x-y;
+		case LSH: return x << y;
+		case RSH: return x >> y;
+		case '&': return x & y;
+		case '^': return x ^ y;
+		case '|': return x | y;
 		default:
-			throw error("unknown operator "+op);
+			throw evalerror("arithmetic syntax error: invalid arithmetic operator");
 		}
 	}
 
 	// ---------------------------------------------------------------- variables
 
-	private interface Lvalue {
-		Number get();
-		void set(Number value);
+	/** a name's value (name or name[subscript]): unset or empty is 0, an expression is evaluated */
+	private Number streval(String tok) {
+		if( noeval > 0 ) {
+			return ZERO;
+		}
+		int b = tok.indexOf('[');
+		boolean nounset = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.NullParameterIsError);
+		if( b < 0 ) {
+			Object v = ctx.getVariable(tok);
+			if( v == null && nounset ) {
+				throw new Unbound(tok);
+			}
+			return valueOf(v);
+		}
+		String name = tok.substring(0, b);
+		String sub = tok.substring(b+1, tok.length()-1);
+		if( sub.isEmpty()) {
+			badName(tok);
+			return ZERO;
+		}
+		Object v = ctx.getVariable(name);
+		if( v instanceof Map<?,?> m ) {
+			if( nounset && m.get(key(sub)) == null ) {
+				throw new Unbound(name);
+			}
+			return valueOf(m.get(key(sub)));
+		}
+		// (a subscript's double quotes are removed: a[\"\"] in (( )) is a[0])
+		long index = evaluate(dequote(sub), ctx, depth+1).longValue();
+		lastElement = tok;
+		lastIndex = index;
+		Object e = element(v, index);
+		if( e == null && nounset ) {
+			throw new Unbound(name);
+		}
+		return valueOf(e);
 	}
 
-	/**
-	 * A variable name, or name[index], at pos; null (pos unchanged) if there is none.
-	 */
-	private Lvalue lvalue(boolean eval) {
-		int start = pos;
-		if( pos >= text.length() || !(Character.isLetter(text.charAt(pos)) || text.charAt(pos) == '_')) {
-			return null;
+	/** the element streval read last, and its index (x[RANDOM]++ evaluates the subscript once) */
+	private String lastElement;
+	private long lastIndex;
+
+	/** name = value (name[subscript] too) */
+	private void bind(String tok, Number value) {
+		int b = tok.indexOf('[');
+		if( b < 0 ) {
+			Object v = ctx.getVariable(tok);
+			if( v instanceof Map<?,?> ) {
+				// (an array's name is its element 0)
+				ctx.setVariable(tok, "0", value);
+			} else if( v instanceof List<?> ) {
+				ctx.setVariable(tok, 0, value);
+			} else {
+				ctx.setVariable(tok, value);
+			}
+			return;
 		}
-		while( pos < text.length() && (Character.isLetterOrDigit(text.charAt(pos)) || text.charAt(pos) == '_')) {
-			pos++;
+		String name = tok.substring(0, b);
+		String sub = tok.substring(b+1, tok.length()-1);
+		if( sub.isEmpty()) {
+			badName(tok);
+			return;
 		}
-		String name = text.substring(start, pos);
-		if( pos < text.length() && text.charAt(pos) == '[' && ctx.getVariable(name) instanceof Map<?,?> ) {
-			// m[key] of an associative array: the key is text, not an expression
-			int end = text.indexOf(']', pos);
-			if( end < 0 ) {
-				throw error("missing `]'");
+		if( ctx.getVariable(name) instanceof Map<?,?> ) {
+			ctx.setVariable(name, key(sub), value);
+		} else {
+			long index = tok.equals(lastElement) ? lastIndex : evaluate(dequote(sub), ctx, depth+1).longValue();
+			if( index < 0 ) {
+				Object v = ctx.getVariable(name);
+				long size = v instanceof us.bringardner.fsh.FshList f ? (f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1)
+						: v instanceof List<?> l ? l.size() : v == null ? 0 : 1;
+				index += size;
 			}
-			String key = text.substring(pos+1, end);
-			if( key.length() >= 2 && (key.startsWith("\"") && key.endsWith("\"") || key.startsWith("'") && key.endsWith("'"))) {
-				key = key.substring(1, key.length()-1);
-			}
-			pos = end+1;
-			String k = key;
-			return new Lvalue() {
-				@Override
-				public Number get() {
-					Object val = ctx.getVariable(name);
-					return valueOf(val instanceof Map<?,?> map ? map.get(k) : null, name);
-				}
-				@Override
-				public void set(Number value) {
-					ctx.setVariable(name, k, value);
-				}
-			};
+			ctx.setVariable(name, (int) index, value);
 		}
-		if( pos < text.length() && text.charAt(pos) == '[' ) {
-			pos++;
-			long index = comma(eval).longValue();
-			if( !take("]")) {
-				throw error("missing `]'");
-			}
-			return new Lvalue() {
-				@Override
-				public Number get() {
-					return valueOf(element(name, index), name);
-				}
-				@Override
-				public void set(Number value) {
-					ctx.setVariable(name, (int)index, value);
-				}
-			};
-		}
-		return new Lvalue() {
-			@Override
-			public Number get() {
-				return valueOf(ctx.getVariable(name), name);
-			}
-			@Override
-			public void set(Number value) {
-				ctx.setVariable(name, value);
-			}
-		};
 	}
 
-	private Object element(String name, long index) {
-		Object val = ctx.getVariable(name);
-		if( val instanceof List<?> ) {
-			List<?> list = (List<?>) val;
+	/** a[] in an expression: said (as the command running says it), and it goes on */
+	private void badName(String tok) {
+		ctx.error((ctx.builtin != null ? ctx.builtin+": " : "")+"`"+tok+"': not a valid identifier");
+	}
+
+	/** a subscript's double quotes are removed (a[\"\"] in (( )) is a[0]; not by let with assoc_expand_once) */
+	private String dequote(String sub) {
+		if( "let".equals(ctx.builtin) && us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")) {
+			return sub;
+		}
+		return sub.replace("\"", "");
+	}
+
+	/** an associative array's key as written in the expression ('k' and "k": k) */
+	private static String key(String sub) {
+		if( sub.length() >= 2 && (sub.startsWith("'") && sub.endsWith("'") || sub.startsWith("\"") && sub.endsWith("\""))) {
+			return sub.substring(1, sub.length()-1);
+		}
+		return sub;
+	}
+
+	private static Object element(Object val, long index) {
+		if( val instanceof us.bringardner.fsh.FshList f ) {
+			// (sparse: by index; a negative one from past the highest)
+			if( index < 0 ) {
+				index += f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1;
+			}
+			return index >= 0 && index <= Integer.MAX_VALUE ? f.get((int) index) : null;
+		}
+		if( val instanceof List<?> list ) {
 			if( index < 0 ) {
 				index += list.size();
 			}
-			return index >= 0 && index < list.size() ? list.get((int)index) : null;
-		} else if( val instanceof Map<?,?> ) {
-			return ((Map<?,?>) val).get(""+index);
+			return index >= 0 && index < list.size() ? list.get((int) index) : null;
+		} else if( val instanceof Map<?,?> m ) {
+			return m.get(""+index);
 		}
 		return index == 0 ? val : null;
 	}
 
 	/** a variable's value as a number: unset or empty is 0, and an expression is evaluated */
-	private Number valueOf(Object val, String name) {
+	private Number valueOf(Object val) {
 		if( val == null ) {
 			return ZERO;
 		}
@@ -634,18 +888,21 @@ public class Arithmetic {
 		if( val instanceof Number ) {
 			return ((Number) val).longValue();
 		}
-		if( val instanceof List<?> ) {
-			List<?> list = (List<?>) val;
-			return list.isEmpty() ? ZERO : valueOf(list.get(0), name);
+		if( val instanceof List<?> list ) {
+			return list.isEmpty() ? ZERO : valueOf(list.get(0));
 		}
-		String s = val.toString().trim();
-		if( s.isEmpty()) {
+		if( val instanceof Map<?,?> m ) {
+			return valueOf(m.get("0"));
+		}
+		String s = val.toString();
+		if( s.isBlank()) {
 			return ZERO;
 		}
-		try {
-			return parseNumber(s);
-		} catch (NumberFormatException e) {
-			return evaluate(s, ctx, depth+1);
+		if( s.matches("[1-9][0-9]{0,17}|0")) {
+			// (the common case, without a parser)
+			return Long.parseLong(s);
 		}
+		// (as it is: an error shows its blanks)
+		return evaluate(s, ctx, depth+1);
 	}
 }
