@@ -272,7 +272,11 @@ public final class Executor {
 	 * (failglob).
 	 */
 	private static int expansionError(ShellContext sc, ExpansionError e) {
-		error(sc, e.getMessage());
+		if( e.whole ) {
+			sc.stderr.println(e.getMessage());
+		} else {
+			error(sc, e.getMessage());
+		}
 		sc.console.setLastExitCode(1);
 		if( e.kind == ExpansionError.Kind.FATAL && !sc.console.isInteractive ) {
 			// (with -c, 127, as bash's)

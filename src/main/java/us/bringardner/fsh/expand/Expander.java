@@ -600,7 +600,18 @@ public final class Expander {
 			return parameter(ParamExpr.simple(pa.name()), context, out);
 		}
 		case Word.ParamExpansion pe -> {
-			return parameter(ParamExpr.parse(pe.body(), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
+			try {
+				return parameter(ParamExpr.parse(pe.body(), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
+			} catch (us.bringardner.fsh.syntax.SyntaxError e) {
+				// a $( in the word that does not end: said as bash says it, and the command is not run
+				// (bash's line is two on from the command's)
+				String prefix = sc.errorPrefix();
+				int at = prefix.lastIndexOf(": line ");
+				String where = at < 0 ? prefix : prefix.substring(0, at)+": command substitution: line "+(sc.currentLine()+2)+": ";
+				ExpansionError x = new ExpansionError(where+e.getMessage());
+				x.whole = true;
+				throw x;
+			}
 		}
 		case Word.CommandSub cs -> value(trimNewlines(host.commandOutput(cs.body(), cs.text(), false)), context, out);
 		case Word.Backquote b -> value(trimNewlines(host.commandOutput(null, b.text(), true)), context, out);

@@ -40,7 +40,7 @@ public final class Braces {
 			return List.of(w);
 		}
 		List<List<Item>> out = new ArrayList<>();
-		expand(items, out);
+		expand(items, 0, out);
 		if( out.size() == 1 && out.get(0) == items ) {
 			return List.of(w);
 		}
@@ -58,7 +58,22 @@ public final class Braces {
 		w.line = from.line;
 		w.raw = from.raw;
 		StringBuilder lit = new StringBuilder();
-		for(Item i : items) {
+		for (int k = 0; k < items.size(); k++) {
+			Item i = items.get(k);
+			if( i.part instanceof Word.Param p && Character.isJavaIdentifierStart(p.name().charAt(0)) && p.name().matches("[A-Za-z_][A-Za-z0-9_]*")
+					&& k+1 < items.size() && items.get(k+1).part == null && isNameChar(items.get(k+1).c)) {
+				// $var{x,y} is $varx $vary: the name goes on into what the braces gave, as bash's
+				StringBuilder name = new StringBuilder(p.name());
+				while( k+1 < items.size() && items.get(k+1).part == null && isNameChar(items.get(k+1).c)) {
+					name.append((char) items.get(++k).c);
+				}
+				if( lit.length() > 0 ) {
+					w.parts.add(new Word.Literal(lit.toString()));
+					lit.setLength(0);
+				}
+				w.parts.add(new Word.Param(name.toString()));
+				continue;
+			}
 			if( i.part == null ) {
 				lit.append((char) i.c);
 			} else if( i.part instanceof Word.Literal l ) {
@@ -77,8 +92,13 @@ public final class Braces {
 		return w;
 	}
 
-	private static void expand(List<Item> items, List<List<Item>> out) {
-		for (int open = 0; open < items.size(); open++) {
+	private static boolean isNameChar(int c) {
+		return c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9';
+	}
+
+	/** from: what is before it was looked at already (bash's preamble is not scanned again) */
+	private static void expand(List<Item> items, int start, List<List<Item>> out) {
+		for (int open = start; open < items.size(); open++) {
 			if( !items.get(open).is('{')) {
 				continue;
 			}
@@ -101,8 +121,8 @@ public final class Braces {
 				}
 			}
 			if( close < 0 ) {
-				// no } for this one: none of the later ones has one either
-				break;
+				// no } for this one: text (a later one may have one)
+				continue;
 			}
 			List<Item> pre = items.subList(0, open);
 			List<Item> post = items.subList(close+1, items.size());
@@ -132,7 +152,7 @@ public final class Braces {
 				List<Item> next = new ArrayList<>(pre);
 				next.addAll(alt);
 				next.addAll(post);
-				expand(next, out);
+				expand(next, open, out);
 			}
 			return;
 		}

@@ -41,4 +41,7 @@ public class ExpansionError extends RuntimeException {
 
 	/** said without the command's name (an error in a variable's value used in (( ))) */
 	public boolean bare;
+
+	/** the message is said as it is (it has its own "name: line n: ") */
+	public boolean whole;
 }
