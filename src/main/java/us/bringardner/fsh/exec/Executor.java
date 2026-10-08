@@ -682,8 +682,8 @@ public final class Executor {
 			// (an error that ends the line ends the subshell, as bash's)
 			ret = 1;
 		} finally {
-			// its EXIT trap runs as it ends
-			sc.console.endSubshellTrap(trap, ret);
+			// its EXIT trap runs as it ends (an exit in it is the subshell's status)
+			ret = sc.console.endSubshellTrap(trap, ret);
 			sc.console.restore(saved);
 		}
 		return ret;
@@ -1505,7 +1505,7 @@ public final class Executor {
 			// ($BASH_COMMAND: in a function too, where the trap does not run)
 			sc.currentCommand = text;
 		}
-		if( sc.debugBlocked > 0 && !sc.console.isOptionEnabled(Option.FuncTrace)) {
+		if( sc.debugBlocked > 0 && !sc.console.isOptionEnabled(Option.FuncTrace) && !sc.debugTrapHere()) {
 			return;
 		}
 		sc.console.runTrap(ConsoleMetaSignal.Debug, sc);

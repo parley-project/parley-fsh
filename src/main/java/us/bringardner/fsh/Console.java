@@ -98,6 +98,9 @@ public class Console extends SignalEnabledThread {
 	/** umask and ulimit settings, as the commands that made them (see commands.ProcessSettings) */
 	public final List<String> processSettings = new CopyOnWriteArrayList<>();
 
+	/** functions with the trace attribute (declare -ft): the DEBUG and RETURN traps run in them */
+	public final java.util.Set<String> tracedFunctions = ConcurrentHashMap.newKeySet();
+
 	/** pushd's stack below the current directory, oldest first */
 	public final List<String> dirStack = new CopyOnWriteArrayList<>();
 
@@ -3535,14 +3538,27 @@ delimiter
 		return signalHandlers.remove(ConsoleMetaSignal.Exit);
 	}
 
-	public void endSubshellTrap(List<String> shells, int status) {
-		if( signalHandlers.containsKey(ConsoleMetaSignal.Exit)) {
+	public int endSubshellTrap(List<String> shells, int status) {
+		int ret = status;
+		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
+		if( actions != null ) {
+			// (exit in it ends just the subshell, with its status)
 			setLastExitCode(status);
-			runExitTrap();
+			for(String action : actions) {
+				try {
+					us.bringardner.fsh.exec.Executor.run(new ShellContext(this), action);
+				} catch (ExitException e) {
+					ret = e.exitCode;
+					break;
+				} catch (Exception e) {
+					getStdErr().println(e.getMessage());
+				}
+			}
 		}
 		if( shells != null ) {
 			signalHandlers.put(ConsoleMetaSignal.Exit, shells);
 		}
+		return ret;
 	}
 
 	private void runExitTrap() {

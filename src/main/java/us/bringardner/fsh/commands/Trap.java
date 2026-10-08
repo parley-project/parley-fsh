@@ -134,6 +134,9 @@ public class Trap extends ShellCommand implements SignalHandler {
 				if( cs == ConsoleMetaSignal.Return && a != null ) {
 					ctx.returnTrapSet();
 				}
+				if( cs == ConsoleMetaSignal.Debug && a != null ) {
+					ctx.debugTrapSet();
+				}
 				continue;
 			}
 			try {

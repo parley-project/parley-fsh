@@ -56,6 +56,22 @@ public final class Declarations {
 		// in a function: local, unless -g
 		boolean local = isLocal || (sc.isInFunction() && o.indexOf('g') < 0);
 
+		if( (o.indexOf('f') >= 0 || o.indexOf('F') >= 0) && o.indexOf('t') >= 0 && !items.isEmpty()) {
+			// declare -ft name: the trace attribute (+t takes it off)
+			int ret = 0;
+			for(Object item : items) {
+				String n = String.valueOf(item instanceof Ast.Assignment a ? a.name : item);
+				if( sc.getFunction(n) == null ) {
+					error(command, n+": not found");
+					ret = 1;
+				} else if( remove ) {
+					sc.console.tracedFunctions.remove(n);
+				} else {
+					sc.console.tracedFunctions.add(n);
+				}
+			}
+			return ret;
+		}
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
 			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0);
 		}

@@ -1091,6 +1091,8 @@ $
 		boolean errBlocked;
 		/** trap ... RETURN was set while this ran: it runs when this returns */
 		boolean returnTrap;
+		/** trap ... DEBUG was set while this ran: it runs for this function's commands */
+		boolean debugTrap;
 		/** getopts' place (OPTIND, the letter in that word) when this was called */
 		int [] getopts = {1, 0};
 
@@ -1269,6 +1271,22 @@ $
 		if( !functionStack.isEmpty()) {
 			functionStack.peek().returnTrap = true;
 		}
+	}
+
+	/** trap ... DEBUG in a function: it runs in that function's commands too */
+	public void debugTrapSet() {
+		if( !functionStack.isEmpty()) {
+			functionStack.peek().debugTrap = true;
+		}
+	}
+
+	/** the DEBUG trap runs in the running function: one it set, or one declare -ft traced */
+	public boolean debugTrapHere() {
+		if( functionStack.isEmpty()) {
+			return false;
+		}
+		FunctionInvocation f = functionStack.peek();
+		return f.debugTrap || f.function != null && console.tracedFunctions.contains(f.function.getName());
 	}
 
 	/** a function is returning: its RETURN trap runs (any function's, with set -T) */
