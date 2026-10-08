@@ -552,7 +552,7 @@ public class CommandStatement extends Statement{
 					ctx.removeActiveAlias(name);
 				}
 			} else {
-				FunctionDefStatement function = ctx.getFunction(name);
+				us.bringardner.fsh.ShellFunction function = ctx.getFunction(name);
 				if( function != null ) {
 					ret = function.invoke(args,ctx);
 				} else {

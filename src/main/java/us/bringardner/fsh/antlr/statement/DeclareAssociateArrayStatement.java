@@ -116,7 +116,7 @@ associativeArrayElement
 			}
 			int ret = 0;
 			for(String name : wanted) {
-				us.bringardner.fsh.antlr.statement.FunctionDefStatement f = sc.console.getFunctions().get(name);
+				us.bringardner.fsh.ShellFunction f = sc.console.getFunctions().get(name);
 				if( f == null ) {
 					ret = 1;
 				} else if( names ) {

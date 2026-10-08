@@ -9,7 +9,15 @@ package us.bringardner.fsh.expand;
 public class ExpansionError extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
+	/** the status a script that is not interactive exits with */
+	public final int status;
+
 	public ExpansionError(String message) {
+		this(message, 1);
+	}
+
+	public ExpansionError(String message, int status) {
 		super(message);
+		this.status = status;
 	}
 }

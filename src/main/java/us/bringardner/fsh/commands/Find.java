@@ -196,15 +196,13 @@ public class Find extends ShellCommand{
 			for(String w : words) {
 				code.append('\'').append(w.replace("'", "'\\''")).append("' ");
 			}
-			int rc = 0;
-			List<us.bringardner.fsh.antlr.Statement> stmts;
+			int rc;
 			try {
-				stmts = us.bringardner.fsh.antlr.FileSourceShVisitorImpl.parse(code.toString().trim());
+				rc = sc.console.runCode(sc, code.toString().trim(), false);
+			} catch (IOException e) {
+				throw e;
 			} catch (Exception e) {
 				throw new IOException(e.getMessage(), e);
-			}
-			for(us.bringardner.fsh.antlr.Statement s : stmts) {
-				rc = s.process(sc);
 			}
 			if( rc != 0 ) {
 				status = 1;

@@ -7,7 +7,7 @@ import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.antlr.statement.FunctionDefStatement;
+import us.bringardner.fsh.ShellFunction;
 
 public class Type extends ShellCommand{
 	static String name = "type";
@@ -39,7 +39,7 @@ public class Type extends ShellCommand{
 			String kind = null;
 			String text = null;
 			Object alias = ctx.console.getAlias(n);
-			FunctionDefStatement function = ctx.getFunction(n);
+			ShellFunction function = ctx.getFunction(n);
 			if( !path && alias != null ) {
 				kind = "alias";
 				text = n+" is aliased to `"+alias+"'";

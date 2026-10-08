@@ -17,7 +17,7 @@ public abstract class LoopStatement extends Statement{
 		}
 
 		public int howFar=0;
-		ShellContext.LoopControl type;
+		public ShellContext.LoopControl type;
 
 	}
 

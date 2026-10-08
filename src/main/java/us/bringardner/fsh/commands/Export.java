@@ -5,6 +5,7 @@ import java.util.Map;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
+import us.bringardner.fsh.ShellFunction;
 
 public class Export extends ShellCommand{
 	enum Arguments {f,n,p};
@@ -39,7 +40,7 @@ public class Export extends ShellCommand{
 			if(sa.options.contains(Arguments.p) || sa.paths.size()==0) {
 				// display functions
 				/*
-				Map<String, FunctionDefStatement> map = ctx.getFunctions();
+				Map<String, ShellFunction> map = ctx.getFunctions();
 				for(String name : map.keySet()) {
 					// linux bash does nothing
 					//ctx.stdout.println("function "+name);

@@ -183,12 +183,41 @@ public final class Expander {
 		List<Word.Part> parts = w.parts;
 		for (int i = 0; i < parts.size(); i++) {
 			Word.Part p = parts.get(i);
-			if( tilde != TILDE_NONE && p instanceof Word.Literal l ) {
+			int used = indexed(parts, i, TEXT, out);
+			if( used >= 0 ) {
+				String rest = ((Word.Literal) parts.get(i+1)).text().substring(used);
+				if( !rest.isEmpty()) {
+					out.add(new Piece(TEXT, rest));
+				}
+				i++;
+			} else if( tilde != TILDE_NONE && p instanceof Word.Literal l ) {
 				tilde(l.text(), i == 0, i == parts.size()-1, tilde, out);
 			} else {
 				part(p, TEXT, out);
 			}
 		}
+	}
+
+	/**
+	 * $name[index] of an array (an fsh extension; bash reads it as ${name}[index]): parts[i] is
+	 * $name and parts[i+1] text that starts with [index]. The element goes to out.
+	 * @return how much of parts[i+1] it used, or -1 if this is not one
+	 */
+	private int indexed(List<Word.Part> parts, int i, int context, List<Piece> out) {
+		if( !(parts.get(i) instanceof Word.Param pa) || i+1 >= parts.size() || !(parts.get(i+1) instanceof Word.Literal l)
+				|| !l.text().startsWith("[") || !isName(pa.name())) {
+			return -1;
+		}
+		Object v = sc.getVariable(pa.name());
+		if( !(v instanceof List<?>) && !(v instanceof Map<?,?>)) {
+			return -1;
+		}
+		int close = l.text().indexOf(']');
+		if( close < 2 ) {
+			return -1;
+		}
+		parameter(ParamExpr.parse(pa.name()+l.text().substring(0, close+1)), context, out);
+		return close+1;
 	}
 
 	/**
@@ -273,8 +302,19 @@ public final class Expander {
 		case Word.DoubleQuoted d -> {
 			int before = out.size();
 			boolean content = d.parts().isEmpty();
-			for(Word.Part q : d.parts()) {
-				content |= part(q, QUOTED, out);
+			List<Word.Part> inner = d.parts();
+			for (int i = 0; i < inner.size(); i++) {
+				int used = indexed(inner, i, QUOTED, out);
+				if( used >= 0 ) {
+					String rest = ((Word.Literal) inner.get(i+1)).text().substring(used);
+					if( !rest.isEmpty()) {
+						out.add(new Piece(QUOTED, rest));
+					}
+					content = true;
+					i++;
+					continue;
+				}
+				content |= part(inner.get(i), QUOTED, out);
 			}
 			if( out.size() == before && content ) {
 				// "" and "$empty" are an empty word
@@ -1133,9 +1173,19 @@ public final class Expander {
 		case 'k': {
 			Object raw = sc.getVariable(e.name);
 			if( raw instanceof List<?> || raw instanceof Map<?,?> ) {
-				if( t == 'K' ) {
+				if( t == 'K' && e.subscript == null ) {
 					String kv = keyValues(raw, false);
 					return Val.of(kv.substring(1, kv.length()-1));
+				}
+				if( t == 'K' ) {
+					// ${a[@]@K}: key "value" ...
+					List<String> words = new ArrayList<>();
+					List<String> ks = keys(raw);
+					List<String> vs = values(raw);
+					for (int i = 0; i < ks.size(); i++) {
+						words.add(ks.get(i)+" \""+vs.get(i).replace("\\", "\\\\").replace("\"", "\\\"")+"\"");
+					}
+					return Val.list(words, v.star);
 				}
 				List<String> words = new ArrayList<>();
 				List<String> ks = keys(raw);

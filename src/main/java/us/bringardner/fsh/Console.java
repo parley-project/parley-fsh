@@ -50,7 +50,6 @@ import us.bringardner.fsh.antlr.signal.ExitException;
 import us.bringardner.fsh.antlr.signal.FshException;
 import us.bringardner.fsh.antlr.statement.BackgroundStatement;
 import us.bringardner.fsh.antlr.statement.CommandStatement;
-import us.bringardner.fsh.antlr.statement.FunctionDefStatement;
 import us.bringardner.fsh.antlr.statement.LoopStatement.LoopControlException;
 import us.bringardner.fsh.antlr.statement.PipeStatement;
 import us.bringardner.fsh.commands.Alias;
@@ -355,7 +354,7 @@ delimiter
 	private VirtualFileSourceFactory mountFactory;
 	public boolean forceHeadless=true;
 	public boolean isInteractive=false;	
-	private Map<String,FunctionDefStatement> functions = new ConcurrentSkipListMap<>();
+	private Map<String,ShellFunction> functions = new ConcurrentSkipListMap<>();
 
 	Map<String,Object> variables = new ConcurrentSkipListMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
@@ -539,11 +538,19 @@ delimiter
 		public long end;
 		public Exception error;
 		public Statement cmd;
+		/** what runs, for the new executor (cmd is null then) */
+		public ShellTask task;
 		public ShellContext ctx;
 
 		public CommandThread(ShellContext ctx,Statement cmd) {
 			this.ctx = ctx;
 			this.cmd = cmd;
+			setName("Command "+getCmdCnt());
+		}
+
+		public CommandThread(ShellContext ctx, ShellTask task) {
+			this.ctx = ctx;
+			this.task = task;
 			setName("Command "+getCmdCnt());
 		}
 		
@@ -566,6 +573,9 @@ delimiter
 		}
 
 		public String toString() {
+			if( task != null ) {
+				return task.text();
+			}
 			// the command as written (joining the tokens gave sleep   1)
 			ParserRuleContext p = cmd.getContext();
 			if( p.start != null && p.stop != null && p.stop.getStopIndex() >= p.start.getStartIndex()) {
@@ -589,7 +599,7 @@ delimiter
 					// a pipe stage: its own directory and options
 					ctx.console.enterStage();
 				}
-				exitCode = cmd.process(ctx);
+				exitCode = task != null ? task.run(ctx) : cmd.process(ctx);
 			} catch (Exception e) {
 				error = e;
 				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
@@ -629,7 +639,18 @@ delimiter
 			default:
 				break;
 			}
-			if (cmd instanceof PipeStatement) {
+			if( task != null ) {
+				List<CommandThread> kids = task.children();
+				if( !kids.isEmpty()) {
+					for(CommandThread kid : kids) {
+						kid.handleSignal(signal);
+					}
+				} else if( signal == ConsoleSignal.Hup || signal == ConsoleSignal.Interupt || signal == ConsoleSignal.Terminate || signal == ConsoleSignal.Kill ) {
+					ctx.setExecption(new LoopControlException(LoopControl.Break,-1));
+				} else if( signal == ConsoleSignal.Suspend ) {
+					ctx.setExecption(new SuspendException(null));
+				}
+			} else if (cmd instanceof PipeStatement) {
 				PipeStatement stmt = (PipeStatement) cmd;
 				CommandThread[] kids = stmt.getCommandThreads();
 				if( kids !=null) {
@@ -2123,7 +2144,7 @@ delimiter
 		private final List<Option> options;
 		private final Map<String,Boolean> shellOptions;
 		private final Map<String,Object> alias;
-		private final Map<String,FunctionDefStatement> functions;
+		private final Map<String,ShellFunction> functions;
 		private final FileSource cwd;
 		private final Map<Integer,FileDiscriptor> files;
 
@@ -2320,7 +2341,7 @@ delimiter
 	private Stack<ConsoleMetaSignal> inProcess = new Stack<>();
 
 
-	private void handleMetaSignal(ConsoleMetaSignal signal) {
+	public void handleMetaSignal(ConsoleMetaSignal signal) {
 
 		if( !inProcess.contains(signal)) {			
 			List<String> actions = signalHandlers.get(signal);
@@ -2448,6 +2469,12 @@ delimiter
 		return environmentVariables.remove(name);
 	}
 
+	/**
+	 * Where each alias was defined by the new executor (the script and its line): as in bash, an
+	 * alias is not used on the line that defines it.
+	 */
+	public final Map<String,String> aliasLines = new java.util.concurrent.ConcurrentHashMap<>();
+
 	public Object getAlias(String name) {
 		return alias.get(name);
 	}
@@ -2528,9 +2555,7 @@ delimiter
 		String savedCommand = ctx.currentCommand;
 		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
-			for(Statement s : FileSourceShVisitorImpl.parse(action)) {
-				s.process(ctx);
-			}
+			runCode(ctx, action, false);
 		} catch (us.bringardner.fsh.antlr.signal.FshException e) {
 			throw e;
 		} catch (Exception e) {
@@ -2582,9 +2607,7 @@ delimiter
 		ctx.trapLine = ctx.trapLine != null ? ctx.trapLine : ctx.currentLine();
 		try {
 			for(String code : actions) {
-				for(Statement s : FileSourceShVisitorImpl.parse(code)) {
-					s.process(ctx);
-				}
+				runCode(ctx, code, false);
 			}
 		} catch (us.bringardner.fsh.antlr.signal.FshException e) {
 			throw e;
@@ -2605,7 +2628,7 @@ delimiter
 		osSignalHandlers.computeIfAbsent(signal.getNumber(), k -> new CopyOnWriteArrayList<>()).add(handler);
 	}
 
-	public void addFunction(FunctionDefStatement function) {
+	public void addFunction(ShellFunction function) {
 		functions.put(function.getName(), function);		
 	}
 
@@ -2668,11 +2691,11 @@ delimiter
 		return files;
 	}
 
-	public FunctionDefStatement getFunction(String name) {
+	public ShellFunction getFunction(String name) {
 		return functions.get(name);
 	}
 
-	public Map<String, FunctionDefStatement> getFunctions() {
+	public Map<String, ShellFunction> getFunctions() {
 		return Collections.unmodifiableMap(functions);
 	}
 
@@ -2738,6 +2761,24 @@ delimiter
 
 	}
 
+	/** run scripts with the new front end (us.bringardner.fsh.syntax and .exec): -Dfsh.frontend=new */
+	public static volatile boolean newFrontEnd = "new".equals(System.getProperty("fsh.frontend"));
+
+	/**
+	 * Run code in ctx, in the front end in use (a trap's action, a sourced file).
+	 * @param preProcess the old front end's preprocessor runs first (source)
+	 */
+	public int runCode(ShellContext ctx, String code, boolean preProcess) throws Exception {
+		if( newFrontEnd ) {
+			return us.bringardner.fsh.exec.Executor.run(ctx, code);
+		}
+		int ret = 0;
+		for(Statement s : FileSourceShVisitorImpl.parse(preProcess ? preProcess(code.trim(), ctx) : code)) {
+			ret = s.process(ctx);
+		}
+		return ret;
+	}
+
 	public int executeUsingAntlr(ShellContext sc,String code)  {
 		int ret = 0;
 		try {
@@ -2747,6 +2788,9 @@ delimiter
 			}
 
 			code = code.trim();
+			if( newFrontEnd ) {
+				return us.bringardner.fsh.exec.Executor.script(sc, code);
+			}
 			String ppCode = preProcess(code, sc);
 			// (set -x traces each command as it runs; the code is not printed here)
 
@@ -2856,6 +2900,13 @@ delimiter
 			}
 
 			code = code.trim();
+			if( newFrontEnd ) {
+				ret = us.bringardner.fsh.exec.Executor.script(sc, code);
+				if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
+					Console.exit(sc.console, ret);
+				}
+				return ret;
+			}
 			String ppCode = preProcess(code, sc);
 			// (set -x traces each command as it runs; the code is not printed here)
 

@@ -28,7 +28,6 @@ import us.bringardner.fsh.antlr.FileSourceShPreProcessorVisitorImpl.Quoting;
 import us.bringardner.fsh.antlr.Statement;
 import us.bringardner.fsh.antlr.signal.FshException;
 import us.bringardner.fsh.antlr.statement.CommandStatement;
-import us.bringardner.fsh.antlr.statement.FunctionDefStatement;
 
 public class ShellContext {
 
@@ -65,15 +64,15 @@ public class ShellContext {
 
 	}
 
-	public void addFunction(FunctionDefStatement function) {
+	public void addFunction(ShellFunction function) {
 		console.addFunction(function);
 	}
 
-	public FunctionDefStatement getFunction(String name) {
+	public ShellFunction getFunction(String name) {
 		return console.getFunction(name);
 	}
 
-	public Map<String, FunctionDefStatement> getFunctions() {
+	public Map<String, ShellFunction> getFunctions() {
 		return console.getFunctions();
 	}
 
@@ -724,7 +723,7 @@ $
 				// in a trap: the line of the command it ran for
 				return trapLine;
 			}
-			return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
+			return currentLine();
 		}
 		if( name.equals("BASH_COMMAND")) {
 			// the command running (in a trap: the one the trap ran for)
@@ -858,6 +857,11 @@ $
 		}
 	}
 
+	/** name is a local variable of the running function itself (not a caller's) */
+	public boolean isOwnLocal(String name) {
+		return !functionStack.isEmpty() && functionStack.peek().local.containsKey(name);
+	}
+
 	public Object getLocalVariable(String name) {
 		FunctionInvocation inv = localScope(name);
 		if( inv != null ) {
@@ -901,6 +905,8 @@ $
 	@SuppressWarnings("unchecked")
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
+		ret.line = line;
+		ret.loopDepth = loopDepth;
 		ret.stdout = stdout;
 		ret.stdin = stdin;
 		ret.stderr = stderr;
@@ -991,7 +997,7 @@ $
 
 	class FunctionInvocation {
 		List<Object> args = new ArrayList<>();;
-		FunctionDefStatement function;
+		ShellFunction function;
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
@@ -1002,7 +1008,7 @@ $
 		/** trap ... RETURN was set while this ran: it runs when this returns */
 		boolean returnTrap;
 
-		public FunctionInvocation(Object[] args2, FunctionDefStatement function) throws IOException {
+		public FunctionInvocation(Object[] args2, ShellFunction function) throws IOException {
 			this.function = function;
 			this.args.add(function.getName());
 			this.args.addAll(Arrays.asList(args2));
@@ -1025,7 +1031,7 @@ $
 	}
 	Stack<FunctionInvocation> functionStack = new Stack<>();
 
-	public void enterFunction(Object[] args, FunctionDefStatement function) throws IOException {
+	public void enterFunction(Object[] args, ShellFunction function) throws IOException {
 		Object tmp = getEvironmentVariable("FUNCNEST");
 		if( tmp != null ) {
 			try {
@@ -1040,7 +1046,7 @@ $
 
 		FunctionInvocation inv = new FunctionInvocation(args,function);
 		// the line it was called from (caller)
-		inv.callLine = statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
+		inv.callLine = currentLine();
 		inv.errBlocked = !console.isOptionEnabled(Console.Option.ErrTrace);
 		if( inv.errBlocked ) {
 			errTrapBlocked++;
@@ -1048,7 +1054,7 @@ $
 		functionStack.push(inv);		
 	}
 
-	public void exitFunction(FunctionDefStatement functionDefStatement) {
+	public void exitFunction(ShellFunction functionDefStatement) {
 		FunctionInvocation inv = functionStack.pop();
 		if( inv.errBlocked ) {
 			errTrapBlocked--;
@@ -1108,8 +1114,17 @@ $
 
 	/** the line of the statement running (0 if none) */
 	public int currentLine() {
+		if( line > 0 ) {
+			return line;
+		}
 		return statementStack.isEmpty() ? 0 : statementStack.peek().getContext().getStart().getLine();
 	}
+
+	/** the line the new executor is running (0: none, the statement stack says) */
+	public int line;
+
+	/** how many loops the new executor is in (in this function): break and continue need one */
+	public int loopDepth;
 
 	/** trap ... RETURN in a function: it runs when that function returns */
 	public void returnTrapSet() {

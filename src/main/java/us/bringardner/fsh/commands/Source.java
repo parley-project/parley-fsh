@@ -84,9 +84,7 @@ public class Source extends ShellCommand{
 				ctx.sourceDepth++;
 				ctx.sourceFiles.addLast(path);
 				try {
-					for(Statement s : FileSourceShVisitorImpl.parse(ctx.console.preProcess(code.trim(), ctx))) {
-						ret = s.process(ctx);
-					}
+					ret = ctx.console.runCode(ctx, code, true);
 				} catch (ReturnException e) {
 					ret = e.exitCode;
 				} finally {

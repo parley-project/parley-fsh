@@ -10,7 +10,7 @@ import us.bringardner.fsh.antlr.Argument;
 import us.bringardner.fsh.antlr.Statement;
 import us.bringardner.fsh.antlr.signal.ReturnException;
 
-public class FunctionDefStatement extends Statement{
+public class FunctionDefStatement extends Statement implements us.bringardner.fsh.ShellFunction {
 
 	private String name;
 	private List<Statement> stmts;
