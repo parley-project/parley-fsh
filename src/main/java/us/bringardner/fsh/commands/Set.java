@@ -49,7 +49,9 @@ public class Set extends ShellCommand{
 
 		int ret = 0;
 		if( args == null || args.length == 0) {
-			throw new IOException("Args are not availible");
+			// as bash's set: the variables, then the functions
+			listVariables(ctx);
+			return ctx.console.runCode(ctx, "declare -f");
 		}
 		boolean isMain = false;
 		int idx = 0;
@@ -100,13 +102,11 @@ public class Set extends ShellCommand{
 								}
 								ctx.console.setOption(o2, set);							
 							} else {
-								for(Option oo : Console.Option.values()) {
-									if(oo != Option.Option) {
-										if( set ) {
-											ctx.stdout.printf("%-15s\t%s\n",oo.longName, (ctx.console.isOptionEnabled(oo)?"on":"off"));
-										} else {
-											ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.longName);
-										}
+								for(Option oo : listed()) {
+									if( set ) {
+										ctx.stdout.printf("%-15s\t%s\n",oo.longName, (ctx.console.isOptionEnabled(oo)?"on":"off"));
+									} else {
+										ctx.stdout.printf("set %so %s\n",ctx.console.isOptionEnabled(oo)?"-":"+",oo.longName);
 									}
 								}
 							}
@@ -142,5 +142,56 @@ public class Set extends ShellCommand{
 			// in a function this sets the function's parameters
 			ctx.setPositionalParameterValues(pp);
 		}
+	}
+
+	/** the options set -o lists, as bash's: by name (fsh's own, kbecho and verboseError, are not listed) */
+	public static java.util.List<Option> listed() {
+		java.util.List<Option> ret = new java.util.ArrayList<>();
+		for(Option o : Option.values()) {
+			if( o != Option.Option && o != Option.Unsupported && o.longName.length() > 1
+					&& o != Option.KeyboardEcho && o != Option.VerboseError ) {
+				ret.add(o);
+			}
+		}
+		ret.sort(java.util.Comparator.comparing(o -> o.longName));
+		return ret;
+	}
+
+	/** set with no arguments: each variable as name=value, by name */
+	private static void listVariables(ShellContext ctx) {
+		java.util.Map<String, Object> all = new java.util.TreeMap<>();
+		all.putAll(ctx.getEnvironmentVariables());
+		all.putAll(ctx.getVariables());
+		for(java.util.Map.Entry<String, Object> e : all.entrySet()) {
+			String name = e.getKey();
+			if( !name.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+				continue;
+			}
+			Object v = e.getValue();
+			StringBuilder line = new StringBuilder(name).append('=');
+			if( v instanceof java.util.Map<?,?> map ) {
+				line.append('(');
+				for(java.util.Map.Entry<?,?> kv : map.entrySet()) {
+					line.append('[').append(kv.getKey()).append("]=").append(dq(kv.getValue())).append(' ');
+				}
+				line.append(')');
+			} else if( v instanceof java.util.List<?> list ) {
+				line.append('(');
+				for(int i = 0; i < list.size(); i++) {
+					if( list.get(i) != null ) {
+						line.append(i > 0 ? " " : "").append('[').append(i).append("]=").append(dq(list.get(i)));
+					}
+				}
+				line.append(')');
+			} else {
+				String s = v == null ? "" : v.toString();
+				line.append(s.matches("[A-Za-z0-9_./:@%+,=-]*") && !s.isEmpty() ? s : us.bringardner.fsh.expand.Expander.quote(s));
+			}
+			ctx.stdout.println(line);
+		}
+	}
+
+	private static String dq(Object v) {
+		return "\""+String.valueOf(v).replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("`", "\\`")+"\"";
 	}
 }

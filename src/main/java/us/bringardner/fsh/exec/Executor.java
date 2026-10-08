@@ -113,20 +113,21 @@ public final class Executor {
 			try {
 				ret = ex.item(item, sc);
 			} catch (AbandonLine e) {
-				abandoned = e.line;
+				// the rest of the line is not run (in a function too, as bash's)
+				abandoned = item.command.line;
 				ret = 1;
+				sc.console.setLastExitCode(1);
 			}
 		}
 		return ret;
 	}
 
 	/** an error after which bash does not run the rest of the line (x=1 of a readonly x) */
-	static final class AbandonLine extends RuntimeException {
+	static final class AbandonLine extends us.bringardner.fsh.signal.FshException {
 		private static final long serialVersionUID = 1L;
 		final int line;
 
 		AbandonLine(int line) {
-			super(null, null, false, false);
 			this.line = line;
 		}
 	}
@@ -182,12 +183,21 @@ public final class Executor {
 	}
 
 	/** an expansion error: a script that is not interactive ends (as in bash); otherwise status 1 */
+	/**
+	 * An expansion error, as bash handles it: reported, then a script ends (${x:?}, set -u), the
+	 * rest of the line is not run (a bad substitution, an arithmetic error), or the command fails
+	 * (failglob).
+	 */
 	private static int expansionError(ShellContext sc, ExpansionError e) {
 		error(sc, e.getMessage());
-		if( !sc.console.isInteractive ) {
+		sc.console.setLastExitCode(1);
+		if( e.kind == ExpansionError.Kind.FATAL && !sc.console.isInteractive ) {
 			throw new ExitException(sc, e.status);
 		}
-		return 1;
+		if( e.kind == ExpansionError.Kind.FAIL ) {
+			return 1;
+		}
+		throw new AbandonLine(sc.line);
 	}
 
 	private Expander expander(ShellContext sc) {
@@ -603,6 +613,9 @@ public final class Executor {
 			ret = list(body, sub);
 		} catch (ExitException e) {
 			ret = e.exitCode;
+		} catch (AbandonLine e) {
+			// (an error that ends the line ends the subshell, as bash's)
+			ret = 1;
 		} finally {
 			// its EXIT trap runs as it ends
 			sc.console.endSubshellTrap(trap, ret);
@@ -763,6 +776,10 @@ public final class Executor {
 				return expansionError(sc, e);
 			}
 		}
+		if( entries.isEmpty()) {
+			// nothing to choose from: as bash, the loop does not run
+			return 0;
+		}
 		Object ps3 = sc.getVariable("PS3");
 		String prompt = ps3 == null ? "#? " : ps3.toString();
 		Read reader = new Read();
@@ -771,8 +788,15 @@ public final class Executor {
 		try {
 			while( true ) {
 				menu(entries, sc);
-				String reply = reader.readLine(sc, prompt);
+				String reply;
+				try {
+					reply = reader.readLine(sc, prompt);
+				} catch (java.io.EOFException e) {
+					reply = null;
+				}
 				if( reply == null ) {
+					// the end of input: as bash, a newline and status 1
+					sc.stderr.println();
 					return 1;
 				}
 				sc.setVariable("REPLY", reply);
@@ -798,46 +822,64 @@ public final class Executor {
 	}
 
 	/** the menu in columns (down, then across) as wide as $COLUMNS, at least 11 lines a column */
+	/**
+	 * select's menu, laid out as bash's (on standard error): the entries down the columns that fit
+	 * in $COLUMNS (a single column if they fit in one row), tabs between the columns.
+	 */
 	private static void menu(List<String> entries, ShellContext sc) {
 		int sz = entries.size();
 		int maxLen = 0;
 		for(String s : entries) {
 			maxLen = Math.max(maxLen, s.length());
 		}
-		maxLen += 6;
-		int lines = 11;
-		int cols = 1;
-		if( sz > lines ) {
-			int width = 80;
-			try {
-				width = Integer.parseInt(String.valueOf(sc.getVariable("COLUMNS")));
-			} catch (NumberFormatException e) {
-			}
-			cols = Math.max(1, width/maxLen);
-			int tmp = sz/cols;
-			if( tmp > lines ) {
-				lines = tmp;
-			}
-			if( lines % cols != 0 ) {
-				lines++;
-			}
+		int indices = String.valueOf(sz).length();
+		maxLen += indices+2+2;
+		int width = 80;
+		try {
+			width = Integer.parseInt(String.valueOf(sc.getVariable("COLUMNS")).trim());
+		} catch (NumberFormatException e) {
 		}
-		int digits = sz >= 100 ? 3 : sz >= 10 ? 2 : 1;
-		String fmt = "%"+digits+"d) %-"+maxLen+"s ";
-		for (int line = 0; line < lines; line++) {
-			boolean any = false;
-			for (int col = 0; col < cols; col++) {
-				int i = line+col*lines;
-				if( i < sz ) {
-					any = true;
-					sc.stderr.printf(fmt, i+1, entries.get(i));
+		int cols = maxLen > 0 ? Math.max(1, width/maxLen) : 1;
+		int rows = sz > 0 ? sz/cols+(sz % cols != 0 ? 1 : 0) : 1;
+		cols = sz > 0 ? sz/rows+(sz % rows != 0 ? 1 : 0) : 1;
+		if( rows == 1 ) {
+			rows = cols;
+			cols = 1;
+		}
+		int firstIndices = String.valueOf(rows).length();
+		StringBuilder out = new StringBuilder();
+		for (int row = 0; row < rows; row++) {
+			int ind = row;
+			int pos = 0;
+			while( true ) {
+				int w = pos == 0 ? firstIndices : indices;
+				String item = String.format("%"+w+"d) %s", ind+1, entries.get(ind));
+				out.append(item);
+				int elem = item.length();
+				ind += rows;
+				if( ind >= sz ) {
+					break;
 				}
+				// tabs and spaces to the next column, as bash's indent
+				int from = pos+elem;
+				int to = pos+maxLen;
+				while( from < to ) {
+					if( to/8 > from/8 ) {
+						out.append('\t');
+						from += 8-from % 8;
+					} else {
+						out.append(' ');
+						from++;
+					}
+				}
+				pos += maxLen;
 			}
-			if( any ) {
-				sc.stderr.println();
-			}
+			out.append('\n');
 		}
+		sc.stderr.print(out);
+		sc.stderr.flush();
 	}
+
 
 	/** case word in pattern) ...: ;; ends it, ;& runs the next list too, ;;& tests the next patterns */
 	private int caseCommand(Ast.Case k, ShellContext sc) throws IOException {
@@ -1066,6 +1108,9 @@ public final class Executor {
 		Expander ex = expander(sc);
 		long substitutions = sc.console.substitutionCount();
 		List<Object> args = new ArrayList<>();
+		// set -k: name=value after the command's name is an assignment for it too, as in bash
+		List<String[]> keywordAssignments = new ArrayList<>();
+		boolean keyword = sc.console.isOptionEnabled(Console.Option.Keyword);
 		try {
 			boolean declaration = false;
 			for (int i = 0; i < c.words.size(); i++) {
@@ -1073,6 +1118,14 @@ public final class Executor {
 				if( declaration && w.assignment != null ) {
 					args.add(w.assignment);
 					continue;
+				}
+				if( keyword && !declaration && !args.isEmpty() && w.raw.matches("[A-Za-z_][A-Za-z0-9_]*=(?s).*")) {
+					String value = String.join(" ", ex.expand(w));
+					int eq = value.indexOf('=');
+					if( eq > 0 ) {
+						keywordAssignments.add(new String[] {value.substring(0, eq), value.substring(eq+1)});
+						continue;
+					}
 				}
 				List<String> fields = ex.expand(w);
 				if( args.isEmpty() && !fields.isEmpty()) {
@@ -1088,14 +1141,33 @@ public final class Executor {
 		}
 		String name = (String) args.remove(0);
 		List<Object[]> saved = null;
+		if( !keywordAssignments.isEmpty()) {
+			saved = new ArrayList<>();
+			for(String [] a : keywordAssignments) {
+				if( sc.console.isReadonly(a[0])) {
+					error(sc, a[0]+": readonly variable");
+					continue;
+				}
+				saved.add(new Object[] {a[0], sc.console.getVariable(a[0]), sc.getEvironmentVariable(a[0])});
+				sc.setVariable(a[0], a[1]);
+				sc.setEnvironmentVariable(a[0], a[1]);
+			}
+		}
 		if( !c.assignments.isEmpty()) {
 			// IFS=: read a b: set (and exported) for the command, then put back
-			saved = new ArrayList<>();
+			if( saved == null ) {
+				saved = new ArrayList<>();
+			}
 			try {
 				for(Ast.Assignment a : c.assignments) {
 					String v = a.value == null ? "" : ex.assignment(a.value);
 					if( tracing(sc)) {
 						trace(sc, sc.stderr, a.name+"="+assigned(v));
+					}
+					if( sc.console.isReadonly(a.name)) {
+						// as bash: said, and the command runs without it
+						error(sc, a.name+": readonly variable");
+						continue;
 					}
 					saved.add(new Object[] {a.name, sc.console.getVariable(a.name), sc.getEvironmentVariable(a.name)});
 					sc.setVariable(a.name, v);
@@ -1514,6 +1586,8 @@ public final class Executor {
 		try {
 			return Arithmetic.evaluate(text, sc);
 		} catch (Arithmetic.ArithmeticError e) {
+			throw new ExpansionError(e.getMessage());
+		} catch (ShellContext.ReadonlyException e) {
 			throw new ExpansionError(e.getMessage());
 		}
 	}

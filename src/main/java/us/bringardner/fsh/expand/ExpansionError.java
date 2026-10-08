@@ -17,7 +17,25 @@ public class ExpansionError extends RuntimeException {
 	}
 
 	public ExpansionError(String message, int status) {
+		this(message, status, Kind.ABANDON);
+	}
+
+	public ExpansionError(String message, Kind kind) {
+		this(message, 1, kind);
+	}
+
+	public ExpansionError(String message, int status, Kind kind) {
 		super(message);
 		this.status = status;
+		this.kind = kind;
 	}
+
+	/**
+	 * What bash does after the error: a script ends (FATAL: ${x:?}, set -u), the rest of the line
+	 * is not run (ABANDON: a bad substitution, an arithmetic error, a readonly variable), or
+	 * only the command fails (FAIL: failglob's no match).
+	 */
+	public enum Kind {FATAL, ABANDON, FAIL}
+
+	public final Kind kind;
 }

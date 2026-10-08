@@ -222,6 +222,17 @@ public class Console extends SignalEnabledThread {
 		, HistExpand ("H", "histexpand")
 		// set -o history: commands go into the history (typed ones, or a script's); on in an interactive shell
 		, History ("\u0000history", "history")
+		// bash's, kept so set -o and $- show them: -h -k -m -p and the names
+		, Hashall ("h", "hashall")
+		, Keyword ("k", "keyword")
+		, Monitor ("m", "monitor")
+		, Privileged ("p", "privileged")
+		, Posix ("\u0000posix", "posix")
+		, Emacs ("\u0000emacs", "emacs")
+		, Vi ("\u0000vi", "vi")
+		, IgnoreEof ("\u0000ignoreeof", "ignoreeof")
+		, InteractiveComments ("\u0000interactive-comments", "interactive-comments")
+		, NoLog ("\u0000nolog", "nolog")
 		, KeyboardEcho ("kbecho")
 		, VerboseError ("verboseError")
 		;
@@ -771,8 +782,10 @@ delimiter
 			});
 
 			// Dont't forget: TERM & QUIT both exit but QUIT dumps core and Java won't let us handle QUIT
-			if( NativeKeyboard.inputIsPipeOrFile()) {
-				// a pipe or a file: read as bash reads it, and shared with the programs it runs
+			if( NativeKeyboard.inputIsPipeOrFile()
+					|| (GraphicsEnvironment.isHeadless() && NativeKeyboard.isAvailible() && !NativeKeyboard.inputIsTerminal())) {
+				// a pipe, a file or /dev/null: read as bash reads it, and shared with the programs it
+				// runs (only a terminal is a keyboard; without one, the window is, unless headless)
 				System_in = new ProcessStdin();
 			}
 			c.setStdIn(System_in);
@@ -967,6 +980,11 @@ delimiter
 			// history expansion (!!, !$ ...) and the history are on in an interactive shell, as in bash
 			options.add(Option.HistExpand);
 			options.add(Option.History);
+			options.add(Option.Emacs);
+			if( NativeKeyboard.terminal()) {
+				// job control
+				options.add(Option.Monitor);
+			}
 		}
 		runStartupFiles(inv);
 
@@ -998,10 +1016,7 @@ delimiter
 		List<Option> on = getOptions();
 		for(char c : "abefhikmnprtuvxBCEHPT".toCharArray()) {
 			boolean set = switch (c) {
-			case 'h' -> true;
 			case 'i' -> isInteractive;
-			// job control: on a terminal
-			case 'm' -> isInteractive && NativeKeyboard.terminal();
 			default -> {
 				Option o = Option.find(String.valueOf(c));
 				yield o != Option.Unsupported && on.contains(o);
@@ -1186,6 +1201,7 @@ delimiter
 	 * syntax error ends it (status 2), as it ends bash's script. The EXIT trap runs at the end.
 	 */
 	private int runCommands(java.util.function.Supplier<String> next) {
+		commandsContext = null;
 		executeDepth++;
 		try {
 			StringBuilder code = new StringBuilder();
@@ -1194,9 +1210,14 @@ delimiter
 			while( !stopping ) {
 				String l = next.get();
 				if( l == null ) {
-					if( !code.toString().isBlank()) {
+					String rest = code.toString();
+					if( rest.endsWith("\\\n") && (rest.length()-rest.replaceAll("\\\\+\n$", "").length()) % 2 == 0 ) {
+						// a backslash at the very end is dropped, as bash drops it
+						rest = rest.substring(0, rest.length()-2)+"\n";
+					}
+					if( !rest.isBlank()) {
 						// (an unfinished command: its syntax error)
-						lastExitCode = runChunk(code.toString(), first);
+						lastExitCode = runChunk(rest, first);
 					}
 					break;
 				}
@@ -1227,14 +1248,20 @@ delimiter
 	}
 
 	/** run a whole command; -1 if it has a syntax error (reported) */
+	/** the context the commands of runCommands run in */
+	private ShellContext commandsContext;
+
 	private int runChunk(String code, int firstLine) {
+		if( commandsContext == null ) {
+			commandsContext = scriptContext();
+		}
 		try {
 			us.bringardner.fsh.syntax.Parser.parse(code, firstLine);
 		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
-			executeScript0(code, firstLine);
+			executeScript0(code, firstLine, commandsContext);
 			return -1;
 		}
-		return executeScript0(code, firstLine);
+		return executeScript0(code, firstLine, commandsContext);
 	}
 
 	/** a line of in without its newline, read a byte at a time (nothing after it is taken); null at the end */
@@ -1380,6 +1407,8 @@ delimiter
 			variables.put(VARIABLE_HISTCHARS, "!^#");
 			positionalParameters.add("fsh");
 			options.add(Option.DoBraceExpantion);
+			options.add(Option.Hashall);
+			options.add(Option.InteractiveComments);
 
 
 
@@ -2885,13 +2914,21 @@ delimiter
 	/** shopt's options, by name */
 	private final Map<String,Boolean> shellOptions = new ConcurrentHashMap<>();
 	{
-		for(String n : new String[] {"autocd", "cdspell", "checkwinsize", "dotglob", "expand_aliases", "extglob",
-				"failglob", "globstar", "histappend", "inherit_errexit", "lastpipe", "nocaseglob", "nocasematch",
-				"nullglob", "sourcepath", "xpg_echo"}) {
+		// bash's, with bash's defaults
+		for(String n : new String[] {"array_expand_once", "assoc_expand_once", "autocd", "bash_source_fullpath",
+				"cdable_vars", "cdspell", "checkhash", "checkjobs", "compat31", "compat32", "compat40", "compat41",
+				"compat42", "compat43", "compat44", "direxpand", "dirspell", "dotglob", "execfail", "expand_aliases",
+				"extdebug", "extglob", "failglob", "globstar", "gnu_errfmt", "histappend", "histreedit", "histverify",
+				"huponexit", "inherit_errexit", "lastpipe", "lithist", "localvar_inherit", "localvar_unset",
+				"mailwarn", "no_empty_cmd_completion", "nocaseglob", "nocasematch", "noexpand_translation", "nullglob",
+				"progcomp_alias", "restricted_shell", "shift_verbose", "varredir_close", "xpg_echo"}) {
 			shellOptions.put(n, false);
 		}
-		shellOptions.put("checkwinsize", true);
-		shellOptions.put("sourcepath", true);
+		for(String n : new String[] {"checkwinsize", "cmdhist", "complete_fullquote", "extquote", "force_fignore",
+				"globasciiranges", "globskipdots", "hostcomplete", "interactive_comments", "patsub_replacement",
+				"progcomp", "sourcepath"}) {
+			shellOptions.put(n, true);
+		}
 		// set by how the shell started (-l)
 		shellOptions.put("login_shell", false);
 		// a prompt's $x, $(cmd) and $((n)) are expanded
@@ -2910,6 +2947,11 @@ delimiter
 	/** where in the word at optind getopts is (0 if OPTIND was changed by the script) */
 	public int getoptsPosition(int optind) {
 		return optind == getoptsIndex ? getoptsPos : 0;
+	}
+
+	/** {OPTIND, the letter in that word} getopts is at */
+	public int[] getoptsState() {
+		return new int[] {getoptsIndex, getoptsPos};
 	}
 
 	public void setGetoptsPosition(int optind, int pos) {
@@ -3321,8 +3363,10 @@ delimiter
 		} catch(Exception e) {
 			//e.printStackTrace();
 			ret = 1;
-			sc.stderr.println(e);
-			logError("", e);
+			sc.stderr.println(e.getMessage() != null ? e.getMessage() : e.toString());
+			if( isOptionEnabled(Option.VerboseError)) {
+				logError("", e);
+			}
 			handleMetaSignal(ConsoleMetaSignal.Err);
 		}
 
@@ -3383,17 +3427,25 @@ delimiter
 		return executeScript0(code, 1);
 	}
 
-	private int executeScript0(String code, int firstLine)  {
-		int ret = 0;
+	/** a new context for a script (its standard input, output and error the console's) */
+	private ShellContext scriptContext() {
 		ShellContext sc = new ShellContext(this);
-
 		sc.stdin = getStdIn();
 		sc.stdout = getStdOut();
 		sc.stderr = getStdErr();
-
 		if( isKeyboard(sc.stdin)) {
 			sc.stdin = new NativeKeyboard();
 		}
+		return sc;
+	}
+
+	private int executeScript0(String code, int firstLine)  {
+		return executeScript0(code, firstLine, scriptContext());
+	}
+
+	/** code in sc (a script read a command at a time runs them all in one: exec >file stays) */
+	private int executeScript0(String code, int firstLine, ShellContext sc)  {
+		int ret = 0;
 
 		try {
 
@@ -3439,7 +3491,6 @@ delimiter
 			if( isOptionEnabled(Option.VerboseError)) {
 				e.printStackTrace(sc.stderr);
 			}
-			logError("", e);
 			handleMetaSignal(ConsoleMetaSignal.Err);
 		}
 

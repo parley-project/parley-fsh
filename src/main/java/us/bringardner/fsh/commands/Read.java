@@ -39,6 +39,8 @@ public class Read extends ShellCommand{
 			+ "\tsee 'man read' for more information\";"
 			;
 
+	static final String USAGE = "read: usage: read [-Eers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] [-t timeout] [-u fd] [name ...]";
+
 	public Read() {
 		super(name, help);
 	}
@@ -65,60 +67,97 @@ public class Read extends ShellCommand{
 		 * e & i are for command line editing
 		 */
 
+		// as getopt reads them: -ru3 is -r -u 3, -rd: is -r -d :
+		boolean options_done = false;
 		for(int idx1=0; idx1 < args.length; idx1++) {
-			Argument arg = args[idx1];
-			String tmp = ""+arg.getValue(ctx);
-			if( tmp.startsWith("-")) {
-				for(int idx2=1;idx2< tmp.length(); idx2++ ) {
-					char c = tmp.charAt(idx2);
-					switch (c) {
-					case 'a':arrayName = ""+args[++idx1].getValue(ctx); break;
-					case 'd': {
-						// -d '': up to a NUL (find -print0)
-						String d = ""+args[++idx1].getValue(ctx);
-						lineDelim = d.isEmpty() ? '\0' : d.charAt(0);
-						break;
+			String tmp = ""+args[idx1].getValue(ctx);
+			if( options_done || !tmp.startsWith("-") || tmp.length() == 1 ) {
+				names.add(tmp);
+				options_done = true;
+				continue;
+			}
+			if( tmp.equals("--")) {
+				options_done = true;
+				continue;
+			}
+			for(int idx2=1;idx2< tmp.length(); idx2++ ) {
+				char c = tmp.charAt(idx2);
+				String value = null;
+				if( "adinNptu".indexOf(c) >= 0 ) {
+					if( idx2+1 < tmp.length()) {
+						value = tmp.substring(idx2+1);
+					} else if( idx1+1 < args.length ) {
+						value = ""+args[++idx1].getValue(ctx);
+					} else {
+						ctx.error("read: -"+c+": option requires an argument");
+						ctx.stderr.println(USAGE);
+						return 2;
 					}
-					case 'e':options.add(Options.e);break;
-					case 'i':editLineText = ""+args[++idx1].getValue(ctx); break;
-					case 'n':n = Integer.parseInt(""+args[++idx1].getValue(ctx));break;
-					case 'N':N = Integer.parseInt(""+args[++idx1].getValue(ctx));break;
-					case 'p':prompt = ""+args[++idx1].getValue(ctx); break;
-					case 'r':options.add(Options.r);break;
-					case 's':options.add(Options.s);break;
-					case 't':
-						// seconds, maybe with a fraction: -t 0.5
-						try {
-							timeoutSeconds = Double.parseDouble(""+args[++idx1].getValue(ctx));
-						} catch (NumberFormatException e) {
-							ctx.error("read: "+args[idx1].getValue(ctx)+": invalid timeout specification");
-							return 1;
-						}
-						timeout = (int) Math.ceil(timeoutSeconds);
-						break;
-					case 'u': {
-						// read -u 3: from descriptor 3 (exec 3<file, {fd}<file, done 3<file)
-						String text = ""+args[++idx1].getValue(ctx);
-						try {
-							fromFd = Integer.parseInt(text.trim());
-						} catch (NumberFormatException e) {
-							ctx.error("read: "+text+": invalid file descriptor specification");
-							return 1;
-						}
-						break;
-					}
-					default:
-						throw new IllegalArgumentException("Unexpected value: " + c);
-					}
-
+					idx2 = tmp.length();
 				}
-			} else {
-				names.add(""+tmp);
+				switch (c) {
+				case 'a':arrayName = value; break;
+				case 'd':
+					// -d '': up to a NUL (find -print0)
+					lineDelim = value.isEmpty() ? '\0' : value.charAt(0);
+					break;
+				case 'e':options.add(Options.e);break;
+				case 'i':editLineText = value; break;
+				case 'n':
+				case 'N': {
+					int count;
+					try {
+						count = Integer.parseInt(value.trim());
+					} catch (NumberFormatException e) {
+						count = -1;
+					}
+					if( count < 0 ) {
+						ctx.error("read: "+value+": invalid number");
+						return 1;
+					}
+					if( c == 'n' ) {
+						n = count;
+					} else {
+						N = count;
+					}
+					break;
+				}
+				case 'p':prompt = value; break;
+				case 'r':options.add(Options.r);break;
+				case 's':options.add(Options.s);break;
+				case 't':
+					// seconds, maybe with a fraction: -t 0.5
+					try {
+						timeoutSeconds = Double.parseDouble(value);
+					} catch (NumberFormatException e) {
+						timeoutSeconds = -1;
+					}
+					if( timeoutSeconds < 0 ) {
+						ctx.error("read: "+value+": invalid timeout specification");
+						return 1;
+					}
+					timeout = (int) Math.ceil(timeoutSeconds);
+					break;
+				case 'u':
+					// read -u 3: from descriptor 3 (exec 3<file, {fd}<file, done 3<file)
+					try {
+						fromFd = Integer.parseInt(value.trim());
+					} catch (NumberFormatException e) {
+						fromFd = -1;
+					}
+					if( fromFd < 0 ) {
+						ctx.error("read: "+value+": invalid file descriptor specification");
+						return 1;
+					}
+					break;
+				default:
+					ctx.error("read: -"+c+": invalid option");
+					ctx.stderr.println(USAGE);
+					return 2;
+				}
 			}
 		}
-		
 
-		
 		java.io.InputStream callerIn = ctx.stdin;
 		if( fromFd != 0 ) {
 			Console.FileDiscriptor fd = ctx.console.getFileDistcriptor(fromFd);

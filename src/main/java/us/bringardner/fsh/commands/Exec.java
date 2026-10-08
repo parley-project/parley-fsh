@@ -42,11 +42,23 @@ public class Exec extends ShellCommand{
 		for(;idx< args.length; idx++ ) {
 			Argument a = args[idx];
 			String val = ""+a.getValue(ctx);
-			if( val.equals("-a")) {
+			if( val.equals("--")) {
+				break;
+			} else if( val.equals("-a")) {
 				cmdName = ""+args[++idx].getValue(ctx);
-			} else if( val.startsWith("-")) {
-				c = val.contains("c");
-				l = val.contains("l");
+			} else if( val.startsWith("-") && val.length() > 1 ) {
+				for(char o : val.substring(1).toCharArray()) {
+					if( o == 'c' ) {
+						c = true;
+					} else if( o == 'l' ) {
+						l = true;
+					} else {
+						// as bash's
+						ctx.error("exec: -"+o+": invalid option");
+						ctx.stderr.println("exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]");
+						return 2;
+					}
+				}
 			} else {
 				idx--;
 				break;

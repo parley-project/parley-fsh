@@ -52,16 +52,27 @@ final class ProcessSubstitutions {
 			ctx.stdout = new KeptOpen(sc.stdout);
 		}
 		AtomicBoolean opened = new AtomicBoolean();
+		AtomicBoolean done = new AtomicBoolean();
 		CommandThread thread = new CommandThread(ctx, new ShellTask() {
 			@Override
 			public int run(ShellContext c) throws IOException {
 				if( direction == '<' ) {
 					// (opening blocks until the command opens the other end)
+					int status;
 					try (OutputStream out = new FileOutputStream(fifo)) {
 						opened.set(true);
 						c.stdout = new PrintStream(new PipeOutput(out, c), true);
-						return ex.list(seq, c);
+						status = ex.list(seq, c);
 					}
+					// read again (wc -l < $1 twice), it is at its end at once, as bash's /dev/fd/N
+					while( !done.get()) {
+						try (OutputStream again = new FileOutputStream(fifo)) {
+							// opened and closed: that reader sees the end
+						} catch (IOException e) {
+							break;
+						}
+					}
+					return status;
 				}
 				try (InputStream in = new FileInputStream(fifo)) {
 					opened.set(true);
@@ -77,7 +88,7 @@ final class ProcessSubstitutions {
 		});
 		thread.setDaemon(true);
 		thread.start();
-		sc.afterCommand.add(() -> finish(direction, fifo, thread, opened));
+		sc.afterCommand.add(() -> finish(direction, fifo, thread, opened, done));
 		return fifo.getAbsolutePath();
 	}
 
@@ -86,7 +97,18 @@ final class ProcessSubstitutions {
 	 * waiting. Wait for >(cmd) to read the rest, so what it writes comes before what follows
 	 * (bash does not wait, but it is quick). The pipe's name is removed.
 	 */
-	private static void finish(char direction, File fifo, CommandThread thread, AtomicBoolean opened) {
+	private static void finish(char direction, File fifo, CommandThread thread, AtomicBoolean opened, AtomicBoolean done) {
+		done.set(true);
+		if( direction == '<' && opened.get() && thread.isAlive()) {
+			// the writer may wait to give a next reader its end: let it go
+			Thread unblock = new Thread(() -> {
+				try (Closeable c = new FileInputStream(fifo)) {
+				} catch (IOException e) {
+				}
+			}, "process substitution end");
+			unblock.setDaemon(true);
+			unblock.start();
+		}
 		if( !opened.get()) {
 			Thread unblock = new Thread(() -> {
 				try (Closeable c = direction == '<' ? new FileInputStream(fifo) : new FileOutputStream(fifo)) {

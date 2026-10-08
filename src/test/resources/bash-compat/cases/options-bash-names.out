@@ -1,0 +1,23 @@
+posix=0
+emacs          	off
+hashall        	on
+ignoreeof      	off
+keyword        	off
+monitor        	off
+nolog          	off
+posix          	off
+privileged     	off
+vi             	off
+flags=hB
+flags=B
+c=7 d=8 args=a b
+c= d= args=a c=7
+set +o pipefail
+pipefail       	on
+cmdhist             	on
+extdebug            	off
+extquote            	on
+st=1
+q=0
+x=1
+y='a b'

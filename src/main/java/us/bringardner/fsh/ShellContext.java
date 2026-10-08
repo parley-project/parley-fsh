@@ -419,6 +419,15 @@ $
 		setGlobalVariable(name, val);
 	}
 
+	/** OPTIND=n: getopts starts at word n's first letter, as bash's */
+	private void optindAssigned(Object value) {
+		try {
+			console.setGetoptsPosition(Integer.parseInt(String.valueOf(firstElement(value)).trim()), 0);
+		} catch (NumberFormatException e) {
+			console.setGetoptsPosition(1, 0);
+		}
+	}
+
 	public void setVariable(String name, Object value) {
 		if( !(value instanceof NameRef)) {
 			name = resolveName(name);
@@ -426,6 +435,9 @@ $
 		}
 		if( console.isReadonly(name)) {
 			throw new ReadonlyException(name);
+		}
+		if( name.equals("OPTIND")) {
+			optindAssigned(value);
 		}
 		FunctionInvocation scope = localScope(name);
 		if( scope != null ) {
@@ -722,6 +734,11 @@ $
 	}
 
 	private Object getPositionalVariable(int pos) {
+		if( pos == 0 ) {
+			// $0 is the script's in a function too, as in bash
+			List<Object> top = topPositional();
+			return top.isEmpty() ? "" : top.get(0);
+		}
 		if( !functionStack.isEmpty()) {
 			FunctionInvocation inv = functionStack.peek();
 			if(pos>0 && pos < inv.args.size()) {
@@ -784,6 +801,9 @@ $
 
 	public void setLocalVariable(String name, Object val) {
 		val = withCase(name, val);
+		if( name.equals("OPTIND") && val != null ) {
+			optindAssigned(val);
+		}
 		if( !functionStack.isEmpty()) {
 			FunctionInvocation inv = functionStack.peek();
 			inv.local.put(name, val);
@@ -914,6 +934,8 @@ $
 		boolean errBlocked;
 		/** trap ... RETURN was set while this ran: it runs when this returns */
 		boolean returnTrap;
+		/** getopts' place (OPTIND, the letter in that word) when this was called */
+		int [] getopts = {1, 0};
 
 		public FunctionInvocation(Object[] args2, ShellFunction function) throws IOException {
 			this.function = function;
@@ -958,6 +980,7 @@ $
 		if( inv.errBlocked ) {
 			errTrapBlocked++;
 		}
+		inv.getopts = console.getoptsState();
 		functionStack.push(inv);		
 	}
 
@@ -965,6 +988,10 @@ $
 		FunctionInvocation inv = functionStack.pop();
 		if( inv.errBlocked ) {
 			errTrapBlocked--;
+		}
+		if( inv.local.containsKey("OPTIND")) {
+			// local OPTIND: getopts goes on where it was in the caller, as bash's
+			console.setGetoptsPosition(inv.getopts[0], inv.getopts[1]);
 		}
 	}
 

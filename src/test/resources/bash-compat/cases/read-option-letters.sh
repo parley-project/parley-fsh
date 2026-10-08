@@ -1,0 +1,5 @@
+read -ru3 x 3<<<hello; echo "x=$x"
+read -rn2 y <<<abcd; echo "y=$y"
+read -t1 -rd: z <<<"p:q"; echo "z=$z"
+read -n -1; echo "st=$?"
+read -z; echo "st=$?"

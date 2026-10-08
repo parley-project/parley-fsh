@@ -168,6 +168,8 @@ public final class Expander {
 			return Arithmetic.evaluate(text, sc);
 		} catch (Arithmetic.ArithmeticError e) {
 			throw new ExpansionError(e.getMessage());
+		} catch (ShellContext.ReadonlyException e) {
+			throw new ExpansionError(e.getMessage());
 		}
 	}
 
@@ -671,7 +673,7 @@ public final class Expander {
 			case '?':
 				if( use ) {
 					String msg = e.arg.isEmpty() ? (op.startsWith(":") ? "parameter null or not set" : "parameter not set") : join(paramPieces(e.arg));
-					throw new ExpansionError(e.display()+": "+msg);
+					throw new ExpansionError(e.display()+": "+msg, ExpansionError.Kind.FATAL);
 				}
 				return emit(v, context, out);
 			default:
@@ -784,7 +786,7 @@ public final class Expander {
 			}
 		}
 		if( unbound && ret.scalar == null && option(Console.Option.NullParameterIsError)) {
-			throw new ExpansionError(e.display()+": unbound variable");
+			throw new ExpansionError(e.display()+": unbound variable", ExpansionError.Kind.FATAL);
 		}
 		return ret;
 	}
@@ -1225,7 +1227,7 @@ public final class Expander {
 	}
 
 	/** 'text' the way the shell reads it back */
-	private static String quote(String s) {
+	public static String quote(String s) {
 		boolean control = false;
 		for(char c : s.toCharArray()) {
 			control |= c < ' ' || c == 0x7f;

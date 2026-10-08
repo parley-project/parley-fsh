@@ -347,7 +347,8 @@ public final class Parser {
 			while( Character.isDigit(ch(j))) {
 				j++;
 			}
-			if( ch(j) == '<' || ch(j) == '>' ) {
+			if( (ch(j) == '<' || ch(j) == '>') && ch(j+1) != '(' ) {
+				// (2>(cmd) is a word with a process substitution, as in bash)
 				t.kind = Kind.IO_NUMBER;
 				t.number = Integer.parseInt(src.substring(pos, j));
 				pos = j;
@@ -442,8 +443,8 @@ public final class Parser {
 					depth--;
 				}
 			} else if( isMeta(c) && !fragment ) {
-				if( (c == '<' || c == '>') && ch(pos+1) == '(' && pos == w.start ) {
-					// <(cmd) starts the word
+				if( (c == '<' || c == '>') && ch(pos+1) == '(' ) {
+					// <(cmd) and >(cmd): in a word anywhere, as bash's (a=<(cmd), --file=<(cmd))
 				} else {
 					break;
 				}
