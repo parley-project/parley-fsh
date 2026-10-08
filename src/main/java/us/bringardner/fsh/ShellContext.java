@@ -155,6 +155,10 @@ public class ShellContext {
 				}
 				if( end == idx+1 ) {
 					ret.append('\\').append(e);
+				} else if( e == 'x' ) {
+					// a byte (of UTF-8 text with the ones next to it)
+					ret.append(ByteText.mark(Integer.parseInt(text.substring(idx+1, end), 16)));
+					idx = end-1;
 				} else {
 					ret.appendCodePoint(Integer.parseInt(text.substring(idx+1, end), 16));
 					idx = end-1;
@@ -167,14 +171,14 @@ public class ShellContext {
 					while( end < n && end-idx < 3 && text.charAt(end) >= '0' && text.charAt(end) <= '7' ) {
 						end++;
 					}
-					ret.append((char) Integer.parseInt(text.substring(idx, end), 8));
+					ret.append(ByteText.mark(Integer.parseInt(text.substring(idx, end), 8)));
 					idx = end-1;
 				} else {
 					ret.append('\\').append(e);
 				}
 			}
 		}
-		return ret.toString();
+		return ByteText.finish(ret);
 	}
 
 

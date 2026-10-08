@@ -1,0 +1,12 @@
+0: foo = !(foo)*
+0: foobar = !(foo)*
+0: foo = *(!(foo))
+0: foobb = !(foo)b*
+1: foob = !(foo)b*
+0: moo.cow = !(*.*).!(*.*)
+1: mad.moo.cow = !(*.*).!(*.*)
+0: bar = @(|foo)*
+0: foo = @(|foo)
+0:  = @(|foo)
+foobar  X
+case-yes

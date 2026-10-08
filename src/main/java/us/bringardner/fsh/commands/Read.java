@@ -376,9 +376,11 @@ public class Read extends ShellCommand{
 			} else if(N<0 && i == lineDelim ) {
 				break;
 			} else  {
-				buf.append((char)i);
+				// a character of UTF-8 text: its bytes
+				buf.append(utf8(i, ctx.stdin));
 			}
-			if(N>0 && N== buf.length() || n>0 && buf.length()>= n) {
+			int chars = buf.codePointCount(0, buf.length());
+			if(N>0 && N == chars || n>0 && chars >= n) {
 				break;
 			}
 		}
@@ -392,4 +394,37 @@ public class Read extends ShellCommand{
 		return line;
 	}
 
+
+	/**
+	 * The character whose first byte is first, the rest read from in (only bytes that go on a
+	 * UTF-8 character are taken); a byte that does not start one is the character of its value.
+	 */
+	static String utf8(int first, java.io.InputStream in) throws IOException {
+		if( first < 0x80 ) {
+			return String.valueOf((char) first);
+		}
+		int more = first >= 0xf0 && first < 0xf8 ? 3 : first >= 0xe0 ? 2 : first >= 0xc2 && first < 0xe0 ? 1 : 0;
+		if( more == 0 ) {
+			return String.valueOf((char) first);
+		}
+		byte [] bytes = new byte[more+1];
+		bytes[0] = (byte) first;
+		for (int k = 1; k <= more; k++) {
+			if( in.markSupported()) {
+				in.mark(1);
+			}
+			int b = in.read();
+			if( b < 0x80 || b > 0xbf ) {
+				// not part of it: put back if the stream can, else keep it as it is
+				if( b >= 0 && in.markSupported()) {
+					in.reset();
+				} else if( b >= 0 ) {
+					return new String(bytes, 0, k, java.nio.charset.StandardCharsets.ISO_8859_1)+(char) b;
+				}
+				return new String(bytes, 0, k, java.nio.charset.StandardCharsets.ISO_8859_1);
+			}
+			bytes[k] = (byte) b;
+		}
+		return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+	}
 }

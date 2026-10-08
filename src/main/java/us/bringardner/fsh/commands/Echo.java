@@ -53,6 +53,7 @@ public class Echo extends ShellCommand{
 			String text = ""+args[idx].getValue(ctx);
 			if( escapes && unescape(text, buf)) {
 				// \c: no more output, not even the newline
+				us.bringardner.fsh.ByteText.finishInPlace(buf);
 				ctx.stdout.print(buf);
 				ctx.stdout.flush();
 				return 0;
@@ -65,6 +66,7 @@ public class Echo extends ShellCommand{
 		if( nl ) {
 			buf.append('\n');
 		}
+		us.bringardner.fsh.ByteText.finishInPlace(buf);
 		ctx.stdout.print(buf);
 		ctx.stdout.flush();
 		return 0;
@@ -133,7 +135,10 @@ public class Echo extends ShellCommand{
 			}
 		} else {
 			long code = Long.parseLong(text.substring(start, end), radix);
-			if( Character.isValidCodePoint((int)code) && code <= Character.MAX_CODE_POINT ) {
+			if( radix == 8 || max == 2 ) {
+				// \0nnn and \xHH are bytes (of UTF-8 text with the ones next to them)
+				buf.append(us.bringardner.fsh.ByteText.mark((int) code));
+			} else if( Character.isValidCodePoint((int)code) && code <= Character.MAX_CODE_POINT ) {
 				buf.appendCodePoint((int)code);
 			} else {
 				buf.append(written).append(text, start, end);

@@ -243,7 +243,8 @@ public abstract class ShellCommand {
 			} else if( c == ')' ) {
 				depth--;
 			} else if( c == '|' && depth == 0 ) {
-				if( ret.length() > 0 ) {
+				if( start > 0 ) {
+					// (an empty alternative, @(|foo), keeps its place)
 					ret.append('|');
 				}
 				ret.append(prepWildCards(body.substring(start, Math.min(idx, body.length())), greedy));
@@ -298,44 +299,14 @@ public abstract class ShellCommand {
 				break;
 			}
 			case '[': {
-				// the closing ]: one right after [ or [! is in the set, and [:alpha:] is one unit
-				int end = idx+1;
-				if( end < n && (cleanPath.charAt(end) == '!' || cleanPath.charAt(end) == '^')) {
-					end++;
-				}
-				if( end < n && cleanPath.charAt(end) == ']' ) {
-					end++;
-				}
-				while( end < n && cleanPath.charAt(end) != ']' ) {
-					int close = cleanPath.startsWith("[:", end) ? cleanPath.indexOf(":]", end+2) : -1;
-					end = close > 0 ? close+2 : end+1;
-				}
-				if( end >= n ) {
+				int end = bracketEnd(cleanPath, idx);
+				if( end < 0 ) {
+					// no ]: a [ that is itself, as in bash
 					ret.append("\\[");
 					break;
 				}
-				String body = cleanPath.substring(idx+1, end);
+				ret.append(bracketRegex(cleanPath.substring(idx+1, end)));
 				idx = end;
-				ret.append('[');
-				int b = 0;
-				if( body.startsWith("!") || body.startsWith("^")) {
-					ret.append('^');
-					b = 1;
-				}
-				for (; b < body.length(); b++) {
-					char d = body.charAt(b);
-					int close = body.startsWith("[:", b) ? body.indexOf(":]", b+2) : -1;
-					if( close > 0 ) {
-						ret.append(posixToJava(body.substring(b, close+2)));
-						b = close+1;
-					} else {
-						if( "[]\\^&".indexOf(d) >= 0 ) {
-							ret.append('\\');
-						}
-						ret.append(d);
-					}
-				}
-				ret.append(']');
 				break;
 			}
 			default:
@@ -348,6 +319,149 @@ public abstract class ShellCommand {
 		return ret.toString();
 	}
 
+
+	/**
+	 * The ] that ends the bracket expression [ at open, or -1 if it does not end: a ] right
+	 * after [ or [! is in the set, [:alpha:] [.a.] [=a=] are units, and \] is a ].
+	 */
+	public static int bracketEnd(String text, int open) {
+		int n = text.length();
+		int i = open+1;
+		if( i < n && (text.charAt(i) == '!' || text.charAt(i) == '^')) {
+			i++;
+		}
+		if( i < n && text.charAt(i) == ']' ) {
+			i++;
+		}
+		while( i < n ) {
+			char c = text.charAt(i);
+			if( c == '\\' ) {
+				i += 2;
+				continue;
+			}
+			if( c == '[' && i+1 < n && ":.=".indexOf(text.charAt(i+1)) >= 0 ) {
+				int close = text.indexOf(text.charAt(i+1)+"]", i+2);
+				if( close > 0 ) {
+					i = close+2;
+					continue;
+				}
+			}
+			if( c == ']' ) {
+				return i;
+			}
+			i++;
+		}
+		return -1;
+	}
+
+	/** POSIX's names of the characters, for [.name.] */
+	private static final java.util.Map<String, Character> COLLATING = new java.util.HashMap<>();
+	static {
+		String [] control = {"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "alert", "backspace", "tab", "newline",
+				"vertical-tab", "form-feed", "carriage-return", "SO", "SI", "DLE", "DC1", "DC2", "DC3", "DC4", "NAK",
+				"SYN", "ETB", "CAN", "EM", "SUB", "ESC", "IS4", "IS3", "IS2", "IS1"};
+		for (int i = 0; i < control.length; i++) {
+			COLLATING.put(control[i], (char) i);
+		}
+		COLLATING.put("BEL", (char) 7);
+		COLLATING.put("BS", (char) 8);
+		COLLATING.put("HT", '\t');
+		COLLATING.put("LF", '\n');
+		COLLATING.put("VT", (char) 11);
+		COLLATING.put("FF", (char) 12);
+		COLLATING.put("CR", '\r');
+		COLLATING.put("FS", (char) 28);
+		COLLATING.put("GS", (char) 29);
+		COLLATING.put("RS", (char) 30);
+		COLLATING.put("US", (char) 31);
+		String [][] names = {{"space", " "}, {"exclamation-mark", "!"}, {"quotation-mark", "\""}, {"number-sign", "#"},
+				{"dollar-sign", "$"}, {"percent-sign", "%"}, {"ampersand", "&"}, {"apostrophe", "'"},
+				{"left-parenthesis", "("}, {"right-parenthesis", ")"}, {"asterisk", "*"}, {"plus-sign", "+"},
+				{"comma", ","}, {"hyphen", "-"}, {"hyphen-minus", "-"}, {"period", "."}, {"full-stop", "."},
+				{"slash", "/"}, {"solidus", "/"}, {"zero", "0"}, {"one", "1"}, {"two", "2"}, {"three", "3"},
+				{"four", "4"}, {"five", "5"}, {"six", "6"}, {"seven", "7"}, {"eight", "8"}, {"nine", "9"},
+				{"colon", ":"}, {"semicolon", ";"}, {"less-than-sign", "<"}, {"equals-sign", "="},
+				{"greater-than-sign", ">"}, {"question-mark", "?"}, {"commercial-at", "@"},
+				{"left-square-bracket", "["}, {"backslash", "\\"}, {"reverse-solidus", "\\"},
+				{"right-square-bracket", "]"}, {"circumflex", "^"}, {"circumflex-accent", "^"},
+				{"underscore", "_"}, {"low-line", "_"}, {"grave-accent", "`"}, {"left-brace", "{"},
+				{"left-curly-bracket", "{"}, {"vertical-line", "|"}, {"right-brace", "}"},
+				{"right-curly-bracket", "}"}, {"tilde", "~"}, {"DEL", "\u007f"}};
+		for(String [] nm : names) {
+			COLLATING.put(nm[0], nm[1].charAt(0));
+		}
+	}
+
+	/**
+	 * A bracket expression's inside as a regular expression, as bash reads it: ! or ^ negates,
+	 * a-z ranges, [:class:], [.name.] (a character by itself or POSIX's name for it), [=c=],
+	 * and \c. A range backwards, or from or to a name that is not a character, matches nothing.
+	 */
+	static String bracketRegex(String body) {
+		StringBuilder set = new StringBuilder();
+		int b = 0;
+		boolean negate = false;
+		if( body.startsWith("!") || body.startsWith("^")) {
+			negate = true;
+			b = 1;
+		}
+		// the characters in order: Integer (a character), -1 (one that is not valid), or a class
+		java.util.List<Object> items = new java.util.ArrayList<>();
+		java.util.List<Boolean> dash = new java.util.ArrayList<>();
+		for (; b < body.length(); b++) {
+			char d = body.charAt(b);
+			if( d == '[' && b+1 < body.length() && ":.=".indexOf(body.charAt(b+1)) >= 0 ) {
+				char kind = body.charAt(b+1);
+				int close = body.indexOf(kind+"]", b+2);
+				if( close > 0 ) {
+					String name = body.substring(b+2, close);
+					b = close+1;
+					if( kind == ':' ) {
+						items.add(posixToJava("[:"+name+":]"));
+					} else if( name.length() == 1 ) {
+						items.add((int) name.charAt(0));
+					} else if( kind == '.' && COLLATING.containsKey(name)) {
+						items.add((int) COLLATING.get(name));
+					} else {
+						items.add(-1);
+					}
+					dash.add(false);
+					continue;
+				}
+			}
+			if( d == '\\' && b+1 < body.length()) {
+				items.add((int) body.charAt(++b));
+				dash.add(false);
+				continue;
+			}
+			// a - between two (not first, not last) is a range
+			boolean range = d == '-' && !items.isEmpty() && b+1 < body.length();
+			items.add((int) d);
+			dash.add(range);
+		}
+		for (int i = 0; i < items.size(); i++) {
+			Object it = items.get(i);
+			if( i+2 < items.size() && dash.get(i+1) && !(it instanceof String) && !(items.get(i+2) instanceof String)) {
+				int from = (Integer) it;
+				int to = (Integer) items.get(i+2);
+				if( from >= 0 && to >= 0 && from <= to ) {
+					set.append("\\x{").append(Integer.toHexString(from)).append("}-\\x{").append(Integer.toHexString(to)).append('}');
+				}
+				i += 2;
+				continue;
+			}
+			if( it instanceof String cls ) {
+				set.append(cls);
+			} else if( (Integer) it >= 0 ) {
+				set.append("\\x{").append(Integer.toHexString((Integer) it)).append('}');
+			}
+		}
+		if( set.length() == 0 ) {
+			// nothing in it
+			return negate ? "(?s:.)" : "(?!)";
+		}
+		return (negate ? "[^" : "[")+set+"]";
+	}
 
 	public static String posixToJava(String cleanPath) {
 		String ret = cleanPath;

@@ -59,9 +59,8 @@ public class Rm extends ShellCommand{
 		for(String path : paths) {
 			List<FileSource> kids = new ArrayList<>();
 
-			if( hasWildcard(path)) {
-				kids.addAll(getFiles(ctx, path));
-			} else {
+			// the shell expanded the patterns already: a * here is a name
+			{
 				FileSource cwd = ctx.console.getCurrentDirectory();
 				if( isRelative(path)) {
 					kids.add(cwd.getChild(path));
@@ -79,6 +78,10 @@ public class Rm extends ShellCommand{
 		}
 
 		if( files.size() < 1) {
+			if( options.contains(Arguments.f)) {
+				// rm -f with nothing to remove is not an error
+				return 0;
+			}
 			ctx.stdout.println(help);
 			return 1;
 		}
@@ -104,6 +107,15 @@ public class Rm extends ShellCommand{
 	}
 
 	private void remove(ShellContext ctx, List<Arguments> options, FileSource file) throws IOException {
+		if( file instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy
+				&& java.nio.file.Files.isSymbolicLink(proxy.getTarget().toPath())) {
+			// a link (to a directory too) is removed itself, not what it points to
+			java.nio.file.Files.delete(proxy.getTarget().toPath());
+			if( options.contains(Arguments.v)) {
+				ctx.stdout.println(file.getAbsolutePath());
+			}
+			return;
+		}
 		if( !file.exists()) {
 			if(options.contains(Arguments.f)) {
 				return;

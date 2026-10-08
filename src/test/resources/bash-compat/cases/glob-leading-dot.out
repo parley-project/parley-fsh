@@ -1,0 +1,6 @@
+.foo
+.foo bar
+.a .foo
+. .. .a .foo
+.a .foo
+a bar

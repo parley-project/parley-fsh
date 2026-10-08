@@ -110,9 +110,8 @@ public class Mv extends ShellCommand{
 		for(String path : paths) {
 			List<FileSource> kids = new ArrayList<>();
 
-			if( hasWildcard(path)) {
-				kids.addAll(getFiles(sc, path));
-			} else {
+			// the shell expanded the patterns already: a * here is a name
+			{
 				FileSource cwd = sc.console.getCurrentDirectory();
 				if( isRelative(path)) {
 					kids.add(cwd.getChild(path));

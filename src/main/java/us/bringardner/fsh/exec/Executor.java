@@ -920,11 +920,7 @@ public final class Executor {
 
 	/** a pattern (case, [[ == ]]) matches all of text (shopt -s nocasematch: in any case) */
 	private static boolean matches(String pattern, String text, ShellContext sc) {
-		Pattern rx = Glob.toRegex(pattern);
-		if( Glob.option(sc, "nocasematch")) {
-			rx = Pattern.compile(rx.pattern(), rx.flags() | Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-		}
-		return rx.matcher(text).matches();
+		return us.bringardner.fsh.GlobPattern.compile(pattern, Glob.option(sc, "nocasematch")).matches(text);
 	}
 
 	/** (( expression )): 0 if it is not 0 */

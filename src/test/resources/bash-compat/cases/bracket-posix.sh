@@ -1,0 +1,16 @@
+LC_ALL=C
+t() { case $1 in $2) echo "ok: $1 $2";; *) echo "no: $1 $2";; esac; }
+t a '[[.a.]]'
+t - '[[.hyphen.]-9]'
+t p '[[.a.]-[.z.]]'
+t ' ' '[[.space.]]'
+t ' ' '[[.grave-accent.]]'
+t c '[[.yyz.]-[.z.]]'
+t c '[[.yyz.][.a.]-z]'
+t p '[[.a.]-[.Z.]]'
+t p '[[.a.]-[.zz.]p]'
+t b '[[=b=]]'
+t a '[[:alpha:]\]'
+t ']' '[]a]'
+t '!' '[!a]'
+t z '[z-a]'

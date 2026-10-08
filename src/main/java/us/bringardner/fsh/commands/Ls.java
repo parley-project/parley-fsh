@@ -177,7 +177,7 @@ public class Ls extends ShellCommand {
 		boolean first = true;
 		if( !files.isEmpty()) {
 			FileSource[] list = files.toArray(new FileSource[files.size()]);
-			sort(options, list);
+			sortOperands(options, list, labels);
 			List<String> out = new ArrayList<>();
 			for(FileSource file : list) {
 				print(ctx, out, options, file, labels.get(file));
@@ -186,7 +186,7 @@ public class Ls extends ShellCommand {
 			first = false;
 		}
 		FileSource[] dirList = dirs.toArray(new FileSource[dirs.size()]);
-		sort(options, dirList);
+		sortOperands(options, dirList, labels);
 		for(FileSource dir : dirList) {
 			if( !first ) {
 				ctx.stdout.println();
@@ -385,6 +385,16 @@ public class Ls extends ShellCommand {
 		} catch (IOException e) {
 		}
 		return ret;
+	}
+
+	/** operands by name are in the order of what was given (lib/glob/x before lib/sh/a), as ls sorts them */
+	private void sortOperands(List<LsArgument> args, FileSource [] files, Map<FileSource,String> labels) {
+		if( args.contains(LsArgument.t) || args.contains(LsArgument.S) || args.contains(LsArgument.X)) {
+			sort(args, files);
+			return;
+		}
+		java.util.Comparator<FileSource> byName = java.util.Comparator.comparing(f -> labels.getOrDefault(f, f.getName()));
+		Arrays.sort(files, args.contains(LsArgument.r) ? byName.reversed() : byName);
 	}
 
 	private void sort(List<LsArgument> args, FileSource [] files) {

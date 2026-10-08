@@ -37,6 +37,33 @@ public class Glob {
 	}
 
 	/** true if text has *, ? or [ (a word that is a pattern) */
+	/** the pattern starts with a dot: .*, or an extglob group with an alternative that does */
+	static boolean startsWithDot(String segment) {
+		if( segment.startsWith(".") || segment.startsWith("\\.")) {
+			return true;
+		}
+		if( segment.length() > 2 && "?*+@!".indexOf(segment.charAt(0)) >= 0 && segment.charAt(1) == '(' ) {
+			int depth = 0;
+			boolean altStart = true;
+			for (int i = 1; i < segment.length(); i++) {
+				char c = segment.charAt(i);
+				if( c == '(' ) {
+					depth++;
+					altStart = depth == 1;
+					continue;
+				}
+				if( c == ')' && --depth == 0 ) {
+					break;
+				}
+				if( depth == 1 && altStart && c == '.' ) {
+					return true;
+				}
+				altStart = depth == 1 && c == '|';
+			}
+		}
+		return false;
+	}
+
 	public static boolean isPattern(String text) {
 		return text.indexOf('*') >= 0 || text.indexOf('?') >= 0 || text.indexOf('[') >= 0
 				|| text.contains("@(") || text.contains("!(") || text.contains("+(");
@@ -84,14 +111,36 @@ public class Glob {
 				if( kids == null ) {
 					continue;
 				}
-				Pattern rx = option(ctx, "nocaseglob") ? Pattern.compile(toRegex(segment).pattern(), Pattern.DOTALL | Pattern.CASE_INSENSITIVE) : toRegex(segment);
-				boolean hidden = segment.startsWith(".") || option(ctx, "dotglob");
+				GlobPattern rx = GlobPattern.compile(segment, option(ctx, "nocaseglob"));
+				// a name with a leading dot only for a pattern with one (in @(.a|b) too), or dotglob;
+				// . and .. too when globskipdots is off, as in bash
+				boolean explicitDot = startsWithDot(segment);
+				boolean hidden = explicitDot || option(ctx, "dotglob");
+				List<String> names = new ArrayList<>();
+				if( explicitDot && !option(ctx, "globskipdots")) {
+					names.add(".");
+					names.add("..");
+				}
 				for(FileSource kid : kids) {
-					String name = kid.getName();
-					if( name.equals(".") || name.equals("..") || (name.startsWith(".") && !hidden)) {
+					names.add(kid.getName());
+				}
+				for(String name : names) {
+					FileSource kid = name.equals(".") ? dir : name.equals("..") ? dir.getParentFile() : null;
+					if( kid == null ) {
+						for(FileSource k : kids) {
+							if( k.getName().equals(name)) {
+								kid = k;
+								break;
+							}
+						}
+					}
+					if( kid == null || (name.startsWith(".") && !hidden)) {
 						continue;
 					}
-					if( rx.matcher(name).matches() && (!(last ? dirsOnly : true) || kid.isDirectory())) {
+					if( (name.equals(".") || name.equals("..")) && !explicitDot ) {
+						continue;
+					}
+					if( rx.matches(name) && (!(last ? dirsOnly : true) || kid.isDirectory())) {
 						next.add(join(path, name));
 					}
 				}

@@ -569,7 +569,7 @@ public class Completion implements LineEditor.Completer {
 		private boolean filtered(String f, String word) {
 			boolean not = filter.startsWith("!");
 			String pattern = (not ? filter.substring(1) : filter).replace("&", word);
-			boolean matches = us.bringardner.fsh.Glob.toRegex(pattern).matcher(f).matches();
+			boolean matches = GlobPattern.compile(pattern).matches(f);
 			return not ? !matches : matches;
 		}
 

@@ -2329,7 +2329,7 @@ delimiter
 		Object ignore = getVariable("HISTIGNORE");
 		if( ignore != null && !ignore.toString().isEmpty()) {
 			for(String pattern : ignore.toString().split(":")) {
-				if( !pattern.isEmpty() && Glob.toRegex(pattern).matcher(entry).matches()) {
+				if( !pattern.isEmpty() && GlobPattern.compile(pattern).matches(entry)) {
 					return;
 				}
 			}

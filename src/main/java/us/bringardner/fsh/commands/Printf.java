@@ -65,6 +65,7 @@ public class Printf extends ShellCommand{
 				break;
 			}
 		} while( used < values.size());
+		us.bringardner.fsh.ByteText.finishInPlace(out);
 
 		java.util.regex.Matcher element = var == null ? null : ELEMENT.matcher(var);
 		if( element != null && element.matches()) {
@@ -455,7 +456,8 @@ public class Printf extends ShellCommand{
 				out.append("\\x");
 				return idx;
 			}
-			out.append((char) Integer.parseInt(text.substring(idx+1, end), 16));
+			// a byte (of UTF-8 text with the ones next to it)
+			out.append(us.bringardner.fsh.ByteText.mark(Integer.parseInt(text.substring(idx+1, end), 16)));
 			return end-1;
 		}
 		default:
@@ -466,7 +468,7 @@ public class Printf extends ShellCommand{
 				while( end < text.length() && end-start < 3 && text.charAt(end) >= '0' && text.charAt(end) <= '7' ) {
 					end++;
 				}
-				out.append((char) (end == start ? 0 : Integer.parseInt(text.substring(start, end), 8)));
+				out.append(us.bringardner.fsh.ByteText.mark(end == start ? 0 : Integer.parseInt(text.substring(start, end), 8)));
 				return end-1;
 			}
 			out.append('\\').append(e);

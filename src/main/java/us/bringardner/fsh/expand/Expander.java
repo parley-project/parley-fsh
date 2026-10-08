@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.FshList;
 import us.bringardner.fsh.Glob;
+import us.bringardner.fsh.GlobPattern;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.expand.Arithmetic;
 import us.bringardner.fsh.syntax.Ast;
@@ -686,13 +687,13 @@ public final class Expander {
 		switch (op) {
 		case "#":
 		case "##": {
-			Pattern rx = Glob.toRegex(patternText(e.arg));
+			GlobPattern rx = GlobPattern.compile(patternText(e.arg));
 			boolean longest = op.length() == 2;
 			return emit(v.map(s -> removePrefix(s, rx, longest)), context, out);
 		}
 		case "%":
 		case "%%": {
-			Pattern rx = Glob.toRegex(patternText(e.arg));
+			GlobPattern rx = GlobPattern.compile(patternText(e.arg));
 			boolean longest = op.length() == 2;
 			return emit(v.map(s -> removeSuffix(s, rx, longest)), context, out);
 		}
@@ -707,7 +708,7 @@ public final class Expander {
 		case ",,":
 		case "~":
 		case "~~": {
-			Pattern rx = e.arg.isEmpty() ? null : Glob.toRegex(patternText(e.arg));
+			GlobPattern rx = e.arg.isEmpty() ? null : GlobPattern.compile(patternText(e.arg));
 			boolean all = op.length() == 2;
 			char kind = op.charAt(0);
 			return emit(v.map(s -> changeCase(s, rx, kind, all)), context, out);
@@ -909,11 +910,11 @@ public final class Expander {
 
 	// ------------------------------------------------------------------ operators
 
-	private static boolean matches(Pattern rx, String s) {
-		return rx.matcher(s).matches();
+	private static boolean matches(GlobPattern rx, String s) {
+		return rx.matches(s);
 	}
 
-	private static String removePrefix(String s, Pattern rx, boolean longest) {
+	private static String removePrefix(String s, GlobPattern rx, boolean longest) {
 		int n = s.length();
 		if( longest ) {
 			for (int i = n; i >= 0; i--) {
@@ -931,7 +932,7 @@ public final class Expander {
 		return s;
 	}
 
-	private static String removeSuffix(String s, Pattern rx, boolean longest) {
+	private static String removeSuffix(String s, GlobPattern rx, boolean longest) {
 		int n = s.length();
 		if( longest ) {
 			for (int i = 0; i <= n; i++) {
@@ -968,7 +969,7 @@ public final class Expander {
 			}
 			return v;
 		}
-		Pattern rx = Glob.toRegex(patText);
+		GlobPattern rx = GlobPattern.compile(patText);
 		return v.map(s -> replace(s, rx, e.op, rep));
 	}
 
@@ -1019,7 +1020,7 @@ public final class Expander {
 		return ret.toString();
 	}
 
-	private static String replace(String s, Pattern rx, String op, List<Object> rep) {
+	private static String replace(String s, GlobPattern rx, String op, List<Object> rep) {
 		int n = s.length();
 		if( op.equals("/#")) {
 			for (int j = n; j >= 0; j--) {
@@ -1041,12 +1042,15 @@ public final class Expander {
 		StringBuilder ret = new StringBuilder();
 		int i = 0;
 		boolean replaced = false;
-		Matcher m = rx.matcher(s);
+		Matcher m = rx.regex() == null ? null : rx.regex().matcher(s);
 		while( i < n ) {
 			int end = -1;
 			if( !(replaced && !all)) {
-				m.region(i, n);
-				if( m.lookingAt()) {
+				if( m != null ) {
+					m.region(i, n);
+				}
+				// (a quick look first, where there is a regular expression)
+				if( m == null || m.lookingAt()) {
 					// the longest match here
 					for (int j = n; j > i; j--) {
 						if( matches(rx, s.substring(i, j))) {
@@ -1072,7 +1076,7 @@ public final class Expander {
 	}
 
 	/** ^ ^^ , ,, ~ ~~: the first (or every) character that matches rx (any, if null) */
-	private static String changeCase(String s, Pattern rx, char kind, boolean all) {
+	private static String changeCase(String s, GlobPattern rx, char kind, boolean all) {
 		StringBuilder ret = new StringBuilder();
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
