@@ -192,6 +192,7 @@ public class Printf extends ShellCommand{
 				}
 			}
 			Integer precision = null;
+			String tooLarge = null;
 			if( idx < n && format.charAt(idx) == '.' ) {
 				idx++;
 				StringBuilder p = new StringBuilder();
@@ -214,8 +215,10 @@ public class Printf extends ShellCommand{
 					}
 				}
 				long pv = p.length() == 0 || p.length() > 10 ? (p.length() == 0 ? 0 : Long.MAX_VALUE) : Long.parseLong(p.toString());
+				// (one written in the format that is too large is no precision; said for %b and %Q, as
+				// bash's)
 				if( !ignore && pv > Integer.MAX_VALUE ) {
-					error(ctx, "printf: "+p+": Result too large");
+					tooLarge = p.toString();
 				}
 				precision = ignore ? null : pv > Integer.MAX_VALUE ? null : (int) pv;
 			}
@@ -260,6 +263,9 @@ public class Printf extends ShellCommand{
 				return next;
 			}
 			char conv = format.charAt(idx);
+			if( tooLarge != null && (conv == 'b' || conv == 'Q')) {
+				error(ctx, "printf: "+tooLarge+": Result too large");
+			}
 			String arg = next < values.size() ? values.get(next++) : null;
 			if( conv == 'n' ) {
 				// %n: the number of characters written so far, into the variable named
