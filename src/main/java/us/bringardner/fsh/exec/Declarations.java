@@ -75,6 +75,16 @@ public final class Declarations {
 		if( o.indexOf('f') >= 0 || o.indexOf('F') >= 0 ) {
 			return functions(command, items, o.indexOf('F') >= 0, o.indexOf('p') >= 0, o.indexOf('x') >= 0);
 		}
+		if( isLocal && items.isEmpty() && o.isEmpty()) {
+			// local: the function's own variables
+			for(String n : new TreeSet<>(sc.ownLocalNames())) {
+				Object v = sc.getVariable(n);
+				if( v != null || sc.rawVariable(n) instanceof ShellContext.NameRef ) {
+					sc.stdout.println(declaration(n, v));
+				}
+			}
+			return 0;
+		}
 		if( o.indexOf('p') >= 0 || (items.isEmpty() && !remove)) {
 			return print(command, items, remove ? "" : o);
 		}
@@ -91,6 +101,8 @@ public final class Declarations {
 			String name;
 			Ast.Assignment assignment = null;
 			String text = null;
+			// declare "x+=v": the v
+			String appended = null;
 			if( item instanceof Ast.Assignment a ) {
 				assignment = a;
 				name = a.name;
@@ -100,6 +112,11 @@ public final class Declarations {
 				int eq = s.indexOf('=');
 				name = eq < 0 ? s : s.substring(0, eq);
 				java.util.regex.Matcher sub = SUBSCRIPTED.matcher(name);
+				if( sub.matches() && o.indexOf('n') >= 0 && !remove ) {
+					error(command, name+": reference variable cannot be an array");
+					status = 1;
+					continue;
+				}
 				if( sub.matches() && !command.equals("readonly") && !remove ) {
 					if( eq < 0 ) {
 						// declare -a b[256]: the array b (the subscript is ignored)
@@ -133,6 +150,11 @@ public final class Declarations {
 						status = 1;
 						continue;
 					}
+					if( sc.rawVariable(element.name) instanceof ShellContext.NameRef ) {
+						// declare -a ref[1]=v: ref is an array again (bash's)
+						sc.error("warning: "+element.name+": removing nameref attribute");
+						sc.unSetVariable(element.name, false);
+					}
 					executor.element(element, sc, ex, sc.getVariable(element.name), s.substring(eq+1));
 					continue;
 				}
@@ -140,6 +162,7 @@ public final class Declarations {
 					text = s.substring(eq+1);
 					if( name.endsWith("+")) {
 						name = name.substring(0, name.length()-1);
+						appended = text;
 						Object before = sc.getVariable(name);
 						text = (before == null ? "" : before)+text;
 					}
@@ -149,6 +172,51 @@ public final class Declarations {
 				error(command, "`"+(item instanceof String s ? s : name)+"': not a valid identifier");
 				status = 1;
 				continue;
+			}
+			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef empty && empty.target().isEmpty()
+					&& !(local && sc.isInFunction() && !sc.isOwnLocal(name))) {
+				if( o.indexOf('a') >= 0 || o.indexOf('A') >= 0 ) {
+					// declare -a of a nameref with no value: an array
+					sc.unSetVariable(name, false);
+				} else if( assignment != null && assignment.index == null && assignment.array == null || text != null ) {
+					// declare r=v of a nameref with no value: v is what it names (one that is no name:
+					// said, and r is gone)
+					String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
+					if( !ShellContext.validReference(v)) {
+						error(command, "`"+v+"': not a valid identifier");
+						sc.unSetVariable(name, false);
+						status = 1;
+						continue;
+					}
+					if( o.indexOf('i') >= 0 ) {
+						sc.console.setInteger(name, true);
+					}
+					sc.retarget(name, v);
+					continue;
+				}
+			}
+			if( o.indexOf('n') < 0 && !(assignment != null && assignment.index != null)) {
+				// declare -a ref, declare ref=(..): the variable a nameref names (with -g, by the
+				// global ones; not declare ref[1]=v)
+				boolean global = o.indexOf('g') >= 0;
+				Object raw = global ? sc.globalRaw(name) : sc.rawVariable(name);
+				// (in a function, a nameref of its own: local ref=v of a global one makes a local ref)
+				if( raw instanceof ShellContext.NameRef r && !r.target().isEmpty() && (global || !local || sc.isOwnLocal(name))) {
+					String t = global ? sc.resolveGlobalName(name) : sc.resolveName(name);
+					if( Executor.isName(t)) {
+						name = t;
+					} else if( t.startsWith(name+"[") && t.endsWith("]") && (assignment != null || text != null)) {
+						// declare a=v with a -> b -> a[1]: a is an array again, and a[1] is v
+						sc.error("warning: "+name+": removing nameref attribute");
+						sc.unSetVariable(name, false);
+						Ast.Assignment element = new Ast.Assignment();
+						element.name = name;
+						element.index = t.substring(name.length()+1, t.length()-1);
+						String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
+						executor.element(element, sc, ex, sc.getVariable(name), v);
+						continue;
+					}
+				}
 			}
 			if( remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0)) {
 				// declare +a: not for an array
@@ -191,9 +259,90 @@ public final class Declarations {
 				sc.setCaseAttribute(name, remove ? null : which, local);
 			}
 			if( o.indexOf('n') >= 0 && !remove ) {
-				// a reference: the variable named by the value
-				String target = text != null ? text : assignment != null && assignment.value != null ? ex.assignment(assignment.value) : "";
+				// a reference: the variable named by the value (with no value, the one it has now; a
+				// function's local one is new)
+				Object raw = local && sc.isInFunction() && !sc.isOwnLocal(name) ? null : sc.rawVariable(name);
+				if( raw == null && assignment == null && text == null && sc.rawVariable(name) instanceof String visible ) {
+					// (local -n r with no value: the value r has where it is called, r=/ f)
+					raw = visible;
+				}
+				boolean append = assignment != null && assignment.append || appended != null;
+				if( append && raw instanceof ShellContext.NameRef r ) {
+					// ref+=x: x after the name it has (typeset -n ref=var ref+=[@])
+					String more = appended != null ? appended : assignment.value == null ? "" : ex.assignment(assignment.value);
+					String target = r.target()+more;
+					if( target.equals(name)) {
+						sc.error(name+": nameref variable self references not allowed");
+						status = 1;
+						continue;
+					}
+					sc.retarget(name, target);
+					continue;
+				}
+				if( assignment != null && assignment.index != null ) {
+					error(command, name+"["+assignment.index+"]: reference variable cannot be an array");
+					status = 1;
+					continue;
+				}
+				if( raw instanceof List<?> || raw instanceof Map<?,?> ) {
+					error(command, name+": reference variable cannot be an array");
+					status = 1;
+					continue;
+				}
+				String target = text != null ? text : assignment != null && assignment.value != null ? ex.assignment(assignment.value)
+						: raw instanceof ShellContext.NameRef r ? r.target() : raw == null ? "" : raw instanceof List<?> || raw instanceof Map<?,?> ? null : String.valueOf(raw);
+				if( target == null ) {
+					error(command, name+": reference variable cannot be an array");
+					status = 1;
+					continue;
+				}
+				if( (target.equals(name) || target.startsWith(name+"[")) && local && sc.isInFunction()) {
+					// a function's local -n v=v: allowed, and said
+					error(command, "warning: "+name+": circular name reference");
+					sc.error("warning: "+name+": circular name reference");
+				}
+				if( target.equals(name) && !(local && sc.isInFunction())) {
+					error(command, name+": nameref variable self references not allowed");
+					status = 1;
+					continue;
+				}
+				if( target.isEmpty() && (assignment != null && assignment.value != null || text != null)) {
+					// declare -n r=""
+					error(command, "`': not a valid identifier");
+					status = 1;
+					continue;
+				}
+				if( (!target.isEmpty() || raw instanceof String) && !Executor.isName(target) && !SUBSCRIPTED.matcher(target).matches()) {
+					error(command, "`"+target+"': invalid variable name for name reference");
+					status = 1;
+					continue;
+				}
+				if( sc.console.isReadonly(name)) {
+					error(command, name+": readonly variable");
+					status = 1;
+					continue;
+				}
 				sc.setNameRef(name, target, local);
+				if( o.indexOf('r') >= 0 ) {
+					sc.console.setReadonly(name);
+				}
+				continue;
+			}
+			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef ref ) {
+				// +n: a value goes to the variable it names; then it is a plain variable whose value
+				// is that name
+				if( assignment != null || text != null ) {
+					String v = text != null ? text : assignment.value == null ? "" : ex.assignment(assignment.value);
+					if( !ref.target().isEmpty()) {
+						sc.setVariable(ref.target(), v);
+					}
+				}
+				if( local ) {
+					sc.setLocalVariable(name, ref.target());
+				} else {
+					sc.unSetVariable(name, false);
+					sc.setVariable(name, ref.target());
+				}
 				continue;
 			}
 			boolean arrays = !remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0);
@@ -207,6 +356,11 @@ public final class Declarations {
 					text = null;
 				} else if( assignment != null ) {
 					if( assignment.index != null ) {
+						if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
+							// declare -a ref[1]=v: ref is an array again (bash's)
+							sc.error("warning: "+name+": removing nameref attribute");
+							sc.unSetVariable(name, false);
+						}
 						executor.element(assignment, sc, ex, sc.getVariable(name), t);
 						continue;
 					}
@@ -219,6 +373,11 @@ public final class Declarations {
 					String v = (String) values.get(n);
 					val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(v, sc)) : v;
 				} else if( assignment.index != null ) {
+					if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
+						// declare -a ref[1]=v: ref is an array again (bash's)
+						sc.error("warning: "+name+": removing nameref attribute");
+						sc.unSetVariable(name, false);
+					}
 					executor.assign(assignment, sc, ex, false);
 					continue;
 				} else {
@@ -257,6 +416,13 @@ public final class Declarations {
 					sc.console.declaredUnset.add(name);
 				}
 			}
+			if( val instanceof String v && sc.rawVariable(name) instanceof ShellContext.NameRef r && r.target().isEmpty()
+					&& !ShellContext.validReference(v)) {
+				// declare r=/ of a nameref with no value
+				error(command, "`"+v+"': not a valid identifier");
+				status = 1;
+				continue;
+			}
 			if( local ) {
 				if( val == null ) {
 					if( !sc.isOwnLocal(name)) {
@@ -269,7 +435,14 @@ public final class Declarations {
 				sc.setVariable(name, val);
 			}
 			if( o.indexOf('r') >= 0 && !remove ) {
-				sc.console.setReadonly(name);
+				// (readonly ref: the variable it names; not an element)
+				String target = sc.resolveName(name);
+				if( target.indexOf('[') > 0 ) {
+					error(command, "`"+target+"': not a valid identifier");
+					status = 1;
+					continue;
+				}
+				sc.console.setReadonly(target);
 			}
 			if( o.indexOf('x') >= 0 ) {
 				Object v = sc.getVariable(name);
@@ -348,7 +521,7 @@ public final class Declarations {
 			all.addAll(sc.console.declaredUnset);
 			String wanted = o.replaceAll("[^aAiluc rxn]", "").replace(" ", "");
 			for(String n : all) {
-				if( Executor.isName(n) && (sc.getVariable(n) != null || sc.console.declaredUnset.contains(n))) {
+				if( Executor.isName(n) && (sc.getVariable(n) != null || sc.console.declaredUnset.contains(n) || sc.rawVariable(n) instanceof ShellContext.NameRef)) {
 					String flags = flags(n, sc.getVariable(n));
 					boolean has = true;
 					for(char c : wanted.toCharArray()) {
@@ -371,7 +544,7 @@ public final class Declarations {
 			} else if( val == null && sc.console.declaredUnset.contains(name)) {
 				sc.stdout.println(declaration(name, val));
 			} else if( val == null && !(sc.rawVariable(name) instanceof ShellContext.NameRef)) {
-				error("declare", name+": not found");
+				error(command.equals("readonly") ? "declare" : command, name+": not found");
 				ret = 1;
 			} else {
 				sc.stdout.println(declaration(name, val));
@@ -384,7 +557,9 @@ public final class Declarations {
 	private String declaration(String name, Object val) {
 		StringBuilder value = new StringBuilder();
 		if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
-			return "declare -n "+name+"=\""+sc.resolveName(name)+"\"";
+			// (what it names as given, not followed; nothing yet: just the name)
+			String target = ((ShellContext.NameRef) sc.rawVariable(name)).target();
+			return "declare -"+flags(name, val)+" "+name+(target.isEmpty() ? "" : "="+quote(target));
 		}
 		String flags = flags(name, val);
 		if( sc.console.declaredUnset.contains(name) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
@@ -420,6 +595,13 @@ public final class Declarations {
 		String flags = val instanceof Map<?,?> ? "A" : val instanceof List<?> ? "a" : "";
 		if( sc.console.isInteger(name)) {
 			flags += "i";
+		}
+		if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
+			flags = "n";
+			if( sc.console.isReadonly(name)) {
+				flags += "r";
+			}
+			return flags;
 		}
 		// (bash's order: a A i n r x c l u)
 		if( sc.console.isReadonly(name)) {

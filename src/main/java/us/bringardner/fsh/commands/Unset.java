@@ -58,8 +58,18 @@ public class Unset extends ShellCommand{
 		int ret = 0;
 		for(; idx < args.length; idx++) {
 			String text = ""+args[idx].getValue(ctx);
-			if( ctx.console.isReadonly(text) && !functions ) {
-				ctx.error("unset: "+text+": cannot unset: readonly variable");
+			boolean viaRef = false;
+			if( !functions && !reference && us.bringardner.fsh.exec.Executor.isName(text)) {
+				// a nameref to an element (r=a[1]): unset r unsets that element
+				String target = ctx.resolveName(text);
+				if( !target.equals(text) && ELEMENT.matcher(target).matches()) {
+					text = target;
+					viaRef = true;
+				}
+			}
+			String ro = reference || functions ? text : ctx.readonlyName(text);
+			if( ctx.console.isReadonly(ro) && !functions ) {
+				ctx.error("unset: "+ro+": cannot unset: readonly variable");
 				ret = 1;
 				continue;
 			}
@@ -79,7 +89,7 @@ public class Unset extends ShellCommand{
 					// a scalar is its element 0
 					if( !all && us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).longValue() == 0 ) {
 						ctx.unSetVariable(m.group(1), true);
-					} else {
+					} else if( !viaRef ) {
 						ctx.error("unset: "+m.group(1)+": not an array variable");
 						ret = 1;
 					}
@@ -103,6 +113,10 @@ public class Unset extends ShellCommand{
 				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS")) {
 					// as bash: no longer special
 					ctx.console.unsetSpecials.add(text);
+				}
+				if( reference && ctx.rawVariable(text) != null && !(ctx.rawVariable(text) instanceof ShellContext.NameRef)) {
+					// unset -n of a variable that is no nameref: nothing (bash 5.3's)
+					continue;
 				}
 				boolean declared = ctx.console.declaredUnset.remove(text);
 				if( !ctx.unSetVariable(text, !reference) && !declared ) {

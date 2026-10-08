@@ -958,6 +958,14 @@ public final class Expander {
 			}
 		} else if( "#?-$!".indexOf(n.charAt(0)) >= 0 ) {
 			ret = Val.of(str(sc.getVariable("$"+n)));
+		} else if( e.subscript == null && isName(n) && sc.selfReference(n)) {
+			// a function's local -n v=v: said, and the global v
+			sc.error("warning: "+n+": circular name reference");
+			Object v = sc.getVariable(n);
+			ret = Val.of(str(ShellContext.firstElement(v)));
+		} else if( e.subscript == null && isName(n) && refToElement(n) != null ) {
+			// a nameref to an element (declare -n r='x[2]'): that element
+			return base(refToElement(n), unbound);
 		} else {
 			Object v = sc.getVariable(n);
 			if( e.subscript == null ) {
@@ -971,6 +979,23 @@ public final class Expander {
 		if( unbound && ret.scalar == null && option(Console.Option.NullParameterIsError)) {
 			throw new ExpansionError((e.via != null ? e.via : e.display())+": unbound variable", ExpansionError.Kind.FATAL);
 		}
+		return ret;
+	}
+
+	/** name's nameref target as name[subscript], if it is an element; else null */
+	private ParamExpr refToElement(String name) {
+		if( !(sc.rawVariable(name) instanceof ShellContext.NameRef)) {
+			return null;
+		}
+		String target = sc.resolveName(name);
+		int b = target.indexOf('[');
+		if( b <= 0 || !target.endsWith("]")) {
+			return null;
+		}
+		ParamExpr ret = new ParamExpr();
+		ret.text = target;
+		ret.name = target.substring(0, b);
+		ret.subscript = target.substring(b+1, target.length()-1);
 		return ret;
 	}
 

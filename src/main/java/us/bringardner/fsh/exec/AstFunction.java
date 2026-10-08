@@ -47,6 +47,9 @@ final class AstFunction implements ShellFunction {
 		}
 		int ret = 0;
 		int loops = sc.loopDepth;
+		// (not run by a builtin, for what the variables say)
+		String builtin = sc.builtin;
+		sc.builtin = null;
 		sc.enterFunction(values, this);
 		// break and continue do not reach the caller's loops; the DEBUG trap does not run in
 		// it (unless set -T)
@@ -66,6 +69,7 @@ final class AstFunction implements ShellFunction {
 			ret = e.exitCode;
 		} finally {
 			sc.loopDepth = loops;
+			sc.builtin = builtin;
 			sc.debugBlocked--;
 			try {
 				sc.console.setLastExitCode(ret);

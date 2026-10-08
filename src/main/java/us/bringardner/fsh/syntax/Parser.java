@@ -1860,8 +1860,10 @@ public final class Parser {
 		c.line = lineOf(c.start);
 		c.name = "COPROC";
 		Token t = peek();
-		if( t.kind == Kind.WORD && t.word.isPlain() && isName(t.word.plainText())
+		if( t.kind == Kind.WORD && t.word.isPlain()
 				&& !Set.of("if", "while", "until", "for", "select", "case", "{", "[[").contains(t.word.plainText())) {
+			// (any word before a compound command is the name; one that is not a name is an error
+			// when it runs, as bash's)
 			Token name = take();
 			Token next = peek();
 			boolean compound = isOp(next, "(") || (next.kind == Kind.WORD && Set.of("if", "while", "until", "for", "select", "case", "{", "[[").contains(plain(next)));

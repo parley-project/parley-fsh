@@ -543,6 +543,10 @@ public final class Executor {
 	 * NAME_PID its process id.
 	 */
 	private int coproc(Ast.Coproc k, ShellContext sc) {
+		if( !isName(k.name)) {
+			error(sc, "`"+k.name+"': not a valid identifier");
+			return 1;
+		}
 		Pipe toCoproc = new Pipe();
 		Pipe fromCoproc = new Pipe();
 		int readFd = freeDescriptor(sc, 63, -1);
@@ -570,8 +574,17 @@ public final class Executor {
 		FshList fds = new FshList();
 		fds.add(String.valueOf(readFd));
 		fds.add(String.valueOf(writeFd));
-		sc.setVariable(k.name, fds);
-		sc.setVariable(k.name+"_PID", String.valueOf(job.pid));
+		// (a readonly name is said, and keeps its value)
+		if( sc.console.isReadonly(sc.readonlyName(k.name))) {
+			error(sc, sc.readonlyName(k.name)+": readonly variable");
+		} else {
+			sc.setVariable(k.name, fds);
+		}
+		if( sc.console.isReadonly(sc.readonlyName(k.name+"_PID"))) {
+			error(sc, sc.readonlyName(k.name+"_PID")+": readonly variable");
+		} else {
+			sc.setVariable(k.name+"_PID", String.valueOf(job.pid));
+		}
 		return 0;
 	}
 
@@ -783,7 +796,17 @@ public final class Executor {
 				if( tracing(sc)) {
 					trace(sc, sc.stderr, shown.toString());
 				}
-				sc.setVariable(f.variable, v);
+				if( sc.rawVariable(f.variable) instanceof ShellContext.NameRef ) {
+					// a nameref names each word in turn (bash's)
+					if( !ShellContext.validReference(v)) {
+						error(sc, "`"+v+"': not a valid identifier");
+						status[0] = 1;
+						continue;
+					}
+					sc.retarget(f.variable, v);
+				} else {
+					sc.setVariable(f.variable, v);
+				}
 				if( body(f.body, sc, status) == LoopControl.Break ) {
 					break;
 				}
@@ -882,7 +905,16 @@ public final class Executor {
 					}
 				} catch (NumberFormatException e) {
 				}
-				sc.setVariable(s.variable, choice);
+				if( sc.rawVariable(s.variable) instanceof ShellContext.NameRef ) {
+					// a nameref names the choice (one that is no name ends the select)
+					if( !ShellContext.validReference(choice)) {
+						error(sc, "`"+choice+"': not a valid identifier");
+						return 1;
+					}
+					sc.retarget(s.variable, choice);
+				} else {
+					sc.setVariable(s.variable, choice);
+				}
 				if( body(s.body, sc, status) == LoopControl.Break ) {
 					return status[0];
 				}
@@ -1358,8 +1390,8 @@ public final class Executor {
 		if( !keywordAssignments.isEmpty()) {
 			saved = new ArrayList<>();
 			for(String [] a : keywordAssignments) {
-				if( sc.console.isReadonly(a[0])) {
-					error(sc, a[0]+": readonly variable");
+				if( sc.console.isReadonly(sc.readonlyName(a[0]))) {
+					error(sc, sc.readonlyName(a[0])+": readonly variable");
 					continue;
 				}
 				saved.add(new Object[] {a[0], sc.console.getVariable(a[0]), sc.getEvironmentVariable(a[0])});
@@ -1383,9 +1415,9 @@ public final class Executor {
 					if( tracing(sc)) {
 						trace(sc, sc.stderr, a.name+"="+assigned(v));
 					}
-					if( sc.console.isReadonly(a.name)) {
+					if( sc.console.isReadonly(sc.readonlyName(a.name))) {
 						// as bash: said, and the command runs without it
-						error(sc, a.name+": readonly variable");
+						error(sc, sc.readonlyName(a.name)+": readonly variable");
 						continue;
 					}
 					boolean exported = name.equals("export") || name.equals("declare") && args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*x[a-zA-Z]*"));
@@ -1407,9 +1439,18 @@ public final class Executor {
 						}
 						continue;
 					}
-					saved.add(new Object[] {a.name, sc.console.getVariable(a.name), sc.getEvironmentVariable(a.name)});
-					sc.setVariable(a.name, v);
-					sc.setEnvironmentVariable(a.name, v);
+					// (through a nameref: the variable it names)
+					String target = sc.resolveName(a.name);
+					if( sc.rawVariable(a.name) instanceof ShellContext.NameRef r && r.target().isEmpty()) {
+						// r=/ f of a nameref with no value: a plain r while it runs
+						saved.add(new Object[] {a.name, sc.rawVariable(a.name), sc.getEvironmentVariable(a.name)});
+						sc.setPlain(a.name, v);
+						sc.setEnvironmentVariable(a.name, v);
+						continue;
+					}
+					saved.add(new Object[] {target, sc.console.getVariable(target), sc.getEvironmentVariable(target)});
+					sc.setVariable(target, v);
+					sc.setEnvironmentVariable(target, v);
 				}
 			} catch (ExpansionError e) {
 				restore(saved, sc);
@@ -1457,8 +1498,8 @@ public final class Executor {
 			String prefix = tracing(sc) ? ps4(sc) : null;
 			java.util.Map<Ast.Assignment,String> before = new java.util.HashMap<>();
 			for(Ast.Assignment a : c.assignments) {
-				if( sc.console.isReadonly(a.name)) {
-					error(sc, a.name+": readonly variable");
+				if( sc.console.isReadonly(sc.readonlyName(a.name))) {
+					error(sc, sc.readonlyName(a.name)+": readonly variable");
 					sc.console.setLastExitCode(1);
 					// as in bash, the rest of the line is not run
 					throw new AbandonLine(c.line);
@@ -1662,10 +1703,42 @@ public final class Executor {
 		return plain ? s : "'"+s.replace("'", "'\\''")+"'";
 	}
 
+	/** the builtins the executor runs itself (not a ShellCommand) */
+	private static final java.util.Set<String> OWN_BUILTINS = java.util.Set.of("break", "continue", "eval", "declare",
+			"typeset", "local", "readonly", "export", "exec");
+
 	private int dispatch(String name, List<Object> args, ShellContext sc, Expander ex) throws IOException {
+		return dispatch(name, args, sc, ex, true);
+	}
+
+	private int dispatch(String name, List<Object> args, ShellContext sc, Expander ex, boolean functions) throws IOException {
+		if( (name.equals("command") || name.equals("builtin")) && !args.isEmpty()) {
+			// command typeset ..., builtin declare ...: one the executor runs itself
+			int k = 0;
+			while( k < args.size() && name.equals("command") && "-p".equals(String.valueOf(args.get(k)))) {
+				k++;
+			}
+			if( k < args.size() && "--".equals(String.valueOf(args.get(k)))) {
+				k++;
+			}
+			if( k < args.size() && args.get(k) instanceof String b && OWN_BUILTINS.contains(b)) {
+				boolean command = name.equals("command");
+				if( command ) {
+					// (a special builtin's failure does not end the shell)
+					sc.viaCommand++;
+				}
+				try {
+					return dispatch(b, new ArrayList<>(args.subList(k+1, args.size())), sc, ex, false);
+				} finally {
+					if( command ) {
+						sc.viaCommand--;
+					}
+				}
+			}
+		}
 		// (aliases are expanded when the command is read: see Parser.aliases)
 		// a function comes before a builtin of its name, but in posix mode not before a special builtin
-		ShellFunction fn = sc.getFunction(name);
+		ShellFunction fn = functions ? sc.getFunction(name) : null;
 		if( fn != null && !(sc.console.isOptionEnabled(Option.Posix) && SPECIAL_BUILTINS.contains(name))) {
 			return fn.invoke(arguments(strings(args)), sc);
 		}
@@ -1735,8 +1808,8 @@ public final class Executor {
 			List<String> names = new ArrayList<>();
 			for(Object a : args) {
 				if( a instanceof Ast.Assignment as ) {
-					if( sc.console.isReadonly(as.name)) {
-						error(sc, as.name+": readonly variable");
+					if( sc.console.isReadonly(sc.readonlyName(as.name))) {
+						error(sc, sc.readonlyName(as.name)+": readonly variable");
 						return 1;
 					}
 					assign(as, sc, ex, false);
@@ -1756,7 +1829,14 @@ public final class Executor {
 				throw new IOException(e);
 			}
 			cmd.setArgs(arguments(strings(args)));
-			int ret = cmd.process(sc);
+			String outer = sc.builtin;
+			sc.builtin = name;
+			int ret;
+			try {
+				ret = cmd.process(sc);
+			} finally {
+				sc.builtin = outer;
+			}
 			if( !BASH_BUILTINS.contains(name)) {
 				// a program in bash (sleep, ls ...): its end is a child's end for a SIGCHLD trap
 				Programs.childEnded(sc);
@@ -1828,7 +1908,7 @@ public final class Executor {
 		return ret;
 	}
 
-	static boolean isName(String s) {
+	public static boolean isName(String s) {
 		return s.matches("[A-Za-z_][A-Za-z0-9_]*");
 	}
 
@@ -1851,6 +1931,52 @@ public final class Executor {
 			"export", "readonly", "return", "set", "shift", "times", "trap", "unset");
 
 	void assign(Ast.Assignment a, ShellContext sc, Expander ex, boolean local) {
+		if( !local && !a.append && sc.rawVariable(a.name) instanceof ShellContext.NameRef r && r.target().isEmpty()) {
+			// a nameref with no value yet: the value is what it names (as written: not evaluated
+			// for -i), r[0]=v is an error
+			if( a.index != null ) {
+				sc.error("`': not a valid identifier");
+				return;
+			}
+			if( a.array == null ) {
+				String v = a.value == null ? "" : ex.assignment(a.value);
+				if( !ShellContext.validReference(v)) {
+					// (as bash: the rest of the line is not run)
+					sc.error("`"+v+"': not a valid identifier");
+					sc.console.setLastExitCode(1);
+					throw new AbandonLine(a.line);
+				}
+				sc.setVariable(a.name, v);
+				return;
+			}
+		}
+		if( a.index == null && a.array == null ) {
+			// a nameref to an element (declare -n r='x[2]'; r=v): that element
+			String target = sc.resolveName(a.name);
+			int b = target.indexOf('[');
+			if( b > 0 && target.endsWith("]") && !target.equals(a.name)) {
+				if( sc.selfReference(a.name)) {
+					// a function's local -n a=a[0]
+					sc.error("`"+target+"': not a valid identifier");
+					return;
+				}
+				if( target.substring(0, b).equals(a.name)) {
+					// a=foo with a -> b -> a[1]: a is an array again (bash's)
+					sc.error("warning: "+a.name+": removing nameref attribute");
+					sc.unSetVariable(a.name, false);
+				}
+				Ast.Assignment element = new Ast.Assignment();
+				element.name = target.substring(0, b);
+				element.index = target.substring(b+1, target.length()-1);
+				element.append = a.append;
+				element.value = a.value;
+				element.line = a.line;
+				element.start = a.start;
+				element.end = a.end;
+				assign(element, sc, ex, false);
+				return;
+			}
+		}
 		Object v = value(a, sc, ex, local, false);
 		if( v == null ) {
 			return;
@@ -1881,16 +2007,16 @@ public final class Executor {
 		}
 		if( old instanceof Map<?,?> m ) {
 			// m=v, m+=v of an associative array: its element "0"
-			sc.setVariable(a.name, "0", elementValue(m.get("0"), v, a.append, sc.console.isInteger(a.name), sc));
+			sc.setVariable(a.name, "0", elementValue(m.get("0"), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc));
 			return null;
 		}
 		if( old instanceof FshList list && !local ) {
 			// x=v, x+=v of an array: its element 0
 			FshList copy = copy(list);
-			copy.set(0, elementValue(list.get(0), v, a.append, sc.console.isInteger(a.name), sc));
+			copy.set(0, elementValue(list.get(0), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc));
 			return copy;
 		}
-		if( sc.console.isInteger(a.name)) {
+		if( sc.console.isInteger(sc.readonlyName(a.name))) {
 			Number n = arithmeticValue(v, sc);
 			if( a.append ) {
 				Object before = ShellContext.firstElement(old);

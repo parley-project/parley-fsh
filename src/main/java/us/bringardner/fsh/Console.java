@@ -3524,10 +3524,13 @@ delimiter
 	public int runCode(ShellContext ctx, String code) throws IOException {
 		// (set -x shows a trap's commands one level in, as bash's)
 		ctx.substitutionLevel++;
+		String builtin = ctx.builtin;
+		ctx.builtin = null;
 		try {
 			return us.bringardner.fsh.exec.Executor.run(ctx, code);
 		} finally {
 			ctx.substitutionLevel--;
+			ctx.builtin = builtin;
 		}
 	}
 

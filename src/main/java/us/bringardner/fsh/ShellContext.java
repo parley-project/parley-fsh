@@ -401,6 +401,23 @@ $
 	private static final Object UNSET = new Object();
 
 	/** a variable outside any function: the stage's own, or the shell's */
+	/** the variable name stands for, by the global namerefs only (declare -g) */
+	public String resolveGlobalName(String name) {
+		for (int depth = 0; depth < 8; depth++) {
+			Object raw = globalVariable(name);
+			if( !(raw instanceof NameRef) || ((NameRef) raw).target.isEmpty()) {
+				return name;
+			}
+			name = ((NameRef) raw).target;
+		}
+		return name;
+	}
+
+	/** a global variable's own value (a NameRef stays one) */
+	public Object globalRaw(String name) {
+		return globalVariable(name);
+	}
+
 	private Object globalVariable(String name) {
 		if( isolated != null && isolated.containsKey(name)) {
 			Object v = isolated.get(name);
@@ -475,6 +492,35 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
+		if( !(value instanceof NameRef) && selfReference(name) && ((NameRef) rawVariable(name)).target.equals(name)) {
+			// a function's local -n v=v: the global v (said, as bash's)
+			error("warning: "+name+": maximum nameref depth (8) exceeded");
+			if( console.isReadonly(name)) {
+				throw new ReadonlyException(name);
+			}
+			setGlobalVariable(name, withCase(name, value));
+			return;
+		}
+		if( (value instanceof List<?> || value instanceof Map<?,?>) && rawVariable(name) instanceof NameRef r && r.target.isEmpty()) {
+			// an array for a nameref with no value (mapfile ref): a plain array (bash's)
+			error("warning: "+name+": removing nameref attribute");
+			setPlain(name, value);
+			return;
+		}
+		if( value instanceof String v && rawVariable(name) instanceof NameRef r && r.target.isEmpty()) {
+			// ref=name for a nameref with no value yet: what it names
+			if( !validReference(v)) {
+				variableError("`"+v+"': not a valid identifier");
+				return;
+			}
+			FunctionInvocation scope = localScope(name);
+			if( scope != null ) {
+				scope.local.put(name, new NameRef(v));
+			} else {
+				setGlobalVariable(name, new NameRef(v));
+			}
+			return;
+		}
 		if( !(value instanceof NameRef)) {
 			name = resolveName(name);
 			value = withCase(name, value);
@@ -549,6 +595,11 @@ $
 		NameRef(String target) {
 			this.target = target;
 		}
+
+		/** the name it stands for */
+		public String target() {
+			return target;
+		}
 	}
 
 	/**
@@ -565,6 +616,16 @@ $
 		}
 	}
 
+	/** a nameref now names target (for ref in a b: each in turn), where it is (a function's local too) */
+	public void retarget(String name, String target) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			scope.local.put(name, new NameRef(target));
+		} else {
+			setGlobalVariable(name, new NameRef(target));
+		}
+	}
+
 	/**
 	 * local x with no value: the function's, unset until it is given one.
 	 */
@@ -572,6 +633,13 @@ $
 		if( !functionStack.isEmpty()) {
 			functionStack.peek().local.put(name, UNSET_LOCAL);
 		}
+	}
+
+	/** the variable an assignment to name sets (a nameref's target, without a subscript), for readonly */
+	public String readonlyName(String name) {
+		String n = resolveName(name);
+		int b = n.indexOf('[');
+		return b > 0 ? n.substring(0, b) : n;
 	}
 
 	/** the variable a name stands for: itself, or what its nameref names (a few levels deep) */
@@ -650,12 +718,48 @@ $
 
 	public Object getVariable(String name) {
 		Object ret = getVariable0(name);
-		// a nameref stands for the variable it names
+		// a nameref stands for the variable it names (a function's that names itself: the global one)
+		String cur = name;
 		for (int depth = 0; depth < 8 && ret instanceof NameRef; depth++) {
 			String target = ((NameRef) ret).target;
-			ret = target.isEmpty() ? null : getVariable0(target);
+			ret = target.isEmpty() ? null : target.equals(cur) ? globalVariable(target) : getVariable0(target);
+			if( target.equals(cur) && ret instanceof NameRef r && r.target.equals(cur)) {
+				return null;
+			}
+			cur = target;
 		}
 		return ret;
+	}
+
+	/** the builtin running now (its name starts what the variables say: printf: `/': ...), or null */
+	public String builtin;
+
+	/** an error from a variable, said as the builtin running now says its own */
+	private void variableError(String message) {
+		error(builtin != null ? builtin+": "+message : message);
+	}
+
+	/** a name a nameref can name: name, or name[subscript] */
+	public static boolean validReference(String v) {
+		return v.matches("[A-Za-z_][A-Za-z_0-9]*(\\[.+\\])?");
+	}
+
+	/** name=value where name's variable is (a function's local too), not following a nameref */
+	public void setPlain(String name, Object value) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			scope.local.put(name, value);
+		} else {
+			setGlobalVariable(name, value);
+		}
+	}
+
+	/** a function's own nameref that names itself (local -n v=v, or v=v[0]) */
+	public boolean selfReference(String name) {
+		if( localScope(name) == null || !(rawVariable(name) instanceof NameRef r)) {
+			return false;
+		}
+		return r.target.equals(name) || r.target.startsWith(name+"[");
 	}
 
 	private Object getVariable0(String name) {
@@ -941,6 +1045,11 @@ $
 	}
 
 	/** name is a local variable of the running function itself (not a caller's) */
+	/** the names of the running function's own local variables */
+	public java.util.Set<String> ownLocalNames() {
+		return functionStack.isEmpty() ? java.util.Set.of() : functionStack.peek().local.keySet();
+	}
+
 	public boolean isOwnLocal(String name) {
 		return !functionStack.isEmpty() && functionStack.peek().local.containsKey(name);
 	}
