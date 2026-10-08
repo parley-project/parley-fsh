@@ -24,6 +24,29 @@ public class Printf extends ShellCommand{
 
 	/** an argument that is not a number: printf goes on, with status 1 */
 	private boolean failed;
+	/** standard output when printing there (not -v): what was formatted so far goes out before an error */
+	private java.io.PrintStream direct;
+	private StringBuilder current;
+	/** \c in %b: no more output at all */
+	private boolean stop;
+
+	/** an error: said at once (the output goes out when printf ends, as bash's buffered output) */
+	private void error(ShellContext ctx, String message) {
+		ctx.error(message);
+		failed = true;
+	}
+
+	/** what was formatted so far goes out now (bash flushes before %n) */
+	private void flush() {
+		if( direct != null && current != null && current.length() > 0 ) {
+			us.bringardner.fsh.ByteText.finishInPlace(current);
+			direct.print(current);
+			direct.flush();
+			current.setLength(0);
+		}
+	}
+
+	static final String USAGE = "printf: usage: printf [-v var] format [arguments]";
 
 	public Printf() {
 		super(name, help);
@@ -37,30 +60,50 @@ public class Printf extends ShellCommand{
 		}
 		String var = null;
 		int idx = 0;
-		while( idx < words.size() && words.get(idx).startsWith("-")) {
-			if( words.get(idx).equals("-v") && idx+1 < words.size()) {
-				var = words.get(idx+1);
-				idx += 2;
-			} else if( words.get(idx).equals("--")) {
+		while( idx < words.size() && words.get(idx).startsWith("-") && words.get(idx).length() > 1 ) {
+			String w = words.get(idx);
+			if( w.equals("--")) {
 				idx++;
 				break;
+			} else if( w.startsWith("-v")) {
+				// -v var, -vvar
+				if( w.length() > 2 ) {
+					var = w.substring(2);
+					idx++;
+				} else if( idx+1 < words.size()) {
+					var = words.get(idx+1);
+					idx += 2;
+				} else {
+					ctx.error("printf: -v: option requires an argument");
+					ctx.stderr.println(USAGE);
+					return 2;
+				}
+				if( !var.matches("[A-Za-z_][A-Za-z_0-9]*") && !ELEMENT.matcher(var).matches()) {
+					ctx.error("printf: `"+var+"': not a valid identifier");
+					return 2;
+				}
 			} else {
-				break;
+				ctx.error("printf: "+w.substring(0, 2)+": invalid option");
+				ctx.stderr.println(USAGE);
+				return 2;
 			}
 		}
 		if( idx >= words.size()) {
-			ctx.error("printf: usage: printf [-v var] format [arguments]");
+			ctx.stderr.println(USAGE);
 			return 2;
 		}
 		String format = words.get(idx++);
 		List<String> values = words.subList(idx, words.size());
 		failed = false;
+		stop = false;
 		StringBuilder out = new StringBuilder();
+		current = out;
+		direct = var == null ? ctx.stdout : null;
 		int used = 0;
 		do {
 			int before = used;
 			used = format(format, values, used, out, ctx);
-			if( used == before ) {
+			if( used == before || stop ) {
 				// the format takes no arguments: once
 				break;
 			}
@@ -92,7 +135,10 @@ public class Printf extends ShellCommand{
 		for (int idx = 0; idx < n; idx++) {
 			char c = format.charAt(idx);
 			if( c == '\\' ) {
-				idx = escape(format, idx, out, false);
+				idx = escapeIn(ctx, format, idx, out, false);
+				if( stop ) {
+					return next;
+				}
 				continue;
 			}
 			if( c != '%' ) {
@@ -113,7 +159,13 @@ public class Printf extends ShellCommand{
 			if( idx < n && format.charAt(idx) == '*' ) {
 				// %*s: the width is an argument; 0 is none (Java read %0s as the 0 flag), and a
 				// negative one left-justifies
-				long width = number(next < values.size() ? values.get(next++) : "0", ctx);
+				String w = next < values.size() ? values.get(next++) : "0";
+				long width = number(w, ctx);
+				if( width > Integer.MAX_VALUE || width < -Integer.MAX_VALUE ) {
+					// too wide: said, and not used
+					error(ctx, "printf: "+w+": Result too large");
+					width = 0;
+				}
 				if( width < 0 ) {
 					spec.append('-');
 					width = -width;
@@ -123,81 +175,188 @@ public class Printf extends ShellCommand{
 				}
 				idx++;
 			} else {
+				int digits = idx;
 				while( idx < n && Character.isDigit(format.charAt(idx))) {
-					spec.append(format.charAt(idx++));
+					idx++;
 				}
-			}
-			int close = idx < n && format.charAt(idx) == '(' ? format.indexOf(")T", idx) : -1;
-			if( close > 0 ) {
-				// %(strftime format)T: a time, the argument in seconds since 1970 (none or -1: now)
-				String when = next < values.size() ? values.get(next++) : null;
-				String text = strftime(format.substring(idx+1, close), when, ctx);
-				out.append(String.format(spec.toString()+"s", text));
-				idx = close+1;
-				continue;
+				String w = format.substring(digits, idx);
+				if( w.length() > 9 && Long.parseLong(w.length() > 18 ? "9999999999" : w) > Integer.MAX_VALUE ) {
+					error(ctx, "printf: "+w+": Result too large");
+				} else {
+					spec.append(w);
+				}
 			}
 			Integer precision = null;
 			if( idx < n && format.charAt(idx) == '.' ) {
 				idx++;
 				StringBuilder p = new StringBuilder();
+				boolean ignore = false;
 				if( idx < n && format.charAt(idx) == '*' ) {
-					p.append(number(next < values.size() ? values.get(next++) : "0", ctx));
+					String a = next < values.size() ? values.get(next++) : "0";
+					long v = number(a, ctx);
+					if( v > Integer.MAX_VALUE ) {
+						error(ctx, "printf: "+a+": Result too large");
+						ignore = true;
+					} else if( v < 0 ) {
+						// (a negative precision is none, as C's)
+						ignore = true;
+					}
+					p.append(ignore ? "0" : String.valueOf(v));
 					idx++;
 				} else {
 					while( idx < n && Character.isDigit(format.charAt(idx))) {
 						p.append(format.charAt(idx++));
 					}
 				}
-				precision = p.length() == 0 ? 0 : Integer.parseInt(p.toString());
+				long pv = p.length() == 0 || p.length() > 10 ? (p.length() == 0 ? 0 : Long.MAX_VALUE) : Long.parseLong(p.toString());
+				if( !ignore && pv > Integer.MAX_VALUE ) {
+					error(ctx, "printf: "+p+": Result too large");
+				}
+				precision = ignore ? null : pv > Integer.MAX_VALUE ? null : (int) pv;
+			}
+			if( idx < n && format.charAt(idx) == '(' ) {
+				// %(strftime format)T: a time, the argument in seconds since 1970 (none or -1: now, -2:
+				// when the shell started)
+				// (the ) that matches it: the format may have parentheses of its own)
+				int close = -1;
+				for (int k = idx, depth = 0; k < n; k++) {
+					if( format.charAt(k) == '(' ) {
+						depth++;
+					} else if( format.charAt(k) == ')' && --depth == 0 ) {
+						close = k;
+						break;
+					}
+				}
+				if( close < 0 || close+1 >= n || format.charAt(close+1) != 'T' ) {
+					char bad = close < 0 || close+1 >= n ? '(' : format.charAt(close+1);
+					ctx.error("printf: warning: `"+bad+"': invalid time format specification");
+					int end = close < 0 ? n : Math.min(n, close+2);
+					out.append(format, start, end);
+					idx = end-1;
+					continue;
+				}
+				String when = next < values.size() ? values.get(next++) : null;
+				String fmt = format.substring(idx+1, close);
+				String text = strftime(fmt.isEmpty() ? "%X" : fmt, when, ctx);
+				if( precision != null && precision < text.length()) {
+					text = text.substring(0, precision);
+				}
+				out.append(String.format(sane(spec.toString(), 's')+"s", text));
+				idx = close+1;
+				continue;
 			}
 			// length modifiers (l, h ...) mean nothing here
 			while( idx < n && "hlLjzt".indexOf(format.charAt(idx)) >= 0 ) {
 				idx++;
 			}
 			if( idx >= n ) {
-				out.append(format, start, n);
-				break;
+				error(ctx, "printf: `"+format.substring(start, n)+"': missing format character");
+				stop = true;
+				return next;
 			}
 			char conv = format.charAt(idx);
 			String arg = next < values.size() ? values.get(next++) : null;
-			out.append(convert(conv, spec.toString(), precision, arg, ctx));
+			if( conv == 'n' ) {
+				// %n: the number of characters written so far, into the variable named
+				if( arg != null ) {
+					if( !arg.matches("[A-Za-z_][A-Za-z_0-9]*")) {
+						flush();
+						error(ctx, "printf: `"+arg+"': not a valid identifier");
+					} else {
+						ctx.setVariable(arg, String.valueOf(out.length()));
+					}
+				}
+				continue;
+			}
+			alternate = spec.indexOf("#") >= 0 && (conv == 'q' || conv == 'Q');
+			if( conv == 'S' || conv == 'C' ) {
+				// %S %C: %ls %lc
+				conv = Character.toLowerCase(conv);
+			}
+			out.append(convert(conv, "diuoxX".indexOf(conv) >= 0 ? spec.toString() : sane(spec.toString(), conv), precision, arg, ctx));
+			if( stop ) {
+				return next;
+			}
 		}
 		return next;
 	}
+
+	/** the spec without what Java's Formatter refuses (bash ignores it): 0 # + space on strings, 0 or - with no width */
+	private static String sane(String spec, char conv) {
+		String flags = spec.replaceFirst("^%([-+ 0#]*).*$", "$1");
+		String width = spec.substring(1+flags.length());
+		if( "sbqQc".indexOf(conv) >= 0 ) {
+			flags = flags.replaceAll("[0+ #]", "");
+		}
+		if( width.isEmpty()) {
+			flags = flags.replaceAll("[-0]", "");
+		} else if( flags.contains("-")) {
+			flags = flags.replace("0", "");
+		}
+		if( flags.contains("+")) {
+			flags = flags.replace(" ", "");
+		}
+		// (once each)
+		StringBuilder f = new StringBuilder();
+		for(char c : flags.toCharArray()) {
+			if( f.indexOf(String.valueOf(c)) < 0 ) {
+				f.append(c);
+			}
+		}
+		return "%"+f+width;
+	}
+
+	/** %#q: 'quoted' (bash's alternative form) */
+	private boolean alternate;
 
 	private String convert(char conv, String spec, Integer precision, String arg, ShellContext ctx) {
 		String prec = precision == null ? "" : "."+precision;
 		switch (conv) {
 		case 's':
+		case 'S':
 			return String.format(spec+prec+"s", arg == null ? "" : arg);
 		case 'b': {
 			StringBuilder b = new StringBuilder();
 			String text = arg == null ? "" : arg;
 			for (int idx = 0; idx < text.length(); idx++) {
 				if( text.charAt(idx) == '\\' ) {
-					idx = escape(text, idx, b, true);
+					idx = escapeIn(ctx, text, idx, b, true);
+					if( stop ) {
+						// \c: what is before it, and nothing more
+						return b.toString();
+					}
 				} else {
 					b.append(text.charAt(idx));
 				}
 			}
 			return String.format(spec+prec+"s", b);
 		}
-		case 'q':
-			return String.format(spec+"s", quote(arg == null ? "" : arg));
-		case 'c':
-			return String.format(spec+"s", arg == null || arg.isEmpty() ? "" : arg.substring(0, 1));
-		case 'd':
-		case 'i': {
-			long v = number(arg, ctx);
-			String s = String.format(spec.replace("#", "")+"d", v);
-			return precision == null ? s : pad(s, precision);
+		case 'q': {
+			// %.Nq: the quoted text cut to N (bash's); %.NQ: the argument cut to N, then quoted
+			String q = alternate ? singleQuoted(arg == null ? "" : arg) : quote(arg == null ? "" : arg);
+			if( precision != null && precision < q.length()) {
+				q = q.substring(0, precision);
+			}
+			return String.format(spec+"s", q);
 		}
+		case 'Q': {
+			String a = arg == null ? "" : arg;
+			if( precision != null && precision < a.length()) {
+				a = a.substring(0, precision);
+			}
+			return String.format(spec+"s", alternate ? singleQuoted(a) : quote(a));
+		}
+		case 'c':
+		case 'C':
+			// (no argument: a NUL, as bash's)
+			return String.format(spec+"s", arg == null || arg.isEmpty() ? "\0" : arg.substring(0, 1));
+		case 'd':
+		case 'i':
 		case 'u':
-			return String.format(spec+"d", number(arg, ctx));
 		case 'o':
 		case 'x':
 		case 'X':
-			return String.format(spec+conv, number(arg, ctx));
+			return integer(conv, spec, precision, number(arg, ctx));
 		case 'g': case 'G':
 			return formatG(spec, precision, decimal(arg, ctx), conv == 'G');
 		case 'f': case 'F': case 'e': case 'E': {
@@ -205,8 +364,8 @@ public class Printf extends ShellCommand{
 			return String.format(spec+(precision == null ? "" : prec)+(conv == 'F' ? 'f' : conv), d);
 		}
 		default:
-			ctx.error("printf: %"+conv+": invalid format character");
-			failed = true;
+			error(ctx, "printf: `"+conv+"': invalid format character");
+			stop = true;
 			return "";
 		}
 	}
@@ -214,24 +373,49 @@ public class Printf extends ShellCommand{
 	/**
 	 * A time as strftime formats it (the time zone is $TZ, or the system's).
 	 */
+	/** $TZ as a zone: a zone name, or a POSIX one (EST5EDT, EST5EDT,M3.2.0/2,M11.1.0/2, UTC+3) */
+	static java.time.ZoneId zone(ShellContext ctx) {
+		Object tz = ctx.getVariable("TZ");
+		if( tz == null || tz.toString().isBlank()) {
+			return java.time.ZoneId.systemDefault();
+		}
+		String t = tz.toString();
+		if( t.startsWith(":")) {
+			t = t.substring(1);
+		}
+		try {
+			return java.time.ZoneId.of(t);
+		} catch (java.time.DateTimeException e) {
+		}
+		String head = t.contains(",") ? t.substring(0, t.indexOf(',')) : t;
+		try {
+			return java.time.ZoneId.of(head);
+		} catch (java.time.DateTimeException e) {
+		}
+		// NAME[+-]hours: hours west of Greenwich
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("^[A-Za-z]{3,}([-+]?)(\\d{1,2})(?::(\\d{2}))?").matcher(head);
+		if( m.find()) {
+			int seconds = Integer.parseInt(m.group(2))*3600+(m.group(3) == null ? 0 : Integer.parseInt(m.group(3))*60);
+			return java.time.ZoneOffset.ofTotalSeconds(m.group(1).equals("-") ? seconds : -seconds);
+		}
+		return java.time.ZoneOffset.UTC;
+	}
+
 	static String strftime(String fmt, String when, ShellContext ctx) {
 		long seconds = System.currentTimeMillis()/1000;
 		if( when != null && !when.isBlank()) {
 			try {
 				long v = Long.parseLong(when.trim());
-				if( v >= 0 ) {
+				if( v == -2 ) {
+					// when the shell started
+					seconds = System.currentTimeMillis()/1000-ctx.console.seconds();
+				} else if( v != -1 ) {
 					seconds = v;
 				}
 			} catch (NumberFormatException e) {
 			}
 		}
-		Object tz = ctx.getVariable("TZ");
-		java.time.ZoneId zone;
-		try {
-			zone = tz == null || tz.toString().isBlank() ? java.time.ZoneId.systemDefault() : java.time.ZoneId.of(tz.toString());
-		} catch (java.time.DateTimeException e) {
-			zone = java.time.ZoneOffset.UTC;
-		}
+		java.time.ZoneId zone = zone(ctx);
 		java.time.ZonedDateTime t = java.time.Instant.ofEpochSecond(seconds).atZone(zone);
 		StringBuilder ret = new StringBuilder();
 		for (int i = 0; i < fmt.length(); i++) {
@@ -270,6 +454,10 @@ public class Printf extends ShellCommand{
 			case 'T': ret.append(strftime("%H:%M:%S", ""+seconds, ctx)); break;
 			case 'D': ret.append(strftime("%m/%d/%y", ""+seconds, ctx)); break;
 			case 'R': ret.append(strftime("%H:%M", ""+seconds, ctx)); break;
+			case 'r': ret.append(strftime("%I:%M:%S %p", ""+seconds, ctx)); break;
+			case 'x': ret.append(strftime("%m/%d/%y", ""+seconds, ctx)); break;
+			case 'X': ret.append(strftime("%H:%M:%S", ""+seconds, ctx)); break;
+			case 'c': ret.append(strftime("%a %b %e %H:%M:%S %Y", ""+seconds, ctx)); break;
 			case 'n': ret.append('\n'); break;
 			case 't': ret.append('\t'); break;
 			case '%': ret.append('%'); break;
@@ -277,6 +465,57 @@ public class Printf extends ShellCommand{
 			}
 		}
 		return ret.toString();
+	}
+
+	/** %d %u %o %x %X as C formats them (a precision ignores the 0 flag; o x X u have no sign) */
+	private static String integer(char conv, String spec, Integer precision, long v) {
+		String flags = spec.replaceFirst("^%([-+ 0#]*).*$", "$1");
+		String w = spec.substring(1+flags.length());
+		int width = w.isEmpty() ? 0 : Integer.parseInt(w);
+		boolean signed = conv == 'd' || conv == 'i';
+		String digits;
+		String sign = "";
+		if( signed ) {
+			digits = v < 0 ? (v == Long.MIN_VALUE ? "9223372036854775808" : String.valueOf(-v)) : String.valueOf(v);
+			sign = v < 0 ? "-" : flags.contains("+") ? "+" : flags.contains(" ") ? " " : "";
+		} else if( conv == 'o' ) {
+			digits = Long.toOctalString(v);
+		} else if( conv == 'u' ) {
+			digits = Long.toUnsignedString(v);
+		} else {
+			digits = Long.toHexString(v);
+			if( conv == 'X' ) {
+				digits = digits.toUpperCase();
+			}
+		}
+		if( precision != null ) {
+			if( precision == 0 && v == 0 ) {
+				digits = "";
+			}
+			while( digits.length() < precision ) {
+				digits = "0"+digits;
+			}
+		}
+		if( flags.contains("#") && v != 0 ) {
+			if( conv == 'x' ) {
+				sign = "0x";
+			} else if( conv == 'X' ) {
+				sign = "0X";
+			} else if( conv == 'o' && !digits.startsWith("0")) {
+				digits = "0"+digits;
+			}
+		}
+		int fill = width-sign.length()-digits.length();
+		if( fill <= 0 ) {
+			return sign+digits;
+		}
+		if( flags.contains("-")) {
+			return sign+digits+" ".repeat(fill);
+		}
+		if( flags.contains("0") && precision == null ) {
+			return sign+"0".repeat(fill)+digits;
+		}
+		return " ".repeat(fill)+sign+digits;
 	}
 
 	/** %.5d: at least precision digits */
@@ -291,7 +530,12 @@ public class Printf extends ShellCommand{
 
 	/** a number argument: decimal, 0x hex, 0 octal, or 'c / "c (the character's code) */
 	private long number(String arg, ShellContext ctx) {
-		if( arg == null || arg.isEmpty()) {
+		if( arg == null ) {
+			return 0;
+		}
+		if( arg.isEmpty()) {
+			// (an argument that is there and empty is not a number, as in bash)
+			error(ctx, "printf: : invalid number");
 			return 0;
 		}
 		if( arg.startsWith("'") || arg.startsWith("\"")) {
@@ -305,10 +549,18 @@ public class Printf extends ShellCommand{
 			if( s.length() > 1 && s.startsWith("0") && s.matches("0[0-7]+")) {
 				return Long.parseLong(s.substring(1), 8);
 			}
+			if( s.matches("[-+]?[0-9]+")) {
+				try {
+					return Long.parseLong(s);
+				} catch (NumberFormatException big) {
+					// too big: the largest (or smallest) there is, and said
+					error(ctx, "printf: "+arg+": Result too large");
+					return s.startsWith("-") ? Long.MIN_VALUE : Long.MAX_VALUE;
+				}
+			}
 			return Long.parseLong(s);
 		} catch (NumberFormatException e) {
-			ctx.error("printf: "+arg+": invalid number");
-			failed = true;
+			error(ctx, "printf: "+arg+": invalid number");
 			// as in bash, the number it starts with (3.7 is 3)
 			java.util.regex.Matcher m = java.util.regex.Pattern.compile("^[-+]?\\d+").matcher(s);
 			return m.find() ? Long.parseLong(m.group().replace("+", "")) : 0;
@@ -325,8 +577,7 @@ public class Printf extends ShellCommand{
 		try {
 			return Double.parseDouble(arg.trim());
 		} catch (NumberFormatException e) {
-			ctx.error("printf: "+arg+": invalid number");
-			failed = true;
+			error(ctx, "printf: "+arg+": invalid number");
 			return 0;
 		}
 	}
@@ -382,6 +633,11 @@ public class Printf extends ShellCommand{
 		return body;
 	}
 
+	/** %#q: in single quotes */
+	private static String singleQuoted(String s) {
+		return "'"+s.replace("'", "'\\''")+"'";
+	}
+
 	/** %q: quoted so the shell reads it back as the same word */
 	static String quote(String s) {
 		if( s.isEmpty()) {
@@ -428,7 +684,24 @@ public class Printf extends ShellCommand{
 	 * @param inArgument %b: \0nnn is octal and \c ends the output
 	 * @return the index of its last character
 	 */
-	private static int escape(String text, int idx, StringBuilder out, boolean inArgument) {
+	/** escape found \x with no digits (bash says so) */
+	private boolean missingHex;
+
+	/** escape, saying what bash says about a \x with no digits, and \c in %b stopping the output */
+	private int escapeIn(ShellContext ctx, String text, int idx, StringBuilder out, boolean inArgument) {
+		if( inArgument && idx+1 < text.length() && text.charAt(idx+1) == 'c' ) {
+			stop = true;
+			return idx+1;
+		}
+		missingHex = false;
+		int ret = escape(text, idx, out, inArgument);
+		if( missingHex ) {
+			error(ctx, "printf: missing hex digit for \\x");
+		}
+		return ret;
+	}
+
+	private int escape(String text, int idx, StringBuilder out, boolean inArgument) {
 		if( idx+1 >= text.length()) {
 			out.append('\\');
 			return idx;
@@ -445,14 +718,22 @@ public class Printf extends ShellCommand{
 		case 'e':
 		case 'E': out.append('\u001b'); return idx;
 		case '\\': out.append('\\'); return idx;
-		case '"': out.append('"'); return idx;
-		case '\'': out.append('\''); return idx;
+		case '"':
+		case '\'':
+		case '?':
+			// in the format; %b keeps the backslash (as bash's)
+			if( inArgument ) {
+				out.append('\\');
+			}
+			out.append(e);
+			return idx;
 		case 'x': {
 			int end = idx+1;
 			while( end < text.length() && end-idx-1 < 2 && Character.digit(text.charAt(end), 16) >= 0 ) {
 				end++;
 			}
 			if( end == idx+1 ) {
+				missingHex = true;
 				out.append("\\x");
 				return idx;
 			}
