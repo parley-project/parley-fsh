@@ -1207,6 +1207,15 @@ public final class Parser {
 				continue;
 			}
 			char c = ch(i);
+			if( c == '$' && (ch(i+1) == '{' || ch(i+1) == '(' && ch(i+2) != '(')) {
+				// ${ list; }, ${x} and $(cmd): their ) do not count ($(case x in x) esac) too)
+				try {
+					i = ch(i+1) == '{' ? braceClose(i+2, false)+1 : skipCommandSub(i);
+					continue;
+				} catch (SyntaxError e) {
+					return -1;
+				}
+			}
 			if( c == '(' ) {
 				depth++;
 			} else if( c == ')' ) {
@@ -2059,6 +2068,20 @@ public final class Parser {
 		int tail = src.length()-to;
 		for (int i = from; i < src.length()-tail; i++) {
 			char c = ch(i);
+			int q = skipQuoted(i);
+			if( q != i ) {
+				// (quotes, $( ): their ; are theirs)
+				i = q-1;
+				continue;
+			}
+			if( c == '$' && ch(i+1) == '{' ) {
+				i = braceClose(i+2, false);
+				continue;
+			}
+			if( c == '$' && ch(i+1) == '(' && ch(i+2) != '(' ) {
+				i = skipCommandSub(i)-1;
+				continue;
+			}
 			if( c == '(' ) {
 				depth++;
 			} else if( c == ')' ) {
@@ -2072,7 +2095,10 @@ public final class Parser {
 		}
 		parts.add(arithWord(start, src.length()-tail));
 		if( parts.size() != 3 ) {
-			throw new SyntaxError(lineOf(from), "syntax error: arithmetic expression required");
+			// (more than three: the ; after the third is unexpected; and the command is shown)
+			SyntaxError e = new SyntaxError(lineOf(from), parts.size() > 3 ? "syntax error: `;' unexpected" : "syntax error: arithmetic expression required");
+			e.also = "syntax error: `(("+src.substring(from, src.length()-tail)+"))'";
+			throw e;
 		}
 		return parts.toArray(new Word[0]);
 	}

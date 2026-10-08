@@ -439,10 +439,16 @@ final class CommandPrinter {
 	}
 
 	private void arithFor(Ast.ArithFor f) {
-		out.append("for ((").append(arith(f.init)).append("; ").append(arith(f.condition)).append("; ").append(arith(f.step)).append("))");
+		// (an empty part is 1, as bash prints it)
+		out.append("for ((").append(forPart(f.init)).append("; ").append(forPart(f.condition)).append("; ").append(forPart(f.step)).append("))");
 		newline("do\n");
 		body(f.body);
 		newline("done");
+	}
+
+	private static String forPart(Word w) {
+		String t = arith(w);
+		return t.isBlank() ? "1" : t;
 	}
 
 	private static String arith(Word w) {

@@ -22,6 +22,9 @@ public class SyntaxError extends RuntimeException {
 	public int eofFromLine;
 	public int eofLine;
 
+	/** a second line bash says after the message (for (( a; b )): syntax error: `(( a; b ))') */
+	public String also;
+
 	public SyntaxError(int line, String message) {
 		super(message);
 		this.line = line;

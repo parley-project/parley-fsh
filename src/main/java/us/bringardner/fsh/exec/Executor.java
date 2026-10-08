@@ -202,6 +202,9 @@ public final class Executor {
 			prefix = prefix.replaceFirst("(line \\d+: )$", who+": $1");
 		}
 		sc.stderr.println(prefix+e.getMessage());
+		if( e.also != null ) {
+			sc.stderr.println(prefix+e.also);
+		}
 		if( e.near != null ) {
 			// [[ ]]: where, and the line
 			sc.stderr.println(prefix+"syntax error near `"+e.near+"'");
