@@ -215,12 +215,12 @@ public class Read extends ShellCommand{
 			String ifs = tmp == null ? " \t\n" : tmp.toString();
 			if( arrayName !=null ) {
 				// the whole array at once, so a local one (local a; read -ra a) gets it
-				List<String> words = split(line, ifs, Integer.MAX_VALUE);
+				List<String> words = split(line, ifs, Integer.MAX_VALUE, escaped);
 				us.bringardner.fsh.FshList list = new us.bringardner.fsh.FshList();
 				list.addAll(words);
 				ctx.setVariable(arrayName, list);
 			} else {
-				List<String> values = split(line, ifs, names.size());
+				List<String> values = split(line, ifs, names.size(), escaped);
 				for(int idx=0; idx < names.size(); idx++ ) {
 					String value = values.size() > idx ? values.get(idx) : "";
 					java.util.regex.Matcher m = ELEMENT.matcher(names.get(idx));
@@ -230,6 +230,10 @@ public class Read extends ShellCommand{
 						Object key = cur instanceof java.util.Map<?,?> ? m.group(2)
 								: (Object) us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).intValue();
 						ctx.setVariable(m.group(1), key, value);
+					} else if( ctx.console.isReadonly(ctx.readonlyName(names.get(idx)))) {
+						// (said; the rest are not set, and the status is 2, as bash's)
+						ctx.error(ctx.readonlyName(names.get(idx))+": readonly variable");
+						return 2;
 					} else {
 						ctx.setVariable(names.get(idx), value);
 					}
@@ -247,6 +251,15 @@ public class Read extends ShellCommand{
 	 * gives a and b:c).
 	 */
 	public static List<String> split(String line, String ifs, int max) {
+		return split(line, ifs, max, new java.util.BitSet());
+	}
+
+	/** split, the characters at the positions in escaped being no separators */
+	public static List<String> split(String line, String ifs, int max, java.util.BitSet escaped) {
+		String plain = ifs;
+		// (an escaped character is matched against nothing)
+		java.util.function.IntPredicate isIfs = i -> !escaped.get(i) && plain.indexOf(line.charAt(i)) >= 0;
+		java.util.function.IntPredicate isSpace = i -> isIfs.test(i) && Character.isWhitespace(line.charAt(i));
 		List<String> ret = new ArrayList<>();
 		if( ifs.isEmpty()) {
 			ret.add(line);
@@ -254,30 +267,46 @@ public class Read extends ShellCommand{
 		}
 		int n = line.length();
 		int pos = 0;
-		while( pos < n && isIfsSpace(line.charAt(pos), ifs)) {
+		while( pos < n && isSpace.test(pos)) {
 			pos++;
 		}
 		while( pos < n ) {
 			if( ret.size() == max-1 ) {
-				// the rest, without trailing IFS whitespace
+				// the rest, without trailing IFS whitespace; but if the rest is one field and its
+				// delimiter (a: or just :), only the field (bash's read)
 				int end = n;
-				while( end > pos && isIfsSpace(line.charAt(end-1), ifs)) {
+				// (one name: an escaped blank at the end goes too, as bash's)
+				while( end > pos && (isSpace.test(end-1) || max == 1 && Character.isWhitespace(line.charAt(end-1)) && plain.indexOf(line.charAt(end-1)) >= 0)) {
 					end--;
 				}
-				ret.add(line.substring(pos, end));
+				int w = pos;
+				while( w < end && !isIfs.test(w) ) {
+					w++;
+				}
+				int after = w;
+				while( after < end && isSpace.test(after)) {
+					after++;
+				}
+				if( after < end && isIfs.test(after) && !Character.isWhitespace(line.charAt(after))) {
+					after++;
+					while( after < end && isSpace.test(after)) {
+						after++;
+					}
+				}
+				ret.add(after >= end ? line.substring(pos, w) : line.substring(pos, end));
 				return ret;
 			}
 			int start = pos;
-			while( pos < n && ifs.indexOf(line.charAt(pos)) < 0 ) {
+			while( pos < n && !isIfs.test(pos) ) {
 				pos++;
 			}
 			ret.add(line.substring(start, pos));
-			while( pos < n && isIfsSpace(line.charAt(pos), ifs)) {
+			while( pos < n && isSpace.test(pos)) {
 				pos++;
 			}
-			if( pos < n && ifs.indexOf(line.charAt(pos)) >= 0 && !Character.isWhitespace(line.charAt(pos))) {
+			if( pos < n && isIfs.test(pos) && !Character.isWhitespace(line.charAt(pos))) {
 				pos++;
-				while( pos < n && isIfsSpace(line.charAt(pos), ifs)) {
+				while( pos < n && isSpace.test(pos)) {
 					pos++;
 				}
 			}
@@ -288,6 +317,9 @@ public class Read extends ShellCommand{
 	private static boolean isIfsSpace(char c, String ifs) {
 		return ifs.indexOf(c) >= 0 && Character.isWhitespace(c);
 	}
+
+	/** the characters of the line read that came after a \ (no IFS character then) */
+	private final java.util.BitSet escaped = new java.util.BitSet();
 
 	/** the last read ended at the end of the input, not at a delimiter */
 	private boolean eof;
@@ -368,6 +400,7 @@ public class Read extends ShellCommand{
 		}
 		
 		StringBuilder buf = new StringBuilder();
+		escaped.clear();
 
 		int i = 0;
 		eof = false;
@@ -388,6 +421,8 @@ public class Read extends ShellCommand{
 					continue;
 				}
 				if( next >= 0 ) {
+					// (an escaped character is never a separator)
+					escaped.set(buf.length());
 					buf.append((char)next);
 				}
 			} else if(N<0 && i == lineDelim ) {
