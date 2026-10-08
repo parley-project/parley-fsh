@@ -214,6 +214,9 @@ public final class Executor {
 	}
 
 	private static void syntaxError(ShellContext sc, SyntaxError e, String code, int firstLine, String who) {
+		for(Object [] w : e.warnings) {
+			sc.stderr.println(prefix(sc, (Integer) w[0])+w[1]);
+		}
 		String prefix = commandStringPrefix(sc, prefix(sc, e.line));
 		if( who != null ) {
 			// eval: line N:
@@ -2739,7 +2742,10 @@ public final class Executor {
 					// (its lines are counted from the command's, as bash counts them)
 					seq = Parser.parse(code, Math.max(1, sc.currentLine()));
 				} catch (SyntaxError e) {
-					error(sc, e.getMessage());
+					// (as bash says it: command substitution: line n+2)
+					String prefix = sc.errorPrefix();
+					int at = prefix.lastIndexOf(": line ");
+					sc.stderr.println((at < 0 ? prefix : prefix.substring(0, at)+": command substitution: line "+(sc.currentLine()+2)+": ")+e.getMessage());
 					sc.console.substitutionDone(2);
 					return "";
 				}

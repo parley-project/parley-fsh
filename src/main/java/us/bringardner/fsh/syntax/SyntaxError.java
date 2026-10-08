@@ -22,6 +22,9 @@ public class SyntaxError extends RuntimeException {
 	public int eofFromLine;
 	public int eofLine;
 
+	/** warnings found while reading before it ({line, message}: a here-document's end of file), said first */
+	public final java.util.List<Object[]> warnings = new java.util.ArrayList<>();
+
 	/** a second line bash says after the message (for (( a; b )): syntax error: `(( a; b ))') */
 	public String also;
 

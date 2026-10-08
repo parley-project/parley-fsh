@@ -192,10 +192,22 @@ public final class Expander {
 		inHereDocument = true;
 		try {
 			word(Parser.fragment(body, Fragment.HERE_DOCUMENT), pieces, TILDE_NONE);
+		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
+			throw commandSubstitutionError(e);
 		} finally {
 			inHereDocument = was;
 		}
 		return join(pieces);
+	}
+
+	/** a $( that does not end, found as a word is expanded: said as bash says it (its line is two on from the command's) */
+	private ExpansionError commandSubstitutionError(us.bringardner.fsh.syntax.SyntaxError e) {
+		String prefix = sc.errorPrefix();
+		int at = prefix.lastIndexOf(": line ");
+		String where = at < 0 ? prefix : prefix.substring(0, at)+": command substitution: line "+(sc.currentLine()+2)+": ";
+		ExpansionError x = new ExpansionError(where+e.getMessage());
+		x.whole = true;
+		return x;
 	}
 
 	/** an arithmetic expression ($(( )), (( )), the parts of for (( ))): expanded, then evaluated */
@@ -604,13 +616,7 @@ public final class Expander {
 				return parameter(ParamExpr.parse(pe.body(), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
 			} catch (us.bringardner.fsh.syntax.SyntaxError e) {
 				// a $( in the word that does not end: said as bash says it, and the command is not run
-				// (bash's line is two on from the command's)
-				String prefix = sc.errorPrefix();
-				int at = prefix.lastIndexOf(": line ");
-				String where = at < 0 ? prefix : prefix.substring(0, at)+": command substitution: line "+(sc.currentLine()+2)+": ";
-				ExpansionError x = new ExpansionError(where+e.getMessage());
-				x.whole = true;
-				throw x;
+				throw commandSubstitutionError(e);
 			}
 		}
 		case Word.CommandSub cs -> value(trimNewlines(host.commandOutput(cs.body(), cs.text(), false)), context, out);

@@ -186,6 +186,17 @@ public final class Parser {
 		}
 
 		public Sequence next() {
+			try {
+				return next0();
+			} catch (SyntaxError e) {
+				// (what was warned about while reading is said before it)
+				e.warnings.addAll(0, p.warnings);
+				p.warnings.clear();
+				throw e;
+			}
+		}
+
+		private Sequence next0() {
 			int before = Math.max(p.pos > lastEnd ? lastEnd : p.pos, lastEnd);
 			before = Math.min(before, p.pos);
 			p.skipNewlines();
@@ -1373,8 +1384,9 @@ public final class Parser {
 					break;
 				}
 				if( !closers.isEmpty() && closers.get(closers.size()-1).equals(")") && check.startsWith(h.delimiter)
-						&& check.substring(h.delimiter.length()).startsWith(")") && line.length() == lineEnd-lineStart ) {
-					// $(cat <<EOF ... EOF): the ) ends the here-document and the $( ), as in bash (with a warning)
+						&& check.substring(h.delimiter.length()).stripLeading().startsWith(")") && line.length() == lineEnd-lineStart ) {
+					// $(cat <<EOF ... EOF) (or EOF )): the ) ends the here-document and the $( ), as in
+					// bash (with a warning)
 					warnings.add(new Object[] {lineOf(lineStart), hereDocWarning(r)});
 					pos = lineStart+(line.length()-check.length())+h.delimiter.length();
 					break;
