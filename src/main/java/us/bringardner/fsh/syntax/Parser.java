@@ -47,6 +47,8 @@ public final class Parser {
 		QUOTED_PARAMETER,
 		/** as the string in "${x/pattern/string}": as QUOTED_PARAMETER, and \& is & */
 		QUOTED_REPLACEMENT,
+		/** "..." inside "${x:-word}": the quotes are removed and \ quotes any character, as bash's */
+		QUOTED_AGAIN,
 		/** as an unquoted here-document: only \ (before $ ` \), $ and ` count */
 		HERE_DOCUMENT
 	}
@@ -586,17 +588,18 @@ public final class Parser {
 		List<Word.Part> parts = new ArrayList<>();
 		StringBuilder lit = new StringBuilder();
 		String escapable = mode == Fragment.HERE_DOCUMENT ? "$`\\" : mode == Fragment.QUOTED_PARAMETER ? "$`\"\\}"
-				: mode == Fragment.QUOTED_REPLACEMENT ? "$`\"\\}&" : "$`\"\\";
+				: mode == Fragment.QUOTED_REPLACEMENT ? "$`\"\\}&'" : "$`\"\\";
+		boolean any = mode == Fragment.QUOTED_AGAIN;
 		while( !atEnd(pos)) {
 			char c = ch(pos);
-			if( c == '"' && mode == Fragment.QUOTED ) {
+			if( c == '"' && (mode == Fragment.QUOTED || mode == Fragment.QUOTED_AGAIN)) {
 				break;
 			}
 			if( c == '\\' ) {
 				char n = ch(pos+1);
 				if( n == '\n' ) {
 					pos += 2;
-				} else if( !atEnd(pos+1) && escapable.indexOf(n) >= 0 ) {
+				} else if( !atEnd(pos+1) && (any || escapable.indexOf(n) >= 0)) {
 					flushTo(parts, lit);
 					parts.add(new Word.Escaped(n));
 					pos += 2;
@@ -604,10 +607,22 @@ public final class Parser {
 					lit.append('\\');
 					pos++;
 				}
+			} else if( c == '\'' && mode == Fragment.QUOTED_REPLACEMENT && src.indexOf('\'', pos+1) > 0 ) {
+				// "${x/a/'b'}": single quotes quote (as in bash 5.2)
+				flushTo(parts, lit);
+				int close = src.indexOf('\'', pos+1);
+				parts.add(new Word.SingleQuoted(src.substring(pos+1, close)));
+				pos = close+1;
 			} else if( c == '"' && (mode == Fragment.QUOTED_PARAMETER || mode == Fragment.QUOTED_REPLACEMENT)) {
 				// "${x:-"a b"}": quotes inside quote again
 				flushTo(parts, lit);
-				parts.add(readDouble(false));
+				pos++;
+				List<Word.Part> inner = doubleParts(Fragment.QUOTED_AGAIN);
+				if( !atEnd(pos)) {
+					// (as bash: one that is not closed goes to the end of the word)
+					pos++;
+				}
+				parts.add(new Word.DoubleQuoted(inner, false));
 			} else if( c == '$' ) {
 				Word.Part p = readDollar(true);
 				if( p == null ) {
@@ -666,7 +681,7 @@ public final class Parser {
 			return new Word.FunctionSub(src.substring(from, pos-1), body, reply);
 		}
 		if( n == '{' ) {
-			int close = braceClose(pos+2);
+			int close = braceClose(pos+2, inDouble);
 			String body = src.substring(pos+2, close);
 			pos = close+1;
 			return new Word.ParamExpansion(body);
@@ -801,7 +816,7 @@ public final class Parser {
 				} else if( d == '`' ) {
 					j = skipQuoted(j);
 				} else if( d == '$' && ch(j+1) == '{' ) {
-					j = braceClose(j+2)+1;
+					j = braceClose(j+2, c == '"')+1;
 				} else if( d == '$' && ch(j+1) == '(' ) {
 					j = skipCommandSub(j);
 				} else {
@@ -884,8 +899,24 @@ public final class Parser {
 	 * does not nest, as in bash: ${a:-{b} is ${a:-{b})
 	 */
 	private int braceClose(int from) {
+		return braceClose(from, false);
+	}
+
+	/** set -o posix is on (the parser reads some things differently then) */
+	public static volatile java.util.function.BooleanSupplier posixMode = () -> false;
+
+	/**
+	 * the } of ${ whose text starts at from. inDouble: it is in "..."; in posix mode a ' in the
+	 * word of ${x+word} (- = ?) is then itself, as in bash.
+	 */
+	private int braceClose(int from, boolean inDouble) {
 		int depth = 0;
+		boolean literalSingle = inDouble && posixMode.getAsBoolean() && wordOperator(from);
 		for (int i = from; !atEnd(i); ) {
+			if( literalSingle && ch(i) == '\'' ) {
+				i++;
+				continue;
+			}
 			int q = skipQuoted(i);
 			if( q != i ) {
 				i = q;
@@ -924,6 +955,42 @@ public final class Parser {
 		throw eof("}");
 	}
 
+	/** the ${ whose text starts at from has a word operator (- + = ?, maybe after :) */
+	private boolean wordOperator(int from) {
+		int i = from;
+		if( ch(i) == '#' || ch(i) == '!' ) {
+			i++;
+		}
+		if( Character.isLetter(ch(i)) || ch(i) == '_' ) {
+			while( Character.isLetterOrDigit(ch(i)) || ch(i) == '_' ) {
+				i++;
+			}
+		} else if( Character.isDigit(ch(i))) {
+			while( Character.isDigit(ch(i))) {
+				i++;
+			}
+		} else if( "@*#?-$!".indexOf(ch(i)) >= 0 ) {
+			i++;
+		} else {
+			return false;
+		}
+		if( ch(i) == '[' ) {
+			int depth = 0;
+			for (; !atEnd(i); i++) {
+				if( ch(i) == '[' ) {
+					depth++;
+				} else if( ch(i) == ']' && --depth == 0 ) {
+					i++;
+					break;
+				}
+			}
+		}
+		if( ch(i) == ':' ) {
+			i++;
+		}
+		return "-+=?".indexOf(ch(i)) >= 0;
+	}
+
 	/** the first ) of the )) that ends $(( whose text starts at from, or -1 if there is none */
 	private int arithClose(int from) {
 		int depth = 0;
@@ -949,6 +1016,14 @@ public final class Parser {
 
 	// ------------------------------------------------------------------ here-documents
 
+	private static int trailingBackslashes(String line) {
+		int n = 0;
+		while( n < line.length() && line.charAt(line.length()-1-n) == '\\' ) {
+			n++;
+		}
+		return n;
+	}
+
 	/** after a newline: the bodies of the here-documents started on the line before it */
 	private void readHereDocs() {
 		for(Redirect r : pendingHereDocs) {
@@ -967,6 +1042,13 @@ public final class Parser {
 					line = line.substring(0, line.length()-1);
 				}
 				pos = nl < 0 ? src.length() : nl+1;
+				while( !h.quoted && trailingBackslashes(line) % 2 == 1 && !atEnd(pos)) {
+					// as bash: backslash-newline is removed before the line is checked for the delimiter
+					nl = src.indexOf('\n', pos);
+					lineEnd = nl < 0 ? src.length() : nl;
+					line = line.substring(0, line.length()-1)+src.substring(pos, lineEnd);
+					pos = nl < 0 ? src.length() : nl+1;
+				}
 				String check = line;
 				if( h.stripTabs ) {
 					int t = 0;
@@ -1351,6 +1433,16 @@ public final class Parser {
 	 * eval a=( x "y z" ): add the ( ... ) at pos to the word, its blanks and newlines as text
 	 * (so the word expands to a=(x y z)).
 	 */
+	/** the operator at p (<>, &&, ..), or its one character */
+	private String operatorAt(int p) {
+		for(String op : OPERATORS) {
+			if( src.startsWith(op, p)) {
+				return op;
+			}
+		}
+		return String.valueOf(ch(p));
+	}
+
 	private void parenthesizedTail(Word w) {
 		w.parts.add(new Word.Literal("("));
 		pos++;
@@ -1373,8 +1465,12 @@ public final class Parser {
 				break;
 			}
 			if( isMeta(ch(pos))) {
-				throw new SyntaxError(lineOf(pos), "syntax error near unexpected token `"+ch(pos)+"'");
+				throw new SyntaxError(lineOf(pos), "syntax error near unexpected token `"+operatorAt(pos)+"'");
 			}
+			w.parts.addAll(readWord(false).parts);
+		}
+		if( !atEnd(pos) && !isMeta(ch(pos)) && !Character.isWhitespace(ch(pos))) {
+			// let a=(4*3)/2: the rest of the word
 			w.parts.addAll(readWord(false).parts);
 		}
 		w.end = pos;
@@ -1458,7 +1554,9 @@ public final class Parser {
 					break;
 				}
 				if( isMeta(ch(pos))) {
-					throw new SyntaxError(lineOf(pos), "syntax error near unexpected token `"+ch(pos)+"'");
+					SyntaxError e = new SyntaxError(lineOf(pos), "syntax error near unexpected token `"+operatorAt(pos)+"'");
+					e.recoverable = true;
+					throw e;
 				}
 				arrayElement = true;
 				try {

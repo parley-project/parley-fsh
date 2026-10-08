@@ -1157,12 +1157,22 @@ public final class Executor {
 			try {
 				for(Ast.Assignment a : c.assignments) {
 					String v = a.value == null ? "" : ex.assignment(a.value);
+					if( a.append ) {
+						Object before = ShellContext.firstElement(sc.getVariable(a.name));
+						v = sc.console.isInteger(a.name) ? String.valueOf(arithmeticValue((before == null ? "0" : before)+"+("+v+")", sc))
+								: (before == null ? "" : before.toString())+v;
+					}
 					if( tracing(sc)) {
 						trace(sc, sc.stderr, a.name+"="+assigned(v));
 					}
 					if( sc.console.isReadonly(a.name)) {
 						// as bash: said, and the command runs without it
 						error(sc, a.name+": readonly variable");
+						continue;
+					}
+					if( sc.console.isOptionEnabled(Console.Option.Posix) && SPECIAL_BUILTINS.contains(name) && sc.getFunction(name) == null ) {
+						// posix mode: an assignment before a special builtin stays
+						sc.setVariable(a.name, v);
 						continue;
 					}
 					saved.add(new Object[] {a.name, sc.console.getVariable(a.name), sc.getEvironmentVariable(a.name)});
@@ -1421,6 +1431,14 @@ public final class Executor {
 		case "typeset":
 		case "local":
 			return new Declarations(this, sc, ex).declare(name, args);
+		case "readonly":
+			if( !args.contains("-f")) {
+				// readonly is declare -gr (its listing too)
+				List<Object> all = new ArrayList<>(args);
+				all.add(0, "-gr");
+				return new Declarations(this, sc, ex).declare(name, all);
+			}
+			break;
 		case "exec":
 			if( args.isEmpty()) {
 				// exec >file: the redirects stay
@@ -1531,6 +1549,10 @@ public final class Executor {
 	 * name=value, name+=value, name[i]=value, name=(words): an indexed array's subscript is
 	 * arithmetic, an associative array's is text; declare -i makes a value arithmetic.
 	 */
+	/** posix's special builtins */
+	static final java.util.Set<String> SPECIAL_BUILTINS = java.util.Set.of("break", ":", ".", "continue", "eval", "exec", "exit",
+			"export", "readonly", "return", "set", "shift", "times", "trap", "unset");
+
 	void assign(Ast.Assignment a, ShellContext sc, Expander ex, boolean local) {
 		Object v = value(a, sc, ex, local, false);
 		if( v == null ) {
@@ -1550,12 +1572,26 @@ public final class Executor {
 	Object value(Ast.Assignment a, ShellContext sc, Expander ex, boolean local, boolean assoc) {
 		Object old = local ? null : sc.getVariable(a.name);
 		if( a.array != null ) {
+			if( a.index != null ) {
+				throw new ExpansionError(a.name+"["+a.index+"]: cannot assign list to array member");
+			}
 			return array(a, sc, ex, old, assoc || old instanceof Map<?,?>);
 		}
 		String v = a.value == null ? "" : ex.assignment(a.value);
 		if( a.index != null ) {
 			element(a, sc, ex, old, v);
 			return null;
+		}
+		if( old instanceof Map<?,?> m ) {
+			// m=v, m+=v of an associative array: its element "0"
+			sc.setVariable(a.name, "0", elementValue(m.get("0"), v, a.append, sc.console.isInteger(a.name), sc));
+			return null;
+		}
+		if( old instanceof FshList list && !local ) {
+			// x=v, x+=v of an array: its element 0
+			FshList copy = copy(list);
+			copy.set(0, elementValue(list.get(0), v, a.append, sc.console.isInteger(a.name), sc));
+			return copy;
 		}
 		if( sc.console.isInteger(a.name)) {
 			Number n = arithmeticValue(v, sc);
@@ -1597,7 +1633,10 @@ public final class Executor {
 	}
 
 	/** a[i]=v (i arithmetic, negative from the end) or m[key]=v */
-	private void element(Ast.Assignment a, ShellContext sc, Expander ex, Object old, String v) {
+	void element(Ast.Assignment a, ShellContext sc, Expander ex, Object old, String v) {
+		if( a.index.isBlank() || a.index.equals("@") || a.index.equals("*")) {
+			throw new ExpansionError(a.name+"["+a.index+"]: bad array subscript");
+		}
 		Word sub = Parser.fragment(a.index, Parser.Fragment.WORD);
 		Object key;
 		if( old instanceof Map<?,?> ) {
@@ -1617,12 +1656,12 @@ public final class Executor {
 			}
 			key = (int) idx;
 		}
-		if( sc.console.isInteger(a.name)) {
-			v = String.valueOf(arithmeticValue(v, sc));
-		}
 		if( a.append ) {
 			Object before = old instanceof Map<?,?> m ? m.get(key) : old instanceof List<?> l && key instanceof Integer i ? (l instanceof FshList f ? f.get(i) : i < l.size() ? l.get(i) : null) : null;
-			v = (before == null ? "" : before.toString())+v;
+			v = sc.console.isInteger(a.name) ? (before == null ? "0" : before)+"+("+v+")" : (before == null ? "" : before.toString())+v;
+		}
+		if( sc.console.isInteger(a.name)) {
+			v = String.valueOf(arithmeticValue(v, sc));
 		}
 		if( old != null && !(old instanceof List<?>) && !(old instanceof Map<?,?>) && key instanceof Integer ) {
 			// x=1; x[1]=2: x becomes an array with 1 at 0
@@ -1644,13 +1683,16 @@ public final class Executor {
 					map.put(String.valueOf(e.getKey()), e.getValue());
 				}
 			}
+			boolean integer = sc.console.isInteger(a.name);
 			for(Word w : a.array) {
-				Word [] kv = keyValue(w);
+				boolean [] plus = new boolean[1];
+				Word [] kv = keyValue(w, plus);
 				if( kv == null ) {
 					error(sc, a.name+": "+w.raw+": must use subscript when assigning associative array");
 					continue;
 				}
-				map.put(ex.string(kv[0]), ex.assignment(kv[1]));
+				String k = ex.string(kv[0]);
+				map.put(k, elementValue(map.get(k), ex.assignment(kv[1]), plus[0], integer, sc));
 			}
 			return map;
 		}
@@ -1668,23 +1710,57 @@ public final class Executor {
 				list.set(next++, old);
 			}
 		}
+		boolean integer = sc.console.isInteger(a.name);
 		for(Word w : a.array) {
-			Word [] kv = keyValue(w);
+			boolean [] plus = new boolean[1];
+			Word [] kv = keyValue(w, plus);
 			if( kv != null ) {
+				String k = kv[0].raw == null ? "" : kv[0].raw;
+				String item = w.raw == null ? k : w.raw;
+				if( k.isBlank()) {
+					// x=([]=v): said, and the rest is not assigned
+					error(sc, item+": bad array subscript");
+					break;
+				}
+				if( k.equals("@") || k.equals("*")) {
+					error(sc, item+": cannot assign to non-numeric index");
+					continue;
+				}
 				int idx = (int) ex.arithmetic(kv[0]).longValue();
-				list.set(idx, ex.assignment(kv[1]));
+				if( idx < 0 ) {
+					// from the end of what is there so far
+					idx += list.isEmpty() ? 0 : list.getIndexes().get(list.size()-1)+1;
+					if( idx < 0 ) {
+						error(sc, item+": bad array subscript");
+						continue;
+					}
+				}
+				list.set(idx, elementValue(list.get(idx), ex.assignment(kv[1]), plus[0], integer, sc));
 				next = idx+1;
 			} else {
 				for(String s : ex.expand(w)) {
-					list.set(next++, s);
+					list.set(next++, elementValue(null, s, false, integer, sc));
 				}
 			}
 		}
 		return list;
 	}
 
+	/** an array literal's value: [k]+=v adds to (or appends to) what is there; -i evaluates it */
+	private static Object elementValue(Object before, String v, boolean append, boolean integer, ShellContext sc) {
+		if( integer ) {
+			return String.valueOf(arithmeticValue(append && before != null ? before+"+("+v+")" : v, sc));
+		}
+		return append && before != null ? before+v : v;
+	}
+
 	/** [key]=value in an array literal: the key and value words, or null if w is not one */
 	static Word [] keyValue(Word w) {
+		return keyValue(w, new boolean[1]);
+	}
+
+	/** keyValue, and append[0] says whether it was [key]+=value */
+	static Word [] keyValue(Word w, boolean [] append) {
 		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal l) || !l.text().startsWith("[")) {
 			return null;
 		}
@@ -1700,10 +1776,15 @@ public final class Executor {
 				break;
 			}
 		}
-		if( close < 0 || close+1 >= t.length() || t.charAt(close+1) != '=' ) {
+		if( close >= 0 && t.startsWith("+=", close+1)) {
+			append[0] = true;
+			close++;
+		} else if( close < 0 || close+1 >= t.length() || t.charAt(close+1) != '=' ) {
 			return null;
 		}
-		Word key = Parser.fragment(t.substring(1, close), Parser.Fragment.WORD);
+		int keyEnd = append[0] ? close-1 : close;
+		Word key = Parser.fragment(t.substring(1, keyEnd), Parser.Fragment.WORD);
+		key.raw = t.substring(1, keyEnd);
 		Word value = new Word();
 		value.line = w.line;
 		value.start = w.start+close+2;

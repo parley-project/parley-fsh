@@ -39,6 +39,8 @@ public class Read extends ShellCommand{
 			+ "\tsee 'man read' for more information\";"
 			;
 
+	private static final java.util.regex.Pattern ELEMENT = java.util.regex.Pattern.compile("([A-Za-z_][A-Za-z_0-9]*)\\[(.+)\\]");
+
 	static final String USAGE = "read: usage: read [-Eers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] [-t timeout] [-u fd] [name ...]";
 
 	public Read() {
@@ -183,7 +185,9 @@ public class Read extends ShellCommand{
 			return ctx.stdin.available() > 0 || !mayBlock(ctx.stdin) ? 0 : 1;
 		}
 		try {
-			line = readLine(ctx,prompt,lineDelim,timeout,editLineText,n, N, options);	
+			// as bash: the prompt only when reading from a terminal
+			boolean terminal = Console.isKeyboard(ctx.stdin) || ctx.stdin instanceof NativeKeyboard;
+			line = readLine(ctx,terminal ? prompt : "",lineDelim,timeout,editLineText,n, N, options);	
 		} catch (EOFException e2) {
 			// nothing left: as in bash the names are set to empty (so read x || [ -n "$x" ] ends)
 			line = "";
@@ -211,10 +215,16 @@ public class Read extends ShellCommand{
 			} else {
 				List<String> values = split(line, ifs, names.size());
 				for(int idx=0; idx < names.size(); idx++ ) {
-					if( values.size()>idx) {
-						ctx.setVariable(names.get(idx), values.get(idx));
+					String value = values.size() > idx ? values.get(idx) : "";
+					java.util.regex.Matcher m = ELEMENT.matcher(names.get(idx));
+					if( m.matches()) {
+						// read a[1]: one element
+						Object cur = ctx.getVariable(m.group(1));
+						Object key = cur instanceof java.util.Map<?,?> ? m.group(2)
+								: (Object) us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).intValue();
+						ctx.setVariable(m.group(1), key, value);
 					} else {
-						ctx.setVariable(names.get(idx), "");
+						ctx.setVariable(names.get(idx), value);
 					}
 				}
 			}

@@ -320,6 +320,9 @@ public class Console extends SignalEnabledThread {
 	public static final String VARIABLE_HISTFILE = "HISTFILE";
 	public static final String VARIABLE_HISTTIMEFORMAT = "HISTTIMEFORMAT";
 	private static final String VARIABLE_HISTCHARS = "histchars";
+
+	/** HISTSIZE or HISTFILE came from the environment (a shell that is not interactive keeps them) */
+	private boolean historyFromEnvironment;
 	public static final String VERSION = "0.01";
 	/*
 [n]<<[-]word
@@ -985,6 +988,18 @@ delimiter
 				// job control
 				options.add(Option.Monitor);
 			}
+		} else {
+			// as bash: a shell that is not interactive has no PS0-PS3, history variables or histchars
+			for(Prompt p : new Prompt[] {Prompt.BeforeExecute, Prompt.Primary, Prompt.Secondary, Prompt.Select}) {
+				if( !environmentVariables.containsKey(p.name)) {
+					variables.remove(p.name);
+				}
+			}
+			variables.remove(VARIABLE_HISTCHARS);
+			if( !historyFromEnvironment ) {
+				environmentVariables.remove(VARIABLE_HISTSIZE);
+				environmentVariables.remove(VARIABLE_HISTFILE);
+			}
 		}
 		runStartupFiles(inv);
 
@@ -1259,7 +1274,7 @@ delimiter
 			us.bringardner.fsh.syntax.Parser.parse(code, firstLine);
 		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
 			executeScript0(code, firstLine, commandsContext);
-			return -1;
+			return e.recoverable ? 1 : -1;
 		}
 		return executeScript0(code, firstLine, commandsContext);
 	}
@@ -1351,6 +1366,7 @@ delimiter
 	}
 
 	public Console() {
+		us.bringardner.fsh.syntax.Parser.posixMode = () -> isOptionEnabled(Option.Posix);
 		try {
 			environmentVariables.putAll(System.getenv());
 			// an inherited OLDPWD stays only if it is a directory, as in bash
@@ -1368,6 +1384,7 @@ delimiter
 				environmentVariables.put(PATH, getDefaultPath());
 			}
 			// (the environment's, as bash keeps them)
+			historyFromEnvironment = environmentVariables.containsKey(VARIABLE_HISTSIZE) || environmentVariables.containsKey(VARIABLE_HISTFILE);
 			environmentVariables.putIfAbsent(VARIABLE_HISTSIZE, 500);
 			environmentVariables.putIfAbsent(VARIABLE_HISTFILE, "~/.fsh_history");
 
@@ -2399,6 +2416,9 @@ delimiter
 	 * Read history... any errors are ignored.
 	 */
 	public void readHistory() {
+		if( environmentVariables.get(VARIABLE_HISTFILE) == null ) {
+			return;
+		}
 		String fileName = ""+environmentVariables.get(VARIABLE_HISTFILE);
 		readHistory(fileName);
 	}
@@ -2480,6 +2500,9 @@ delimiter
 	 * Save history ... any errors are ignored
 	 */
 	public void saveHistory() {
+		if( environmentVariables.get(VARIABLE_HISTFILE) == null ) {
+			return;
+		}
 		String fileName = ""+environmentVariables.get(VARIABLE_HISTFILE);
 		saveHistory(fileName);
 	}
@@ -2995,6 +3018,9 @@ delimiter
 			caseVariables.put(name, attr);
 		}
 	}
+
+	/** declare x, declare -a a: names declared with no value (unset takes them off) */
+	public final java.util.Set<String> declaredUnset = ConcurrentHashMap.newKeySet();
 
 	/** variables declared with declare -i: an assignment's value is arithmetic */
 	private final java.util.Set<String> integerVariables = ConcurrentHashMap.newKeySet();

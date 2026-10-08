@@ -249,7 +249,7 @@ public class TestReadStatement extends AbstractConsoleTest {
 				;
 		//System.out.println(cmd);
 		String stdIn = "tony\n";
-		// the prompt is written to standard error, as in bash
+		// as in bash, the prompt is only shown when reading from a terminal (this is not one)
 		String expect = 
 				"tony\n"				
 				;
@@ -259,7 +259,7 @@ public class TestReadStatement extends AbstractConsoleTest {
 		
 		String actual = ret.getStdOut();
 		assertEquals(expect, actual);
-		assertEquals("Enter name:", ret.getStdErr());
+		assertEquals("", ret.getStdErr());
 		
 		//String err = ret.getStdErr();
 		

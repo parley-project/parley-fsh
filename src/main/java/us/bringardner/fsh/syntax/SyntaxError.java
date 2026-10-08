@@ -12,6 +12,9 @@ public class SyntaxError extends RuntimeException {
 	/** the text ended before the command did (an interactive shell reads another line then) */
 	public final boolean endOfInput;
 
+	/** bash reports it and goes on with the next command (an operator in x=( )) */
+	public boolean recoverable;
+
 	public SyntaxError(int line, String message) {
 		super(message);
 		this.line = line;

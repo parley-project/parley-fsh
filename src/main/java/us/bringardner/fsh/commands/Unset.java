@@ -67,7 +67,23 @@ public class Unset extends ShellCommand{
 			if( !functions && m.matches()) {
 				// unset 'a[1]' or 'm[key]': one element
 				Object val = ctx.getVariable(m.group(1));
-				if( val instanceof java.util.Map<?,?> ) {
+				boolean all = m.group(2).equals("@") || m.group(2).equals("*");
+				if( all && (val instanceof java.util.Map<?,?> || val instanceof java.util.List<?>)) {
+					// unset 'a[@]': every element (a stays an array)
+					if( val instanceof java.util.Map<?,?> map ) {
+						map.clear();
+					} else {
+						((java.util.List<?>) val).clear();
+					}
+				} else if( val != null && !(val instanceof java.util.Map<?,?>) && !(val instanceof java.util.List<?>)) {
+					// a scalar is its element 0
+					if( !all && us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).longValue() == 0 ) {
+						ctx.unSetVariable(m.group(1), true);
+					} else {
+						ctx.error("unset: "+m.group(1)+": not an array variable");
+						ret = 1;
+					}
+				} else if( val instanceof java.util.Map<?,?> ) {
 					((java.util.Map<?,?>) val).remove(m.group(2));
 				} else if( val instanceof java.util.List<?> ) {
 					int index = us.bringardner.fsh.expand.Arithmetic.evaluate(m.group(2), ctx).intValue();
@@ -83,9 +99,18 @@ public class Unset extends ShellCommand{
 				}
 			} else if( functions ) {
 				ctx.removeFunction(text);
-			} else if( !ctx.unSetVariable(text, !reference) && !variables ) {
-				// as in bash, a name that is no variable may be a function
-				ctx.removeFunction(text);
+			} else {
+				boolean declared = ctx.console.declaredUnset.remove(text);
+				if( !ctx.unSetVariable(text, !reference) && !declared ) {
+					if( !variables ) {
+						// as in bash, a name that is no variable may be a function
+						ctx.removeFunction(text);
+					}
+				} else if( ctx.getVariable(text) == null ) {
+					// gone: so are its attributes (-i, -l, -u, -c)
+					ctx.console.setInteger(text, false);
+					ctx.console.setCaseAttribute(text, null);
+				}
 			}
 		}
 		// an unset name is not an error (a readonly one is)

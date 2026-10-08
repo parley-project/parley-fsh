@@ -148,6 +148,24 @@ public class ShellContext {
 				}
 				break;
 			case 'x': case 'u': case 'U': {
+				if( e == 'x' && idx+1 < n && text.charAt(idx+1) == '{' ) {
+					// \x{HHH}: all the hex digits, a byte (bash's), the } if it is there
+					int end = idx+2;
+					while( end < n && Character.digit(text.charAt(end), 16) >= 0 ) {
+						end++;
+					}
+					int value = end == idx+2 ? 0 : (int) (Long.parseLong(text.substring(idx+2, Math.min(end, idx+2+15)), 16) & 0xff);
+					if( end < n && text.charAt(end) == '}' ) {
+						end++;
+					}
+					idx = end-1;
+					if( value == 0 ) {
+						// a NUL ends the string, as in bash
+						return ByteText.finish(ret);
+					}
+					ret.append(ByteText.mark(value));
+					break;
+				}
 				int max = e == 'x' ? 2 : e == 'u' ? 4 : 8;
 				int end = idx+1;
 				while( end < n && end-idx-1 < max && Character.digit(text.charAt(end), 16) >= 0 ) {
@@ -156,8 +174,12 @@ public class ShellContext {
 				if( end == idx+1 ) {
 					ret.append('\\').append(e);
 				} else if( e == 'x' ) {
-					// a byte (of UTF-8 text with the ones next to it)
-					ret.append(ByteText.mark(Integer.parseInt(text.substring(idx+1, end), 16)));
+					// a byte (of UTF-8 text with the ones next to it); a NUL ends the string
+					int value = Integer.parseInt(text.substring(idx+1, end), 16);
+					if( value == 0 ) {
+						return ByteText.finish(ret);
+					}
+					ret.append(ByteText.mark(value));
 					idx = end-1;
 				} else {
 					ret.appendCodePoint(Integer.parseInt(text.substring(idx+1, end), 16));
@@ -171,7 +193,12 @@ public class ShellContext {
 					while( end < n && end-idx < 3 && text.charAt(end) >= '0' && text.charAt(end) <= '7' ) {
 						end++;
 					}
-					ret.append(ByteText.mark(Integer.parseInt(text.substring(idx, end), 8)));
+					int value = Integer.parseInt(text.substring(idx, end), 8) & 0xff;
+					if( value == 0 ) {
+						// a NUL ends the string, as in bash
+						return ByteText.finish(ret);
+					}
+					ret.append(ByteText.mark(value));
 					idx = end-1;
 				} else {
 					ret.append('\\').append(e);
@@ -442,6 +469,10 @@ $
 		}
 		if( name.equals("OPTIND")) {
 			optindAssigned(value);
+		}
+		if( name.equals("POSIXLY_CORRECT") && value != null ) {
+			// as bash: setting it turns on posix mode
+			console.setOption(Console.Option.Posix, true);
 		}
 		FunctionInvocation scope = localScope(name);
 		if( scope != null ) {
@@ -1042,7 +1073,12 @@ $
 		if( attr == null ) {
 			return value;
 		}
-		return attr == 'u' ? value.toString().toUpperCase() : value.toString().toLowerCase();
+		String v = value.toString();
+		if( attr == 'c' ) {
+			// capitalized: the first character upper case, the rest lower
+			return v.isEmpty() ? v : v.substring(0, 1).toUpperCase()+v.substring(1).toLowerCase();
+		}
+		return attr == 'u' ? v.toUpperCase() : v.toLowerCase();
 	}
 
 	/** while a trap runs: the line of the command it ran for ($LINENO), or null */

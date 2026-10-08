@@ -667,13 +667,13 @@ public final class Expander {
 				if( !use ) {
 					return emit(v, context, out);
 				}
-				String s = join(paramPieces(e.arg));
+				String s = paramText(e.arg, context);
 				assign(e, s);
 				return emit(Val.of(s), context, out);
 			}
 			case '?':
 				if( use ) {
-					String msg = e.arg.isEmpty() ? (op.startsWith(":") ? "parameter null or not set" : "parameter not set") : join(paramPieces(e.arg));
+					String msg = e.arg.isEmpty() ? (op.startsWith(":") ? "parameter null or not set" : "parameter not set") : paramText(e.arg, context);
 					throw new ExpansionError(e.display()+": "+msg, ExpansionError.Kind.FATAL);
 				}
 				return emit(v, context, out);
@@ -808,7 +808,16 @@ public final class Expander {
 					: v instanceof List<?> l ? l.size() : v == null ? 0 : 1;
 			idx += size;
 			if( idx < 0 ) {
-				throw new ExpansionError(e.name+": bad array subscript");
+				if( v == null ) {
+					return null;
+				}
+				if( e.prefix == '#' ) {
+					// ${#a[-10]}: an error
+					throw new ExpansionError("["+e.subscript+"]: bad array subscript");
+				}
+				// ${a[-10]}: said, and empty
+				host.warning(e.name+": bad array subscript");
+				return null;
 			}
 		}
 		if( v instanceof FshList f ) {
@@ -892,6 +901,18 @@ public final class Expander {
 			ret = true;
 		}
 		return ret || out.size() > before;
+	}
+
+	/** the word of ${x=word} or ${x?word} as text: in "..." a ' is itself */
+	private String paramText(String text, int context) {
+		if( context != QUOTED ) {
+			return join(paramPieces(text));
+		}
+		List<Piece> ret = new ArrayList<>();
+		for(Word.Part p : Parser.fragment(text, Fragment.QUOTED_PARAMETER).parts) {
+			part(p, QUOTED, ret);
+		}
+		return join(ret);
 	}
 
 	/** the pieces of a word in ${ } (a subscript, an offset, the word of ${x:=word}) */
