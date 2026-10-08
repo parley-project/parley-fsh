@@ -155,6 +155,8 @@ public class TestBashCompat extends AbstractConsoleTest {
 			console.setStdErr(new PrintStream(ret.getBae()));
 			console.setStdIn(new ByteArrayInputStream(new byte[0]));
 			console.setCurrentDirectory(console.createFileSource(dir.getAbsolutePath()));
+			// (the cases were recorded from bash running them as script files: FUNCNAME ends in main)
+			console.scriptFile = "";
 
 			Future<Integer> f = runner.submit(() -> console.executeScript(code));
 			try {

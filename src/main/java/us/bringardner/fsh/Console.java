@@ -965,6 +965,9 @@ delimiter
 	/** where the commands come from, for $-: 'c' (-c), 's' (standard input) or 0 (a script file) */
 	public char readsFrom;
 
+	/** the script file the shell runs (BASH_SOURCE's main frame), or null (-c, standard input) */
+	public String scriptFile;
+
 	/**
 	 * Start as bash starts with these arguments (see Invocation): the options, $0 and the
 	 * positional parameters, interactive or not, the startup files; then run -c's command, the
@@ -1024,6 +1027,7 @@ delimiter
 		} else if( inv.file != null ) {
 			params.add(inv.file);
 			params.addAll(inv.args);
+			scriptFile = inv.file;
 		} else {
 			readsFrom = 's';
 			params.add("fsh");

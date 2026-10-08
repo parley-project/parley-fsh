@@ -139,7 +139,8 @@ public class Unset extends ShellCommand{
 				}
 				ctx.removeFunction(text);
 			} else {
-				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS") || text.equals("BASH_ALIASES") || text.equals("BASH_CMDS")) {
+				if( text.equals("RANDOM") || text.equals("SRANDOM") || text.equals("SECONDS") || text.equals("BASH_ALIASES") || text.equals("BASH_CMDS")
+						|| text.equals("GROUPS") || text.equals("BASH_ARGV0")) {
 					// as bash: no longer special
 					ctx.console.unsetSpecials.add(text);
 				}

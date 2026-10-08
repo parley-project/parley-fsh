@@ -443,6 +443,9 @@ $
 	@SuppressWarnings("unchecked")
 	public void setVariable(String name,Object index, Object value) {
 		name = resolveName(name);
+		if( name.equals("GROUPS") && !console.unsetSpecials.contains(name)) {
+			return;
+		}
 		if( name.indexOf('[') > 0 ) {
 			// r[k]=v of a nameref to an element (r=a[1])
 			variableError("`"+name+"': not a valid identifier");
@@ -545,6 +548,20 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
+		if( name.equals("GROUPS") && !console.unsetSpecials.contains(name)) {
+			// (assignments to it are ignored, as bash's)
+			return;
+		}
+		if( name.equals("BASH_ARGV0") && !console.unsetSpecials.contains(name) && value != null && !(value instanceof NameRef)) {
+			// BASH_ARGV0=name sets $0
+			List<Object> top = topPositional();
+			if( top.isEmpty()) {
+				top.add(String.valueOf(firstElement(value)));
+			} else {
+				top.set(0, String.valueOf(firstElement(value)));
+			}
+			return;
+		}
 		if( !(value instanceof NameRef) && circular(name)) {
 			// v -> w -> x -> v: nothing is set (said, as bash's)
 			error("warning: "+name+": circular name reference");
@@ -974,7 +991,10 @@ $
 			for (int idx = callFrames.size()-1; idx >= 0; idx--) {
 				names.add(callFrames.get(idx)[0]);
 			}
-			names.add("main");
+			if( console.scriptFile != null ) {
+				// (main: a script's, not -c's)
+				names.add("main");
+			}
 			return names;
 		}
 		if( name.equals("BASH_LINENO")) {
@@ -984,7 +1004,9 @@ $
 			for (int idx = callFrames.size()-1; idx >= 0; idx--) {
 				lines.add(callFrames.get(idx)[2]);
 			}
-			lines.add("0");
+			if( console.scriptFile != null ) {
+				lines.add("0");
+			}
 			return lines;
 		}
 		if( name.equals("_")) {
@@ -1050,13 +1072,19 @@ $
 		if( name.equals("SECONDS") && !console.unsetSpecials.contains(name)) {
 			return console.seconds();
 		}
+		if( name.equals("BASH_ARGV0") && !console.unsetSpecials.contains(name)) {
+			// $0
+			return getPositionalVariable(0);
+		}
 		if( name.equals("BASH_SOURCE")) {
 			// the files being sourced, innermost first, then the script
 			FshList files = new FshList();
 			for (int idx = callFrames.size()-1; idx >= 0; idx--) {
 				files.add(callFrames.get(idx)[1]);
 			}
-			files.add(""+getPositionalVariable(0));
+			if( console.scriptFile != null ) {
+				files.add(console.scriptFile);
+			}
 			return files;
 		}
 		if( name.equals("LINENO")) {
@@ -1481,7 +1509,7 @@ $
 
 	/** the file the commands running were read from: the innermost sourced file, else $0 */
 	public String currentSourceFile() {
-		return sourceFiles.isEmpty() ? ""+getPositionalVariable(0) : sourceFiles.peekLast();
+		return !sourceFiles.isEmpty() ? sourceFiles.peekLast() : console.scriptFile != null ? console.scriptFile : ""+getPositionalVariable(0);
 	}
 
 	/** source file: a frame for it (FUNCNAME source) */
@@ -1755,7 +1783,11 @@ $
 		if( console != null && console.isInteractive ) {
 			return "fsh: ";
 		}
-		Object zero = getVariable("$0");
+		// (bash's get_name_for_error: ${BASH_SOURCE[0]}, else $0)
+		Object zero = !callFrames.isEmpty() ? callFrames.get(callFrames.size()-1)[1] : console.scriptFile;
+		if( zero == null || zero.toString().isEmpty()) {
+			zero = getVariable("$0");
+		}
 		return (zero == null || zero.toString().isEmpty() ? "fsh" : zero)+": line "+currentLine()+": ";
 	}
 
