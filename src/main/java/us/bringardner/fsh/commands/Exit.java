@@ -27,11 +27,11 @@ public class Exit extends ShellCommand{
 			if( !n.matches("[-+]?[0-9]{1,18}")) {
 				// (not fatal, as in bash 5.3)
 				ctx.error(getName()+": "+n+": numeric argument required");
+				ctx.specialUsageError();
 				return 2;
 			}
 			if( args.length > first+1 ) {
-				ctx.error(getName()+": too many arguments");
-				return 1;
+				throw ctx.tooManyArguments(getName());
 			}
 			ret = Long.parseLong(n.startsWith("+") ? n.substring(1) : n);
 		}

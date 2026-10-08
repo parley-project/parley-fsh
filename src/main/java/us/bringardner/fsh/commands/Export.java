@@ -85,6 +85,14 @@ public class Export extends ShellCommand{
 				for (int idx = 0; idx < args.length; idx++) {
 					String val = args[idx].getValue(ctx).toString();
 					int eq = val.indexOf('=');
+					String named = eq > 0 ? val.substring(0, eq) : val;
+					if( !named.matches("[a-zA-Z_][a-zA-Z_0-9]*") && !(eq > 0 && named.matches("[a-zA-Z_][a-zA-Z_0-9]*\\[.*\\]"))) {
+						// (said; in posix mode a script ends)
+						ctx.error("export: `"+val+"': not a valid identifier");
+						ret = 1;
+						ctx.specialBuiltinFailed(1);
+						continue;
+					}
 					if( eq > 0) {
 						// name=value (the value is already expanded): set, and exported
 						String name = val.substring(0, eq);

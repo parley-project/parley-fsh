@@ -77,6 +77,8 @@ public class Unset extends ShellCommand{
 			if( ctx.console.isReadonly(ro) && !functions ) {
 				ctx.error("unset: "+ro+": cannot unset: readonly variable");
 				ret = 1;
+				// (posix mode: a script ends)
+				ctx.specialBuiltinFailed(1);
 				continue;
 			}
 			java.util.regex.Matcher m = ELEMENT.matcher(text);
@@ -128,6 +130,7 @@ public class Unset extends ShellCommand{
 				// unset -v of no name (bash's)
 				ctx.error("unset: `"+text+"': not a valid identifier");
 				ret = 1;
+				ctx.specialBuiltinFailed(1);
 			} else if( functions ) {
 				if( ctx.console.isReadonlyFunction(text)) {
 					ctx.error("unset: "+text+": cannot unset: readonly function");

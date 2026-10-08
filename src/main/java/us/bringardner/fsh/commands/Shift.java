@@ -30,16 +30,16 @@ public class Shift extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int first = args.length > 0 && "--".equals(""+args[0].getValue(ctx)) ? 1 : 0;
-		if( args.length > first+1 ) {
-			ctx.error("shift: too many arguments");
-			return 1;
-		}
 		long n = 1;
 		if( args.length > first ) {
 			String text = (""+args[first].getValue(ctx)).trim();
 			if( !text.matches("[-+]?[0-9]{1,18}")) {
 				ctx.error("shift: "+text+": numeric argument required");
-				return 1;
+				ctx.specialUsageError();
+				return 2;
+			}
+			if( args.length > first+1 ) {
+				throw ctx.tooManyArguments("shift");
 			}
 			n = Long.parseLong(text.startsWith("+") ? text.substring(1) : text);
 		}

@@ -269,6 +269,10 @@ public final class Declarations {
 			if( !Executor.isName(name)) {
 				error(command, "`"+(item instanceof String s ? s : name)+"': not a valid identifier");
 				status = 1;
+				if( command.equals("readonly") || command.equals("export")) {
+					// (a special builtin: in posix mode a script ends)
+					sc.specialBuiltinFailed(1);
+				}
 				continue;
 			}
 			if( (text != null || assignment != null) && o.indexOf('n') >= 0 && o.indexOf('i') >= 0 && !remove ) {

@@ -3096,7 +3096,7 @@ delimiter
 	}
 
 	/** set the directory without PWD and OLDPWD (a stage's, or the shell's) */
-	private void changeDirectory(FileSource dir) throws IOException {
+	public void changeDirectory(FileSource dir) throws IOException {
 		StageState s = stage.get();
 		if( s != null ) {
 			s.cwd = dir;

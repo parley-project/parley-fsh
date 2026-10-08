@@ -359,6 +359,10 @@ public final class Expander {
 			word0(w, out, tilde);
 		} catch (BadSubstitution b) {
 			b.locate(w.raw != null && !w.raw.isEmpty() ? w.raw : source(w.parts));
+			if( b.kind != ExpansionError.Kind.FATAL && sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && !sc.console.isInteractive ) {
+				// (posix mode: a script ends, as bash's)
+				throw new BadSubstitution(b, ExpansionError.Kind.FATAL);
+			}
 			throw b;
 		}
 	}
@@ -371,6 +375,12 @@ public final class Expander {
 		BadSubstitution(String text) {
 			super(text);
 			where = text;
+		}
+
+		BadSubstitution(BadSubstitution b, Kind kind) {
+			super(b.where, kind);
+			where = b.where;
+			located = true;
 		}
 
 		void locate(String text) {

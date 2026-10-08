@@ -1760,6 +1760,28 @@ $
 	}
 
 	/** an error message, on standard error, after errorPrefix ("cd: x: No such file or directory") */
+	/**
+	 * A builtin was given more arguments than it takes (exit, return, shift, break, continue):
+	 * said, the status is 2 and the rest of the command line is not run, as bash's no_args.
+	 */
+	public us.bringardner.fsh.exec.Executor.AbandonLine tooManyArguments(String builtin) {
+		error(builtin+": too many arguments");
+		console.setLastExitCode(2);
+		return new us.bringardner.fsh.exec.Executor.AbandonLine(currentLine(), 2);
+	}
+
+	/** a special builtin's usage error (a bad number): in posix mode a script ends, status 2 */
+	public void specialUsageError() {
+		specialBuiltinFailed(2);
+	}
+
+	/** a special builtin failed (not run by command): in posix mode a script ends, with status */
+	public void specialBuiltinFailed(int status) {
+		if( console.isOptionEnabled(Console.Option.Posix) && !console.isInteractive && viaCommand == 0 ) {
+			throw new us.bringardner.fsh.signal.ExitException(this, status);
+		}
+	}
+
 	public void error(String message) {
 		stderr.println(errorPrefix()+message);
 	}

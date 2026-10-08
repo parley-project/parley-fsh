@@ -166,8 +166,8 @@ public final class Executor {
 				ret = ex.item(item, sc);
 			} catch (AbandonLine e) {
 				// the rest of the line is not run (in a function too, as bash's)
-				ret = 1;
-				sc.console.setLastExitCode(1);
+				ret = e.status;
+				sc.console.setLastExitCode(e.status);
 				break;
 			}
 		}
@@ -178,9 +178,16 @@ public final class Executor {
 	public static final class AbandonLine extends us.bringardner.fsh.signal.FshException {
 		private static final long serialVersionUID = 1L;
 		final int line;
+		/** the status the line ends with */
+		final int status;
 
 		public AbandonLine(int line) {
+			this(line, 1);
+		}
+
+		public AbandonLine(int line, int status) {
 			this.line = line;
+			this.status = status;
 		}
 	}
 
@@ -728,7 +735,7 @@ public final class Executor {
 			ret = e.exitCode;
 		} catch (AbandonLine e) {
 			// (an error that ends the line ends the subshell, as bash's)
-			ret = 1;
+			ret = e.status;
 		} finally {
 			// its EXIT trap runs as it ends (an exit in it is the subshell's status)
 			ret = sc.console.endSubshellTrap(trap, ret);
@@ -1583,8 +1590,17 @@ public final class Executor {
 						trace(sc, sc.stderr, a.name+"="+assigned(v));
 					}
 					if( sc.console.isReadonly(sc.readonlyName(a.name))) {
-						// as bash: said, and the command runs without it
+						// as bash: said, and the command runs without it (in posix mode it does not
+						// run, status 1; before a special builtin a script ends)
 						error(sc, sc.readonlyName(a.name)+": readonly variable");
+						if( sc.console.isOptionEnabled(Console.Option.Posix)) {
+							restore(saved, sc);
+							if( SPECIAL_BUILTINS.contains(name) && sc.getFunction(name) == null ) {
+								sc.specialBuiltinFailed(1);
+							}
+							sc.console.setLastExitCode(1);
+							return 1;
+						}
 						continue;
 					}
 					// (declare -x in a function makes a local, which takes the temporary value)
@@ -1695,6 +1711,10 @@ public final class Executor {
 				if( sc.console.isReadonly(sc.readonlyName(a.name))) {
 					error(sc, sc.readonlyName(a.name)+": readonly variable");
 					sc.console.setLastExitCode(1);
+					if( sc.console.isOptionEnabled(Option.Posix) && !sc.console.isInteractive ) {
+						// (posix mode: a script ends)
+						throw new ExitException(sc, 1);
+					}
 					// as in bash, the rest of the line is not run
 					throw new AbandonLine(c.line);
 				}
@@ -2112,6 +2132,9 @@ public final class Executor {
 					throw new ExitException(sc, 1);
 				}
 				return 1;
+			}
+			if( args.size() > 1 ) {
+				throw sc.tooManyArguments(name);
 			}
 			if( n < 1 ) {
 				// (said, and the loop ends with status 1, as bash's)

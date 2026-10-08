@@ -161,13 +161,19 @@ public class History extends ShellCommand{
 			print(ctx, list.size());
 			return 0;
 		}
+		int count;
 		try {
-			print(ctx, Integer.parseInt(rest.get(0)));
-			return 0;
+			count = Integer.parseInt(rest.get(0));
 		} catch (NumberFormatException e) {
 			ctx.error("history: "+rest.get(0)+": numeric argument required");
-			return 1;
+			return 2;
 		}
+		if( rest.size() > 1 ) {
+			ctx.error("history: too many arguments");
+			return 2;
+		}
+		print(ctx, count);
+		return 0;
 	}
 
 	/** -d offset (a history number, or negative from the end) or -d start-end, as bash's */

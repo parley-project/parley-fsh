@@ -106,6 +106,13 @@ public class Cd extends ShellCommand{
 		}
 		//  PWD and OLD_PWD variables are managed by console (in a pipe stage, set here: the stage's own)
 		String old = ctx.console.getCurrentDirectory().getAbsolutePath();
+		if( ctx.console.isReadonly(Console.VARIABLE_PWD) && !ctx.isIsolated()) {
+			// a readonly PWD: the directory changes, PWD does not (said, status 1), as bash's
+			ctx.console.changeDirectory(dir);
+			ctx.setVariable(Console.VARIABLE_OLDPWD, old);
+			ctx.error(Console.VARIABLE_PWD+": readonly variable");
+			return 1;
+		}
 		ctx.console.setCurrentDirectory(dir);
 		ctx.setVariable(Console.VARIABLE_OLDPWD, old);
 		if( ctx.isIsolated()) {
