@@ -141,6 +141,17 @@ public class JobManager {
 		}
 	}
 
+	/** the jobs started while job control was on */
+	private final java.util.Set<IJob> jobControlJobs = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+	public synchronized void startedWithJobControl(IJob job) {
+		jobControlJobs.add(job);
+	}
+
+	public synchronized boolean hasJobControl(IJob job) {
+		return jobControlJobs.contains(job);
+	}
+
 	/** what to do when a job that is done leaves the table (a coproc's variables are unset) */
 	private final java.util.Map<IJob,Runnable> onRemoved = new java.util.IdentityHashMap<>();
 

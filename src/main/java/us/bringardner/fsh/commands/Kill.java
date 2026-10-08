@@ -178,7 +178,7 @@ public class Kill extends ShellCommand{
 				return 2;
 			}
 			for(IJob job: jobs) {
-				signalJob(job, sig);
+				signalJob(ctx, job, sig);
 			}
 		}
 
@@ -186,7 +186,7 @@ public class Kill extends ShellCommand{
 	}
 
 	/** kill for a job: CONT continues it, STOP and TSTP stop it, a signal ignored by default does nothing, the others end it */
-	private static void signalJob(IJob job, int sig) {
+	private static void signalJob(ShellContext ctx, IJob job, int sig) {
 		String name = ProcessSignals.name(sig);
 		if( sig == 0 || name == null && sig < 0 ) {
 			return;
@@ -197,7 +197,14 @@ public class Kill extends ShellCommand{
 		}
 		switch (name) {
 		case "STOP", "TSTP", "TTIN", "TTOU" -> job.stopJob("Stopped");
-		case "CONT" -> job.continueJob();
+		case "CONT" -> {
+			// (a stopped one that goes on is the current job again, as with bash)
+			boolean stopped = job.getState() == us.bringardner.fsh.job.JobState.Suspended;
+			job.continueJob();
+			if( stopped ) {
+				ctx.console.jobManager.touch(job);
+			}
+		}
 		case "CHLD", "WINCH", "URG", "INFO" -> {
 		}
 		default -> {

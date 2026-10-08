@@ -632,6 +632,19 @@ public final class Executor {
 		}
 	}
 
+	/** a job's command as jobs shows it: as bash prints it (( sleep 2; exit 4 )) */
+	private String jobText(Ast.AndOr ao) {
+		try {
+			Ast.Sequence one = new Ast.Sequence();
+			Ast.Item item = new Ast.Item();
+			item.command = ao;
+			one.items.add(item);
+			return CommandPrinter.comsub(this, one).trim();
+		} catch (RuntimeException e) {
+			return text(ao).trim();
+		}
+	}
+
 	/** cmd &: a job, in a subshell with no input */
 	private void background(Ast.AndOr ao, ShellContext sc) {
 		try {
@@ -645,7 +658,8 @@ public final class Executor {
 					|| sc.stdin instanceof us.bringardner.fsh.NativeKeyboard || sc.stdin == Console.System_in ) {
 				ctx.stdin = new ByteArrayInputStream(new byte[0]);
 			}
-			String text = text(ao).trim();
+			// (jobs shows it as bash prints it: ( sleep 2; exit 4 ))
+			String text = jobText(ao);
 			CommandThread thread = new CommandThread(ctx, new ShellTask() {
 				@Override
 				public int run(ShellContext job) throws IOException {
@@ -2216,6 +2230,13 @@ public final class Executor {
 				}
 			}
 			args = new ArrayList<>(names);
+		}
+		if( name.startsWith("%") && name.length() > 1 && sc.console.builtin(name) == null && sc.console.jobControl()) {
+			// %1 alone is fg %1, as bash's
+			List<Object> fg = new ArrayList<>();
+			fg.add(name);
+			fg.addAll(args);
+			return dispatch("fg", fg, sc, ex, false);
 		}
 		Constructor<? extends ShellCommand> con = sc.console.builtin(name);
 		if( con != null ) {

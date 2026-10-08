@@ -138,9 +138,10 @@ public class TestWait extends AbstractConsoleTest {
 		String err = res.getStdErr();
 		assertEquals(expectErr, err);
 		assertEquals(expectOut, out);
-		assertEquals(2, res.exitCode);
+		// as bash: the status of the last id, and its pid
+		assertEquals(3, res.exitCode);
 		String val = ""+console.getVariable("var");
-		assertEquals("300000", val);
+		assertEquals("300001", val);
 	}
 
 	@Test

@@ -43,12 +43,44 @@ public class Disown extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 
-		ShellArgument ops = parseArgs(ctx, DisownOptions.class);
+		// options -a -r -h (as bash's internal_getopt: -- ends them)
+		java.util.Set<DisownOptions> options = java.util.EnumSet.noneOf(DisownOptions.class);
+		List<String> paths = new ArrayList<>();
+		int idx = 0;
+		for(; idx < args.length; idx++) {
+			String w = ""+args[idx].getValue(ctx);
+			if( w.equals("--")) {
+				idx++;
+				break;
+			}
+			if( !w.startsWith("-") || w.length() < 2 ) {
+				break;
+			}
+			for(char c : w.substring(1).toCharArray()) {
+				switch (c) {
+				case 'a' -> options.add(DisownOptions.a);
+				case 'r' -> options.add(DisownOptions.r);
+				case 'h' -> options.add(DisownOptions.h);
+				default -> {
+					ctx.error("disown: -"+c+": invalid option");
+					ctx.stderr.println("disown: usage: disown [-h] [-ar] [jobspec ... | pid ...]");
+					return 2;
+				}
+				}
+			}
+		}
+		for(; idx < args.length; idx++) {
+			paths.add(""+args[idx].getValue(ctx));
+		}
 
 		JobManager jm = ctx.console.jobManager;
 		List<IJob> jobs = new ArrayList<>();
-		if( ops.paths.size()>0) {
-			for(String val : ops.paths) {
+		if( paths.size()>0) {
+			for(String val : paths) {
+				if( !val.startsWith("%") && !val.matches("[0-9]+")) {
+					// (bash's)
+					ctx.error("disown: warning: "+val+": job specification requires leading `%'");
+				}
 				IJob job;
 				try {
 					job = JobSpecs.find(jm, val);
@@ -64,9 +96,9 @@ public class Disown extends ShellCommand{
 					jobs.add(job);
 				}
 			}
-		} else if(ops.options.contains(DisownOptions.a)) {
+		} else if(options.contains(DisownOptions.a)) {
 			jobs.addAll(jm.getJobs());
-		} else if(ops.options.contains(DisownOptions.r)) {
+		} else if(options.contains(DisownOptions.r)) {
 			for(IJob job : jm.getJobs()) {
 				if( job.getState() == JobState.Running) {
 					jobs.add(job);
@@ -82,7 +114,7 @@ public class Disown extends ShellCommand{
 		}
 
 		for(IJob job : jobs) {
-			if(ops.options.contains(DisownOptions.h)) {
+			if(options.contains(DisownOptions.h)) {
 				// it stays a job, but SIGHUP does not reach it
 				job.addIgnoreSignal(ConsoleSignal.Hup);
 			} else {

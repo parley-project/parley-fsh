@@ -29,13 +29,24 @@ public class Bg extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
-		if( !ctx.console.isInteractive ) {
+		int first = 0;
+		if( args.length > 0 ) {
+			String a0 = ""+args[0].getValue(ctx);
+			if( a0.equals("--")) {
+				first = 1;
+			} else if( a0.startsWith("-") && a0.length() > 1 ) {
+				ctx.error(name+": "+a0.substring(0, 2)+": invalid option");
+				ctx.stderr.println("bg: usage: bg [job_spec ...]");
+				return 2;
+			}
+		}
+		if( !ctx.console.jobControl()) {
 			ctx.error(name+": no job control");
 			return 1;
 		}
 		JobManager jm = ctx.console.jobManager;
 		List<String> specs = new ArrayList<>();
-		for (int idx = 0; idx < args.length; idx++) {
+		for (int idx = first; idx < args.length; idx++) {
 			specs.add(""+args[idx].getValue(ctx));
 		}
 		if( specs.isEmpty()) {
@@ -52,6 +63,11 @@ public class Bg extends ShellCommand{
 			}
 			if( job == null || JobManager.isDone(job)) {
 				ctx.error(name+": "+JobSpecs.describe(spec)+": no such job");
+				ret = 1;
+				continue;
+			}
+			if( !jm.hasJobControl(job)) {
+				ctx.error(name+": job "+job.getJobNumber()+" started without job control");
 				ret = 1;
 				continue;
 			}

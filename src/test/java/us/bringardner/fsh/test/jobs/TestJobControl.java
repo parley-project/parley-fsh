@@ -209,7 +209,7 @@ public class TestJobControl {
 			assertEquals("$ [1] 100000\n"
 					+ "$ [2] 100001\n"
 					+ "$ [1]-  Done                       sleep 0.5\n"
-					+ "[2]+  Exit 3                     (sleep 0.5; exit 3)\n"
+					+ "[2]+  Exit 3                     ( sleep 0.5; exit 3 )\n"
 					+ "$ $ ", bytes.toString());
 		} finally {
 			endShell();

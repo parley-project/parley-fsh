@@ -457,6 +457,7 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.Compgen());
 		registerCommand(new us.bringardner.fsh.commands.Complete());
 		registerCommand(new us.bringardner.fsh.commands.Times());
+		registerCommand(new us.bringardner.fsh.commands.Suspend());
 		registerCommand(new us.bringardner.fsh.commands.Enable());
 		registerCommand(new us.bringardner.fsh.commands.Umask());
 		registerCommand(new us.bringardner.fsh.commands.Ulimit());
@@ -3820,6 +3821,15 @@ delimiter
 
 	public void addJob(IJob job) {
 		lastPid = jobManager.addJob(job);
+		if( isInteractive || isOptionEnabled(Option.Monitor)) {
+			// (fg and bg take only these, as bash's)
+			jobManager.startedWithJobControl(job);
+		}
+	}
+
+	/** job control is on: an interactive shell, or set -m */
+	public boolean jobControl() {
+		return isInteractive || isOptionEnabled(Option.Monitor);
 	}
 
 	@Override

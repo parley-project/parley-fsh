@@ -47,151 +47,225 @@ public class Wait extends ShellCommand{
 	}
 
 
+	private static final String USAGE = "wait: usage: wait [-fn] [-p var] [id ...]";
+
+	/** a signal with a trap came while waiting: its status (128+n) */
+	private static final class Interrupted extends Exception {
+		private static final long serialVersionUID = 1L;
+		final int status;
+		Interrupted(int status) {
+			this.status = status;
+		}
+	}
+
+	/** as bash's wait_builtin */
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
-
-		String varName=null;
-		boolean f = false;
 		boolean n = false;
-
-		JobManager jm = ctx.console.jobManager;
-
-		List<IJob> jobs = new ArrayList<>();
-		boolean ids = false;
-
-		// parse all the args
-		for (int idx = 0; idx < args.length; idx++) {
-			Argument a = args[idx];
-			String val = ""+a.getValue(ctx);
-			if( val.startsWith("-")) {
-				String tmp = val.substring(1);
-				for(char c : tmp.toCharArray()) {
-					switch (c) {
-					case 'f':f=true;break;
-					case 'n':n=true;break;
-					case 'p':
-						if( idx+1 >= args.length) {
-							ctx.error("wait: -p: option requires an argument");
-							return 1;
-						}
-						varName = (""+args[++idx].getValue(ctx));
-						ctx.unSetVariable(varName);
-						break;
-
-					default:
-						throw new IllegalArgumentException("Unknown option in wait. value: " + c);
+		String varName = null;
+		List<String> words = new ArrayList<>();
+		for(Argument a : args) {
+			words.add(""+a.getValue(ctx));
+		}
+		int i = 0;
+		for(; i < words.size(); i++) {
+			String w = words.get(i);
+			if( w.equals("--")) {
+				i++;
+				break;
+			}
+			if( !w.startsWith("-") || w.length() < 2 ) {
+				break;
+			}
+			for (int k = 1; k < w.length(); k++) {
+				char c = w.charAt(k);
+				if( c == 'n' ) {
+					n = true;
+				} else if( c == 'f' ) {
+					// (-f: the same here, each id is waited for until it ends)
+				} else if( c == 'p' ) {
+					if( k+1 < w.length()) {
+						varName = w.substring(k+1);
+					} else if( i+1 < words.size()) {
+						varName = words.get(++i);
+					} else {
+						ctx.error("wait: -p: option requires an argument");
+						ctx.stderr.println(USAGE);
+						return 2;
 					}
+					break;
+				} else {
+					ctx.error("wait: -"+c+": invalid option");
+					ctx.stderr.println(USAGE);
+					return 2;
 				}
-			} else {
-				ids = true;
-				IJob job;
-				try {
-					job = JobSpecs.find(jm, val);
-				} catch (JobSpecs.Ambiguous e) {
-					ctx.error("wait: "+e.getMessage());
-					return 127;
-				}
-				if( job!=null) {
-					jobs.add(job);
-				} else if( val.startsWith("%")) {
-					ctx.error("wait: "+JobSpecs.describe(val)+": no such job");
-					return 127;
-				} else if( val.matches("\\d+")) {
-					Integer status = jm.finishedStatus(Long.parseLong(val));
-					if( status == null ) {
-						ctx.error("wait: pid "+val+" is not a child of this shell");
+			}
+		}
+		List<String> list = words.subList(i, words.size());
+		JobManager jm = ctx.console.jobManager;
+		if( varName != null ) {
+			if( !us.bringardner.fsh.exec.Executor.isName(varName) && !ShellContext.validReferenceName(varName)) {
+				ctx.error("wait: `"+varName+"': not a valid identifier");
+				return 1;
+			}
+			if( ctx.console.isReadonly(ctx.readonlyName(varName))) {
+				ctx.error("wait: "+ctx.readonlyName(varName)+": cannot unset: readonly variable");
+				return 1;
+			}
+			ctx.unSetVariable(varName);
+		}
+		try {
+			if( n ) {
+				// wait -n [id ...]: the next of them (or of the jobs) to end
+				List<IJob> candidates = new ArrayList<>();
+				if( !list.isEmpty()) {
+					for(String w : list) {
+						IJob job = job(ctx, jm, w, false);
+						if( job != null ) {
+							candidates.add(job);
+						} else if( !w.startsWith("%") && w.matches("[0-9]+") && jm.finishedStatus(Long.parseLong(w)) != null ) {
+							// (one that ended already, and left the table)
+							bind(ctx, varName, Long.parseLong(w));
+							return jm.finishedStatus(Long.parseLong(w));
+						}
+					}
+					if( candidates.isEmpty()) {
 						return 127;
 					}
-					ret = status;
-				}
-			}
-		}
-
-		if( jobs.isEmpty() && !ids) {
-			/*
- + "If no options or ids are supplied, wait waits for all running background jobs and the last-executed process substitution,"
-			+ " if its process id is the same as $!, and the return status is zero.\n"
-
-			 */
-			// not the stopped ones, which would never end
-			for(IJob job : jm.getJobs()) {
-				if( job.getState() != JobState.Suspended ) {
-					jobs.add(job);
-				}
-			}
-		}
-
-		int jobId = -1;
-
-		if( n && jobs.isEmpty()) {
-			ret = 127;
-		} else if( jobs.isEmpty()) {
-			// nothing (more) to wait for
-		} else {
-			boolean done = false;			
-			List<Integer> complete = new ArrayList<Integer>();
-
-			while( !done ) {
-				if( ctx.getException()!=null) {
-					throw ctx.getException();
-				}
-				if( ctx.console.hasPendingSignal()) {
-					// a signal with a trap: its trap runs, and wait ends (128 + the signal), as bash's
-					int sig = ctx.console.nextPendingSignal();
-					ctx.console.runOsTrap(sig, ctx);
-					if( sig != us.bringardner.fsh.job.ProcessSignals.number("CHLD") || ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
-						return 128+sig;
-					}
-					// SIGCHLD: wait goes on after the trap (bash, not in posix mode)
-					continue;
-				}
-				for(IJob job : jobs) {
-					if( !complete.contains(job.getPid())) {
-						// finished: terminated (started but not yet running is not finished)
-						if(isFinished(job)) {
-							ret = job.getExitCode();
-							if( ret < 0) {
-								ret = job.getExitCode();
-							}
-							jobId = job.getPid();
-							complete.add(jobId);
-							//System.out.println("jobId="+jobId+" ret = "+ret);
-							if(f || complete.size()==jobs.size()) {
-								done = true;
-								break;
-							}
+				} else {
+					for(IJob job : jm.getJobs()) {
+						if( job.getState() != JobState.Suspended ) {
+							candidates.add(job);
 						}
 					}
 				}
-
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
+				if( candidates.isEmpty()) {
+					return 127;
+				}
+				IJob done = waitAny(ctx, candidates);
+				int status = done.getExitCode();
+				bind(ctx, varName, done.getPid());
+				jm.remove(done);
+				return status;
+			}
+			if( list.isEmpty()) {
+				// all of them (not the stopped ones, which would never end); status 0
+				List<IJob> all = new ArrayList<>();
+				for(IJob job : jm.getJobs()) {
+					if( job.getState() != JobState.Suspended ) {
+						all.add(job);
+					}
+				}
+				for(IJob job : all) {
+					waitAny(ctx, List.of(job));
+					jm.remove(job);
+				}
+				jm.forgetFinished();
+				return 0;
+			}
+			int status = 0;
+			Long lastPid = null;
+			for(String w : list) {
+				if( !w.isEmpty() && Character.isDigit(w.charAt(0))) {
+					if( !w.matches("[0-9]{1,18}")) {
+						ctx.error("wait: `"+w+"': not a pid or valid job spec");
+						return 1;
+					}
+					long pid = Long.parseLong(w);
+					IJob job = jm.getJobByPid(pid);
+					if( job != null ) {
+						waitAny(ctx, List.of(job));
+						status = job.getExitCode();
+						lastPid = pid;
+						reportAndRemove(ctx, jm, job);
+					} else if( jm.finishedStatus(pid) != null ) {
+						status = jm.finishedStatus(pid);
+						lastPid = pid;
+					} else {
+						ctx.error("wait: pid "+w+" is not a child of this shell");
+						status = 127;
+					}
+				} else if( w.startsWith("%")) {
+					IJob job = job(ctx, jm, w, true);
+					if( job == null ) {
+						status = 127;
+						continue;
+					}
+					waitAny(ctx, List.of(job));
+					status = job.getExitCode();
+					lastPid = (long) job.getPid();
+					reportAndRemove(ctx, jm, job);
+				} else {
+					ctx.error("wait: `"+w+"': not a pid or valid job spec");
+					status = 1;
 				}
 			}
+			if( lastPid != null ) {
+				bind(ctx, varName, lastPid);
+			}
+			return status;
+		} catch (Interrupted e) {
+			return e.status;
 		}
+	}
 
-		if( varName !=null) {
-			ctx.setVariable(varName, jobId);
+	/** the job w names (a pid or %spec); a bad %spec is said (when say) */
+	private static IJob job(ShellContext ctx, JobManager jm, String w, boolean say) {
+		IJob job;
+		try {
+			job = JobSpecs.find(jm, w);
+		} catch (JobSpecs.Ambiguous e) {
+			ctx.error("wait: "+e.getMessage());
+			return null;
 		}
-		// as in bash, a job that was waited for leaves the job table (jobs no longer lists it)
-		for(IJob job : jobs) {
-			if( isFinished(job)) {
-				if( ids && ctx.console.isInteractive ) {
-					// an interactive bash reports a job it was asked to wait for
-					ctx.stdout.println(jm.describe(job, false));
+		if( job == null && w.startsWith("%")) {
+			ctx.error("wait: "+JobSpecs.describe(w)+": no such job");
+		}
+		return job;
+	}
+
+	private static void bind(ShellContext ctx, String varName, long pid) {
+		if( varName != null ) {
+			ctx.setVariable(varName, String.valueOf(pid));
+		}
+	}
+
+	/** a job waited for leaves the table (an interactive bash reports it) */
+	private static void reportAndRemove(ShellContext ctx, JobManager jm, IJob job) {
+		if( isFinished(job)) {
+			if( ctx.console.isInteractive ) {
+				ctx.stdout.println(jm.describe(job, false));
+			}
+			jm.remove(job);
+		}
+	}
+
+	/** wait until one of jobs ends (a signal with a trap ends the wait: its trap runs) */
+	private static IJob waitAny(ShellContext ctx, List<IJob> jobs) throws Interrupted {
+		while( true ) {
+			if( ctx.getException() != null ) {
+				throw ctx.getException();
+			}
+			if( ctx.console.hasPendingSignal()) {
+				// a signal with a trap: its trap runs, and wait ends (128 + the signal), as bash's
+				int sig = ctx.console.nextPendingSignal();
+				ctx.console.runOsTrap(sig, ctx);
+				if( sig != us.bringardner.fsh.job.ProcessSignals.number("CHLD") || ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
+					throw new Interrupted(128+sig);
 				}
-				jm.remove(job);
+				// SIGCHLD: wait goes on after the trap (bash, not in posix mode)
+				continue;
+			}
+			for(IJob job : jobs) {
+				if( isFinished(job)) {
+					return job;
+				}
+			}
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
 			}
 		}
-		if( !ids && !n ) {
-			jm.forgetFinished();
-			// (wait with no ids: status 0, as bash's)
-			ret = 0;
-		}
-
-		return ret;
 	}
 
 	private static boolean isFinished(IJob job) {

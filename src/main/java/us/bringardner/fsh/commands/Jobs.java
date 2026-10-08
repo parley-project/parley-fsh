@@ -43,6 +43,20 @@ public class Jobs extends ShellCommand{
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
+		for(us.bringardner.fsh.Argument arg : args) {
+			// (an option it does not take: said with the usage, as bash's)
+			String w = ""+arg.getValue(ctx);
+			if( w.equals("--") || !w.startsWith("-") || w.length() < 2 ) {
+				break;
+			}
+			for(char c : w.substring(1).toCharArray()) {
+				if( "lnprsx".indexOf(c) < 0 ) {
+					ctx.error(name+": -"+c+": invalid option");
+					ctx.stderr.println("jobs: usage: jobs [-lnprs] [jobspec ...] or jobs -x command [args]");
+					return 2;
+				}
+			}
+		}
 		ShellArgument options = parseArgs(ctx, Options.class);
 		JobManager jm = ctx.console.jobManager;
 		List<IJob> jobs = new ArrayList<>();

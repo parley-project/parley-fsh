@@ -25,12 +25,23 @@ public class Fg extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		if( !ctx.console.isInteractive ) {
+		int first = 0;
+		if( args.length > 0 ) {
+			String a0 = ""+args[0].getValue(ctx);
+			if( a0.equals("--")) {
+				first = 1;
+			} else if( a0.startsWith("-") && a0.length() > 1 ) {
+				ctx.error(name+": "+a0.substring(0, 2)+": invalid option");
+				ctx.stderr.println("fg: usage: fg [job_spec]");
+				return 2;
+			}
+		}
+		if( !ctx.console.jobControl()) {
 			ctx.error(name+": no job control");
 			return 1;
 		}
 		JobManager jm = ctx.console.jobManager;
-		String spec = args.length > 0 ? ""+args[0].getValue(ctx) : "%%";
+		String spec = args.length > first ? ""+args[first].getValue(ctx) : "%%";
 		IJob job;
 		try {
 			job = JobSpecs.find(jm, spec);
@@ -39,7 +50,11 @@ public class Fg extends ShellCommand{
 			return 1;
 		}
 		if( job == null || JobManager.isDone(job)) {
-			ctx.error(name+": "+JobSpecs.describe(spec)+": no such job");
+			ctx.error(name+": "+(args.length > first ? JobSpecs.describe(spec) : "current")+": no such job");
+			return 1;
+		}
+		if( !jm.hasJobControl(job)) {
+			ctx.error(name+": job "+job.getJobNumber()+" started without job control");
 			return 1;
 		}
 		// as bash does, the command it continues
