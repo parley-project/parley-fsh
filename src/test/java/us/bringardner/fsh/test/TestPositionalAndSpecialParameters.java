@@ -48,7 +48,8 @@ public class TestPositionalAndSpecialParameters extends AbstractConsoleTest{
 				+ "hB\n"
 				// $$ is the shell's process id (the JVM's)
 				+ ProcessHandle.current().pid()+"\n"
-				+ "0\n"
+				// $! is empty before anything runs in the background, as in bash
+				+ "\n"
 				+ ""
 						;
 		String code = ""				

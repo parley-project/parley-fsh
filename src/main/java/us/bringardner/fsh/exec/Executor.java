@@ -67,14 +67,28 @@ public final class Executor {
 	 * error is reported: status 2.
 	 */
 	public static int run(ShellContext sc, String code) throws IOException {
-		Ast.Sequence seq;
-		try {
-			seq = Parser.parse(code);
-		} catch (SyntaxError e) {
-			syntaxError(sc, e, code, 1);
-			return 2;
+		// (a line at a time, as bash reads eval's and a sourced file's text)
+		Parser.Reader reader = new Parser.Reader(code, 1);
+		int ret = 0;
+		while( true ) {
+			Ast.Sequence seq;
+			try {
+				seq = reader.next();
+			} catch (SyntaxError e) {
+				syntaxError(sc, e, code, 1);
+				if( e.recoverable ) {
+					reader.skipLine();
+					ret = 1;
+					sc.console.setLastExitCode(1);
+					continue;
+				}
+				return 2;
+			}
+			if( seq == null ) {
+				return ret;
+			}
+			ret = new Executor(seq.source).list(seq, sc);
 		}
-		return new Executor(code).list(seq, sc);
 	}
 
 	/**
@@ -92,20 +106,33 @@ public final class Executor {
 
 	/** a script whose text starts on line firstLine of the input (commands read one at a time) */
 	public static int script(ShellContext sc, String code, int firstLine) throws IOException {
-		Ast.Sequence seq;
-		try {
-			seq = Parser.parse(code, firstLine);
-		} catch (SyntaxError e) {
-			syntaxError(sc, e, code, firstLine);
-			return 2;
-		}
-		Executor ex = new Executor(code);
+		Parser.Reader reader = new Parser.Reader(code, firstLine);
 		int ret = 0;
-		int abandoned = -1;
-		for(Ast.Item item : seq.items) {
-			if( item.command.line == abandoned ) {
-				continue;
+		while( true ) {
+			Ast.Sequence seq;
+			try {
+				seq = reader.next();
+			} catch (SyntaxError e) {
+				syntaxError(sc, e, code, firstLine);
+				if( e.recoverable ) {
+					// x=(a & b): said, and the next line runs
+					reader.skipLine();
+					ret = 1;
+					sc.console.setLastExitCode(1);
+					continue;
+				}
+				return 2;
 			}
+			if( seq == null ) {
+				return ret;
+			}
+			ret = items(seq, new Executor(seq.source), sc, ret);
+		}
+	}
+
+	/** a line's commands, each in turn (an error that abandons the line skips the rest of it) */
+	private static int items(Ast.Sequence seq, Executor ex, ShellContext sc, int ret) throws IOException {
+		for(Ast.Item item : seq.items) {
 			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
 				// set -o history in a script: each command it runs is kept, as bash keeps them
 				sc.console.rememberCommand(ex.text(item.command).trim()+(item.background ? " &" : ""));
@@ -114,9 +141,9 @@ public final class Executor {
 				ret = ex.item(item, sc);
 			} catch (AbandonLine e) {
 				// the rest of the line is not run (in a function too, as bash's)
-				abandoned = item.command.line;
 				ret = 1;
 				sc.console.setLastExitCode(1);
+				break;
 			}
 		}
 		return ret;
@@ -216,7 +243,7 @@ public final class Executor {
 		sc.stdout = new PrintStream(java.io.OutputStream.nullOutputStream());
 		sc.conditionDepth++;
 		try {
-			return new Executor(code).list(seq, sc) == 0;
+			return new Executor(seq.source).list(seq, sc) == 0;
 		} finally {
 			sc.conditionDepth--;
 			sc.stdout = out;
@@ -1390,24 +1417,7 @@ public final class Executor {
 		if( name.equals(".")) {
 			name = "source";
 		}
-		Object alias = sc.getAlias(name);
-		if( alias != null && where(sc).equals(sc.console.aliasLines.get(name))) {
-			// as in bash, not on the line that defined it (fsh, unlike bash, expands aliases in
-			// scripts without shopt -s expand_aliases)
-			alias = null;
-		}
-		if( alias != null ) {
-			StringBuilder code = new StringBuilder(alias.toString());
-			for(Object a : args) {
-				code.append(' ').append(a instanceof Ast.Assignment as ? text(as) : quote(String.valueOf(a)));
-			}
-			sc.addActiveAlias(name);
-			try {
-				return run(sc, code.toString());
-			} finally {
-				sc.removeActiveAlias(name);
-			}
-		}
+		// (aliases are expanded when the command is read: see Parser.aliases)
 		switch (name) {
 		case "[": {
 			// [ expr ]: test, which needs the ]
@@ -1837,13 +1847,14 @@ public final class Executor {
 			if( seq == null ) {
 				String code = backquote ? backtickCode(text) : text;
 				try {
-					seq = Parser.parse(code);
+					// (its lines are counted from the command's, as bash counts them)
+					seq = Parser.parse(code, Math.max(1, sc.currentLine()));
 				} catch (SyntaxError e) {
 					error(sc, e.getMessage());
 					sc.console.substitutionDone(2);
 					return "";
 				}
-				ex = new Executor(code);
+				ex = new Executor(seq.source);
 			}
 			String file = ex.readFileForm(seq, sc);
 			if( file != null ) {
@@ -1893,7 +1904,7 @@ public final class Executor {
 				Executor ex = Executor.this;
 				if( seq == null ) {
 					seq = Parser.parse(text);
-					ex = new Executor(text);
+					ex = new Executor(seq.source);
 				}
 				return ProcessSubstitutions.start(direction, seq, ex, text, sc);
 			} catch (IOException | SyntaxError e) {
@@ -1917,6 +1928,9 @@ public final class Executor {
 			char c = code.charAt(i);
 			if( c == '\\' && i+1 < code.length() && "`\\$".indexOf(code.charAt(i+1)) >= 0 ) {
 				ret.append(code.charAt(++i));
+			} else if( c == '\\' && i+1 < code.length() && code.charAt(i+1) == '\n' ) {
+				// backslash-newline is removed (even in '...')
+				i++;
 			} else {
 				ret.append(c);
 			}

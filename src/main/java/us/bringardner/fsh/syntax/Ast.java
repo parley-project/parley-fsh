@@ -28,6 +28,8 @@ public final class Ast {
 	/** commands separated by ; & or newlines (a script, the body of a block, $( ) ...) */
 	public static final class Sequence extends Node {
 		public final List<Item> items = new ArrayList<>();
+		/** the text it was read from, with its aliases expanded (what positions in it are in) */
+		public String source;
 	}
 
 	/** an && || list, and whether a & after it runs it in the background */

@@ -1231,8 +1231,9 @@ delimiter
 						rest = rest.substring(0, rest.length()-2)+"\n";
 					}
 					if( !rest.isBlank()) {
-						// (an unfinished command: its syntax error)
-						lastExitCode = runChunk(rest, first);
+						// (an unfinished command: its syntax error, status 2)
+						int status = runChunk(rest, first);
+						lastExitCode = status < 0 ? 2 : status;
 					}
 					break;
 				}
@@ -1367,6 +1368,11 @@ delimiter
 
 	public Console() {
 		us.bringardner.fsh.syntax.Parser.posixMode = () -> isOptionEnabled(Option.Posix);
+		// (fsh, unlike bash, expands aliases in scripts without shopt -s expand_aliases)
+		us.bringardner.fsh.syntax.Parser.aliases = n -> {
+			Object v = getAliases().get(n);
+			return v == null ? null : v.toString();
+		};
 		try {
 			environmentVariables.putAll(System.getenv());
 			// an inherited OLDPWD stays only if it is a directory, as in bash

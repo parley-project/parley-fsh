@@ -189,6 +189,62 @@ public final class Expander {
 	}
 
 	private void word(Word w, List<Piece> out, int tilde) {
+		try {
+			word0(w, out, tilde);
+		} catch (BadSubstitution b) {
+			b.locate(w.raw != null && !w.raw.isEmpty() ? w.raw : source(w.parts));
+			throw b;
+		}
+	}
+
+	/** "${x:}: bad substitution" says the word it is in (or the "..." it is in), as bash does */
+	static final class BadSubstitution extends ExpansionError {
+		private static final long serialVersionUID = 1L;
+		private String where;
+
+		BadSubstitution(String text) {
+			super(text);
+			where = text;
+		}
+
+		void locate(String text) {
+			if( !located ) {
+				where = text;
+				located = true;
+			}
+		}
+
+		private boolean located;
+
+		@Override
+		public String getMessage() {
+			return where+": bad substitution";
+		}
+	}
+
+	/** parts as they were written */
+	private static String source(List<Word.Part> parts) {
+		StringBuilder ret = new StringBuilder();
+		for(Word.Part p : parts) {
+			switch (p) {
+			case Word.Literal l -> ret.append(l.text());
+			case Word.Escaped e -> ret.append('\\').append(e.c());
+			case Word.SingleQuoted q -> ret.append('\'').append(q.text()).append('\'');
+			case Word.AnsiC a -> ret.append("$'").append(a.text()).append('\'');
+			case Word.DoubleQuoted d -> ret.append(d.locale() ? "$\"" : "\"").append(source(d.parts())).append('"');
+			case Word.Param n -> ret.append('$').append(n.name());
+			case Word.ParamExpansion x -> ret.append("${").append(x.body()).append('}');
+			case Word.CommandSub c -> ret.append("$(").append(c.text()).append(')');
+			case Word.Backquote b -> ret.append('`').append(b.text()).append('`');
+			case Word.ArithSub a -> ret.append("$((").append(a.expression().raw).append("))");
+			default -> {
+			}
+			}
+		}
+		return ret.toString();
+	}
+
+	private void word0(Word w, List<Piece> out, int tilde) {
 		List<Word.Part> parts = w.parts;
 		for (int i = 0; i < parts.size(); i++) {
 			Word.Part p = parts.get(i);
@@ -303,6 +359,17 @@ public final class Expander {
 	 * @return false only for a quoted $@ or ${a[@]} that is empty (it gives no word at all)
 	 */
 	private boolean part(Word.Part p, int context, List<Piece> out) {
+		try {
+			return part0(p, context, out);
+		} catch (BadSubstitution b) {
+			if( p instanceof Word.DoubleQuoted d ) {
+				b.locate(source(d.parts()));
+			}
+			throw b;
+		}
+	}
+
+	private boolean part0(Word.Part p, int context, List<Piece> out) {
 		switch (p) {
 		case Word.Literal l -> out.add(new Piece(context, l.text()));
 		case Word.Escaped e -> out.add(new Piece(QUOTED, String.valueOf(e.c())));
@@ -405,7 +472,7 @@ public final class Expander {
 		}
 
 		ExpansionError bad() {
-			return new ExpansionError("${"+text+"}: bad substitution");
+			return new BadSubstitution("${"+text+"}");
 		}
 
 		static ParamExpr parse(String body) {
@@ -423,6 +490,12 @@ public final class Expander {
 					e.setParam(body, 1, end);
 					return e;
 				}
+				if( n == 2 ) {
+					// ${#/}, ${#+}: the length of what is no parameter
+					throw e.bad();
+				}
+			} else if( c0 == '!' && n > 2 && "-=+?:".indexOf(body.charAt(1)) >= 0 ) {
+				// ${!-word}, ${!:-word}: $! with an operator (not indirection)
 			} else if( c0 == '!' && n > 1 ) {
 				int end = paramEnd(body, 1);
 				if( end > 1 ) {
@@ -524,6 +597,10 @@ public final class Expander {
 				}
 				op = ":";
 				String r = rest.substring(1);
+				if( r.isEmpty()) {
+					// ${x:}
+					throw bad();
+				}
 				int colon = topLevelColon(r);
 				arg = colon < 0 ? r : r.substring(0, colon);
 				arg2 = colon < 0 ? null : r.substring(colon+1);
@@ -1112,8 +1189,15 @@ public final class Expander {
 
 	/** ${x:offset:length}, ${@:offset:length}, ${a[@]:offset:length} */
 	private Val substring(Val v, ParamExpr e) {
-		long off = evaluate(join(paramPieces(e.arg))).longValue();
-		Long len = e.arg2 == null ? null : evaluate(join(paramPieces(e.arg2))).longValue();
+		long off;
+		Long len;
+		try {
+			off = evaluate(join(paramPieces(e.arg))).longValue();
+			len = e.arg2 == null ? null : evaluate(join(paramPieces(e.arg2))).longValue();
+		} catch (ExpansionError x) {
+			// as bash: x: 1+: arithmetic syntax error ...
+			throw new ExpansionError(e.name+": "+x.getMessage(), x.kind);
+		}
 		if( !v.isList()) {
 			String s = v.scalar == null ? "" : v.scalar;
 			int n = s.length();

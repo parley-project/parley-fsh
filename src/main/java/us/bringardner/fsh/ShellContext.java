@@ -305,7 +305,7 @@ $
 ($!) Expands to the process ID of the job most recently placed into the background, whether executed as an asynchronous command or 
 		using the bg builtin (see Job Control Builtins).
 		 */
-		case '!':ret = console.getLastPid();break;
+		case '!':ret = console.getLastPid() == 0 ? null : console.getLastPid();break;
 		/*
 0
 ($0) Expands to the name of the shell or shell script. This is set at shell initialization. 
@@ -481,6 +481,11 @@ $
 			scope.local.put(name, value);
 		} else {
 			setGlobalVariable(name, value);
+			if( isolated == null && value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
+					&& console.getEvironmentVariables(name) != null ) {
+				// an exported variable: its new value is exported
+				console.setEnvironmentVariable(name, ""+value);
+			}
 			if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
 					&& console.isOptionEnabled(Console.Option.MarkAllForExport) && Character.isLetter(name.charAt(0)) ) {
 				// set -a: every variable that is set is exported
@@ -585,6 +590,8 @@ $
 		}
 		val = console.variables.remove(name);
 		if( val !=null) {
+			// (an exported one is no longer in the environment either)
+			console.removeEnvironmentVariables(name);
 			return true;
 		}
 

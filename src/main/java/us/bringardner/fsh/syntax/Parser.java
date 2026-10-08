@@ -60,6 +60,7 @@ public final class Parser {
 	public static Word fragment(String text, Fragment mode) {
 		Parser p = new Parser(text);
 		p.commandStart = false;
+		p.aliasing = false;
 		Word w;
 		if( mode == Fragment.WORD ) {
 			p.fragment = true;
@@ -125,12 +126,83 @@ public final class Parser {
 	/** the line of the input the text starts on */
 	private int firstLine = 1;
 
+	/**
+	 * Text read a line of commands at a time, as bash reads a script, -c's command, eval's and a
+	 * sourced file: each line is parsed after the one before it has run, so an alias it defined
+	 * is used, and a syntax error stops only what comes after it.
+	 */
+	public static final class Reader {
+		private final Parser p;
+
+		public Reader(String source, int firstLine) {
+			p = new Parser(source);
+			p.firstLine = firstLine;
+		}
+
+		/** the next line's commands (a compound command may go on for more lines), or null at the end */
+		public Sequence next() {
+			p.skipNewlines();
+			if( p.peek().kind == Kind.EOF ) {
+				return null;
+			}
+			Sequence ret = p.oneLine();
+			ret.source = p.src;
+			return ret;
+		}
+
+		/** after a recoverable syntax error: go on from the next line */
+		public void skipLine() {
+			int nl = p.src.indexOf('\n', p.pos);
+			p.pos = nl < 0 ? p.src.length() : nl+1;
+			p.cur = null;
+			p.back = null;
+			p.commandStart = true;
+			p.afterRedirect = false;
+		}
+	}
+
+	/** the commands up to the end of a line (the newline is read too) */
+	private Sequence oneLine() {
+		Sequence seq = new Sequence();
+		seq.start = peek().start;
+		seq.line = lineOf(seq.start);
+		seq.end = seq.start;
+		while( true ) {
+			Token t = peek();
+			if( t.kind == Kind.EOF ) {
+				break;
+			}
+			if( t.kind == Kind.NEWLINE ) {
+				take();
+				break;
+			}
+			Item item = new Item();
+			item.command = andOr();
+			seq.items.add(item);
+			seq.end = item.command.end;
+			t = peek();
+			if( isOp(t, "&")) {
+				take();
+				item.background = true;
+			} else if( isOp(t, ";")) {
+				take();
+			} else if( t.kind == Kind.NEWLINE ) {
+				take();
+				break;
+			} else if( t.kind != Kind.EOF ) {
+				throw unexpected(t);
+			}
+		}
+		return seq;
+	}
+
 	private Sequence script() {
 		Sequence ret = list(Set.of(), Set.of());
 		Token t = peek();
 		if( t.kind != Kind.EOF ) {
 			throw unexpected(t);
 		}
+		ret.source = src;
 		return ret;
 	}
 
@@ -201,9 +273,19 @@ public final class Parser {
 	/** reserved words that end a list (they may not start a command) */
 	private static final Set<String> CLOSERS = Set.of("then", "elif", "else", "fi", "do", "done", "esac", "}", "in", "]]");
 
-	private final String src;
+	/** the text (an alias's value replaces its word in it) */
+	private String src;
 	private int pos;
 	private final int [] lineStarts;
+
+	/** the value of the alias a word names, or null: the shell's aliases, when the text is read */
+	public static volatile java.util.function.Function<String,String> aliases = name -> null;
+	/** words are checked for aliases (not in a fragment) */
+	private boolean aliasing = true;
+	/** the aliases whose values are being read: {name, the end of its value} */
+	private final List<Object []> activeAliases = new ArrayList<>();
+	/** an alias's value ended with a blank: the next word from here is checked too (-1: none) */
+	private int aliasNextAt = -1;
 	/** the next token, read when first needed (so a here-document is known before its newline is read) */
 	private Token cur;
 	/**
@@ -298,8 +380,21 @@ public final class Parser {
 	/** the next token, noting whether the one after it starts a command (see commandStart) */
 	private Token scan() {
 		boolean redirectTarget = afterRedirect;
+		boolean atStart = commandStart;
 		afterRedirect = false;
 		Token t = scanToken();
+		if( t.kind == Kind.WORD && aliasing && !redirectTarget ) {
+			boolean next = aliasNextAt >= 0 && t.start >= aliasNextAt;
+			if( next ) {
+				aliasNextAt = -1;
+			}
+			String value = atStart || next ? alias(t) : null;
+			if( value != null ) {
+				// as bash: the alias's value is read in place of the word
+				splice(t, value);
+				return scan();
+			}
+		}
 		switch (t.kind) {
 		case NEWLINE:
 			commandStart = true;
@@ -324,6 +419,52 @@ public final class Parser {
 		default:
 		}
 		return t;
+	}
+
+	/** the value of the alias word t names, unless it is that alias's own value being read */
+	private String alias(Token t) {
+		if( !t.word.isPlain()) {
+			return null;
+		}
+		String name = t.word.plainText();
+		if( name.isEmpty() || name.indexOf('=') >= 0 || name.indexOf('/') >= 0 ) {
+			return null;
+		}
+		activeAliases.removeIf(a -> (Integer) a[1] <= t.start);
+		for(Object [] a : activeAliases) {
+			if( a[0].equals(name)) {
+				return null;
+			}
+		}
+		String value = aliases.apply(name);
+		if( value == null ) {
+			return null;
+		}
+		activeAliases.add(new Object[] {name, t.end});
+		return value;
+	}
+
+	/** the text of word t is replaced by value; the next token is read from its start */
+	private void splice(Token t, String value) {
+		int delta = value.length()-(t.end-t.start);
+		src = src.substring(0, t.start)+value+src.substring(t.end);
+		for(Object [] a : activeAliases) {
+			if( (Integer) a[1] >= t.end ) {
+				a[1] = (Integer) a[1]+delta;
+			}
+		}
+		if( aliasNextAt >= t.end ) {
+			aliasNextAt += delta;
+		}
+		for (int i = 0; i < lineStarts.length; i++) {
+			if( lineStarts[i] > t.start ) {
+				lineStarts[i] += delta;
+			}
+		}
+		if( value.endsWith(" ") || value.endsWith("\t")) {
+			aliasNextAt = t.start+value.length();
+		}
+		pos = t.start;
 	}
 
 	private Token scanToken() {
@@ -659,8 +800,10 @@ public final class Parser {
 				// $(( expr )): unless there is no )) to end it, then it is $( (cmd) )
 				int close = arithClose(pos+3);
 				if( close > 0 ) {
+					// (counted from the end: an alias in a $( ) in it changes the text before it)
+					int tail = src.length()-close;
 					Word expr = arithWord(pos+3, close);
-					pos = close+2;
+					pos = src.length()-tail+2;
 					return new Word.ArithSub(expr);
 				}
 				// bash reads the commands of $((cmd) ...) when it runs them
@@ -692,8 +835,9 @@ public final class Parser {
 			if( close < 0 ) {
 				throw eof("]");
 			}
+			int tail = src.length()-close;
 			Word expr = arithWord(pos+2, close);
-			pos = close+1;
+			pos = src.length()-tail+1;
 			return new Word.ArithSub(expr);
 		}
 		if( n == '\'' && !inDouble ) {
@@ -755,6 +899,9 @@ public final class Parser {
 	private Sequence nested(int from, String close) {
 		Token saved = cur;
 		boolean savedStart = commandStart;
+		// (the commands in a word read as a fragment are read as commands)
+		boolean savedFragment = fragment;
+		fragment = false;
 		cur = null;
 		pos = from;
 		commandStart = true;
@@ -774,6 +921,7 @@ public final class Parser {
 				throw unexpected(end);
 			}
 		} finally {
+			fragment = savedFragment;
 			if( !paren ) {
 				functionSubs--;
 			}
@@ -1655,8 +1803,9 @@ public final class Parser {
 				Ast.Arith a = new Arith();
 				a.start = open.start;
 				a.line = lineOf(a.start);
+				int tail = src.length()-close;
 				a.expression = arithWord(pos+1, close);
-				pos = close+2;
+				pos = src.length()-tail+2;
 				a.end = pos;
 				return a;
 			}
@@ -1734,8 +1883,9 @@ public final class Parser {
 			if( close < 0 ) {
 				throw eof("))");
 			}
+			int tail = src.length()-close;
 			Word [] parts = splitArithFor(pos+1, close);
-			pos = close+2;
+			pos = src.length()-tail+2;
 			ArithFor c = new ArithFor();
 			c.start = f.start;
 			c.line = lineOf(c.start);
@@ -1803,18 +1953,21 @@ public final class Parser {
 		List<Word> parts = new ArrayList<>();
 		int depth = 0;
 		int start = from;
-		for (int i = from; i < to; i++) {
+		int tail = src.length()-to;
+		for (int i = from; i < src.length()-tail; i++) {
 			char c = ch(i);
 			if( c == '(' ) {
 				depth++;
 			} else if( c == ')' ) {
 				depth--;
 			} else if( c == ';' && depth == 0 ) {
+				int after = src.length()-i;
 				parts.add(arithWord(start, i));
+				i = src.length()-after;
 				start = i+1;
 			}
 		}
-		parts.add(arithWord(start, to));
+		parts.add(arithWord(start, src.length()-tail));
 		if( parts.size() != 3 ) {
 			throw new SyntaxError(lineOf(from), "syntax error: arithmetic expression required");
 		}
@@ -1838,7 +1991,8 @@ public final class Parser {
 		w.line = lineOf(from);
 		StringBuilder lit = new StringBuilder();
 		pos = from;
-		while( pos < to ) {
+		int tail = src.length()-to;
+		while( pos < (to = src.length()-tail)) {
 			char c = ch(pos);
 			if( c == '\\' ) {
 				char n = ch(pos+1);
@@ -1864,6 +2018,7 @@ public final class Parser {
 					// $(( ${x )): bash does not look for the } until it runs
 					p = null;
 				}
+				to = src.length()-tail;
 				if( p == null || pos > to ) {
 					pos = at;
 					lit.append('$');
