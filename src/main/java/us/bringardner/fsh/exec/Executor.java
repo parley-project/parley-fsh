@@ -1445,6 +1445,7 @@ public final class Executor {
 		List<Object> args = new ArrayList<>();
 		// set -k: name=value after the command's name is an assignment for it too, as in bash
 		List<String[]> keywordAssignments = new ArrayList<>();
+		List<Word> keywordWords = new ArrayList<>();
 		boolean keyword = sc.console.isOptionEnabled(Console.Option.Keyword);
 		try {
 			boolean declaration = false;
@@ -1455,12 +1456,9 @@ public final class Executor {
 					continue;
 				}
 				if( keyword && !declaration && w.raw.matches("[A-Za-z_][A-Za-z0-9_]*=(?s).*")) {
-					String value = String.join(" ", ex.expand(w));
-					int eq = value.indexOf('=');
-					if( eq > 0 ) {
-						keywordAssignments.add(new String[] {value.substring(0, eq), value.substring(eq+1)});
-						continue;
-					}
+					// (expanded once the command is known: with none they are assignments in turn)
+					keywordWords.add(w);
+					continue;
 				}
 				List<String> fields = ex.expand(w);
 				if( args.isEmpty() && !fields.isEmpty()) {
@@ -1468,19 +1466,36 @@ public final class Executor {
 				}
 				args.addAll(fields);
 			}
+			if( !args.isEmpty()) {
+				for(Word w : keywordWords) {
+					String value = String.join(" ", ex.expand(w));
+					int eq = value.indexOf('=');
+					keywordAssignments.add(new String[] {value.substring(0, eq), value.substring(eq+1)});
+				}
+			}
 		} catch (ExpansionError e) {
 			return expansionError(sc, e);
 		}
 		if( args.isEmpty()) {
-			// (set -k: name=value words with no command left set the shell's variables too)
-			for(String [] a : keywordAssignments) {
-				if( sc.console.isReadonly(sc.readonlyName(a[0]))) {
-					error(sc, sc.readonlyName(a[0])+": readonly variable");
-					continue;
+			int status = assignments(c, sc, ex, substitutions);
+			// (set -k: name=value words with no command left set the shell's variables too, after
+			// the others, each seeing the one before)
+			try {
+				for(Word w : keywordWords) {
+					String value = String.join(" ", ex.expand(w));
+					int eq = value.indexOf('=');
+					String n = value.substring(0, eq);
+					if( sc.console.isReadonly(sc.readonlyName(n))) {
+						error(sc, sc.readonlyName(n)+": readonly variable");
+						status = 1;
+						continue;
+					}
+					sc.setVariable(n, value.substring(eq+1));
 				}
-				sc.setVariable(a[0], a[1]);
+			} catch (ExpansionError e) {
+				return expansionError(sc, e);
 			}
-			return assignments(c, sc, ex, substitutions);
+			return status;
 		}
 		String name = (String) args.remove(0);
 		// (the redirects come before the assignments, as bash's: FOO=bar cat < <(echo $FOO) does
@@ -1556,7 +1571,9 @@ public final class Executor {
 						error(sc, sc.readonlyName(a.name)+": readonly variable");
 						continue;
 					}
-					boolean exported = name.equals("export") || name.equals("declare") && args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*x[a-zA-Z]*"));
+					// (declare -x in a function makes a local, which takes the temporary value)
+					boolean exported = name.equals("export") || name.equals("declare") && args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*x[a-zA-Z]*"))
+							&& (!sc.isInFunction() || args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*g[a-zA-Z]*")));
 					if( exported && sc.getFunction(name) == null ) {
 						// foo= export foo, FOO=1 declare -x FOO: the assignment stays (and is exported), as in bash
 						sc.setVariable(a.name, v);
@@ -1564,8 +1581,10 @@ public final class Executor {
 					}
 					if( sc.console.isOptionEnabled(Console.Option.Posix) && SPECIAL_BUILTINS.contains(name) && sc.getFunction(name) == null ) {
 						// posix mode: an assignment before a special builtin stays (past the
-						// temporary ones of the commands it is in: var=1 f, with var=2 return in f)
+						// temporary ones of the commands it is in: var=1 f, with var=2 return in f),
+						// exported
 						sc.setVariable(a.name, v);
+						sc.setEnvironmentVariable(sc.resolveName(a.name), v);
 						for(List<Object[]> outer : sc.hasLocal(a.name) ? List.<List<Object[]>>of() : sc.console.temporaryAssignments) {
 							for(Object[] o : outer) {
 								if( o[0].equals(a.name)) {
@@ -1617,7 +1636,7 @@ public final class Executor {
 			Object [] s = saved.get(i);
 			if( s.length > 3 && Boolean.TRUE.equals(s[3])) {
 				sc.setGlobal((String) s[0], s[1]);
-				sc.setEnvironmentVariable((String) s[0], s[2]);
+				sc.setGlobalEnvironment((String) s[0], s[2]);
 				continue;
 			}
 			sc.setVariable((String) s[0], s[1]);

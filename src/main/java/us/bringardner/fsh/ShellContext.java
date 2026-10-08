@@ -1421,7 +1421,42 @@ $
 	}
 
 	public void setEnvironmentVariable(String name,Object value) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null && !scope.envBefore.containsKey(name)) {
+			// (export of a local: the environment is put back when the function returns)
+			Object before = console.getEvironmentVariables(name);
+			scope.envBefore.put(name, before == null ? UNSET_LOCAL : before);
+		}
 		console.setEnvironmentVariable(name, value);
+	}
+
+	/**
+	 * The global name's environment entry: while a function's local of that name is the one seen,
+	 * what is put back when that function returns.
+	 */
+	public void setGlobalEnvironment(String name, Object value) {
+		FunctionInvocation scope = localScope(name);
+		if( scope == null ) {
+			console.setEnvironmentVariable(name, value);
+		} else {
+			scope.envBefore.put(name, value == null ? UNSET_LOCAL : value);
+		}
+	}
+
+	/**
+	 * What a program is given for the exported name (whose environment value is envValue): a
+	 * function's local of that name hides it (its value, or nothing if it has none), as in bash.
+	 */
+	public Object exportedValue(String name, Object envValue) {
+		FunctionInvocation scope = localScope(name);
+		if( scope == null ) {
+			return envValue;
+		}
+		Object v = scope.local.get(name);
+		if( v == null || v == UNSET_LOCAL || v instanceof Map<?,?> || v instanceof NameRef ) {
+			return null;
+		}
+		return v instanceof List<?> l ? (l.isEmpty() ? null : firstElement(v)) : v;
 	}
 
 	public Map<String, Object> getEnvironmentVariables() {
@@ -1434,6 +1469,8 @@ $
 		Map<String,Object> local = new TreeMap<>();
 
 		int callLine;
+		/** the environment before a local of this function was exported (UNSET_LOCAL: none) */
+		final Map<String,Object> envBefore = new java.util.HashMap<>();
 		/** the locals it made readonly */
 		final java.util.Set<String> readonlyHere = new java.util.HashSet<>();
 		/** local -: the set -o options when it ran (put back when it returns), or null */
@@ -1523,6 +1560,9 @@ $
 
 	public void exitFunction(ShellFunction functionDefStatement) {
 		FunctionInvocation inv = functionStack.pop();
+		for(Map.Entry<String,Object> e : inv.envBefore.entrySet()) {
+			console.setEnvironmentVariable(e.getKey(), e.getValue() == UNSET_LOCAL ? null : e.getValue());
+		}
 		if( inv.function != null && !callFrames.isEmpty()) {
 			callFrames.remove(callFrames.size()-1);
 		}

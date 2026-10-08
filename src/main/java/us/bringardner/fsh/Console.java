@@ -366,7 +366,9 @@ delimiter
 	Map<String,Object> variables = new ConcurrentSkipListMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
 	public List<Option> options = new ArrayList<>();
-	private Map<String,Object> environmentVariables = new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER);
+	// (names differ by case, except on Windows: A and a are two variables)
+	private Map<String,Object> environmentVariables = System.getProperty("os.name", "").toLowerCase().startsWith("windows")
+			? new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER) : new ConcurrentSkipListMap<>();
 	DebugContext debugContext = new DebugContext();
 	private int lastPid = 0;
 	public JobManager jobManager = new JobManager();
@@ -1456,8 +1458,9 @@ delimiter
 	public Map<String,String> programEnvironment(ShellContext ctx) {
 		Map<String,String> env = new java.util.LinkedHashMap<>();
 		for(Map.Entry<String,Object> e : ctx.getEnvironmentVariables().entrySet()) {
-			if( e.getValue() != null ) {
-				env.put(e.getKey(), ""+e.getValue());
+			Object v = ctx.exportedValue(e.getKey(), e.getValue());
+			if( v != null ) {
+				env.put(e.getKey(), ""+v);
 			}
 		}
 		for(ShellFunction f : getFunctions().values()) {

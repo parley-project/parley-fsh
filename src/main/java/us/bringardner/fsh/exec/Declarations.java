@@ -271,6 +271,11 @@ public final class Declarations {
 				status = 1;
 				continue;
 			}
+			if( local && text == null && assignment == null && sc.commandTemporaries != null
+					&& isTemporary(sc, name) && sc.getVariable(name) instanceof String tv ) {
+				// var=value declare var in a function: the local takes the temporary value, as bash's
+				text = tv;
+			}
 			if( !local && sc.commandTemporaries != null ) {
 				// x=1 declare -r x: the temporary x stays (and exported), as bash's; in a function it
 				// stays as the function's local
@@ -961,5 +966,10 @@ public final class Declarations {
 			return ret.append('\'').toString();
 		}
 		return "\""+String.valueOf(v).replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("`", "\\`")+"\"";
+	}
+
+	/** name has a temporary assignment for the running command */
+	private static boolean isTemporary(ShellContext sc, String name) {
+		return sc.commandTemporaries.stream().anyMatch(t -> t[0].equals(name));
 	}
 }
