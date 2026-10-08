@@ -1484,6 +1484,9 @@ $
 	}
 
 	public int executeSubShell(FileSource file,Argument[] args) throws IOException {
+		// (a new console takes over the parser's view of aliases and posix mode: given back after)
+		java.util.function.Function<String,String> aliases = us.bringardner.fsh.syntax.Parser.aliases;
+		java.util.function.BooleanSupplier posix = us.bringardner.fsh.syntax.Parser.posixMode;
 		try (InputStream in = file.getInputStream()) {
 			String code = new String(in.readAllBytes());
 			Console sub = new Console();
@@ -1513,6 +1516,9 @@ $
 			int ret = sub.executeScript(code);
 
 			return ret;				
+		} finally {
+			us.bringardner.fsh.syntax.Parser.aliases = aliases;
+			us.bringardner.fsh.syntax.Parser.posixMode = posix;
 		}
 	}
 

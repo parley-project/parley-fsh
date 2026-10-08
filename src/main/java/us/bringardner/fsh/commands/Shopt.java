@@ -114,7 +114,8 @@ public class Shopt extends ShellCommand{
 			if( print ) {
 				ctx.stdout.println(setOptions ? "set "+(e.getValue() ? "-o " : "+o ")+e.getKey() : "shopt "+(e.getValue() ? "-s " : "-u ")+e.getKey());
 			} else {
-				ctx.stdout.printf("%-20s\t%s\n", e.getKey(), e.getValue() ? "on" : "off");
+				// (as bash: set -o's names in 15 columns, shopt's in 20)
+				ctx.stdout.printf(setOptions ? "%-15s\t%s\n" : "%-20s\t%s\n", e.getKey(), e.getValue() ? "on" : "off");
 			}
 		}
 	}

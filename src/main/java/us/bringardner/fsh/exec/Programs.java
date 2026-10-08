@@ -57,7 +57,8 @@ public final class Programs {
 			}
 			if( isFshScript(exec)) {
 				Argument [] all = new Argument[args.size()+1];
-				all[0] = new Argument(exec.getName());
+				// ($0: the name it was run by, as bash)
+				all[0] = new Argument(name);
 				for (int i = 0; i < args.size(); i++) {
 					all[i+1] = new Argument(args.get(i));
 				}
@@ -85,11 +86,29 @@ public final class Programs {
 		return execute(cmd, sc);
 	}
 
+	/** a program's (not text): ELF, Mach-O, a NUL in its first bytes */
+	private static boolean binary(byte [] data) {
+		if( data.length >= 4 ) {
+			int magic = (data[0] & 0xff) << 24 | (data[1] & 0xff) << 16 | (data[2] & 0xff) << 8 | (data[3] & 0xff);
+			if( magic == 0x7f454c46 || magic == 0xfeedface || magic == 0xfeedfacf || magic == 0xcefaedfe
+					|| magic == 0xcffaedfe || magic == 0xcafebabe || magic == 0xbebafeca ) {
+				return true;
+			}
+		}
+		for(byte b : data) {
+			if( b == 0 ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** #!fsh (or #!fssh, the name before): a script for this shell */
 	private static boolean isFshScript(FileSource exec) throws IOException {
-		byte [] data = exec.head(20);
+		byte [] data = exec.head(80);
 		if( data.length < 2 || data[0] != '#' || data[1] != '!' ) {
-			return false;
+			// no #!: a script for the shell that runs it (bash runs it itself), unless it is a program
+			return !binary(data);
 		}
 		String first = new String(data).substring(2);
 		int nl = first.indexOf('\n');
