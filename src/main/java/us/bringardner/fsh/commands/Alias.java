@@ -25,6 +25,13 @@ public class Alias extends ShellCommand{
 	public int process(ShellContext ctx) throws IOException {
 		int ret = 0;
 		boolean options = true;
+		if( args == null || args.length == 0 ) {
+			// alias: all of them, as alias -p
+			for(String name : new java.util.TreeSet<>(ctx.console.getAliases().keySet())) {
+				printAlias(ctx,name, ctx.console.getAlias(name));
+			}
+			return 0;
+		}
 		for(Argument arg : args) {
 			String text = ""+arg.getValue(ctx);
 			if( options && text.equals("--")) {

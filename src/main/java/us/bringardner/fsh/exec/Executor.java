@@ -545,6 +545,12 @@ public final class Executor {
 			for (int i = 0; i < n; i++) {
 				Ast.Command c = p.commands.get(i);
 				ShellContext ctx = lastInShell && i == n-1 ? sc : sc.isolatedSubShell();
+				if( ctx != sc && c instanceof Ast.SimpleCommand ) {
+					// (bash expands a simple command's words before its subshell counts: echo
+					// $BASH_SUBSHELL | cat is 0, a builtin or function it runs is 1 deeper)
+					ctx.subshellLevel--;
+					ctx.subshellPending = true;
+				}
 				int stageIndex = i;
 				threads[i] = new CommandThread(ctx, new ShellTask() {
 					@Override
@@ -1938,7 +1944,8 @@ public final class Executor {
 		Redirects.Saved streams = Redirects.Saved.of(sc);
 		List<Closeable> opened = null;
 		try {
-			opened = Redirects.apply(c.redirects, sc, ex);
+			// (the assignments come first, then the redirects, as bash's: R=2 2>/dev/null of a
+			// readonly R still says so, and x=$(cmd) 2>/dev/null leaves cmd's errors)
 			// (traced with PS4 as it was before: PS4=... shows the old one, as in bash)
 			String prefix = tracing(sc) ? ps4(sc) : null;
 			java.util.Map<Ast.Assignment,String> before = new java.util.HashMap<>();
@@ -1986,6 +1993,7 @@ public final class Executor {
 					traceStream(sc, streams.err()).println(prefix+a.name+(a.append ? "+=" : "=")+shown);
 				}
 			}
+			opened = Redirects.apply(c.redirects, sc, ex);
 		} catch (ExpansionError e) {
 			return expansionError(sc, e);
 		} catch (IOException e) {
@@ -2217,6 +2225,11 @@ public final class Executor {
 	}
 
 	private int dispatch(String name, List<Object> args, ShellContext sc, Expander ex, boolean functions) throws IOException {
+		if( sc.subshellPending ) {
+			// (a pipe stage's command runs: now it is in the subshell)
+			sc.subshellPending = false;
+			sc.subshellLevel++;
+		}
 		if( (name.equals("command") || name.equals("builtin")) && !args.isEmpty()) {
 			// command typeset ..., builtin declare ...: one the executor runs itself
 			int k = 0;

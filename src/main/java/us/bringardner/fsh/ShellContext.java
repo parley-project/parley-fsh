@@ -1042,6 +1042,10 @@ $
 		if( name.equals("BASHPID")) {
 			return ProcessHandle.current().pid();
 		}
+		if( name.equals("BASH_SUBSHELL") && !console.unsetSpecials.contains(name)) {
+			// how many subshells deep this is: ( ), $( ), a pipe stage, a job
+			return String.valueOf(subshellLevel);
+		}
 		if( (name.equals("BASH_ARGC") || name.equals("BASH_ARGV")) && !console.unsetSpecials.contains(name) && console.getVariable(name) == null ) {
 			// with extdebug: the arguments of the functions called while it was on, innermost first
 			// (each one's last first), and how many each had
@@ -1463,6 +1467,7 @@ $
 	@SuppressWarnings("unchecked")
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
+		ret.subshellLevel = subshellLevel+1;
 		ret.line = line;
 		ret.job = job;
 		ret.loopDepth = loopDepth;
@@ -1547,6 +1552,11 @@ $
 	 * executor runs what a command added once that command ends.
 	 */
 	public final List<Runnable> afterCommand = new ArrayList<>();
+
+	/** $BASH_SUBSHELL: how many subshells this context is in */
+	public int subshellLevel;
+	/** a pipe stage's simple command: its subshell counts once its words are expanded */
+	public boolean subshellPending;
 
 	/** how many sourced files are running (return ends the innermost) */
 	public int sourceDepth;
