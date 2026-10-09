@@ -53,6 +53,25 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** standard input: 1 a pipe or socket, 2 a file, 0 something else */
 	private native int inputKind0();
 
+	/**
+	 * The descriptors from 3 to 255 the process was given (open, not closed when a program
+	 * starts, as the JVM's own are, and not on a file under exclude, the JVM's): {fd, access (0
+	 * read, 1 write, 2 both)} in turn.
+	 */
+	private native int [] inheritedDescriptors0(String exclude);
+
+	/** the descriptors the shell was started with (see inheritedDescriptors0), or none */
+	public static int [] inheritedDescriptors() {
+		if( availible ) {
+			try {
+				return new NativeKeyboard().inheritedDescriptors0(System.getProperty("java.home", "/nonexistent"));
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		return new int[0];
+	}
+
 	/** getrusage: {the shell's user, system, its children's user, system} in microseconds */
 	private native long [] resourceUsage0();
 

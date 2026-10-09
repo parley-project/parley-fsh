@@ -111,6 +111,14 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_inputKind0
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    inheritedDescriptors0
+ * Signature: (Ljava/lang/String;)[I
+ */
+JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_inheritedDescriptors0
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    resourceUsage0
  * Signature: ()[J
  */

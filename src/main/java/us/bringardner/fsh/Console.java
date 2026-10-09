@@ -905,6 +905,8 @@ delimiter
 				System_in = new ProcessStdin();
 			}
 			c.setStdIn(System_in);
+			// (fsh script 3<file: the script has 3, as bash's would)
+			c.importInheritedDescriptors();
 
 			// called as sh (or with POSIXLY_CORRECT in the environment): posix mode, as bash's
 			String argv0 = System.getProperty("fsh.argv0", "");
@@ -4173,6 +4175,39 @@ delimiter
 	public FileDiscriptor removeFileDistcriptor(int id) {
 		getFiles();
 		return files.remove(id);
+	}
+
+	/**
+	 * The descriptors above 2 the process was started with (fsh script 3&lt;file 5&gt;out) go in
+	 * the shell's table, as bash has them; they are reached through /dev/fd.
+	 */
+	public void importInheritedDescriptors() {
+		int[] given = NativeKeyboard.inheritedDescriptors();
+		for (int i = 0; i+1 < given.length; i += 2) {
+			int fd = given[i];
+			int mode = given[i+1];
+			String path = "/dev/fd/"+fd;
+			try {
+				FileDiscriptor f = null;
+				if( mode == 0 || mode == 2 ) {
+					f = new FileDiscriptor(fd, new java.io.FileInputStream(path), null);
+				}
+				if( mode == 1 || mode == 2 ) {
+					// (appending: the file is not truncated, its offset is the one it was given)
+					PrintStream out = new PrintStream(new java.io.FileOutputStream(path, true), true);
+					if( f == null ) {
+						f = new FileDiscriptor(fd, out, null);
+					} else {
+						f.setOut(out);
+					}
+				}
+				if( f != null ) {
+					getFiles().put(fd, f);
+				}
+			} catch (IOException | RuntimeException e) {
+				// (one that cannot be reached is left out)
+			}
+		}
 	}
 
 	public Map<Integer,FileDiscriptor> getFiles() {

@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/resource.h>
+#include <limits.h>
 #include "NativeKeyboard.h"
 
 // getChar() results that are not keys (must match NativeKeyboard.java)
@@ -309,6 +310,43 @@ JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_resourceUsag
 	jlongArray ret = env->NewLongArray(4);
 	if( ret != NULL ) {
 		env->SetLongArrayRegion(ret, 0, 4, values);
+	}
+	return ret;
+}
+
+/*
+ * The descriptors 3..255 that are open without FD_CLOEXEC: the ones the shell was given (the
+ * JVM opens its own with close-on-exec): {fd, access mode (O_RDONLY 0, O_WRONLY 1, O_RDWR 2)}.
+ */
+JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_inheritedDescriptors0(JNIEnv *env, jobject, jstring exclude) {
+	jint values[512];
+	int n = 0;
+	const char *skip = exclude != NULL ? env->GetStringUTFChars(exclude, NULL) : NULL;
+	for(int fd = 3; fd < 256 && n < 510; fd++) {
+		int flags = fcntl(fd, F_GETFD);
+		if( flags < 0 || (flags & FD_CLOEXEC) ) {
+			continue;
+		}
+		int status = fcntl(fd, F_GETFL);
+		if( status < 0 ) {
+			continue;
+		}
+#ifdef F_GETPATH
+		char path[PATH_MAX];
+		if( skip != NULL && fcntl(fd, F_GETPATH, path) == 0 && strncmp(path, skip, strlen(skip)) == 0 ) {
+			// the JVM's own (its modules file)
+			continue;
+		}
+#endif
+		values[n++] = fd;
+		values[n++] = status & O_ACCMODE;
+	}
+	if( skip != NULL ) {
+		env->ReleaseStringUTFChars(exclude, skip);
+	}
+	jintArray ret = env->NewIntArray(n);
+	if( ret != NULL ) {
+		env->SetIntArrayRegion(ret, 0, n, values);
 	}
 	return ret;
 }
