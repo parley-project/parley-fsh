@@ -689,16 +689,20 @@ public final class Programs {
 			return which(name, ctx);
 		}
 		Object [] known = ctx.console.hashTable.get(name);
+		// (a pipe stage or job is a subshell: what it finds and uses is its own, as in bash)
+		boolean own = !ctx.isIsolated();
 		if( known != null ) {
 			FileSource f = ctx.getFileSource(""+known[0]);
 			// (as bash: the remembered path is used, unless shopt checkhash finds it gone)
 			if( f.exists() || !us.bringardner.fsh.Glob.option(ctx, "checkhash")) {
-				((int []) known[1])[0]++;
+				if( own ) {
+					((int []) known[1])[0]++;
+				}
 				return f;
 			}
 		}
 		FileSource ret = which(name, ctx);
-		if( ret != null ) {
+		if( ret != null && own ) {
 			ctx.console.hashTable.put(name, new Object[] {ret.getAbsolutePath(), new int[] {1}});
 		}
 		return ret;

@@ -2280,6 +2280,19 @@ public final class Parser {
 					lit.append(c);
 					pos++;
 				}
+			} else if( c == '$' && ch(pos+1) == '\'' ) {
+				// $'..' in $(( )): read as bash reads it, '..' (quoted: an error as an operand)
+				int end = pos+2;
+				while( end < to && ch(end) != '\'' ) {
+					end += ch(end) == '\\' ? 2 : 1;
+				}
+				if( end >= to ) {
+					lit.append(c);
+					pos++;
+				} else {
+					lit.append('\'').append(us.bringardner.fsh.ShellContext.ansiC(src.substring(pos+2, end))).append('\'');
+					pos = end+1;
+				}
 			} else if( c == '$' ) {
 				int at = pos;
 				Word.Part p;

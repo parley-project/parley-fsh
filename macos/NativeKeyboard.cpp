@@ -315,14 +315,18 @@ JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_resourceUsag
 }
 
 /*
- * The descriptors 3..255 that are open without FD_CLOEXEC: the ones the shell was given (the
- * JVM opens its own with close-on-exec): {fd, access mode (O_RDONLY 0, O_WRONLY 1, O_RDWR 2)}.
+ * The descriptors 3..255 that are open without FD_CLOEXEC: "fd mode path" for each (mode is the
+ * access mode, O_RDONLY 0, O_WRONLY 1, O_RDWR 2; path is empty if it is not known).
  */
-JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_inheritedDescriptors0(JNIEnv *env, jobject, jstring exclude) {
-	jint values[512];
+JNIEXPORT jobjectArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_openDescriptors0(JNIEnv *env, jobject) {
+	// (on the heap: 256 paths are too many for a thread's stack)
+	typedef char Line[PATH_MAX+32];
+	Line *lines = (Line *) malloc(256*sizeof(Line));
+	if( lines == NULL ) {
+		return env->NewObjectArray(0, env->FindClass("java/lang/String"), NULL);
+	}
 	int n = 0;
-	const char *skip = exclude != NULL ? env->GetStringUTFChars(exclude, NULL) : NULL;
-	for(int fd = 3; fd < 256 && n < 510; fd++) {
+	for(int fd = 3; fd < 256; fd++) {
 		int flags = fcntl(fd, F_GETFD);
 		if( flags < 0 || (flags & FD_CLOEXEC) ) {
 			continue;
@@ -331,22 +335,21 @@ JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_inheritedDesc
 		if( status < 0 ) {
 			continue;
 		}
-#ifdef F_GETPATH
 		char path[PATH_MAX];
-		if( skip != NULL && fcntl(fd, F_GETPATH, path) == 0 && strncmp(path, skip, strlen(skip)) == 0 ) {
-			// the JVM's own (its modules file)
-			continue;
+		path[0] = 0;
+#ifdef F_GETPATH
+		if( fcntl(fd, F_GETPATH, path) != 0 ) {
+			path[0] = 0;
 		}
 #endif
-		values[n++] = fd;
-		values[n++] = status & O_ACCMODE;
+		snprintf(lines[n++], sizeof(lines[0]), "%d %d %s", fd, status & O_ACCMODE, path);
 	}
-	if( skip != NULL ) {
-		env->ReleaseStringUTFChars(exclude, skip);
-	}
-	jintArray ret = env->NewIntArray(n);
+	jobjectArray ret = env->NewObjectArray(n, env->FindClass("java/lang/String"), NULL);
 	if( ret != NULL ) {
-		env->SetIntArrayRegion(ret, 0, n, values);
+		for(int i = 0; i < n; i++) {
+			env->SetObjectArrayElement(ret, i, env->NewStringUTF(lines[i]));
+		}
 	}
+	free(lines);
 	return ret;
 }

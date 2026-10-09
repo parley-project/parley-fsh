@@ -54,22 +54,45 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	private native int inputKind0();
 
 	/**
-	 * The descriptors from 3 to 255 the process was given (open, not closed when a program
-	 * starts, as the JVM's own are, and not on a file under exclude, the JVM's): {fd, access (0
-	 * read, 1 write, 2 both)} in turn.
+	 * The descriptors from 3 to 255 that are open and not closed when a program starts (the JVM
+	 * opens most of its own with close-on-exec): "fd mode path" each (mode 0 read, 1 write, 2
+	 * both; path empty if it is not known).
 	 */
-	private native int [] inheritedDescriptors0(String exclude);
+	private native String [] openDescriptors0();
 
-	/** the descriptors the shell was started with (see inheritedDescriptors0), or none */
+	/**
+	 * The descriptors the process was given (fsh script 3&lt;file): {fd, mode} in turn, the JVM's
+	 * own (its modules and the class path's jars, open too) left out.
+	 */
 	public static int [] inheritedDescriptors() {
-		if( availible ) {
-			try {
-				return new NativeKeyboard().inheritedDescriptors0(System.getProperty("java.home", "/nonexistent"));
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
+		if( !availible ) {
+			return new int[0];
+		}
+		String [] open;
+		try {
+			open = new NativeKeyboard().openDescriptors0();
+		} catch (UnsatisfiedLinkError e) {
+			// an older library
+			return new int[0];
+		}
+		java.util.Set<String> jvm = new java.util.HashSet<>();
+		for(String entry : System.getProperty("java.class.path", "").split(java.io.File.pathSeparator)) {
+			if( !entry.isEmpty()) {
+				jvm.add(new java.io.File(entry).getAbsolutePath());
 			}
 		}
-		return new int[0];
+		String home = System.getProperty("java.home", "/nonexistent");
+		java.util.List<Integer> ret = new java.util.ArrayList<>();
+		for(String d : open) {
+			String [] f = d.split(" ", 3);
+			String path = f.length > 2 ? f[2] : "";
+			if( path.startsWith(home) || jvm.contains(path) || path.endsWith(".jar") || path.endsWith(".jmod")) {
+				continue;
+			}
+			ret.add(Integer.parseInt(f[0]));
+			ret.add(Integer.parseInt(f[1]));
+		}
+		return ret.stream().mapToInt(Integer::intValue).toArray();
 	}
 
 	/** getrusage: {the shell's user, system, its children's user, system} in microseconds */
