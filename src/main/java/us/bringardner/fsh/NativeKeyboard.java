@@ -190,6 +190,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	public static native String strerror0(int err);
 
+	/** {uid, gid, the supplementary groups...} of this process */
+	public static native long [] ids0();
+
 	/** this process's argv[0] (as it was started, not its path), or null */
 	public static native String argv0();
 

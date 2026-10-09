@@ -1254,7 +1254,25 @@ $
 
 	private static volatile long [] groups;
 
+	/** {uid, gid, groups...} from the library, or null */
+	private static long [] nativeIds() {
+		try {
+			return NativeKeyboard.isAvailible() ? NativeKeyboard.ids0() : null;
+		} catch (UnsatisfiedLinkError e) {
+			// (a library from before it had it)
+			return null;
+		}
+	}
+
 	private static long [] findGroups() {
+		long [] ids = nativeIds();
+		if( ids != null ) {
+			java.util.LinkedHashSet<Long> ret = new java.util.LinkedHashSet<>();
+			for(int i = 1; i < ids.length; i++) {
+				ret.add(ids[i]);
+			}
+			return ret.stream().mapToLong(Long::longValue).toArray();
+		}
 		try {
 			Class<?> c = Class.forName("com.sun.security.auth.module.UnixSystem");
 			Object u = c.getConstructor().newInstance();
@@ -1276,6 +1294,10 @@ $
 	}
 
 	private static Long findUserId() {
+		long [] ids = nativeIds();
+		if( ids != null ) {
+			return ids[0];
+		}
 		try {
 			// jdk.security.auth, where there is one
 			Class<?> c = Class.forName("com.sun.security.auth.module.UnixSystem");

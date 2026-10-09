@@ -658,3 +658,27 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_argv0(JNIEnv *e
 	free(buf);
 	return ret;
 }
+
+/* {uid, gid, the groups...} of this process (getgroups(2)) */
+JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_ids0(JNIEnv *env, jclass) {
+	int n = getgroups(0, NULL);
+	if( n < 0 ) {
+		n = 0;
+	}
+	gid_t *g = (gid_t *) calloc((size_t) n+1, sizeof(gid_t));
+	n = getgroups(n, g);
+	if( n < 0 ) {
+		n = 0;
+	}
+	jlongArray ret = env->NewLongArray(n+2);
+	jlong *v = (jlong *) calloc((size_t) n+2, sizeof(jlong));
+	v[0] = (jlong) getuid();
+	v[1] = (jlong) getgid();
+	for(int i = 0; i < n; i++) {
+		v[i+2] = (jlong) g[i];
+	}
+	env->SetLongArrayRegion(ret, 0, n+2, v);
+	free(v);
+	free(g);
+	return ret;
+}

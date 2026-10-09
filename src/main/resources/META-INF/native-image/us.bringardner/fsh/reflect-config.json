@@ -1,0 +1,387 @@
+[
+{
+  "name":"java.lang.Thread",
+  "fields":[{"name":"threadLocalRandomProbe"}]
+},
+{
+  "name":"java.security.SecureRandomParameters"
+},
+{
+  "name":"java.util.concurrent.ForkJoinTask",
+  "fields":[{"name":"aux"}, {"name":"status"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicBoolean",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicReference",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"java.util.concurrent.atomic.Striped64",
+  "fields":[{"name":"base"}, {"name":"cellsBusy"}]
+},
+{
+  "name":"jdk.internal.misc.Unsafe"
+},
+{
+  "name":"org.apache.logging.log4j.spi.Provider"
+},
+{
+  "name":"sun.security.provider.NativePRNG",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"<init>","parameterTypes":["java.security.SecureRandomParameters"] }]
+},
+{
+  "name":"sun.security.provider.SHA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Alias",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Bg",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Bind",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.BracketTest",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Builtin",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Caller",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Cd",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Clear",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Colon",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.CommandCmd",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Compgen",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Complete",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Compopt",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Connect",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Cp",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Dirs",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Disown",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Dot",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Echo",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Enable",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Eval",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Exec",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Exit",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Export",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Expr",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.False",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Fc",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Fg",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Find",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Getopts",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Hash",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Help",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.History",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Jobs",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Kill",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Let",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Ln",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Logout",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Ls",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Ls$LsArgument",
+  "methods":[{"name":"find","parameterTypes":["java.lang.String"] }, {"name":"valueOf","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Mapfile",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Mkdir",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Mv",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Popd",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Printf",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Pushd",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Pwd",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Read",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Readarray",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Readonly",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Return",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Rm",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Set",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Shift",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Shopt",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Sleep",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Source",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Suspend",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Test",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Times",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Touch",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Trap",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.True",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Type",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Ulimit",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Umask",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Unalias",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Unmount",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Unset",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Wait",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.commands.Wc",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$AndOr",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$BraceGroup",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$Command",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$Item",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$Node",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$Pipeline",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$Redirect",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$Sequence",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Ast$SimpleCommand",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Word",
+  "allDeclaredFields":true
+},
+{
+  "name":"us.bringardner.fsh.syntax.Word$DoubleQuoted",
+  "allRecordComponents":true,
+  "methods":[{"name":"locale","parameterTypes":[] }, {"name":"parts","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.syntax.Word$Literal",
+  "allRecordComponents":true,
+  "methods":[{"name":"text","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.syntax.Word$Param",
+  "allRecordComponents":true,
+  "methods":[{"name":"name","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.fsh.syntax.Word$SingleQuoted",
+  "allRecordComponents":true,
+  "methods":[{"name":"text","parameterTypes":[] }]
+},
+{
+  "name":"us.bringardner.parley.core.BjlLogger",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+}
+]
