@@ -473,4 +473,28 @@ public class TestExternal extends AbstractConsoleTest {
 			}
 		}
 	}
+
+	/** a subshell has a process id of its own, and the signals for it are its own, as in bash */
+	@Test
+	public void testSubshellProcess() throws Exception{
+		java.io.File helper = new java.io.File("macos/fshexec").getAbsoluteFile();
+		org.junit.jupiter.api.Assumptions.assumeTrue(helper.canExecute() && getOs() != OperatingSystem.Windows);
+		String old = System.getProperty("fsh.exec");
+		System.setProperty("fsh.exec", helper.getPath());
+		try {
+			setup("ExternalTestFiles");
+			String cmd = "( [ $BASHPID != $$ ] && echo own-pid )\n"
+					+ "( kill -TERM $BASHPID; echo not-here ); echo \"status $?\"\n"
+					+ "( trap 'echo trapped; exit 3' USR1; while :; do sleep 0.05; done ) & p=$!\n"
+					+ "sleep 0.3; kill -USR1 $p; wait $p; echo \"status $?\"\n"
+					+ "( trap 'echo leaked' USR2; sleep 0.1 ) & wait; trap -p USR2; echo end\n";
+			executeCommand(cmd, "", 0, "own-pid\nstatus 143\ntrapped\nstatus 3\nend\n", "Terminated: 15 ( kill -TERM $BASHPID; echo not-here )");
+		} finally {
+			if( old == null ) {
+				System.clearProperty("fsh.exec");
+			} else {
+				System.setProperty("fsh.exec", old);
+			}
+		}
+	}
 }

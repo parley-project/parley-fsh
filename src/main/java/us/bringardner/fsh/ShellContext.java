@@ -1040,7 +1040,7 @@ $
 			return console.lastArgument;
 		}
 		if( name.equals("BASHPID")) {
-			return ProcessHandle.current().pid();
+			return bashPid();
 		}
 		if( name.equals("HISTCMD") && !console.unsetSpecials.contains(name)) {
 			// the history number of the command running (0 with no history, as in bash)
@@ -1472,6 +1472,12 @@ $
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
 		ret.subshellLevel = subshellLevel+1;
+		ret.stageTraps = stageTraps;
+		java.util.Set<Console.ConsoleSignalHandler> traps = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+		for(List<Console.ConsoleSignalHandler> l : console.trapsFor(this).values()) {
+			traps.addAll(l);
+		}
+		ret.inheritedTraps = traps;
 		ret.contextLine = contextLine;
 		ret.subshell = new Object();
 		ret.inCommandSubstitution = inCommandSubstitution;
@@ -1575,6 +1581,186 @@ $
 	public boolean subshellPending;
 	/** which subshell this is (null: the shell itself): the jobs it starts are its children */
 	public Object subshell;
+	/** a job's or a pipe stage's own signal traps (see Console.trapsFor), or null: the shell's */
+	public Map<Integer,List<Console.ConsoleSignalHandler>> stageTraps;
+	/** the traps there were when this subshell started: they are not its own (a signal does what it does by default) */
+	private java.util.Set<Console.ConsoleSignalHandler> inheritedTraps = java.util.Collections.emptySet();
+	/** the process that stands in for this subshell ($BASHPID), once there is one */
+	private volatile StandIn standIn;
+	/** a job or pipe stage that is just ( list ): that subshell is this one (one process in bash) */
+	public boolean wholeSubshell;
+	/** the subshell this one is the same process as (see wholeSubshell), or null */
+	private ShellContext sameProcess;
+
+	/** this ( list ) is the job or pipe stage owner is: the same process, as in bash */
+	public void sameProcessAs(ShellContext owner) {
+		sameProcess = owner;
+	}
+
+	/** the subshell whose process this is */
+	private ShellContext processOwner() {
+		ShellContext ret = this;
+		while( ret.sameProcess != null ) {
+			ret = ret.sameProcess;
+		}
+		return ret;
+	}
+	private volatile boolean subshellEnded;
+	/** the signals for this subshell with a trap, run between its commands */
+	private final java.util.Queue<Integer> pendingSignals = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+	/**
+	 * $BASHPID: the shell's process id, or in a subshell the process that stands in for it (see
+	 * StandIn; the shell's where there is no helper).
+	 */
+	public long bashPid() {
+		if( sameProcess != null ) {
+			return processOwner().bashPid();
+		}
+		if( subshell == null ) {
+			return ProcessHandle.current().pid();
+		}
+		StandIn s = standIn();
+		return s == null ? ProcessHandle.current().pid() : s.pid();
+	}
+
+	/** this subshell's stand-in (made the first time), or null */
+	public StandIn standIn() {
+		if( sameProcess != null ) {
+			return processOwner().standIn();
+		}
+		if( subshell == null ) {
+			return null;
+		}
+		StandIn ret = standIn;
+		if( ret == null ) {
+			synchronized (this) {
+				ret = standIn;
+				if( ret == null && !subshellEnded ) {
+					ret = StandIn.start(this::signal);
+					standIn = ret;
+				}
+			}
+		}
+		return ret;
+	}
+
+	/** this subshell ended with status: its stand-in does too */
+	public void endSubshell(int status) {
+		if( sameProcess != null ) {
+			// (its owner ends it)
+			return;
+		}
+		StandIn s;
+		synchronized (this) {
+			subshellEnded = true;
+			s = standIn;
+		}
+		if( s != null ) {
+			s.end(status);
+		}
+	}
+
+	/**
+	 * A signal for this subshell (kill $BASHPID, kill $!): its own trap runs between its commands;
+	 * a trap it was started with is not its own (as in bash, the signal does what it does by
+	 * default, but '' still ignores it); by default it ends the subshell (128 + the signal), or
+	 * stops its job, or is ignored.
+	 */
+	public void signal(int sig) {
+		List<Console.ConsoleSignalHandler> h = console.trapsFor(this).get(sig);
+		Console.ConsoleSignalHandler last = h == null || h.isEmpty() ? null : h.get(h.size()-1);
+		if( last != null && last.action.isEmpty()) {
+			return;
+		}
+		if( last != null && !inheritedTraps.contains(last)) {
+			pendingSignals.add(sig);
+			synchronized (pauseLock) {
+				pauseLock.notifyAll();
+			}
+			return;
+		}
+		String name = String.valueOf(us.bringardner.fsh.job.ProcessSignals.name(sig));
+		boolean jobTop = job != null && job.getShellContext() == this;
+		if( job instanceof us.bringardner.fsh.job.BackgroundJob && job.isIgnoreSignal(ConsoleSignal.find(name))) {
+			// (a job started with & without job control ignores INT and QUIT, as in bash)
+			return;
+		}
+		switch (name) {
+		case "CONT" -> {
+			if( jobTop && job.getState() == us.bringardner.fsh.job.JobState.Suspended ) {
+				job.continueJob();
+			}
+		}
+		case "CHLD", "WINCH", "URG", "INFO" -> {
+		}
+		case "STOP", "TSTP", "TTIN", "TTOU" -> {
+			if( jobTop ) {
+				job.stopJob("Stopped (signal)");
+			}
+		}
+		default -> {
+			if( jobTop ) {
+				job.signalJob(sig);
+			} else {
+				setExecption(new SubshellSignal(this, sig));
+			}
+		}
+		}
+	}
+
+	/** a signal ended the subshell of owner (not the shell, and not the job it is in) */
+	public static final class SubshellSignal extends us.bringardner.fsh.signal.SignalException {
+		private static final long serialVersionUID = 1L;
+		public final transient ShellContext owner;
+
+		SubshellSignal(ShellContext owner, int signal) {
+			super(signal);
+			this.owner = owner;
+		}
+	}
+
+	/**
+	 * The subshell has run its last command: a signal that came during it has its trap run, or
+	 * ends the subshell (throws), as it would before a next command.
+	 */
+	public void subshellDone() {
+		if( hasPendingSignal()) {
+			runPendingTraps();
+		}
+		RuntimeException e = getException();
+		if( e instanceof SubshellSignal ) {
+			throw e;
+		}
+	}
+
+	/** a signal came with a trap to run here: the shell's own, or this subshell's */
+	public boolean hasPendingSignal() {
+		if( sameProcess != null ) {
+			return processOwner().hasPendingSignal();
+		}
+		return subshell == null ? console != null && console.hasPendingSignal() : !pendingSignals.isEmpty();
+	}
+
+	/** the next signal that came for here (its trap not run yet), or -1 */
+	public int nextPendingSignal() {
+		if( sameProcess != null ) {
+			return processOwner().nextPendingSignal();
+		}
+		if( subshell == null ) {
+			return console.nextPendingSignal();
+		}
+		Integer ret = pendingSignals.poll();
+		return ret == null ? -1 : ret;
+	}
+
+	/** run the traps of the signals that came for here */
+	public void runPendingTraps() {
+		int sig;
+		while( (sig = nextPendingSignal()) >= 0 ) {
+			console.runOsTrap(sig, this);
+		}
+	}
 	/** in a $( ) (fg there has no current job, as in bash) */
 	public boolean inCommandSubstitution;
 	/** in a subshell that has none of the shell's jobs (( ), a compound pipe stage): jobs lists none */
@@ -2065,7 +2251,7 @@ $
 	public void sleep(long millis) {
 		long end = System.currentTimeMillis()+millis;
 		synchronized (pauseLock) {
-			while(getException() == null && !isPaused() && (console == null || !console.hasPendingSignal())) {
+			while(getException() == null && !isPaused() && !hasPendingSignal()) {
 				long left = end-System.currentTimeMillis();
 				if( left <= 0 ) {
 					break;
@@ -2089,6 +2275,10 @@ $
 		us.bringardner.fsh.job.IJob j = job;
 		if( ret == null && j != null ) {
 			ret = j.getStopRequest();
+		}
+		if( ret == null && sameProcess != null ) {
+			// (a signal ended the job or stage this is)
+			ret = sameProcess.getException();
 		}
 		return ret;
 	}
@@ -2304,8 +2494,8 @@ $
 				}
 			}
 		}
-		if( console != null && console.hasPendingSignal()) {
-			console.runPendingTraps(this);
+		if( hasPendingSignal()) {
+			runPendingTraps();
 		}
 		waitWhilePaused();
 		if( getException() != null ) {

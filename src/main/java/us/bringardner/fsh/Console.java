@@ -795,10 +795,12 @@ delimiter
 			IN_COMMAND_THREAD.set(true);
 			try {
 				if( ctx.isIsolated()) {
-					// a pipe stage: its own directory and options
+					// a pipe stage: its own directory, options and traps
 					ctx.console.enterStage();
+					ctx.stageTraps = ctx.console.currentOsTraps();
 				}
 				exitCode = task.run(ctx);
+				ctx.subshellDone();
 			} catch (Exception e) {
 				error = e;
 				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
@@ -815,6 +817,7 @@ delimiter
 			}
 			ctx.stdout.flush();
 			close(ctx.console,ctx.stdout);
+			ctx.endSubshell(exitCode);
 			end = System.currentTimeMillis();
 			running = false;
 		}
@@ -3629,6 +3632,8 @@ delimiter
 		/** the stage's own EXIT trap (it does not change the shell's) */
 		List<String> exitTrap;
 		boolean ownExitTrap;
+		/** the stage's own signal traps (trap in a job or a pipe stage does not change the shell's) */
+		Map<Integer,List<ConsoleSignalHandler>> osTraps;
 	}
 
 	private final InheritableThreadLocal<StageState> stage = new InheritableThreadLocal<>();
@@ -3641,7 +3646,24 @@ delimiter
 		s.cwd = getCurrentDirectory();
 		s.options = new java.util.concurrent.CopyOnWriteArrayList<>(optionList());
 		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
+		s.osTraps = new ConcurrentSkipListMap<>(osTraps());
 		stage.set(s);
+	}
+
+	/** the signal traps on this thread: a stage's own, or the shell's */
+	private Map<Integer,List<ConsoleSignalHandler>> osTraps() {
+		StageState s = stage.get();
+		return s != null && s.osTraps != null ? s.osTraps : osSignalHandlers;
+	}
+
+	/** the signal traps this thread has now (a stage's own, or the shell's): see trapsFor */
+	public Map<Integer,List<ConsoleSignalHandler>> currentOsTraps() {
+		return osTraps();
+	}
+
+	/** the signal traps ctx has (from another thread: a signal for its subshell) */
+	public Map<Integer,List<ConsoleSignalHandler>> trapsFor(ShellContext ctx) {
+		return ctx.stageTraps != null ? ctx.stageTraps : osSignalHandlers;
 	}
 
 	/** the options in effect on this thread (a stage's own, or the shell's) */
@@ -4137,13 +4159,17 @@ delimiter
 			// (ignored when the shell started: it cannot be trapped or reset)
 			return;
 		}
-		ignoreForPrograms(signal, action != null && action.isEmpty());
+		Map<Integer,List<ConsoleSignalHandler>> traps = osTraps();
+		if( traps == osSignalHandlers ) {
+			// (the shell's own: a stage's '' is for its programs only through its trap)
+			ignoreForPrograms(signal, action != null && action.isEmpty());
+		}
 		if( action == null ) {
-			osSignalHandlers.remove(signal.getNumber());
+			traps.remove(signal.getNumber());
 		} else {
 			List<ConsoleSignalHandler> list = new CopyOnWriteArrayList<>();
 			list.add(new ConsoleSignalHandler(ctx, action));
-			osSignalHandlers.put(signal.getNumber(), list);
+			traps.put(signal.getNumber(), list);
 		}
 	}
 
@@ -4181,7 +4207,7 @@ delimiter
 	 * @return false if there is no trap for it ('' ignores it: true)
 	 */
 	public boolean runOsTrap(int signum, ShellContext ctx) {
-		List<ConsoleSignalHandler> handlers = osSignalHandlers.get(signum);
+		List<ConsoleSignalHandler> handlers = trapsFor(ctx).get(signum);
 		if( handlers == null || handlers.isEmpty()) {
 			return false;
 		}
@@ -4231,7 +4257,7 @@ delimiter
 		};
 		meta.accept(ConsoleMetaSignal.Exit, "EXIT");
 		Map<Integer,String> names = us.bringardner.fsh.commands.Trap.getLocalSignals();
-		for(Map.Entry<Integer, List<ConsoleSignalHandler>> e : osSignalHandlers.entrySet()) {
+		for(Map.Entry<Integer, List<ConsoleSignalHandler>> e : osTraps().entrySet()) {
 			if( !e.getValue().isEmpty()) {
 				String n = names.get(e.getKey());
 				ret.add(new String[] {"SIG"+(n == null ? ""+e.getKey() : n), e.getValue().get(e.getValue().size()-1).action});

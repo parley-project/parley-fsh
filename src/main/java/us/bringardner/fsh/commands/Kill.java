@@ -117,7 +117,8 @@ public class Kill extends ShellCommand{
 				signum = parseSigNum(""+args[++idx].getValue(ctx));								
 			} else if( val.startsWith("-")) {				
 				signum = parseSigNum(val.substring(1));				
-			} else if( val.matches("\\d+") && jm.getJobByPid(Long.parseLong(val)) == null ) {
+			} else if( val.matches("\\d+") && (jm.getJobByPid(Long.parseLong(val)) == null || us.bringardner.fsh.StandIn.of(Long.parseLong(val)) != null)) {
+				// (a job's own process id: the process that stands in for its subshell gets it)
 				processes.add(Long.parseLong(val));
 			} else if( !val.startsWith("%") && !val.matches("\\d+")) {
 				ctx.error("kill: `"+val+"': not a pid or valid job spec");
@@ -208,7 +209,11 @@ public class Kill extends ShellCommand{
 		case "CHLD", "WINCH", "URG", "INFO" -> {
 		}
 		default -> {
-			if( !job.isIgnoreSignal(ConsoleSignal.find(name))) {
+			us.bringardner.fsh.ShellContext jc = job.getShellContext();
+			if( jc != null && jc.subshell != null ) {
+				// the job's subshell: its trap runs, or it ends (see ShellContext.signal)
+				jc.signal(sig);
+			} else if( !job.isIgnoreSignal(ConsoleSignal.find(name))) {
 				job.signalJob(sig);
 			}
 		}
@@ -265,6 +270,14 @@ public class Kill extends ShellCommand{
 				return 0;
 			}
 			throw new us.bringardner.fsh.signal.ExitException(ctx, 128+signum);
+		}
+		us.bringardner.fsh.StandIn standIn = us.bringardner.fsh.StandIn.of(pid);
+		if( standIn != null ) {
+			// a subshell's ($BASHPID, $!): it gets the signal here, not through the system
+			if( signum != 0 ) {
+				standIn.deliver(signum);
+			}
+			return 0;
 		}
 		java.util.Optional<ProcessHandle> p = ProcessHandle.of(pid);
 		if( p.isEmpty() || !p.get().isAlive()) {

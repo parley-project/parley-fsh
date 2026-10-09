@@ -255,9 +255,9 @@ public class Wait extends ShellCommand{
 			if( ctx.getException() != null ) {
 				throw ctx.getException();
 			}
-			if( ctx.console.hasPendingSignal()) {
+			if( ctx.hasPendingSignal()) {
 				// a signal with a trap: its trap runs, and wait ends (128 + the signal), as bash's
-				int sig = ctx.console.nextPendingSignal();
+				int sig = ctx.nextPendingSignal();
 				ctx.console.runOsTrap(sig, ctx);
 				if( sig != us.bringardner.fsh.job.ProcessSignals.number("CHLD") || ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
 					throw new Interrupted(128+sig);

@@ -1,4 +1,5 @@
 /*
+ * fshexec -s
  * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [--] program [args...]
  *
  * Runs a program for fsh as bash would run it.
@@ -14,6 +15,10 @@
  * -r: the program and its arguments, and each -e NAME=VALUE that follows, are written with %XX
  *     for bytes (Java cannot pass bytes that are not UTF-8 itself); -e puts NAME=VALUE in the
  *     program's environment.
+ * -s: stands in for one of fsh's subshells (which run in fsh's process): its process id is the
+ *     subshell's ($BASHPID, $!). Each signal it gets (but KILL and STOP) is written to standard
+ *     output as a byte, for fsh to give the subshell; a status read from standard input (a line)
+ *     ends it with that status, as does the end of its input (0).
  * -f: the program's descriptor N (above 2: Java gives a program only 0, 1 and 2) is ARG opened
  *     for reading (r) or writing (w), or a copy of descriptor ARG (d), as N is open in the shell.
  */
@@ -81,7 +86,46 @@ static void descriptor(int n, const char *how, const char *arg) {
 	}
 }
 
+static void forward(int sig) {
+	unsigned char b = (unsigned char) sig;
+	int saved = errno;
+	(void) write(1, &b, 1);
+	errno = saved;
+}
+
+/* -s: see the top */
+static int standIn(void) {
+	struct sigaction sa;
+	memset(&sa, 0, sizeof sa);
+	sa.sa_handler = forward;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+	for(int sig = 1; sig < NSIG; sig++) {
+		if( sig != SIGKILL && sig != SIGSTOP && sig != SIGCHLD ) {
+			sigaction(sig, &sa, NULL);
+		}
+	}
+	char line[32];
+	int n = 0;
+	char c;
+	while( n < (int) sizeof line - 1 ) {
+		ssize_t got = read(0, &c, 1);
+		if( got < 0 && errno == EINTR ) {
+			continue;
+		}
+		if( got <= 0 || c == '\n' ) {
+			break;
+		}
+		line[n++] = c;
+	}
+	line[n] = '\0';
+	return n == 0 ? 0 : atoi(line) & 0xff;
+}
+
 int main(int argc, char **argv) {
+	if( argc == 2 && strcmp(argv[1], "-s") == 0 ) {
+		return standIn();
+	}
 	int i = 1;
 	int group = 0, fg = 0;
 	pid_t pgid = 0;

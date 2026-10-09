@@ -583,6 +583,7 @@ public final class Executor {
 				if( ctx != sc && !(c instanceof Ast.SimpleCommand)) {
 					// ({ jobs; } | cat: a subshell with none of the shell's jobs)
 					ctx.jobsCleared = true;
+					ctx.wholeSubshell = c instanceof Ast.Subshell;
 				}
 				if( ctx != sc && c instanceof Ast.SimpleCommand ) {
 					// (bash expands a simple command's words before its subshell counts: echo
@@ -771,6 +772,9 @@ public final class Executor {
 			// goes on)
 			ShellContext ctx = sc.isolatedSubShell();
 			ctx.errTrapBlocked--;
+			ctx.wholeSubshell = ao.pipelines.size() == 1 && ao.pipelines.get(0).commands.size() == 1
+					&& !ao.pipelines.get(0).negated && !ao.pipelines.get(0).timed
+					&& ao.pipelines.get(0).commands.get(0) instanceof Ast.Subshell;
 			// (it holds the output it was started with, a pipe too, until it ends)
 			Console.share(sc.console, ctx.stdout);
 			// with no input: the shell's own (bash's /dev/null); input a command around it redirected
@@ -1038,23 +1042,35 @@ public final class Executor {
 		if( sc.isIsolated()) {
 			// in a pipe stage or job: its variables are its own already, and the shell's state is
 			// not put back from a copy (the shell goes on meanwhile)
+			if( sc.wholeSubshell ) {
+				// (( list ) & or ( list ) | ...: one process, as in bash)
+				sc.wholeSubshell = false;
+				sub.sameProcessAs(sc);
+			}
 			int ret = 1;
 			try {
 				ret = list(body, sub);
+				sub.subshellDone();
 			} catch (ExitException e) {
 				ret = e.exitCode;
 			} catch (us.bringardner.fsh.signal.ReturnException e) {
 				ret = e.exitCode;
 			} catch (AbandonLine e) {
 				ret = e.status;
+			} catch (ShellContext.SubshellSignal e) {
+				ret = ownSignal(e, sub);
+			} finally {
+				sub.endSubshell(ret);
 			}
 			return ret;
 		}
 		Console.Snapshot saved = sc.console.snapshot();
 		List<String> trap = sc.console.beginSubshellTrap();
 		int ret = 1;
+		ShellContext.SubshellSignal killed = null;
 		try {
 			ret = list(body, sub);
+			sub.subshellDone();
 		} catch (ExitException e) {
 			ret = e.exitCode;
 		} catch (us.bringardner.fsh.signal.ReturnException e) {
@@ -1063,12 +1079,45 @@ public final class Executor {
 		} catch (AbandonLine e) {
 			// (an error that ends the line ends the subshell, as bash's)
 			ret = e.status;
+		} catch (ShellContext.SubshellSignal e) {
+			// kill $BASHPID: a signal ended it
+			ret = ownSignal(e, sub);
+			killed = e;
 		} finally {
 			// its EXIT trap runs as it ends (an exit in it is the subshell's status)
 			ret = sc.console.endSubshellTrap(trap, ret);
 			sc.console.restore(saved);
+			sub.endSubshell(ret);
+		}
+		if( killed != null && !sc.inCommandSubstitution ) {
+			reportSignal(sc, killed.signal, sub.bashPid(), text(s.start, s.end).trim());
 		}
 		return ret;
+	}
+
+	/**
+	 * A command in the foreground that a signal ended, as bash reports it: Terminated: 15 and the
+	 * command; another signal (not INT or PIPE) with where and the process id first.
+	 */
+	static void reportSignal(ShellContext sc, int signal, long pid, String command) {
+		String name = String.valueOf(us.bringardner.fsh.job.ProcessSignals.name(signal));
+		if( name.equals("INT") || name.equals("PIPE")) {
+			return;
+		}
+		String text = String.format("%-25s  %s", us.bringardner.fsh.job.ProcessSignals.describe(signal), command);
+		if( name.equals("TERM")) {
+			sc.stderr.println(text);
+		} else {
+			sc.error(pid+" "+text);
+		}
+	}
+
+	/** a signal ended the subshell sub (128 + the signal); one for a subshell around it goes on */
+	static int ownSignal(ShellContext.SubshellSignal e, ShellContext sub) {
+		if( e.owner != sub ) {
+			throw e;
+		}
+		return e.exitCode();
 	}
 
 	/** a condition (if, while): set -e and the ERR trap do not apply to it */
@@ -3043,9 +3092,11 @@ public final class Executor {
 			saved = primary.console.snapshot();
 			run(ctx, code);
 		} catch (ExitException e) {
+		} catch (ShellContext.SubshellSignal e) {
 		} catch (Exception e) {
 			primary.stderr.println(message(e));
 		} finally {
+			ctx.endSubshell(0);
 			if( saved != null ) {
 				try {
 					primary.console.restore(saved);
@@ -3259,14 +3310,18 @@ public final class Executor {
 				primary.console.setOption(Option.ExitImediately, false);
 			}
 			status = list(seq, ctx);
+			ctx.subshellDone();
 		} catch (ExitException e) {
 			status = e.exitCode;
+		} catch (ShellContext.SubshellSignal e) {
+			status = ownSignal(e, ctx);
 		} catch (FshException e) {
 			status = 1;
 		} catch (Exception e) {
 			status = 1;
 			primary.stderr.println(message(e));
 		} finally {
+			ctx.endSubshell(status);
 			if( saved != null ) {
 				try {
 					primary.console.restore(saved);

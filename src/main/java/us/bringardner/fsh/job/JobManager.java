@@ -41,7 +41,10 @@ public class JobManager {
 		if( job.getPid()>=0) {
 			throw new RuntimeException("Logic error pid alread set = "+job.getPid());
 		}
-		int ret = getNextPid();
+		// a job's subshell has a process that stands in for it: its id is the job's ($!), as in bash
+		us.bringardner.fsh.ShellContext ctx = job.getShellContext();
+		us.bringardner.fsh.StandIn standIn = ctx == null ? null : ctx.standIn();
+		int ret = standIn != null ? (int) standIn.pid() : getNextPid();
 		job.setPid( ret);
 		job.setJobNumber(jobs.isEmpty() ? 1 : jobs.get(jobs.size()-1).getJobNumber()+1);
 		jobs.add(job);
