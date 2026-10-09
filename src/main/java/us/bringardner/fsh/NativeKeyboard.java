@@ -64,16 +64,34 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * The descriptors the process was given (fsh script 3&lt;file): {fd, mode} in turn, the JVM's
 	 * own (its modules and the class path's jars, open too) left out.
 	 */
+	/** the descriptors open as fsh started (see openAtStart), or null */
+	private static volatile String [] openAtStart;
+
+	/**
+	 * Note the descriptors open now, at the start, before the runtime opens its own (a native
+	 * image's signal pipe and /dev/random, at 3 and up): inheritedDescriptors are among them.
+	 */
+	public static void noteOpenAtStart() {
+		if( availible && openAtStart == null ) {
+			try {
+				openAtStart = new NativeKeyboard().openDescriptors0();
+			} catch (UnsatisfiedLinkError e) {
+			}
+		}
+	}
+
 	public static int [] inheritedDescriptors() {
 		if( !availible ) {
 			return new int[0];
 		}
-		String [] open;
-		try {
-			open = new NativeKeyboard().openDescriptors0();
-		} catch (UnsatisfiedLinkError e) {
-			// an older library
-			return new int[0];
+		String [] open = openAtStart;
+		if( open == null ) {
+			try {
+				open = new NativeKeyboard().openDescriptors0();
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+				return new int[0];
+			}
 		}
 		java.util.Set<String> jvm = new java.util.HashSet<>();
 		for(String entry : System.getProperty("java.class.path", "").split(java.io.File.pathSeparator)) {
@@ -668,21 +686,30 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			availible = false;
 		}
 		if( NATIVE_IMAGE ) {
-			// (no launcher gives a native image its library path: the library and fshexec are next to it)
+			// (no launcher gives a native image its library path: the library and fshexec are next
+			// to it, or (a copy of it elsewhere) where it was built: fsh.libdir, set as it is built)
 			String exe = ProcessHandle.current().info().command().orElse(null);
-			java.io.File dir = exe == null ? null : new java.io.File(exe).getParentFile();
-			if( dir != null ) {
-				if( !availible && new java.io.File(dir, System.mapLibraryName("nativekeyboard")).isFile()) {
+			java.util.List<java.io.File> dirs = new java.util.ArrayList<>();
+			if( exe != null && new java.io.File(exe).getParentFile() != null ) {
+				dirs.add(new java.io.File(exe).getParentFile());
+			}
+			if( System.getProperty("fsh.libdir") != null ) {
+				dirs.add(new java.io.File(System.getProperty("fsh.libdir")));
+			}
+			StringBuilder path = new StringBuilder();
+			for(java.io.File dir : dirs) {
+				java.io.File lib = new java.io.File(dir, System.mapLibraryName("nativekeyboard"));
+				if( !availible && lib.isFile()) {
 					try {
-						System.load(new java.io.File(dir, System.mapLibraryName("nativekeyboard")).getPath());
+						System.load(lib.getPath());
 						availible = true;
 					} catch (Throwable e) {
 					}
 				}
-				// (where helper() finds fshexec)
-				String path = System.getProperty("java.library.path", "");
-				System.setProperty("java.library.path", path.isEmpty() ? dir.getPath() : dir.getPath()+java.io.File.pathSeparator+path);
+				path.append(dir.getPath()).append(java.io.File.pathSeparator);
 			}
+			// (where helper() finds fshexec)
+			System.setProperty("java.library.path", path+System.getProperty("java.library.path", ""));
 		}
 	}
 

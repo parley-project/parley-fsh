@@ -43,6 +43,20 @@ public final class RawUtf8 extends Charset {
 		return isEscape(c) ? c & 0xff : c;
 	}
 
+	/**
+	 * All in reads, by reading it (readAllBytes of a file's stream asks for its size and
+	 * position first, which a pipe or fifo does not have in a native image).
+	 */
+	public static byte [] readAll(java.io.InputStream in) throws java.io.IOException {
+		java.io.ByteArrayOutputStream ret = new java.io.ByteArrayOutputStream();
+		byte [] buf = new byte[8192];
+		int n;
+		while( (n = in.read(buf)) >= 0 ) {
+			ret.write(buf, 0, n);
+		}
+		return ret.toByteArray();
+	}
+
 	/** bytes as text (see the class) */
 	public static String toText(byte [] bytes) {
 		return toText(bytes, 0, bytes.length);

@@ -2538,7 +2538,7 @@ $
 		java.util.function.Function<String,String> aliases = us.bringardner.fsh.syntax.Parser.aliases;
 		java.util.function.BooleanSupplier posix = us.bringardner.fsh.syntax.Parser.posixMode;
 		try (InputStream in = file.getInputStream()) {
-			String code = us.bringardner.fsh.RawUtf8.toText(in.readAllBytes());
+			String code = us.bringardner.fsh.RawUtf8.toText(us.bringardner.fsh.RawUtf8.readAll(in));
 			Console sub = new Console();
 			// (it starts where this shell is, as a program would)
 			sub.setCurrentDirectory(console.getCurrentDirectory());

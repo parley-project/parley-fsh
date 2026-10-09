@@ -929,22 +929,30 @@ delimiter
 	}
 
 	public static void main(String args[]) throws IOException {
+		// (what the shell was given, before the runtime and the shell open their own)
+		NativeKeyboard.noteOpenAtStart();
 		// temporary files (here-documents, fifos) in $TMPDIR, as bash's
 		String tmpdir = System.getenv("TMPDIR");
 		if( tmpdir != null && !tmpdir.isEmpty() && new java.io.File(tmpdir).isDirectory()) {
 			System.setProperty("java.io.tmpdir", tmpdir);
 		}
-		if( NativeKeyboard.NATIVE_IMAGE && System.getProperty("fsh.argv0") == null && NativeKeyboard.isAvailible()) {
-			// (as a launcher gives it to the JVM: how the shell was called, such as sh)
+		if( NativeKeyboard.NATIVE_IMAGE && System.getProperty("fsh.argv0") == null ) {
+			// (as a launcher gives it to the JVM: how the shell was called, such as sh; without the
+			// library, the program's own path)
+			String a0 = null;
 			try {
-				String a0 = NativeKeyboard.argv0();
-				if( a0 != null ) {
-					System.setProperty("fsh.argv0", a0);
-				}
+				a0 = NativeKeyboard.isAvailible() ? NativeKeyboard.argv0() : null;
 			} catch (UnsatisfiedLinkError e) {
 			}
+			if( a0 == null ) {
+				a0 = ProcessHandle.current().info().command().orElse(null);
+			}
+			if( a0 != null ) {
+				System.setProperty("fsh.argv0", a0);
+			}
 		}
-		if( System.getProperty("java.awt.headless") == null && noWindow(args)) {
+		if( System.getProperty("java.awt.headless") == null && (NativeKeyboard.NATIVE_IMAGE || noWindow(args))) {
+			// (a native image has no AWT, so never a window)
 			// (asking whether there is a display loads AWT, which takes longer than the rest of the
 			// start: with a script, -c or a terminal there is never a window, so it is not asked)
 			System.setProperty("java.awt.headless", "true");
@@ -1477,7 +1485,7 @@ delimiter
 			}
 			byte [] bytes;
 			try (InputStream in = file.getInputStream()) {
-				bytes = in.readAllBytes();
+				bytes = RawUtf8.readAll(in);
 			}
 			if( isBinary(bytes)) {
 				stdErr.println(name+": "+name+": cannot execute binary file");
@@ -3218,7 +3226,7 @@ delimiter
 			char comment = historyComment();
 			String text;
 			try(InputStream in = file.getInputStream()) {
-				text = us.bringardner.fsh.RawUtf8.toText(in.readAllBytes());
+				text = us.bringardner.fsh.RawUtf8.toText(us.bringardner.fsh.RawUtf8.readAll(in));
 			}
 			// as bash's read_history: with time stamps (and HISTTIMEFORMAT set) the lines after
 			// one are one command, blank lines in it kept (not those right after the stamp);
@@ -3321,7 +3329,7 @@ delimiter
 				try(InputStream in = file.getInputStream()) {
 					long loadTime = System.currentTimeMillis();
 					List<HistoryEntry> tmp = new ArrayList<>();
-					String [] lines = us.bringardner.fsh.RawUtf8.toText(in.readAllBytes()).split("\n");
+					String [] lines = us.bringardner.fsh.RawUtf8.toText(us.bringardner.fsh.RawUtf8.readAll(in)).split("\n");
 					for (int lineNum = 0; lineNum < lines.length; lineNum++) {
 						String line = lines[lineNum].trim();						
 						if( line.isEmpty()) {

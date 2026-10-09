@@ -31,5 +31,6 @@ jars=$(printf '%s:%s' "$jar" "$(cat target/runtime-classpath.txt)" | tr ':' '\n'
 python3 -I "$PROJECT_DIR/tools/native-reflect.py" $jars target/native-config/reflect-config.json > /dev/null || exit 1
 # (its work files in target, not the system's temporary directory)
 TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)" \
-	-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config -o target/native/fsh us.bringardner.fsh.Console || exit 1
+	-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config \
+	-Dfsh.libdir="$PROJECT_DIR/target/native" -o target/native/fsh us.bringardner.fsh.Console || exit 1
 cp -f "$LIB_DIR/libnativekeyboard.dylib" "$LIB_DIR/fshexec" target/native/

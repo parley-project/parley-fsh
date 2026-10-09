@@ -3497,7 +3497,7 @@ public final class Executor {
 				return "";
 			}
 			try (InputStream in = sc.getFileSource(path).getInputStream()) {
-				return us.bringardner.fsh.RawUtf8.toText(in.readAllBytes());
+				return us.bringardner.fsh.RawUtf8.toText(us.bringardner.fsh.RawUtf8.readAll(in));
 			}
 		} catch (IOException e) {
 			error(sc, path+": No such file or directory");
