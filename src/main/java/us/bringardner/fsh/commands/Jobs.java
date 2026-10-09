@@ -57,6 +57,10 @@ public class Jobs extends ShellCommand{
 				}
 			}
 		}
+		if( ctx.jobsCleared ) {
+			// ( jobs ): a subshell has no jobs of its own, as in bash
+			return 0;
+		}
 		ShellArgument options = parseArgs(ctx, Options.class);
 		JobManager jm = ctx.console.jobManager;
 		List<IJob> jobs = new ArrayList<>();

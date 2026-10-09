@@ -1472,6 +1472,8 @@ $
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
 		ret.subshellLevel = subshellLevel+1;
+		ret.inCommandSubstitution = inCommandSubstitution;
+		ret.jobsCleared = jobsCleared;
 		ret.line = line;
 		ret.job = job;
 		ret.loopDepth = loopDepth;
@@ -1561,6 +1563,10 @@ $
 	public int subshellLevel;
 	/** a pipe stage's simple command: its subshell counts once its words are expanded */
 	public boolean subshellPending;
+	/** in a $( ) (fg there has no current job, as in bash) */
+	public boolean inCommandSubstitution;
+	/** in a subshell that has none of the shell's jobs (( ), a compound pipe stage): jobs lists none */
+	public boolean jobsCleared;
 
 	/** how many sourced files are running (return ends the innermost) */
 	public int sourceDepth;

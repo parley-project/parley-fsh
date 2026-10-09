@@ -569,6 +569,10 @@ public final class Executor {
 			for (int i = 0; i < n; i++) {
 				Ast.Command c = p.commands.get(i);
 				ShellContext ctx = lastInShell && i == n-1 ? sc : sc.isolatedSubShell();
+				if( ctx != sc && !(c instanceof Ast.SimpleCommand)) {
+					// ({ jobs; } | cat: a subshell with none of the shell's jobs)
+					ctx.jobsCleared = true;
+				}
 				if( ctx != sc && c instanceof Ast.SimpleCommand ) {
 					// (bash expands a simple command's words before its subshell counts: echo
 					// $BASH_SUBSHELL | cat is 0, a builtin or function it runs is 1 deeper)
@@ -984,6 +988,8 @@ public final class Executor {
 	/** ( list ): a subshell, so its changes (x=1, cd, exit, set --, exec 3>f ...) stay inside */
 	private int subshell(Ast.Sequence body, ShellContext sc) throws IOException {
 		ShellContext sub = sc.subShell();
+		// (bash's subshell has none of the shell's jobs)
+		sub.jobsCleared = true;
 		if( sc.isIsolated()) {
 			// in a pipe stage or job: its variables are its own already, and the shell's state is
 			// not put back from a copy (the shell goes on meanwhile)
@@ -3152,6 +3158,7 @@ public final class Executor {
 		ShellContext ctx = primary.subShell();
 		ctx.errTrapBlocked++;
 		ctx.substitutionLevel++;
+		ctx.inCommandSubstitution = true;
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
 		ctx.stdout = new PrintStream(bao, true);
 		Console.Snapshot saved = null;

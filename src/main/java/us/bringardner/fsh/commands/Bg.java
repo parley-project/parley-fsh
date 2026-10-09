@@ -40,7 +40,13 @@ public class Bg extends ShellCommand{
 				return 2;
 			}
 		}
-		if( !ctx.console.jobControl()) {
+		if( ctx.console.jobControl() && ctx.subshellLevel > 0 && ctx.inCommandSubstitution && !ctx.jobsCleared ) {
+			// $(fg): the shell's jobs are not this one's to continue, as in bash
+			ctx.error(name+": no current jobs");
+			return 1;
+		}
+		if( !ctx.console.jobControl() || ctx.subshellLevel > 0 ) {
+			// (a subshell has no job control)
 			ctx.error(name+": no job control");
 			return 1;
 		}
