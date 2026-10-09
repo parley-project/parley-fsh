@@ -836,12 +836,17 @@ public final class Executor {
 				}
 			});
 			BackgroundJob job = new BackgroundJob(thread);
+			// with job control, as bash's: the job is a process group of its own, $! its id
+			ctx.standInLeadsGroup = sc.console.jobControl();
 			if( !sc.console.jobControl()) {
 				// as in bash, without job control a job started with & ignores SIGINT and SIGQUIT
 				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Interupt);
 				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Quit);
 			}
 			sc.console.addJob(job);
+			if( ctx.standInLeadsGroup && ctx.standIn() != null ) {
+				job.setProcessGroup(ctx.standIn().pid());
+			}
 			sc.console.jobManager.startedBy(job, sc.subshell);
 			job.start();
 			while( job.getState() == JobState.Idel ) {

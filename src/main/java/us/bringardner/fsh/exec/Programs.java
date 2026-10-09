@@ -385,7 +385,9 @@ public final class Programs {
 				// with job control, as bash: the job's programs are a process group of their own,
 				// which has the terminal while the job is in the foreground
 				boolean absolute = new java.io.File(cmd.get(0)).isAbsolute();
-				boolean grouped = ctx.console.isInteractive && job != null && absolute && NativeKeyboard.groupHelper() != null;
+				// (set -m in a script too: a job's programs are in its process group, as bash's)
+				boolean grouped = job != null && absolute && (ctx.console.isInteractive ? NativeKeyboard.groupHelper() != null
+						: ctx.console.jobControl() && job.getProcessGroup() != 0 && NativeKeyboard.helper() != null);
 				// a local file as input: the program reads it itself, from where the shell is, and the
 				// shell goes on from where the program left it (head -n 1 seeks back after its line)
 				onFile = !inheritIn && absolute && ctx.stdin instanceof ReadBack rb && rb.file() != null
@@ -544,7 +546,9 @@ public final class Programs {
 
 				boolean killed = false;
 				while(!waitFor(p, grouped ? 50 : 100)) {
-					if( !killed && ctx.getException() != null) {
+					if( !killed && ctx.getException() != null
+							&& !(ctx.getException() instanceof us.bringardner.fsh.signal.SignalException se && se.afterProgram)) {
+						// (not one its programs got themselves: they decide)
 						// the job was interrupted, terminated or killed
 						killed = true;
 						terminate(p);
@@ -568,6 +572,11 @@ public final class Programs {
 				}
 				exitCode = p.exitValue();
 				childEnded(ctx);
+				if( job != null && ctx.getException() instanceof us.bringardner.fsh.signal.SignalException se && se.afterProgram
+						&& exitCode != se.exitCode()) {
+					// it got the job's signal and did not die of it: the job goes on (bash's wait_sigint)
+					job.programSurvived(se);
+				}
 
 				// the process has exited, wait for the rest of its output
 				drain(sc2);

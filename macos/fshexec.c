@@ -1,5 +1,5 @@
 /*
- * fshexec -s
+ * fshexec -s [-g]
  * fshexec -u | -G
  * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [-I SIG,...] [--] program [args...]
  *
@@ -19,7 +19,8 @@
  * -s: stands in for one of fsh's subshells (which run in fsh's process): its process id is the
  *     subshell's ($BASHPID, $!). Each signal it gets (but KILL and STOP) is written to standard
  *     output as a byte, for fsh to give the subshell; a status read from standard input (a line)
- *     ends it with that status, as does the end of its input (0).
+ *     ends it with that status, as does the end of its input (0). With -g it leads a process
+ *     group of its own (a job's, with job control: the job's programs join it, $! is the group).
  * -u, -G: the system's user (or group) names, one a line, in its order (getpwent, getgrent: what
  *     bash's compgen -u and -g list; Java cannot read them).
  * -I: the program ignores these signals (by number), as the shell does (trap '' INT): Java
@@ -134,7 +135,10 @@ static int standIn(void) {
 }
 
 int main(int argc, char **argv) {
-	if( argc == 2 && strcmp(argv[1], "-s") == 0 ) {
+	if( argc >= 2 && strcmp(argv[1], "-s") == 0 ) {
+		if( argc == 3 && strcmp(argv[2], "-g") == 0 ) {
+			setpgid(0, 0);
+		}
 		return standIn();
 	}
 	if( argc == 2 && strcmp(argv[1], "-u") == 0 ) {

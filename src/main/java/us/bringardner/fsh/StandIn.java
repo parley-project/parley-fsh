@@ -48,12 +48,17 @@ public final class StandIn {
 	 * helper.
 	 */
 	public static StandIn start(IntConsumer signals) {
+		return start(signals, false);
+	}
+
+	/** start, the stand-in leading a process group of its own (a job's, with job control) when group */
+	public static StandIn start(IntConsumer signals, boolean group) {
 		String helper = NativeKeyboard.helper();
 		if( helper == null ) {
 			return null;
 		}
 		try {
-			ProcessBuilder builder = new ProcessBuilder(helper, "-s");
+			ProcessBuilder builder = group ? new ProcessBuilder(helper, "-s", "-g") : new ProcessBuilder(helper, "-s");
 			builder.redirectError(ProcessBuilder.Redirect.DISCARD);
 			StandIn ret = new StandIn(builder.start(), signals);
 			running.put(ret.pid(), ret);

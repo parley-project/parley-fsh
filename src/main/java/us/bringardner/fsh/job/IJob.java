@@ -58,6 +58,16 @@ public interface IJob {
 	/** a signal ends the job (Ctrl-C, kill): its status is 128 + signum */
 	void signalJob(int signum);
 
+	/**
+	 * A signal for a job that has programs running (kill -INT -- -$!): they get it and decide
+	 * (bats prints its report on SIGINT); its commands stop after the one running.
+	 * @return false if it has none running (signalJob is for it)
+	 */
+	boolean signalPrograms(int signum);
+
+	/** the program that got it (signalPrograms) did not die of it: the job goes on, as bash's */
+	void programSurvived(us.bringardner.fsh.signal.SignalException e);
+
 	/** what the job's commands throw once a signal has ended it, or null */
 	RuntimeException getStopRequest();
 

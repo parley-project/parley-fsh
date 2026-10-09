@@ -1591,6 +1591,8 @@ $
 	private java.util.Set<Console.ConsoleSignalHandler> inheritedTraps = java.util.Collections.emptySet();
 	/** the process that stands in for this subshell ($BASHPID), once there is one */
 	private volatile StandIn standIn;
+	/** its stand-in leads a process group (a job's with job control: its programs join it) */
+	public boolean standInLeadsGroup;
 	/** a job or pipe stage that is just ( list ): that subshell is this one (one process in bash) */
 	public boolean wholeSubshell;
 	/** the subshell this one is the same process as (see wholeSubshell), or null */
@@ -1641,7 +1643,7 @@ $
 			synchronized (this) {
 				ret = standIn;
 				if( ret == null && !subshellEnded ) {
-					ret = StandIn.start(this::signal);
+					ret = StandIn.start(this::signal, standInLeadsGroup);
 					standIn = ret;
 				}
 			}
@@ -1705,7 +1707,10 @@ $
 		}
 		default -> {
 			if( jobTop ) {
-				job.signalJob(sig);
+				// (its programs get it and decide; else it ends)
+				if( !job.signalPrograms(sig)) {
+					job.signalJob(sig);
+				}
 			} else {
 				setExecption(new SubshellSignal(this, sig));
 			}

@@ -191,6 +191,27 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		}
 	}
 
+	@Override
+	public boolean signalPrograms(int signum) {
+		JobState was = state;
+		if( was == JobState.Termnated || was == JobState.Notified || processes.isEmpty() || was == JobState.Suspended ) {
+			return false;
+		}
+		if( stopRequest == null ) {
+			stopRequest = new SignalException(signum, true);
+		}
+		String name = ProcessSignals.name(signum);
+		ProcessSignals.send(processes, name == null ? String.valueOf(signum) : name);
+		return true;
+	}
+
+	@Override
+	public void programSurvived(SignalException e) {
+		if( stopRequest == e ) {
+			stopRequest = null;
+		}
+	}
+
 	/** the signal ends the job: its programs get it and its commands stop */
 	@Override
 	public void signalJob(int signum) {
