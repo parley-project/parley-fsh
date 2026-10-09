@@ -1611,15 +1611,22 @@ $
 	 * function's local of that name hides it (its value, or nothing if it has none), as in bash.
 	 */
 	public Object exportedValue(String name, Object envValue) {
-		FunctionInvocation scope = localScope(name);
-		if( scope == null ) {
-			return envValue;
+		// (a local with no value is passed over, as bash's: the one further out is given)
+		for (int idx = functionStack.size()-1; idx >= 0; idx--) {
+			FunctionInvocation scope = functionStack.get(idx);
+			if( !scope.local.containsKey(name)) {
+				continue;
+			}
+			Object v = scope.local.get(name);
+			if( v == null || v == UNSET_LOCAL ) {
+				continue;
+			}
+			if( v instanceof Map<?,?> || v instanceof NameRef ) {
+				return null;
+			}
+			return v instanceof List<?> l ? (l.isEmpty() ? null : firstElement(v)) : v;
 		}
-		Object v = scope.local.get(name);
-		if( v == null || v == UNSET_LOCAL || v instanceof Map<?,?> || v instanceof NameRef ) {
-			return null;
-		}
-		return v instanceof List<?> l ? (l.isEmpty() ? null : firstElement(v)) : v;
+		return envValue;
 	}
 
 	public Map<String, Object> getEnvironmentVariables() {
