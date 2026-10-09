@@ -249,6 +249,10 @@ final class Redirects {
 				in = file.getInputStream();
 				if( file.isFile()) {
 					in = new ReadBack(in);
+				} else if( fd != null && fd > 2 && file instanceof FileProxy ) {
+					// a named pipe or a device as 3 or more (exec 5< <(cmd)): shared with programs
+					// (on 0 a program reads it itself, and takes all it reads, as in bash)
+					in = new PipeInput(in);
 				}
 			}
 			setIn(sc, fd == null ? 0 : fd, in, opened);
@@ -491,7 +495,7 @@ final class Redirects {
 		if( file instanceof FileProxy proxy && proxy.getTarget().exists() && !proxy.getTarget().isFile() && !proxy.getTarget().isDirectory()) {
 			// a named pipe or a device (exec 9<> fifo): opened for reading and writing at once
 			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(proxy.getTarget(), "rw");
-			InputStream in = new FifoInput(raf);
+			InputStream in = new PipeInput(raf);
 			OutputStream out = new OutputStream() {
 				@Override
 				public void write(int b) throws IOException {
@@ -545,79 +549,4 @@ final class Redirects {
 		}
 	}
 
-	/**
-	 * Input from a named pipe opened read-write. What is waiting in a pipe is not known (Java's
-	 * available is 0), so available reads one byte in the background: read -t sees it when it
-	 * comes, and the byte is the next one read.
-	 */
-	private static final class FifoInput extends InputStream {
-		private final java.io.RandomAccessFile raf;
-		/** the byte read ahead, -2 if none (-1 is the end) */
-		private int ahead = -2;
-		private Thread reading;
-
-		FifoInput(java.io.RandomAccessFile raf) {
-			this.raf = raf;
-		}
-
-		@Override
-		public synchronized int available() throws IOException {
-			if( ahead != -2 ) {
-				return ahead < 0 ? 0 : 1;
-			}
-			if( reading == null ) {
-				reading = new Thread(() -> {
-					int b;
-					try {
-						b = raf.read();
-					} catch (IOException e) {
-						b = -1;
-					}
-					synchronized (FifoInput.this) {
-						ahead = b;
-						reading = null;
-						FifoInput.this.notifyAll();
-					}
-				}, "named pipe read-ahead");
-				reading.setDaemon(true);
-				reading.start();
-			}
-			return 0;
-		}
-
-		@Override
-		public synchronized int read() throws IOException {
-			while( reading != null ) {
-				try {
-					wait();
-				} catch (InterruptedException e) {
-					throw new java.io.InterruptedIOException();
-				}
-			}
-			if( ahead != -2 ) {
-				int b = ahead;
-				ahead = -2;
-				return b;
-			}
-			return raf.read();
-		}
-
-		@Override
-		public int read(byte[] b, int off, int len) throws IOException {
-			if( len == 0 ) {
-				return 0;
-			}
-			int first = read();
-			if( first < 0 ) {
-				return -1;
-			}
-			b[off] = (byte) first;
-			return 1;
-		}
-
-		@Override
-		public void close() throws IOException {
-			raf.close();
-		}
-	}
 }

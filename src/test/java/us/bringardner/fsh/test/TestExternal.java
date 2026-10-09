@@ -450,4 +450,27 @@ public class TestExternal extends AbstractConsoleTest {
 		pgrep.waitFor();
 		assertEquals("", new String(pgrep.getInputStream().readAllBytes()).trim());
 	}
+
+	/** the shell's descriptors above 2 reach programs (through the helper), as in bash */
+	@Test
+	public void testExternalDescriptors() throws Exception{
+		java.io.File helper = new java.io.File("macos/fshexec").getAbsoluteFile();
+		org.junit.jupiter.api.Assumptions.assumeTrue(helper.canExecute() && getOs() != OperatingSystem.Windows);
+		String old = System.getProperty("fsh.exec");
+		System.setProperty("fsh.exec", helper.getPath());
+		try {
+			setup("ExternalTestFiles");
+			String cmd = "/bin/sh -c 'echo three >&3' 3>&1 | /usr/bin/tr a-z A-Z\n"
+					+ "x=$( { /bin/sh -c 'echo err >&2; echo out' 2>&1 1>&3 3>&- ; } 3>&1 ); echo \"$x\"\n"
+					+ "exec 5< <(printf 'l1\\nl2\\nl3\\n')\n"
+					+ "read -u 5 a; /bin/sh -c 'read b <&5; echo \"$b\"'; read -u 5 c; echo \"$a $c\"\n";
+			executeCommand(cmd, "", 0, "THREE\nerr\nout\nl2\nl1 l3\n", "");
+		} finally {
+			if( old == null ) {
+				System.clearProperty("fsh.exec");
+			} else {
+				System.setProperty("fsh.exec", old);
+			}
+		}
+	}
 }

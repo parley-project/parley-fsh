@@ -1211,6 +1211,8 @@ delimiter
 				environmentVariables.remove(VARIABLE_HISTFILE);
 			}
 		}
+		// the shell starts now, set up (the JVM takes a while to): $SECONDS counts from here
+		secondsStart = System.currentTimeMillis()/1000;
 		runStartupFiles(inv);
 		if( inv.restricted ) {
 			// (-r: restricted once the startup files have run, as in bash)
@@ -4001,20 +4003,23 @@ delimiter
 		return ret;
 	}
 
-	/** $SECONDS counts from here (SECONDS=n moves it) */
-	private volatile long secondsStart = System.currentTimeMillis();
+	/**
+	 * $SECONDS counts from here (SECONDS=n moves it), in whole seconds since 1970 as bash's
+	 * shell_start_time: $EPOCHSECONDS-$SECONDS is always the start
+	 */
+	private volatile long secondsStart = System.currentTimeMillis()/1000;
 
 	public long seconds() {
-		return (System.currentTimeMillis()-secondsStart)/1000;
+		return System.currentTimeMillis()/1000-secondsStart;
 	}
 
 	/** when the shell started (moved by SECONDS=n, as bash's shell_start_time), in seconds since 1970 */
 	public long startSeconds() {
-		return secondsStart/1000;
+		return secondsStart;
 	}
 
 	public void setSeconds(long n) {
-		secondsStart = System.currentTimeMillis()-n*1000;
+		secondsStart = System.currentTimeMillis()/1000-n;
 	}
 
 	/** declare x, declare -a a: names declared with no value (unset takes them off) */

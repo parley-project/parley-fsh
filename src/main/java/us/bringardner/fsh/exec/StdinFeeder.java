@@ -20,7 +20,7 @@ import us.bringardner.fsh.SharedInput;
 final class StdinFeeder extends Thread {
 
 	/** named pipes that are empty and free again */
-	private static final ConcurrentLinkedQueue<File> free = new ConcurrentLinkedQueue<>();
+	static final ConcurrentLinkedQueue<File> free = new ConcurrentLinkedQueue<>();
 
 	final File fifo;
 	private final InputStream source;

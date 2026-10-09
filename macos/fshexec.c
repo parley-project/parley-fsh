@@ -1,5 +1,5 @@
 /*
- * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [--] program [args...]
+ * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [--] program [args...]
  *
  * Runs a program for fsh as bash would run it.
  *
@@ -14,6 +14,8 @@
  * -r: the program and its arguments, and each -e NAME=VALUE that follows, are written with %XX
  *     for bytes (Java cannot pass bytes that are not UTF-8 itself); -e puts NAME=VALUE in the
  *     program's environment.
+ * -f: the program's descriptor N (above 2: Java gives a program only 0, 1 and 2) is ARG opened
+ *     for reading (r) or writing (w), or a copy of descriptor ARG (d), as N is open in the shell.
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -55,6 +57,30 @@ static void run(char **argv) {
 	_exit(err == ENOENT ? 127 : 126);
 }
 
+/* descriptor n is path opened with flags, or (dup) a copy of descriptor arg */
+static void descriptor(int n, const char *how, const char *arg) {
+	int fd;
+	if( strcmp(how, "d") == 0 ) {
+		fd = atoi(arg);
+		if( fd != n ) {
+			dup2(fd, n);
+		}
+		return;
+	}
+	// (reading: not waiting for a writer, as the shell's may have written all and gone; what it
+	// wrote is in the pipe)
+	fd = open(arg, strcmp(how, "w") == 0 ? O_WRONLY : O_RDONLY|O_NONBLOCK);
+	if( fd < 0 ) {
+		fprintf(stderr, "fsh: %s: %s\n", arg, strerror(errno));
+		return;
+	}
+	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK);
+	if( fd != n ) {
+		dup2(fd, n);
+		close(fd);
+	}
+}
+
 int main(int argc, char **argv) {
 	int i = 1;
 	int group = 0, fg = 0;
@@ -82,6 +108,9 @@ int main(int argc, char **argv) {
 				setenv(entry, eq+1, 1);
 			}
 			i += 2;
+		} else if( strcmp(argv[i], "-f") == 0 && i+3 < argc ) {
+			descriptor(atoi(argv[i+1]), argv[i+2], argv[i+3]);
+			i += 4;
 		} else if( strcmp(argv[i], "-0") == 0 && i+1 < argc ) {
 			argv0 = argv[i+1];
 			i += 2;
@@ -95,7 +124,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	if( i >= argc ) {
-		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [-r [-e name=value]...] [--] program [args...]\n");
+		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [-r [-e name=value]...] [-f n r|w|d arg]... [--] program [args...]\n");
 		return 2;
 	}
 	if( raw ) {

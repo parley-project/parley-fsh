@@ -158,9 +158,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	private native int stoppedBy(long pid);
 
-	private static volatile String helper;
-	/** the fsh.exec property helper was found with */
-	private static volatile String helperProperty;
+	/** {the fsh.exec property it was found with, the helper ("" if none)} */
+	private static volatile String [] helper;
 	private static volatile Boolean groups;
 
 	/**
@@ -169,8 +168,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 */
 	public static String helper() {
 		String prop = System.getProperty("fsh.exec");
-		if( helper == null || !java.util.Objects.equals(prop, helperProperty)) {
-			helperProperty = prop;
+		String [] known = helper;
+		if( known == null || !java.util.Objects.equals(prop, known[0])) {
 			String found = "";
 			java.util.List<String> dirs = new java.util.ArrayList<>();
 			if( prop != null ) {
@@ -184,10 +183,13 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					break;
 				}
 			}
-			helper = found;
+			// (the two at once: another thread never sees the property with the old helper)
+			known = new String[] {prop, found};
+			helper = known;
 		}
-		return helper.isEmpty() ? null : helper;
+		return known[1].isEmpty() ? null : known[1];
 	}
+
 
 	/**
 	 * The helper, when a job's programs can be a process group that has the terminal (on a

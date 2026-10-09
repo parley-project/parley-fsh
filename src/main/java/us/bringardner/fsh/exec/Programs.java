@@ -353,6 +353,7 @@ public final class Programs {
 			Object terminalUser = null;
 			StdinFeeder feeder = null;
 			ReadBack onFile = null;
+			ProgramDescriptors fds = null;
 			java.io.File report = null;
 			us.bringardner.fsh.job.IJob job = ctx.job;
 
@@ -419,10 +420,12 @@ public final class Programs {
 					// $_ in its environment is the program's path, as bash puts it there
 					env.put("_", name);
 				}
-				// bytes that are not UTF-8 in its arguments or environment: through the helper
-				List<String> raw = rawBytes(command, env);
-				if( raw != null ) {
-					builder.command(raw);
+				// the shell's descriptors above 2, and bytes that are not UTF-8 in its arguments or
+				// environment: through the helper
+				fds = ProgramDescriptors.of(ctx, ctx.stdin, ctx.stdout, ctx.stderr);
+				List<String> helped = throughHelper(command, env, fds.options);
+				if( helped != null ) {
+					builder.command(helped);
 				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
@@ -452,6 +455,11 @@ public final class Programs {
 					ctx.stderr.flush();
 					builder.redirectError(ProcessBuilder.Redirect.INHERIT);
 				}
+				// 2>&1 (one stream for both): one pipe, so what it writes stays in order, as in bash
+				boolean together = !inheritOut && !inheritErr && KeptOpen.unwrap(ctx.stdout) == KeptOpen.unwrap(ctx.stderr);
+				if( together ) {
+					builder.redirectErrorStream(true);
+				}
 				if( tty && foreground && (inheritIn || inheritOut || inheritErr)) {
 					terminalUser = new Object();
 					if( job != null ) {
@@ -466,7 +474,8 @@ public final class Programs {
 					synchronized (job) {
 						// the first program makes the group; the others of the job (a pipeline) join it
 						List<String> args = new java.util.ArrayList<>(builder.command());
-						args.set(2, String.valueOf(job.getProcessGroup()));
+						// (after the outer helper's options, if any)
+						args.set(args.indexOf("-g")+1, String.valueOf(job.getProcessGroup()));
 						builder.command(args);
 						p = builder.start();
 						long group = job.getProcessGroup();
@@ -484,6 +493,7 @@ public final class Programs {
 					job.addProcess(p);
 				}
 				process = p;
+				fds.start();
 				if( inheritIn || ctx.stdin instanceof us.bringardner.fsh.ProcessStdin ) {
 					// the program reads the shell's input itself
 				} else if( feeder != null ) {
@@ -503,7 +513,7 @@ public final class Programs {
 				if( !inheritOut ) {
 					sc2 = new StreamCopier(ctx,p.getInputStream(),ctx.stdout,name+" stdout",true,false);
 				}
-				if( !inheritErr ) {
+				if( !inheritErr && !together ) {
 					sc3 = new StreamCopier(ctx,p.getErrorStream(),ctx.stderr,name+" stderr",true,false);
 				}
 
@@ -547,6 +557,7 @@ public final class Programs {
 				// the process has exited, wait for the rest of its output
 				drain(sc2);
 				drain(sc3);
+				fds.finish();
 				if( feeder != null ) {
 					feeder.finish();
 					feeder = null;
@@ -573,6 +584,9 @@ public final class Programs {
 			} finally {
 				if( report != null ) {
 					report.delete();
+				}
+				if( fds != null ) {
+					fds.finish();
 				}
 				if( feeder != null ) {
 					// it did not start, or failed
@@ -764,17 +778,27 @@ public final class Programs {
 
 
 	/**
-	 * command run through the helper with -r, when it or env has bytes that are not UTF-8 (which
-	 * Java would pass as ?): the arguments, and the variables that have such bytes, written with
-	 * %XX for the helper to make bytes again. Null when there are none, or no helper.
+	 * command run through the helper, with options (ProgramDescriptors') and with -r when it or
+	 * env has bytes that are not UTF-8 (which Java would pass as ?): the arguments, and the
+	 * variables that have such bytes, written with %XX for the helper to make bytes again. Null
+	 * when there is nothing for the helper to do, or no helper.
 	 */
-	static List<String> rawBytes(List<String> command, Map<String,String> env) {
+	static List<String> throughHelper(List<String> command, Map<String,String> env, List<String> options) {
 		String helper = NativeKeyboard.helper();
-		if( helper == null || command.stream().noneMatch(Programs::hasRawBytes)
-				&& env.entrySet().stream().noneMatch(e -> hasRawBytes(e.getKey()) || hasRawBytes(e.getValue()))) {
+		boolean raw = command.stream().anyMatch(Programs::hasRawBytes)
+				|| env.entrySet().stream().anyMatch(e -> hasRawBytes(e.getKey()) || hasRawBytes(e.getValue()));
+		if( helper == null || !raw && options.isEmpty() || !new java.io.File(command.get(0)).isAbsolute()) {
+			// (a name not found on the PATH: Java's error says command not found)
 			return null;
 		}
-		List<String> ret = new java.util.ArrayList<>(List.of(helper, "-r"));
+		List<String> ret = new java.util.ArrayList<>(List.of(helper));
+		ret.addAll(options);
+		if( !raw ) {
+			ret.add("--");
+			ret.addAll(command);
+			return ret;
+		}
+		ret.add("-r");
 		for(java.util.Iterator<Map.Entry<String,String>> it = env.entrySet().iterator(); it.hasNext(); ) {
 			Map.Entry<String,String> e = it.next();
 			if( hasRawBytes(e.getKey()) || hasRawBytes(e.getValue())) {
