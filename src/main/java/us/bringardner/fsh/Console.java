@@ -2267,13 +2267,12 @@ delimiter
 				case 'r': ret.append("\r");
 				break;
 				// \s	The name of the shell: the base name of $0 (the portion following the final slash).
-				case 's':
-					Object p = positionalParameters.get(0);
-					if(p !=null ) {
-						String zero = ""+p;
-						ret.append(zero.substring(zero.lastIndexOf('/')+1));
-					}
+				case 's': {
+					// (how the shell was called, not a script's $0, as bash's shell_name)
+					String zero = System.getProperty("fsh.argv0", "fsh");
+					ret.append(zero.substring(zero.lastIndexOf('/')+1).replaceFirst("^-", ""));
 					break;
+				}
 
 					// \t	The time, in 24-hour HH:MM:SS format.
 				case 't':
@@ -2355,7 +2354,11 @@ delimiter
 
 				case '[':
 				case ']':
-					// they only mark where the terminal shows nothing
+					// they only mark where the terminal shows nothing (${x@P} with line editing on
+					// keeps readline's markers, \001 and \002, as bash's)
+					if( PROMPT_MARKERS.get()) {
+						ret.append(next == '[' ? (char) 1 : (char) 2);
+					}
 					break;
 
 				default:
@@ -2379,12 +2382,34 @@ delimiter
 						ret.append(ch);
 					}
 				}
+			} else if( c == '!' && isOptionEnabled(Option.Posix)) {
+				// posix mode: ! is the history number, !! a !
+				if( idx+1 < chars.length && chars[idx+1] == '!' ) {
+					ret.append('!');
+					idx++;
+				} else {
+					ret.append(""+(history.size()+1));
+				}
 			} else {
 				ret.append(c);
 			}
 		}
 
 		return ret.toString();
+	}
+
+	/** expanding ${x@P}: \[ and \] give readline's markers when line editing is on */
+	private static final ThreadLocal<Boolean> PROMPT_MARKERS = ThreadLocal.withInitial(() -> false);
+
+	/** ${x@P}: as a prompt, with readline's \001 and \002 for \[ \] when line editing is on (bash's) */
+	public String expandPromptTransform(ShellContext sc, String val) {
+		boolean was = PROMPT_MARKERS.get();
+		PROMPT_MARKERS.set(isOptionEnabled(Option.Emacs) || isOptionEnabled(Option.Vi));
+		try {
+			return expandPrompt(sc, val);
+		} finally {
+			PROMPT_MARKERS.set(was);
+		}
 	}
 
 	/** PROMPT_DIRTRIM=n: \\w keeps the last n directories, after ... */

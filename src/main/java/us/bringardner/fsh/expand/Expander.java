@@ -879,7 +879,8 @@ public final class Expander {
 			if( c == '/' ) {
 				int len = rest.length() > 1 && "/#%".indexOf(rest.charAt(1)) >= 0 ? 2 : 1;
 				op = rest.substring(0, len);
-				int slash = Parser.indexOfUnquoted(rest, '/', len);
+				// (a pattern may start with /: ${a///a/} replaces /a, as bash's)
+				int slash = Parser.indexOfUnquoted(rest, '/', op.equals("//") && len < rest.length() && rest.charAt(len) == '/' ? len+1 : len);
 				arg = slash < 0 ? rest.substring(len) : rest.substring(len, slash);
 				arg2 = slash < 0 ? null : rest.substring(slash+1);
 				return this;
@@ -1325,7 +1326,8 @@ public final class Expander {
 			}
 			ret |= part(p, context == QUOTED ? QUOTED : EXPANDED, out);
 		}
-		if( parts.isEmpty() && context == QUOTED ) {
+		if( context == QUOTED ) {
+			// ("${x:-$@}" with no parameters is one empty word, as bash's: not "$@"'s none)
 			ret = true;
 		}
 		return ret || out.size() > before;
@@ -1570,6 +1572,11 @@ public final class Expander {
 			// as bash: x: 1+: arithmetic syntax error ...
 			throw new ExpansionError(e.name+": "+x.getMessage(), x.kind);
 		}
+		if( v.isList() && v.items.size() == 1 && e.subscript != null && (e.subscript.equals("@") || e.subscript.equals("*"))
+				&& !(sc.getVariable(e.name) instanceof List<?>) && !(sc.getVariable(e.name) instanceof Map<?,?>)) {
+			// ${var[@]:3} of a variable that is no array: its value's substring, as bash's
+			v = Val.of(v.items.get(0));
+		}
 		if( !v.isList()) {
 			String s = v.scalar == null ? "" : v.scalar;
 			int n = s.length();
@@ -1661,7 +1668,7 @@ public final class Expander {
 			return v.map(ShellContext::ansiC);
 		case 'P':
 			// as a prompt expands it
-			return v.map(s -> sc.console.expandPrompt(sc, s));
+			return v.map(s -> sc.console.expandPromptTransform(sc, s));
 		case 'U':
 			return v.map(String::toUpperCase);
 		case 'u':
