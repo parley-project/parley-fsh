@@ -781,6 +781,14 @@ public final class Declarations {
 			}
 			if( o.indexOf('x') >= 0 ) {
 				Object v = sc.getVariable(name);
+				if( local && sc.isInFunction() && sc.isOwnLocal(name) && sc.getEvironmentVariable(name) != null ) {
+					// typeset +x foo of a function's local: that local is not exported (the global
+					// one stays so); -x exports it again
+					sc.setLocalExported(name, !remove);
+					if( remove ) {
+						continue;
+					}
+				}
 				sc.setEnvironmentVariable(name, remove ? null : v == null ? "" : String.valueOf(v));
 			}
 		}
@@ -997,7 +1005,7 @@ public final class Declarations {
 		if( sc.console.isReadonly(name)) {
 			flags += "r";
 		}
-		if( sc.getEvironmentVariable(name) != null || val == null && sc.console.pendingExports.contains(name)) {
+		if( (sc.getEvironmentVariable(name) != null && !sc.isUnexportedLocal(name)) || val == null && sc.console.pendingExports.contains(name)) {
 			flags += "x";
 		}
 		Character c = sc.caseAttribute(name);

@@ -1299,6 +1299,24 @@ $
 
 	@SuppressWarnings("unchecked")
 	/** the innermost running function with a local variable name, or null */
+	/** typeset +x name (false) or -x (true) of a function's local: whether it is exported */
+	public void setLocalExported(String name, boolean exported) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			if( exported ) {
+				scope.unexported.remove(name);
+			} else {
+				scope.unexported.add(name);
+			}
+		}
+	}
+
+	/** the name is a function's local that typeset +x made not exported */
+	public boolean isUnexportedLocal(String name) {
+		FunctionInvocation scope = localScope(name);
+		return scope != null && scope.unexported.contains(name);
+	}
+
 	private FunctionInvocation localScope(String name) {
 		for (int idx = functionStack.size()-1; idx >= 0; idx--) {
 			if( functionStack.get(idx).local.containsKey(name)) {
@@ -1621,6 +1639,10 @@ $
 			if( v == null || v == UNSET_LOCAL ) {
 				continue;
 			}
+			if( scope.unexported.contains(name)) {
+				// (typeset +x: not passed on; the one further out is, as in bash)
+				continue;
+			}
 			if( v instanceof Map<?,?> || v instanceof NameRef ) {
 				return null;
 			}
@@ -1652,6 +1674,8 @@ $
 		int callLine;
 		/** the environment before a local of this function was exported (UNSET_LOCAL: none) */
 		final Map<String,Object> envBefore = new java.util.HashMap<>();
+		/** its locals that are not exported (typeset +x name) though the global one is */
+		final java.util.Set<String> unexported = new java.util.HashSet<>();
 		/** the locals it made readonly */
 		final java.util.Set<String> readonlyHere = new java.util.HashSet<>();
 		/** local -: the set -o options when it ran (put back when it returns), or null */

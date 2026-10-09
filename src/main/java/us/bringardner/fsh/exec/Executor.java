@@ -865,6 +865,11 @@ public final class Executor {
 			}
 			Redirects.Saved saved = Redirects.Saved.of(sc);
 			List<Closeable> opened;
+			Ast.Redirect first = c.redirects.get(0);
+			if( first.line > 0 ) {
+				// (a redirect error is the redirect's line's, as bash's)
+				sc.line = first.line;
+			}
 			try {
 				opened = Redirects.apply(c.redirects, sc, expander(sc));
 			} catch (ExpansionError e) {
