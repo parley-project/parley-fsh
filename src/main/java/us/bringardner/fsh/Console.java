@@ -934,9 +934,40 @@ delimiter
 
 	}
 
+	/** the outputs more than one holds (a job started with a pipe stage's), and how many do */
+	private static final Map<OutputStream, int[]> sharers = new java.util.IdentityHashMap<>();
+
+	/**
+	 * out is held by one more (a job started with it, cmd &amp; in a pipe stage): as a file
+	 * descriptor, it is closed when the last one that holds it closes it.
+	 */
+	public static void share(Console console, OutputStream out) {
+		if( out == null || out == console.stdOut || out == System_out || out == System_err ) {
+			return;
+		}
+		synchronized (sharers) {
+			int[] count = sharers.get(out);
+			if( count == null ) {
+				sharers.put(out, new int[] {2});
+			} else {
+				count[0]++;
+			}
+		}
+	}
+
 	public static void close(Console console,OutputStream out) {
 		if( console.stdOut == out ) {
 			return;
+		}
+		synchronized (sharers) {
+			int[] count = sharers.get(out);
+			if( count != null ) {
+				// (another still holds it: the last one closes it)
+				if( --count[0] <= 1 ) {
+					sharers.remove(out);
+				}
+				return;
+			}
 		}
 		if( out != System_out && out != System_err) {
 			try {

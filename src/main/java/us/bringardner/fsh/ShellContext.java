@@ -1472,6 +1472,7 @@ $
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
 		ret.subshellLevel = subshellLevel+1;
+		ret.subshell = new Object();
 		ret.inCommandSubstitution = inCommandSubstitution;
 		ret.jobsCleared = jobsCleared;
 		ret.line = line;
@@ -1563,6 +1564,8 @@ $
 	public int subshellLevel;
 	/** a pipe stage's simple command: its subshell counts once its words are expanded */
 	public boolean subshellPending;
+	/** which subshell this is (null: the shell itself): the jobs it starts are its children */
+	public Object subshell;
 	/** in a $( ) (fg there has no current job, as in bash) */
 	public boolean inCommandSubstitution;
 	/** in a subshell that has none of the shell's jobs (( ), a compound pipe stage): jobs lists none */

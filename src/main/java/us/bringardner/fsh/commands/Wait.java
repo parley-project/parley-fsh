@@ -134,7 +134,7 @@ public class Wait extends ShellCommand{
 					}
 				} else {
 					for(IJob job : jm.getJobs()) {
-						if( job.getState() != JobState.Suspended ) {
+						if( job.getState() != JobState.Suspended && jm.isChildOf(job, ctx.subshell)) {
 							candidates.add(job);
 						}
 					}
@@ -152,7 +152,7 @@ public class Wait extends ShellCommand{
 				// all of them (not the stopped ones, which would never end); status 0
 				List<IJob> all = new ArrayList<>();
 				for(IJob job : jm.getJobs()) {
-					if( job.getState() != JobState.Suspended ) {
+					if( job.getState() != JobState.Suspended && jm.isChildOf(job, ctx.subshell)) {
 						all.add(job);
 					}
 				}
@@ -173,12 +173,17 @@ public class Wait extends ShellCommand{
 					}
 					long pid = Long.parseLong(w);
 					IJob job = jm.getJobByPid(pid);
+					// (the shell's jobs are not a subshell's children)
+					boolean foreign = job != null ? !jm.isChildOf(job, ctx.subshell) : ctx.subshell != null;
+					if( foreign ) {
+						job = null;
+					}
 					if( job != null ) {
 						waitAny(ctx, List.of(job));
 						status = job.getExitCode();
 						lastPid = pid;
 						reportAndRemove(ctx, jm, job);
-					} else if( jm.finishedStatus(pid) != null ) {
+					} else if( !foreign && jm.finishedStatus(pid) != null ) {
 						status = jm.finishedStatus(pid);
 						lastPid = pid;
 					} else {
@@ -217,6 +222,10 @@ public class Wait extends ShellCommand{
 		} catch (JobSpecs.Ambiguous e) {
 			ctx.error("wait: "+e.getMessage());
 			return null;
+		}
+		if( job != null && !jm.isChildOf(job, ctx.subshell)) {
+			// (a subshell has none of the shell's jobs)
+			job = null;
 		}
 		if( job == null && w.startsWith("%")) {
 			ctx.error("wait: "+JobSpecs.describe(w)+": no such job");

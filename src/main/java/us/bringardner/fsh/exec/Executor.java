@@ -760,6 +760,8 @@ public final class Executor {
 			// goes on)
 			ShellContext ctx = sc.isolatedSubShell();
 			ctx.errTrapBlocked--;
+			// (it holds the output it was started with, a pipe too, until it ends)
+			Console.share(sc.console, ctx.stdout);
 			// with no input: the shell's own (bash's /dev/null); input a command around it redirected
 			// it keeps (while read l; do { read x; } & done < file reads the file)
 			if( sc.stdin == sc.console.getStdIn() || sc.stdin instanceof us.bringardner.fsh.ProcessStdin
@@ -786,6 +788,7 @@ public final class Executor {
 				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Quit);
 			}
 			sc.console.addJob(job);
+			sc.console.jobManager.startedBy(job, sc.subshell);
 			job.start();
 			while( job.getState() == JobState.Idel ) {
 				try {
@@ -843,6 +846,7 @@ public final class Executor {
 		});
 		BackgroundJob job = new BackgroundJob(thread);
 		sc.console.addJob(job);
+		sc.console.jobManager.startedBy(job, sc.subshell);
 		job.start();
 		FshList fds = new FshList();
 		fds.add(String.valueOf(readFd));

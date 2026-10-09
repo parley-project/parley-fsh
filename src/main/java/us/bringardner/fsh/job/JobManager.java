@@ -141,6 +141,21 @@ public class JobManager {
 		}
 	}
 
+	/** the subshell that started each job (none: the shell itself) */
+	private final java.util.Map<IJob,Object> owners = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+
+	/** the job was started by subshell (a ShellContext's subshell, null for the shell) */
+	public void startedBy(IJob job, Object subshell) {
+		if( subshell != null ) {
+			owners.put(job, subshell);
+		}
+	}
+
+	/** the job is a child of subshell (as bash's: a subshell waits only for what it started) */
+	public boolean isChildOf(IJob job, Object subshell) {
+		return owners.get(job) == subshell;
+	}
+
 	/** the jobs started while job control was on */
 	private final java.util.Set<IJob> jobControlJobs = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
