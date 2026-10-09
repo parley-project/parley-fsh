@@ -2053,6 +2053,7 @@ delimiter
 				file = new java.io.File("/etc/inputrc");
 			}
 			us.bringardner.fsh.commands.Bind.readFile(file);
+			applyEditingMode();
 		}
 		started = running = true;
 		watchKeyboard(kb);
@@ -3686,10 +3687,23 @@ delimiter
 				variables.remove("IGNOREEOF");
 			}
 		}
+		if( (o == Option.Vi || o == Option.Emacs) && enable ) {
+			// (one editing mode at a time, as bash's; readline's editing-mode says which)
+			optionList().remove(o == Option.Vi ? Option.Emacs : Option.Vi);
+			LineEditor.VARIABLES.put("editing-mode", o == Option.Vi ? "vi" : "emacs");
+		}
 		if( !enable ) {
 			optionList().remove(o);
 		} else if(!optionList().contains(o)) {
 			optionList().add(o);
+		}
+	}
+
+	/** readline's editing-mode (bind 'set editing-mode vi', ~/.inputrc): the shell's set -o vi or emacs */
+	public void applyEditingMode() {
+		boolean vi = "vi".equals(LineEditor.VARIABLES.get("editing-mode"));
+		if( vi != isOptionEnabled(Option.Vi)) {
+			setOption(vi ? Option.Vi : Option.Emacs, true);
 		}
 	}
 

@@ -97,6 +97,8 @@ public class Bind extends ShellCommand{
 		for(; i < words.size(); i++) {
 			bindLine(words.get(i));
 		}
+		// (set editing-mode vi: set -o vi)
+		ctx.console.applyEditingMode();
 		return ret;
 	}
 
