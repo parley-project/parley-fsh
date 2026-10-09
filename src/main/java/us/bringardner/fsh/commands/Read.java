@@ -331,6 +331,10 @@ public class Read extends ShellCommand{
 
 	/** a pipe or terminal may wait for input; a file or text never does (and available() is 0 at its end) */
 	private static boolean mayBlock(java.io.InputStream in) {
+		if( in instanceof us.bringardner.fsh.ProcessStdin ) {
+			// (the shell's own: a file or /dev/null has its end at once)
+			return us.bringardner.fsh.ProcessStdin.mayBlock();
+		}
 		return !(in instanceof java.io.FileInputStream || in instanceof java.io.ByteArrayInputStream);
 	}
 

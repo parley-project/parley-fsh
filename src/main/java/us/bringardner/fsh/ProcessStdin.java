@@ -30,6 +30,12 @@ public final class ProcessStdin extends InputStream {
 		return in.available();
 	}
 
+	/** reading may wait for input: not a file nor /dev/null (something that is not a pipe nor a terminal) */
+	public static boolean mayBlock() {
+		int kind = NativeKeyboard.inputKind();
+		return kind == 1 || kind == -1 || (kind == 0 && NativeKeyboard.inputIsTerminal());
+	}
+
 	@Override
 	public void close() {
 		// the process's standard input stays open

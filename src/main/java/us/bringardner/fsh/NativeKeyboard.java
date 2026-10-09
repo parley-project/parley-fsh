@@ -68,6 +68,18 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		return System.console() == null && java.awt.GraphicsEnvironment.isHeadless();
 	}
 
+	/** standard input: 1 a pipe or socket, 2 a file, 0 something else, -1 not known */
+	public static int inputKind() {
+		if( availible ) {
+			try {
+				return new NativeKeyboard().inputKind0();
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		return -1;
+	}
+
 	/** the process's standard input is a terminal (without this library: there is a console) */
 	public static boolean inputIsTerminal() {
 		if( availible ) {
