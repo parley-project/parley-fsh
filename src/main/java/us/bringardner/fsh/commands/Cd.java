@@ -56,14 +56,25 @@ public class Cd extends ShellCommand{
 			path = home.toString();
 		} else if( sargs.get(0).equals("-")) {
 			Object old = ctx.getVariable(Console.VARIABLE_OLDPWD);
-			if( old == null || old.toString().isEmpty()) {
+			if( old == null ) {
 				ctx.error("cd: OLDPWD not set");
 				return 1;
+			}
+			if( old.toString().isEmpty()) {
+				// (an empty OLDPWD: nowhere to go, said as the directory, and it is set to here, as bash's)
+				ctx.stdout.println();
+				ctx.setVariable(Console.VARIABLE_OLDPWD, ctx.getVariable(Console.VARIABLE_PWD));
+				return 0;
 			}
 			path = old.toString();
 			print = true;
 		} else {
 			path = sargs.get(0);
+			if( path.isEmpty()) {
+				// cd "": as bash says it
+				ctx.error("cd: null directory");
+				return 1;
+			}
 		}
 
 		return change(ctx, "cd", path, follow, print);
