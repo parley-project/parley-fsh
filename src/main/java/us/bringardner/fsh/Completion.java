@@ -542,10 +542,9 @@ public class Completion implements LineEditor.Completer {
 					}
 					break;
 				case "setopt":
-					for(Console.Option o : Console.Option.values()) {
-						if( o != Console.Option.Unsupported && o != Console.Option.Option && o.longName.length() > 1 && !o.longName.startsWith("\u0000")) {
-							names.add(o.longName);
-						}
+					// (the ones set -o lists)
+					for(Console.Option o : us.bringardner.fsh.commands.Set.listed()) {
+						names.add(o.longName);
 					}
 					break;
 				case "shopt": names.addAll(console.getShellOptions().keySet()); break;

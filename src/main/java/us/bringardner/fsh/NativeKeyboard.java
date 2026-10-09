@@ -736,9 +736,25 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			console.getStdErr().flush();
 		}
 
+		InputStream in = console.getStdIn();
+		if( lineEditing ) {
+			// the shell's commands from what is not a terminal: the line as it is (the parser reads
+			// its backslashes), shown after the prompt as bash's line editor shows it
+			java.io.ByteArrayOutputStream line = new java.io.ByteArrayOutputStream();
+			int b;
+			while( (b = in.read()) >= 0 && b != lineTerminator ) {
+				line.write(b);
+			}
+			if( b < 0 && line.size() == 0 ) {
+				return null;
+			}
+			String text = line.toString(java.nio.charset.StandardCharsets.UTF_8);
+			console.getStdErr().print(text+"\n");
+			console.getStdErr().flush();
+			return text;
+		}
 		StringBuffer ret = new StringBuffer();
 		boolean done = false;
-		InputStream in = console.getStdIn();
 		int i = in.read();
 		if( i < 0 ) {
 			// end of input

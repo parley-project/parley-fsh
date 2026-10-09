@@ -71,6 +71,7 @@ public class TestHistory {
 		Console console = newConsole();
 		console.readHistory();
 		assertEquals(List.of("echo a", "ls"), commands(console));
-		assertEquals(456, console.history.get(1).time);
+		// (bash's time stamps are seconds; the history keeps milliseconds)
+		assertEquals(456000, console.history.get(1).time);
 	}
 }

@@ -1129,6 +1129,8 @@ delimiter
 
 		// interactive: -i, or commands from standard input that is the keyboard
 		isInteractive = inv.interactive || (inv.command == null && inv.file == null && isKeyboard(stdIn));
+		// (-n stays on in a shell -i makes interactive, as in bash; set -n there does nothing)
+		noExecAtStart = inv.interactive && isOptionEnabled(Option.NoExec);
 		if( isInteractive ) {
 			// history expansion (!!, !$ ...) and the history are on in an interactive shell, as in bash
 			options.add(Option.HistExpand);
@@ -1137,6 +1139,11 @@ delimiter
 			if( NativeKeyboard.terminal()) {
 				// job control
 				options.add(Option.Monitor);
+			} else if( !hasControllingTerminal()) {
+				// as bash says it when it has no terminal for its jobs
+				long pid = ProcessHandle.current().pid();
+				stdErr.println("fsh: cannot set terminal process group ("+pid+"): Inappropriate ioctl for device");
+				stdErr.println("fsh: no job control in this shell");
 			}
 		} else {
 			// as bash: a shell that is not interactive has no PS0-PS3, history variables or histchars
@@ -1364,6 +1371,18 @@ delimiter
 		}
 	}
 
+	/** the process has a terminal (/dev/tty opens) */
+	private static boolean hasControllingTerminal() {
+		if( java.io.File.separatorChar == '\\' ) {
+			return true;
+		}
+		try (java.io.RandomAccessFile tty = new java.io.RandomAccessFile("/dev/tty", "r")) {
+			return true;
+		} catch (IOException | RuntimeException e) {
+			return false;
+		}
+	}
+
 	/** bash's check_binary_file: a NUL in the first line (of the first 80 bytes) */
 	static boolean isBinary(byte [] bytes) {
 		for (int i = 0; i < Math.min(80, bytes.length); i++) {
@@ -1518,6 +1537,9 @@ delimiter
 	/** run a whole command; -1 if it has a syntax error (reported) */
 	/** the context the commands of runCommands run in */
 	private ShellContext commandsContext;
+
+	/** fsh -in: commands are read, not run, though the shell is interactive */
+	public boolean noExecAtStart;
 
 	/** --pretty-print: print the commands, not run them */
 	private boolean prettyPrint;
@@ -2060,6 +2082,11 @@ delimiter
 			try {
 				code = readCommand(kb);
 				boolean endOfInput = code == null;
+				if( endOfInput && noExecAtStart && isOptionEnabled(Option.NoExec)) {
+					// (-in: exit is not run, but the shell leaves at the end, as bash's)
+					stdErr.println("exit");
+					Console.exit(this, getLastExitCode());
+				}
 				if( endOfInput ) {
 					// end of input (Ctrl-D): leave like bash does
 					code = "exit";
@@ -2121,6 +2148,10 @@ delimiter
 	public String getPrompt(Prompt prompt) {
 		String ret = "";
 		Object val = getVariable(prompt.name);
+		if( val == null ) {
+			// (exported: PS1='$ ' fsh -i)
+			val = environmentVariables.get(prompt.name);
+		}
 		if( val !=null ) {
 			try {
 				ret = expandPrompt(new ShellContext(this), ""+val);
@@ -2965,7 +2996,9 @@ delimiter
 
 	private static Long parseHistoryTime(String text) {
 		try {
-			return Long.parseLong(text.trim());
+			long t = Long.parseLong(text.trim());
+			// (bash's are seconds; fsh wrote milliseconds once)
+			return t < 100_000_000_000L ? t*1000 : t;
 		} catch (NumberFormatException e) {
 			return null;
 		}
@@ -3016,9 +3049,20 @@ delimiter
 					}
 				}
 
-				for(HistoryEntry e : history) {
-					out.write((""+hist_comment+e.time+"\n").getBytes());
-					out.write((e.command+"\n").getBytes());
+				// as bash's: time stamps (in seconds) only with HISTTIMEFORMAT set, and only the last
+				// $HISTFILESIZE commands
+				boolean stamps = shellOrEnvironment("HISTTIMEFORMAT") != null;
+				int from = 0;
+				Object size = shellOrEnvironment("HISTFILESIZE");
+				if( size != null && size.toString().matches("[0-9]+")) {
+					long keep = Long.parseLong(size.toString());
+					from = (int) Math.max(0, history.size()-Math.min(keep, Integer.MAX_VALUE));
+				}
+				for(HistoryEntry e : history.subList(from, history.size())) {
+					if( stamps ) {
+						out.write((""+hist_comment+(e.time/1000)+"\n").getBytes());
+					}
+					out.write((e.command+"\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
 				}
 			}
 

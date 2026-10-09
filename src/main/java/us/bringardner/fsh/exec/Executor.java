@@ -860,7 +860,7 @@ public final class Executor {
 
 	/** one command, with the redirects after it */
 	int command(Ast.Command c, ShellContext sc) throws IOException {
-		if( sc.console.isOptionEnabled(Option.NoExec) && !sc.console.isInteractive ) {
+		if( sc.console.isOptionEnabled(Option.NoExec) && (!sc.console.isInteractive || sc.console.noExecAtStart)) {
 			// set -n: nothing runs any more (not even set +n), as in bash
 			return 0;
 		}
