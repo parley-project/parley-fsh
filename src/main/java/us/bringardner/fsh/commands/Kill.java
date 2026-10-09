@@ -87,7 +87,7 @@ public class Kill extends ShellCommand{
 			if( val.equals("-l") || val.equals("-L")) {
 				// kill -l [sigspec ...]: names for numbers (128+n too), numbers for names
 				if( idx == args.length-1 ) {
-					ctx.stdout.print(Trap.listing());
+					ctx.stdout.print(Trap.listing(ctx));
 					return 0;
 				}
 				int status = 0;

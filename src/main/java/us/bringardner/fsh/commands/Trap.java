@@ -41,6 +41,14 @@ public class Trap extends ShellCommand implements SignalHandler {
 	private static final String [] COMMON_NAMES = {"HUP","INT","QUIT","ILL","TRAP","ABRT","EMT","FPE","KILL","BUS","SEGV","SYS","PIPE","ALRM","TERM","URG","STOP","TSTP","CONT","CHLD","TTIN","TTOU","IO","XCPU","XFSZ","VTALRM","PROF","WINCH","INFO","USR1","USR2","STKFLT","PWR"};
 	private static transient Map<Integer,String> locals;
 	/** the signals as kill -l and trap -l list them: " 1) SIGHUP\t 2) SIGINT ...", five to a line */
+	/** kill -l: in posix mode the names without SIG on one line, as bash's */
+	public static String listing(ShellContext ctx) {
+		if( ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)) {
+			return String.join(" ", getLocalSignals().values())+"\n";
+		}
+		return listing();
+	}
+
 	public static String listing() {
 		StringBuilder ret = new StringBuilder();
 		int column = 0;
@@ -128,6 +136,7 @@ public class Trap extends ShellCommand implements SignalHandler {
 			return 2;
 		}
 		if( list ) {
+			// (the table, posix mode too, as bash's)
 			ctx.stdout.print(listing());
 			return 0;
 		}
