@@ -32,9 +32,14 @@ public class Times extends ShellCommand{
 			user = t.getCurrentThreadUserTime();
 			system = t.getCurrentThreadCpuTime()-user;
 		}
+		long [] usage = us.bringardner.fsh.NativeKeyboard.resourceUsage();
+		if( usage != null ) {
+			// (the process's own, user and system apart, and the programs' that have ended)
+			user = usage[0]*1000;
+			system = usage[1]*1000;
+		}
 		ctx.stdout.println(format(user)+" "+format(system));
-		// external commands' times are not kept
-		ctx.stdout.println(format(0)+" "+format(0));
+		ctx.stdout.println(format(usage == null ? 0 : usage[2]*1000)+" "+format(usage == null ? 0 : usage[3]*1000));
 		return 0;
 	}
 

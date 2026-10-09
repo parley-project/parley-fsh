@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <sys/resource.h>
 #include "NativeKeyboard.h"
 
 // getChar() results that are not keys (must match NativeKeyboard.java)
@@ -288,4 +289,26 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_getChar(JNIEnv *, 
 	}
 
 	return buffer[idx++];
+}
+
+/*
+ * The CPU time of the process and of its children that have ended (and been waited for):
+ * {self user, self system, children user, children system} in microseconds.
+ */
+JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_resourceUsage0(JNIEnv *env, jobject) {
+	struct rusage self, kids;
+	jlong values[4] = {0, 0, 0, 0};
+	if( getrusage(RUSAGE_SELF, &self) == 0 ) {
+		values[0] = (jlong) self.ru_utime.tv_sec*1000000 + self.ru_utime.tv_usec;
+		values[1] = (jlong) self.ru_stime.tv_sec*1000000 + self.ru_stime.tv_usec;
+	}
+	if( getrusage(RUSAGE_CHILDREN, &kids) == 0 ) {
+		values[2] = (jlong) kids.ru_utime.tv_sec*1000000 + kids.ru_utime.tv_usec;
+		values[3] = (jlong) kids.ru_stime.tv_sec*1000000 + kids.ru_stime.tv_usec;
+	}
+	jlongArray ret = env->NewLongArray(4);
+	if( ret != NULL ) {
+		env->SetLongArrayRegion(ret, 0, 4, values);
+	}
+	return ret;
 }

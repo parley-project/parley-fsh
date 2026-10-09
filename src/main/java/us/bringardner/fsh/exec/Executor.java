@@ -385,6 +385,7 @@ public final class Executor {
 	private int pipeline(Ast.Pipeline p, ShellContext sc, boolean condition) throws IOException {
 		boolean cond = condition || p.negated;
 		long start = System.nanoTime();
+		long [] cpu = p.timed ? cpuTimes() : null;
 		int ret;
 		if( cond ) {
 			sc.conditionDepth++;
@@ -416,7 +417,7 @@ public final class Executor {
 			ret = ret == 0 ? 1 : 0;
 		}
 		if( p.timed ) {
-			time(p, start, sc);
+			time(p, start, cpu, sc);
 		}
 		sc.console.setLastExitCode(ret);
 		boolean redirectFailed = sc.compoundRedirectFailed;
@@ -445,8 +446,31 @@ public final class Executor {
 	}
 
 	/** time: as bash prints it, on standard error, in $TIMEFORMAT (bash's print_formatted_time) */
-	private static void time(Ast.Pipeline p, long start, ShellContext sc) {
+	/**
+	 * {user, system} CPU time in microseconds: this thread's (the shell's work) and the programs'
+	 * that have ended (getrusage, with fsh's library; else 0)
+	 */
+	static long [] cpuTimes() {
+		long user = 0;
+		long sys = 0;
+		java.lang.management.ThreadMXBean t = java.lang.management.ManagementFactory.getThreadMXBean();
+		if( t.isCurrentThreadCpuTimeSupported()) {
+			user = t.getCurrentThreadUserTime()/1000;
+			sys = t.getCurrentThreadCpuTime()/1000-user;
+		}
+		long [] usage = us.bringardner.fsh.NativeKeyboard.resourceUsage();
+		if( usage != null ) {
+			user += usage[2];
+			sys += usage[3];
+		}
+		return new long [] {user, Math.max(0, sys)};
+	}
+
+	private static void time(Ast.Pipeline p, long start, long [] cpu, ShellContext sc) {
 		long micros = (System.nanoTime()-start)/1000;
+		long [] now = cpuTimes();
+		long user = Math.max(0, now[0]-cpu[0]);
+		long sys = Math.max(0, now[1]-cpu[1]);
 		String format;
 		if( p.timePosix ) {
 			format = "real %2R\nuser %2U\nsys %2S";
@@ -457,7 +481,6 @@ public final class Executor {
 		if( format.isEmpty()) {
 			return;
 		}
-		// (the CPU time of the programs is not known here: user and sys are 0)
 		StringBuilder out = new StringBuilder();
 		for (int i = 0; i < format.length(); i++) {
 			char c = format.charAt(i);
@@ -467,7 +490,8 @@ public final class Executor {
 				out.append('%');
 				i++;
 			} else if( format.charAt(i+1) == 'P' ) {
-				out.append(timeText(2, false, 0));
+				// (the share of the CPU: (user+sys)/real, as a percentage)
+				out.append(timeText(2, false, micros == 0 ? 0 : (user+sys)*100*1000000/micros));
 				i++;
 			} else {
 				int prec = 3;
@@ -484,7 +508,7 @@ public final class Executor {
 				if( k == 'R' || k == 'E' ) {
 					out.append(timeText(prec, lng, micros));
 				} else if( k == 'U' || k == 'S' ) {
-					out.append(timeText(prec, lng, 0));
+					out.append(timeText(prec, lng, k == 'U' ? user : sys));
 				} else {
 					error(sc, "TIMEFORMAT: `"+(k == 0 ? "" : String.valueOf(k))+"': invalid format character");
 					return;

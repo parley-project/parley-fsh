@@ -53,6 +53,24 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** standard input: 1 a pipe or socket, 2 a file, 0 something else */
 	private native int inputKind0();
 
+	/** getrusage: {the shell's user, system, its children's user, system} in microseconds */
+	private native long [] resourceUsage0();
+
+	/**
+	 * The CPU time used (microseconds): {the shell's user, system, the user and system time of
+	 * the programs it ran that have ended}, or null without this library.
+	 */
+	public static long [] resourceUsage() {
+		if( availible ) {
+			try {
+				return new NativeKeyboard().resourceUsage0();
+			} catch (UnsatisfiedLinkError e) {
+				// an older library
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * The process's standard input is a pipe or a file: commands are read from it (as a script)
 	 * and shared with the programs. (Without this library: there is no console and no screen.)
