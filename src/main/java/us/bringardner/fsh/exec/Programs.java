@@ -412,6 +412,8 @@ public final class Programs {
 				env.clear();
 				if( !ctx.programCleanEnvironment ) {
 					env.putAll(ctx.console.programEnvironment(ctx));
+					// $_ in its environment is the program's path, as bash puts it there
+					env.put("_", name);
 				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
