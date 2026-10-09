@@ -432,6 +432,7 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.Fc());
 
 		registerCommand(new Bg());
+		registerCommand(new us.bringardner.fsh.commands.Bind());
 
 		registerCommand(new Clear());
 		registerCommand(new Cd());
@@ -1863,6 +1864,31 @@ delimiter
 		} catch (IOException e) {
 		}
 			importFunctions();
+	}
+
+	/**
+	 * bind -x: run command with the line being edited in READLINE_LINE and the cursor in
+	 * READLINE_POINT; {the line, the cursor} it leaves there
+	 */
+	public Object[] runBindCommand(String command, String line, int point) {
+		ShellContext sc = new ShellContext(this);
+		sc.setVariable("READLINE_LINE", line);
+		sc.setVariable("READLINE_POINT", String.valueOf(point));
+		try {
+			runCode(sc, command);
+		} catch (Exception e) {
+			sc.stderr.println(e.getMessage() != null ? e.getMessage() : e.toString());
+		}
+		Object l = sc.getVariable("READLINE_LINE");
+		Object p = sc.getVariable("READLINE_POINT");
+		int at = point;
+		try {
+			at = Integer.parseInt(String.valueOf(p).trim());
+		} catch (NumberFormatException e) {
+		}
+		sc.unSetVariable("READLINE_LINE");
+		sc.unSetVariable("READLINE_POINT");
+		return new Object[] {l == null ? "" : l.toString(), at};
 	}
 
 	/** the user's login shell (from the user database), or null */

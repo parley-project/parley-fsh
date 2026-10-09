@@ -42,6 +42,216 @@ public class LineEditor {
 	private static final int META = 0x10000;
 	private static final int K_CTRL_LEFT = 600, K_CTRL_RIGHT = 601;
 
+	/** history-search-backward and -forward (no key of their own until bind gives them one) */
+	private static final int K_HISTORY_BACK = 602, K_HISTORY_FORWARD = 603;
+
+	// ------------------------------------------------------------------ bind: what the keys do
+
+	/** the readline functions this editor does, and the key each is on by default (bind maps keys to them) */
+	public static final Map<String, Integer> FUNCTIONS = new java.util.TreeMap<>();
+	/** the keys and what they do by default, in the order bind -p lists them */
+	private static final Map<Integer, String> DEFAULTS = new java.util.LinkedHashMap<>();
+	static {
+		Object [][] keys = {
+			{1, "beginning-of-line"}, {K_HOME, "beginning-of-line"}, {5, "end-of-line"}, {K_END, "end-of-line"},
+			{2, "backward-char"}, {K_LEFT, "backward-char"}, {6, "forward-char"}, {K_RIGHT, "forward-char"},
+			{META+'b', "backward-word"}, {K_CTRL_LEFT, "backward-word"}, {META+'f', "forward-word"}, {K_CTRL_RIGHT, "forward-word"},
+			{K_DELETE, "delete-char"}, {4, "delete-char"}, {127, "backward-delete-char"}, {8, "backward-delete-char"},
+			{11, "kill-line"}, {21, "unix-line-discard"}, {23, "unix-word-rubout"}, {META+'d', "kill-word"},
+			{META+127, "backward-kill-word"}, {META+8, "backward-kill-word"}, {25, "yank"}, {META+'y', "yank-pop"},
+			{20, "transpose-chars"}, {META+'t', "transpose-words"}, {META+'u', "upcase-word"}, {META+'l', "downcase-word"},
+			{META+'c', "capitalize-word"}, {31, "undo"}, {META+'r', "revert-line"}, {12, "clear-screen"},
+			{16, "previous-history"}, {K_UP, "previous-history"}, {14, "next-history"}, {K_DOWN, "next-history"},
+			{META+'<', "beginning-of-history"}, {META+'>', "end-of-history"}, {META+'.', "yank-last-arg"},
+			{META+'_', "yank-last-arg"}, {18, "reverse-search-history"}, {19, "forward-search-history"},
+			{22, "quoted-insert"}, {(int) '\t', "complete"}, {7, "abort"}, {(int) '\n', "accept-line"}, {(int) '\r', "accept-line"},
+		};
+		for(Object [] k : keys) {
+			DEFAULTS.put((Integer) k[0], (String) k[1]);
+			FUNCTIONS.putIfAbsent((String) k[1], (Integer) k[0]);
+		}
+		FUNCTIONS.put("history-search-backward", K_HISTORY_BACK);
+		FUNCTIONS.put("history-search-forward", K_HISTORY_FORWARD);
+		FUNCTIONS.put("self-insert", -1);
+		FUNCTIONS.put("do-nothing", KEY_NONE);
+	}
+
+	/** bind's: a key sequence (its characters) and what it does: a function, "\"text\"" (a macro), or "" (nothing) */
+	private static final Map<String, String> BOUND = new java.util.concurrent.ConcurrentHashMap<>();
+	/** bind -x: a key sequence and the shell command it runs */
+	private static final Map<String, String> COMMANDS = new java.util.concurrent.ConcurrentHashMap<>();
+	/** readline's variables (bind 'set name value'), with their defaults */
+	public static final Map<String, String> VARIABLES = new java.util.concurrent.ConcurrentSkipListMap<>();
+	static {
+		for(String [] v : new String[][] {{"bell-style", "audible"}, {"bind-tty-special-chars", "on"},
+				{"blink-matching-paren", "off"}, {"colored-completion-prefix", "off"}, {"colored-stats", "off"},
+				{"completion-ignore-case", "off"}, {"completion-map-case", "off"}, {"completion-query-items", "100"},
+				{"convert-meta", "off"}, {"disable-completion", "off"}, {"echo-control-characters", "on"},
+				{"editing-mode", "emacs"}, {"enable-bracketed-paste", "on"}, {"enable-keypad", "off"},
+				{"expand-tilde", "off"}, {"history-preserve-point", "off"}, {"history-size", "0"},
+				{"horizontal-scroll-mode", "off"}, {"input-meta", "on"}, {"keymap", "emacs"},
+				{"mark-directories", "on"}, {"mark-modified-lines", "off"}, {"mark-symlinked-directories", "off"},
+				{"match-hidden-files", "on"}, {"menu-complete-display-prefix", "off"}, {"output-meta", "on"},
+				{"page-completions", "on"}, {"print-completions-horizontally", "off"}, {"revert-all-at-newline", "off"},
+				{"show-all-if-ambiguous", "off"}, {"show-all-if-unmodified", "off"}, {"show-mode-in-prompt", "off"},
+				{"skip-completed-text", "off"}, {"visible-stats", "off"}}) {
+			VARIABLES.put(v[0], v[1]);
+		}
+	}
+
+	/** runs a bind -x command: the line and cursor (READLINE_LINE, READLINE_POINT) it leaves */
+	public interface CommandRunner {
+		Object [] run(String command, String line, int point);
+	}
+
+	private static volatile CommandRunner runner;
+
+	public static void setCommandRunner(CommandRunner r) {
+		runner = r;
+	}
+
+	/** bind keyseq:function (or "macro", or "" for nothing); keyseq is its characters */
+	public static void bind(String keyseq, String what) {
+		String seq = normal(keyseq);
+		COMMANDS.remove(seq);
+		BOUND.put(seq, what);
+	}
+
+	/** the keys as they are at the start (bind's bindings gone) */
+	public static void resetBindings() {
+		BOUND.clear();
+		COMMANDS.clear();
+	}
+
+	/** bind -x keyseq:command */
+	public static void bindCommand(String keyseq, String command) {
+		COMMANDS.put(normal(keyseq), command);
+	}
+
+	/** bind -r keyseq: the key does nothing */
+	public static void unbindKey(String keyseq) {
+		String seq = normal(keyseq);
+		COMMANDS.remove(seq);
+		BOUND.put(seq, "");
+	}
+
+	/** bind -u function: the keys it is on do nothing */
+	public static void unbindFunction(String function) {
+		for(Map.Entry<String, String> e : bindings().entrySet()) {
+			if( e.getValue().equals(function)) {
+				BOUND.put(e.getKey(), "");
+			}
+		}
+	}
+
+	/** every key sequence that does something and what it does (the defaults, then bind's) */
+	public static Map<String, String> bindings() {
+		Map<String, String> ret = new java.util.LinkedHashMap<>();
+		for(Map.Entry<Integer, String> e : DEFAULTS.entrySet()) {
+			String seq = sequenceOf(e.getKey());
+			String b = BOUND.getOrDefault(seq, e.getValue());
+			if( !b.isEmpty()) {
+				ret.put(seq, b);
+			}
+		}
+		for(Map.Entry<String, String> e : new java.util.TreeMap<>(BOUND).entrySet()) {
+			if( !ret.containsKey(e.getKey()) && !e.getValue().isEmpty() && !isDefault(e.getKey())) {
+				ret.put(e.getKey(), e.getValue());
+			}
+		}
+		return ret;
+	}
+
+	private static boolean isDefault(String seq) {
+		for(Integer k : DEFAULTS.keySet()) {
+			if( sequenceOf(k).equals(seq)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** bind -x's: key sequence and command */
+	public static Map<String, String> commandBindings() {
+		return new java.util.TreeMap<>(COMMANDS);
+	}
+
+	/** a key sequence as this editor reads it (ESC O A is an arrow, as ESC [ A is) */
+	private static String normal(String seq) {
+		if( seq.length() > 2 && seq.charAt(0) == 27 && (seq.charAt(1) == '[' || seq.charAt(1) == 'O')) {
+			int k = decode(seq.substring(2, seq.length()-1), seq.charAt(seq.length()-1));
+			if( k != KEY_NONE ) {
+				return sequenceOf(k);
+			}
+		}
+		return seq;
+	}
+
+	/** the characters of a key as this editor reads it: a character, ESC and one (Alt), or an arrow's sequence */
+	static String sequenceOf(int key) {
+		switch (key) {
+		case K_UP: return "\u001b[A";
+		case K_DOWN: return "\u001b[B";
+		case K_RIGHT: return "\u001b[C";
+		case K_LEFT: return "\u001b[D";
+		case K_HOME: return "\u001b[H";
+		case K_END: return "\u001b[F";
+		case K_DELETE: return "\u001b[3~";
+		case K_PAGE_UP: return "\u001b[5~";
+		case K_PAGE_DOWN: return "\u001b[6~";
+		case K_CTRL_LEFT: return "\u001b[1;5D";
+		case K_CTRL_RIGHT: return "\u001b[1;5C";
+		default:
+		}
+		if( key >= META ) {
+			return "\u001b"+sequenceOf(key-META);
+		}
+		return String.valueOf((char) key);
+	}
+
+	/** a key sequence as bind writes it: "\\C-a", "\\eb", "\\e[A" */
+	public static String keyText(String seq) {
+		StringBuilder ret = new StringBuilder();
+		for(char c : seq.toCharArray()) {
+			if( c == 27 ) {
+				ret.append("\\e");
+			} else if( c == 127 ) {
+				ret.append("\\C-?");
+			} else if( c < 32 ) {
+				ret.append("\\C-").append((char) (c == 31 ? '_' : c == 0 ? '@' : c+96));
+			} else if( c == '\\' || c == '"' ) {
+				ret.append('\\').append(c);
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
+	}
+
+	/** the ways a key sequence comes, as bind -p and -q write them (an arrow both as ESC O A and ESC [ A) */
+	public static List<String> keyTexts(String seq) {
+		String t = keyText(seq);
+		if( seq.length() == 3 && seq.charAt(0) == 27 && seq.charAt(1) == '[' && "ABCDHF".indexOf(seq.charAt(2)) >= 0 ) {
+			return List.of("\\eO"+seq.charAt(2), t);
+		}
+		return List.of(t);
+	}
+
+	/** a bound sequence (bind's or -x's) longer than seq starts with it */
+	private static boolean prefixOfBound(String seq) {
+		for(String k : BOUND.keySet()) {
+			if( k.length() > seq.length() && k.startsWith(seq) && !BOUND.get(k).isEmpty()) {
+				return true;
+			}
+		}
+		for(String k : COMMANDS.keySet()) {
+			if( k.length() > seq.length() && k.startsWith(seq)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private final Keys keys;
 	private final PrintStream out;
 	private final List<String> history;
@@ -114,6 +324,55 @@ public class LineEditor {
 			}
 			if( key == KEY_NONE ) {
 				continue;
+			}
+			String seq = sequenceOf(key);
+			if( !BOUND.containsKey(seq) && !COMMANDS.containsKey(seq) && prefixOfBound(seq)) {
+				// the start of a bound sequence (C-x p): the keys after it, until it is one or is not
+				StringBuilder more = new StringBuilder(seq);
+				while( prefixOfBound(more.toString()) && !BOUND.containsKey(more.toString()) && !COMMANDS.containsKey(more.toString())) {
+					int next = readKey();
+					if( next == KEY_EOF || next == KEY_NONE ) {
+						break;
+					}
+					more.append(sequenceOf(next));
+				}
+				seq = more.toString();
+				if( !BOUND.containsKey(seq) && !COMMANDS.containsKey(seq)) {
+					// (a sequence that is bound to nothing)
+					bell();
+					continue;
+				}
+			}
+			String command = COMMANDS.get(seq);
+			if( command != null ) {
+				// bind -x: the shell command, with the line in READLINE_LINE and READLINE_POINT
+				runBound(command);
+				continue;
+			}
+			String bound = BOUND.get(seq);
+			if( bound != null ) {
+				if( bound.isEmpty()) {
+					// (bind -r, -u: the key does nothing)
+					continue;
+				}
+				if( bound.startsWith("\"")) {
+					// a macro: its text, as if typed
+					insert(bound.substring(1, bound.length()-1), false);
+					continue;
+				}
+				Integer canonical = FUNCTIONS.get(bound);
+				if( canonical == null || canonical == KEY_NONE ) {
+					continue;
+				}
+				if( canonical >= 0 ) {
+					key = canonical;
+				} else {
+					// self-insert: the key's character goes in (Tab too)
+					if( key < META && seq.length() == 1 ) {
+						insert(character(key), false);
+					}
+					continue;
+				}
 			}
 			boolean wasKill = lastWasKill;
 			boolean wasTab = lastWasTab;
@@ -234,6 +493,12 @@ public class LineEditor {
 			case 18: // Ctrl-R
 				search(true);
 				break;
+			case K_HISTORY_BACK:
+				historySearch(-1);
+				break;
+			case K_HISTORY_FORWARD:
+				historySearch(1);
+				break;
 			case 19: // Ctrl-S
 				search(false);
 				break;
@@ -320,28 +585,32 @@ public class LineEditor {
 				return KEY_NONE;
 			}
 			if( c >= 0x40 && c <= 0x7e ) {
-				String p = params.toString();
-				switch (c) {
-				case 'A': return K_UP;
-				case 'B': return K_DOWN;
-				case 'C': return p.endsWith(";5") ? K_CTRL_RIGHT : p.endsWith(";3") ? META+'f' : K_RIGHT;
-				case 'D': return p.endsWith(";5") ? K_CTRL_LEFT : p.endsWith(";3") ? META+'b' : K_LEFT;
-				case 'H': return K_HOME;
-				case 'F': return K_END;
-				case '~':
-					switch (p) {
-					case "1": case "7": return K_HOME;
-					case "4": case "8": return K_END;
-					case "3": return K_DELETE;
-					case "5": return K_PAGE_UP;
-					case "6": return K_PAGE_DOWN;
-					default: return KEY_NONE;
-					}
-				default:
-					return KEY_NONE;
-				}
+				return decode(params.toString(), (char) c);
 			}
 			params.append((char) c);
+		}
+	}
+
+	/** the key of ESC [ p c (or ESC O p c) */
+	private static int decode(String p, char c) {
+		switch (c) {
+		case 'A': return K_UP;
+		case 'B': return K_DOWN;
+		case 'C': return p.endsWith(";5") ? K_CTRL_RIGHT : p.endsWith(";3") ? META+'f' : K_RIGHT;
+		case 'D': return p.endsWith(";5") ? K_CTRL_LEFT : p.endsWith(";3") ? META+'b' : K_LEFT;
+		case 'H': return K_HOME;
+		case 'F': return K_END;
+		case '~':
+			switch (p) {
+			case "1": case "7": return K_HOME;
+			case "4": case "8": return K_END;
+			case "3": return K_DELETE;
+			case "5": return K_PAGE_UP;
+			case "6": return K_PAGE_DOWN;
+			default: return KEY_NONE;
+			}
+		default:
+			return KEY_NONE;
 		}
 	}
 
@@ -568,6 +837,46 @@ public class LineEditor {
 	}
 
 	// ------------------------------------------------------------------ history
+
+	/**
+	 * history-search-backward (-1) and -forward: the next line in that direction that starts with
+	 * the text before the cursor, the cursor where it was
+	 */
+	private void historySearch(int direction) {
+		String prefix = buf.substring(0, pos);
+		int keep = pos;
+		for (int i = histIndex+direction; i >= 0 && i <= history.size(); i += direction) {
+			String line = i == history.size() ? (edited.containsKey(i) ? edited.get(i) : "") : history.get(i);
+			if( i < history.size() && line.startsWith(prefix) && !line.equals(buf.toString())) {
+				historyMove(i);
+				pos = Math.min(keep, buf.length());
+				redraw();
+				return;
+			}
+		}
+		bell();
+	}
+
+	/** bind -x: run the command; the line and cursor become what it leaves in READLINE_LINE and READLINE_POINT */
+	private void runBound(String command) {
+		CommandRunner r = runner;
+		if( r == null ) {
+			bell();
+			return;
+		}
+		moveTo(buf.length());
+		out.print("\n");
+		out.flush();
+		Object [] after = r.run(command, buf.toString(), pos);
+		if( after != null ) {
+			saveUndo();
+			buf = new StringBuilder(String.valueOf(after[0]));
+			pos = Math.max(0, Math.min(buf.length(), (Integer) after[1]));
+		}
+		out.print(prompt);
+		cursorRow = 0;
+		redraw();
+	}
 
 	private void historyMove(int to) {
 		if( to < 0 || to > history.size()) {
@@ -827,6 +1136,11 @@ public class LineEditor {
 	// ------------------------------------------------------------------ drawing
 
 	private void bell() {
+		String style = VARIABLES.getOrDefault("bell-style", "audible");
+		if( style.equals("none") || style.equals("visible")) {
+			// (bind 'set bell-style none')
+			return;
+		}
 		out.print((char) 7);
 		out.flush();
 	}

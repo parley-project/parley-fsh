@@ -156,4 +156,32 @@ public class TestLineEditor {
 		e.setCompleter(c);
 		return e.readLine("$ ");
 	}
+
+	/** bind: keys bound to functions, macros, sequences of keys, a key that does nothing, and -x */
+	@Test
+	public void boundKeys() throws Exception {
+		try {
+			// history-search-backward on Alt-p: the lines that start with what is before the cursor
+			LineEditor.bind("\u001bp", "history-search-backward");
+			List<String> history = new ArrayList<>(List.of("echo one", "ls -l", "echo two"));
+			assertEquals("echo two", edit(history, "ec", ESC, (int) 'p'));
+			assertEquals("echo one", edit(history, "ec", ESC, (int) 'p', ESC, (int) 'p'));
+			// a macro on a sequence of two keys (C-x p)
+			LineEditor.bind("\u0018p", "\"hello\"");
+			assertEquals("say hello", edit("say ", ctrl('x'), "p"));
+			// a key bound to another function: C-a to end-of-line
+			LineEditor.bind("\u0001", "end-of-line");
+			assertEquals("abX", edit("ab", ctrl('b'), ctrl('b'), ctrl('a'), "X"));
+			// bind -r: the key does nothing
+			LineEditor.unbindKey("\u0002");
+			assertEquals("abX", edit("ab", ctrl('b'), "X"));
+			// bind -x: the command gets the line and cursor, and what it leaves is the line
+			LineEditor.setCommandRunner((command, line, point) -> new Object[] {line.toUpperCase()+"!"+command, 2});
+			LineEditor.bindCommand("\u0018x", "cmd");
+			assertEquals("ABZ!cmd", edit("abz", ctrl('x'), "x"));
+		} finally {
+			LineEditor.resetBindings();
+			LineEditor.setCommandRunner(null);
+		}
+	}
 }

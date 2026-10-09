@@ -769,6 +769,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			LineEditor editor = new LineEditor(editorKeys, System.out, history);
 			editor.setColumns(columns());
 			editor.setCompleter(new Completion(console));
+			// (bind -x)
+			LineEditor.setCommandRunner(console::runBindCommand);
 			String text = editLineText;
 			editLineText = null;
 			String ret = editor.readLine(prompt == null ? "" : prompt);
