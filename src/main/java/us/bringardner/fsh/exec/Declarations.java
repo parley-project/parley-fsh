@@ -220,6 +220,10 @@ public final class Declarations {
 								sc.setVariable(name, list);
 							}
 						}
+						if( o.indexOf('i') >= 0 ) {
+							// declare -i a[64]: an integer array
+							sc.console.setInteger(name, true);
+						}
 						if( o.indexOf('r') >= 0 ) {
 							sc.console.setReadonly(name);
 						}
@@ -367,6 +371,10 @@ public final class Declarations {
 					String t = global ? sc.resolveGlobalName(name) : sc.resolveName(name);
 					if( Executor.isName(t)) {
 						name = t;
+					} else if( assignment == null && text == null && t.endsWith("]") && t.indexOf('[') > 0
+							&& Executor.isName(t.substring(0, t.indexOf('[')))) {
+						// declare -i ref of a nameref to a[0]: the attributes are a's, as bash's
+						name = t.substring(0, t.indexOf('['));
 					} else if( t.startsWith(name+"[") && t.endsWith("]") && (assignment != null || text != null)) {
 						// declare a=v with a -> b -> a[1]: a is an array again, and a[1] is v
 						sc.error("warning: "+name+": removing nameref attribute");
