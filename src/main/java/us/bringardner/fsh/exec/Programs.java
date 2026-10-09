@@ -344,6 +344,12 @@ public final class Programs {
 		int exitCode;
 		Throwable error;
 		private Process process;
+		/** stopped in the foreground, it became a job of its own (see detach): the line goes on */
+		volatile boolean detached;
+		/** the status the line gets then: 128 + the signal that stopped it */
+		volatile int detachedStatus;
+		/** the job it became */
+		private us.bringardner.fsh.job.ProgramJob ownJob;
 
 		public ExternalProcess(List<String> cmd, ShellContext ctx) {
 			this.cmd  = cmd;
@@ -584,7 +590,13 @@ public final class Programs {
 							Console.System_out.println();
 							Console.System_out.flush();
 						}
-						job.stopJob(how);
+						if( ownJob == null && job instanceof us.bringardner.fsh.job.ForgroundJob && ctx.console.isInteractive
+								&& ctx.subshell == null && !ctx.isIsolated()) {
+							// a program the line runs itself: it is a job of its own, as in bash
+							job = detach(job, p, how, stop, terminalUser);
+						} else {
+							job.stopJob(how);
+						}
 					}
 				}
 				exitCode = p.exitValue();
@@ -642,6 +654,9 @@ public final class Programs {
 				if( process != null && job != null ) {
 					job.removeProcess(process);
 				}
+				if( ownJob != null ) {
+					ownJob.ended(exitCode);
+				}
 				try {sc1.stop();}catch (Throwable e) {}
 				try {sc2.stop();}catch (Throwable e) {}
 				try {sc3.stop();}catch (Throwable e) {}
@@ -652,6 +667,43 @@ public final class Programs {
 		}
 
 		private static final int INT = Math.max(2, us.bringardner.fsh.job.ProcessSignals.number("INT"));
+
+		/**
+		 * p, stopped (how, by signal stop) in the foreground, leaves the command line's job (line)
+		 * for one of its own, stopped, in the job table: the line goes on with 128 + stop, as in bash.
+		 * @return its job
+		 */
+		private us.bringardner.fsh.job.IJob detach(us.bringardner.fsh.job.IJob line, Process p, String how, int stop, Object terminalUser) {
+			Object text = ctx.getVariable("BASH_COMMAND");
+			us.bringardner.fsh.job.ProgramJob own = new us.bringardner.fsh.job.ProgramJob(new ShellContext(ctx.console),
+					text == null ? String.join(" ", cmd) : text.toString());
+			long group = line.getProcessGroup();
+			line.removeProcess(p);
+			own.addProcess(p);
+			own.setProcessGroup(group);
+			if( terminalUser != null ) {
+				line.removeTerminalUser(terminalUser);
+				own.addTerminalUser(terminalUser);
+				NativeKeyboard.reclaimTerminal(terminalUser);
+			}
+			us.bringardner.fsh.job.JobManager jm = ctx.console.jobManager;
+			jm.addJob(own);
+			own.setPid((int) p.pid());
+			jm.startedWithJobControl(own);
+			own.setState(us.bringardner.fsh.job.JobState.Running);
+			own.start();
+			own.stopJob(how);
+			// (said at once, as bash says it)
+			Console.System_err.println(jm.describe(own, false));
+			Console.System_err.flush();
+			own.setStopNoticeDue(false);
+			ownJob = own;
+			// what ends it from now on is its job's
+			ctx = own.getShellContext();
+			detachedStatus = 128+stop;
+			detached = true;
+			return own;
+		}
 
 		/** the shell's own keyboard */
 		private static boolean isKeyboard(java.io.InputStream in) {
@@ -718,13 +770,17 @@ public final class Programs {
 			ep.start();
 
 			// ExternalProcess ends the process itself when the job is stopped, so always wait for it
-			while(ep.isAlive()) {
+			// (unless it became a job of its own)
+			while(ep.isAlive() && !ep.detached) {
 				try {
 					ep.join(100);
 				} catch (InterruptedException e) {
 				}
 			}
 
+			if( ep.detached ) {
+				return ep.detachedStatus;
+			}
 			ret =  ep.exitCode;
 			// a command that ran and failed has said why itself; one that could not run has not
 			if( ep.error!=null) {
