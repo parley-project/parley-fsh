@@ -158,15 +158,27 @@ public class Type extends ShellCommand{
 			return ret;
 		}
 		Object p = ctx.getVariable("PATH");
+		// (none that can run: the first file of that name, as bash finds it)
+		String notExecutable = null;
 		for(String dir : (p == null ? "" : p.toString()).split(":", -1)) {
 			String d = dir.isEmpty() ? "." : dir;
 			FileSource f = ctx.getFileSource(d+"/"+n);
-			if( f.exists() && f.isFile() && f.canExecute()) {
-				ret.add(d.endsWith("/") ? d+n : d+"/"+n);
+			if( f.exists() && f.isFile()) {
+				String path = d.endsWith("/") ? d+n : d+"/"+n;
+				if( !f.canExecute()) {
+					if( notExecutable == null ) {
+						notExecutable = path;
+					}
+					continue;
+				}
+				ret.add(path);
 				if( !all ) {
 					break;
 				}
 			}
+		}
+		if( ret.isEmpty() && notExecutable != null ) {
+			ret.add(notExecutable);
 		}
 		return ret;
 	}

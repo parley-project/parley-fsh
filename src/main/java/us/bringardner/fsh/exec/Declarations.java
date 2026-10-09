@@ -901,6 +901,12 @@ public final class Declarations {
 		if( names.isEmpty()) {
 			TreeSet<String> all = new TreeSet<>(sc.getVariables().keySet());
 			all.addAll(sc.console.declaredUnset);
+			for(String n : ShellContext.DYNAMIC_VARIABLES) {
+				// (worked out when used: bash's declare -p shows them too)
+				if( !sc.console.unsetSpecials.contains(n)) {
+					all.add(n);
+				}
+			}
 			if( !sc.isInFunction() && !sc.console.unsetSpecials.contains("FUNCNAME")) {
 				// (declared, with no value outside a function)
 				all.add("FUNCNAME");
@@ -994,9 +1000,14 @@ public final class Declarations {
 	}
 
 	/** the attributes declare -p shows: a A i l u c r x */
+	/** the shell's own variables that are integers (and of those, readonly), as bash declares them */
+	private static final java.util.Set<String> DYNAMIC_INTEGERS = java.util.Set.of("BASHPID", "HISTCMD", "RANDOM", "SECONDS", "SRANDOM", "EUID", "PPID", "UID");
+	private static final java.util.Set<String> DYNAMIC_READONLY = java.util.Set.of("EUID", "PPID", "UID");
+
 	private String flags(String name, Object val) {
 		String flags = val instanceof Map<?,?> ? "A" : val instanceof List<?> || val == null && name.equals("FUNCNAME") ? "a" : "";
-		if( sc.console.isInteger(name)) {
+		boolean dynamic = DYNAMIC_INTEGERS.contains(name) && !sc.console.unsetSpecials.contains(name);
+		if( sc.console.isInteger(name) || dynamic ) {
 			flags += "i";
 		}
 		if( sc.rawVariable(name) instanceof ShellContext.NameRef ) {
@@ -1011,7 +1022,7 @@ public final class Declarations {
 			return flags;
 		}
 		// (bash's order: a A i n r x c l u)
-		if( sc.console.isReadonly(name)) {
+		if( sc.console.isReadonly(name) || dynamic && DYNAMIC_READONLY.contains(name)) {
 			flags += "r";
 		}
 		if( (sc.getEvironmentVariable(name) != null && !sc.isUnexportedLocal(name)) || val == null && sc.console.pendingExports.contains(name)) {

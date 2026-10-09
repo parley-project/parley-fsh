@@ -49,6 +49,8 @@ CASES = {
   "git-mergetool-help": (GITREPO, GITCORE + "/git-mergetool", ["--tool-help"], {"PATH": GITCORE + ":" + os.environ["PATH"], "GIT_EXEC_PATH": GITCORE}),
   "git-completion": (GITREPO + " && git branch -q maint && git tag v1.0 && git remote add origin https://example.com/r.git", HERE + "/git-comp.sh", [], {"PATH": GITCORE + ":" + os.environ["PATH"], "HOME": WORK}),
   "other-completion": ("", HERE + "/other-comp.sh", [], {"HOMEBREW_NO_AUTO_UPDATE": "1"}),
+  "bash-completion": ("mkdir -p sub sub2 && touch f f2 file.txt && printf 'all:\\n\\ttrue\\nclean:\\n\\ttrue\\nbuild: all\\n' > Makefile && tar -cf arch.tar f f2",
+      HERE + "/bash-completion-comp.sh", [SP + "/dl/bash-completion", SP + "/rw/bash-identity.sh"], {"HOME": WORK}),
   "git-web-browse-help": ("", GITCORE + "/git-web--browse", ["-h"], {"PATH": GITCORE + ":" + os.environ["PATH"], "GIT_EXEC_PATH": GITCORE}),
 }
 

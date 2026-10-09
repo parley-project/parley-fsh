@@ -1,6 +1,7 @@
 /*
  * fshexec -s
- * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [--] program [args...]
+ * fshexec -u | -G
+ * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [-I SIG,...] [--] program [args...]
  *
  * Runs a program for fsh as bash would run it.
  *
@@ -19,10 +20,17 @@
  *     subshell's ($BASHPID, $!). Each signal it gets (but KILL and STOP) is written to standard
  *     output as a byte, for fsh to give the subshell; a status read from standard input (a line)
  *     ends it with that status, as does the end of its input (0).
+ * -u, -G: the system's user (or group) names, one a line, in its order (getpwent, getgrent: what
+ *     bash's compgen -u and -g list; Java cannot read them).
+ * -I: the program ignores these signals (by number), as the shell does (trap '' INT): Java
+ *     starts programs with every signal as by default, but bash's programs inherit the ones it
+ *     ignores.
  * -f: the program's descriptor N (above 2: Java gives a program only 0, 1 and 2) is ARG opened
  *     for reading (r) or writing (w), or a copy of descriptor ARG (d), as N is open in the shell.
  */
 #include <errno.h>
+#include <grp.h>
+#include <pwd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -33,6 +41,9 @@
 #include <unistd.h>
 
 static const char *argv0 = NULL;
+
+/* the signals -I says the program ignores */
+static int ignored[NSIG];
 
 /* s with each %XX made the byte XX, in place */
 static char *decode(char *s) {
@@ -126,6 +137,24 @@ int main(int argc, char **argv) {
 	if( argc == 2 && strcmp(argv[1], "-s") == 0 ) {
 		return standIn();
 	}
+	if( argc == 2 && strcmp(argv[1], "-u") == 0 ) {
+		struct passwd *pw;
+		setpwent();
+		while( (pw = getpwent()) != NULL ) {
+			printf("%s\n", pw->pw_name);
+		}
+		endpwent();
+		return 0;
+	}
+	if( argc == 2 && strcmp(argv[1], "-G") == 0 ) {
+		struct group *gr;
+		setgrent();
+		while( (gr = getgrent()) != NULL ) {
+			printf("%s\n", gr->gr_name);
+		}
+		endgrent();
+		return 0;
+	}
 	int i = 1;
 	int group = 0, fg = 0;
 	pid_t pgid = 0;
@@ -152,6 +181,16 @@ int main(int argc, char **argv) {
 				setenv(entry, eq+1, 1);
 			}
 			i += 2;
+		} else if( strcmp(argv[i], "-I") == 0 && i+1 < argc ) {
+			char *list = argv[i+1];
+			for(char *p = strtok(list, ","); p != NULL; p = strtok(NULL, ",")) {
+				int sig = atoi(p);
+				if( sig > 0 && sig < NSIG ) {
+					signal(sig, SIG_IGN);
+					ignored[sig] = 1;
+				}
+			}
+			i += 2;
 		} else if( strcmp(argv[i], "-f") == 0 && i+3 < argc ) {
 			descriptor(atoi(argv[i+1]), argv[i+2], argv[i+3]);
 			i += 4;
@@ -168,7 +207,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	if( i >= argc ) {
-		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [-r [-e name=value]...] [-f n r|w|d arg]... [--] program [args...]\n");
+		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [-r [-e name=value]...] [-f n r|w|d arg]... [-I sig,...] [--] program [args...]\n");
 		return 2;
 	}
 	if( raw ) {
@@ -216,10 +255,10 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	if( pid == 0 ) {
-		signal(SIGINT, SIG_DFL);
-		signal(SIGQUIT, SIG_DFL);
-		signal(SIGHUP, SIG_DFL);
-		signal(SIGTERM, SIG_DFL);
+		signal(SIGINT, ignored[SIGINT] ? SIG_IGN : SIG_DFL);
+		signal(SIGQUIT, ignored[SIGQUIT] ? SIG_IGN : SIG_DFL);
+		signal(SIGHUP, ignored[SIGHUP] ? SIG_IGN : SIG_DFL);
+		signal(SIGTERM, ignored[SIGTERM] ? SIG_IGN : SIG_DFL);
 		run(argv+i);
 	}
 	int status = 0;

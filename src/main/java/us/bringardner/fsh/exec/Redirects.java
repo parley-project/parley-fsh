@@ -381,6 +381,16 @@ final class Redirects {
 		}
 		boolean move = word.endsWith("-");
 		int m = Integer.parseInt(move ? word.substring(0, word.length()-1) : word);
+		if( n > 2 && (out ? getOut(sc, m) == null && getIn(sc, m) != null : getIn(sc, m) == null && getOut(sc, m) != null)) {
+			// exec 4<&1: a copy of m whatever way it is open (dup2 does not look), as in bash
+			out = !out;
+		} else if( !out && (n == 1 || n == 2)) {
+			// cmd 1<&3: 1 is written, so it is a copy of m for writing
+			out = true;
+		} else if( out && n == 0 ) {
+			// cmd 0>&3: 0 is read
+			out = false;
+		}
 		if( out ) {
 			PrintStream ps = getOut(sc, m);
 			if( ps == null ) {

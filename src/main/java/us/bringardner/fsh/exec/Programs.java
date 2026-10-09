@@ -49,6 +49,8 @@ public final class Programs {
 
 	static int run(String name, List<String> args, ShellContext sc) throws IOException {
 		FileSource exec = hashed(name, sc);
+		// (found on PATH: an error names where, as bash's)
+		boolean onPath = exec != null && !name.contains("/");
 		if( exec == null && !name.contains("/")) {
 			// fsh runs a program in the current directory without ./ (bash does not)
 			FileSource here = sc.getFileSource(name);
@@ -63,7 +65,8 @@ public final class Programs {
 				return 127;
 			}
 			if( !exec.canExecute()) {
-				throw new NotExecutable(name);
+				// (where it was found, as bash says it)
+				throw new NotExecutable(onPath ? exec.getAbsolutePath() : name);
 			}
 			if( isFshScript(exec)) {
 				Argument [] all = new Argument[args.size()+1];
@@ -423,7 +426,19 @@ public final class Programs {
 				// the shell's descriptors above 2, and bytes that are not UTF-8 in its arguments or
 				// environment: through the helper
 				fds = ProgramDescriptors.of(ctx, ctx.stdin, ctx.stdout, ctx.stderr);
-				List<String> helped = throughHelper(command, env, fds.options);
+				List<String> options = new ArrayList<>(fds.options);
+				// the signals it is to ignore, which Java does not pass on (trap '' INT; a job started
+				// with & without job control ignores INT and QUIT)
+				java.util.Set<Integer> ignored = ctx.console.ignoredSignals(ctx);
+				if( ctx.job instanceof us.bringardner.fsh.job.BackgroundJob bj && bj.isIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Interupt)) {
+					ignored.add(INT);
+					ignored.add(Math.max(3, us.bringardner.fsh.job.ProcessSignals.number("QUIT")));
+				}
+				if( !ignored.isEmpty()) {
+					options.add("-I");
+					options.add(ignored.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+				}
+				List<String> helped = throughHelper(command, env, options);
 				if( helped != null ) {
 					builder.command(helped);
 				}
@@ -727,7 +742,7 @@ public final class Programs {
 			}
 		}
 		FileSource ret = which(name, ctx);
-		if( ret != null && own ) {
+		if( ret != null && own && ret.canExecute()) {
 			ctx.console.hashTable.put(name, new Object[] {ret.getAbsolutePath(), new int[] {1}});
 		}
 		return ret;
@@ -745,6 +760,9 @@ public final class Programs {
 			exts = tmpExt.toString().split(""+factory.getPathSeperatorChar());
 		}
 		Object pathVar = ctx.getVariable("PATH");
+		// (as bash: the first one that can run; else the first file of that name, which then says
+		// Permission denied)
+		FileSource notExecutable = null;
 		// (no PATH, or an empty part of it: the current directory, as bash's)
 		for(String path : (pathVar == null ? "" : ""+pathVar).split(""+factory.getPathSeperatorChar(), -1)) {
 			if( path.isEmpty()) {
@@ -752,10 +770,15 @@ public final class Programs {
 			}
 			FileSource file = findExecutable(execName,path,exts,ctx);
 			if( file !=null && file.isFile()) {
-				return file;
+				if( file.canExecute()) {
+					return file;
+				}
+				if( notExecutable == null ) {
+					notExecutable = file;
+				}
 			}
 		}
-		return null;
+		return notExecutable;
 	}
 
 	private static FileSource findExecutable(String execName,String path, String[] exts,ShellContext ctx) throws IOException {

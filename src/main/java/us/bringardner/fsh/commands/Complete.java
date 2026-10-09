@@ -17,7 +17,7 @@ import us.bringardner.fsh.ShellContext;
 public class Complete extends ShellCommand {
 
 	static String name = "complete";
-	static String help = "complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-F function] [-C command] [-W wordlist] [-P prefix] [-S suffix] [-X filterpat] [name ...]\n"
+	static String help = "complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [name ...]\n"
 			+ "How Tab completes each name's arguments. -p prints them (all with no name), -r removes them.\n"
 			+ "-D: commands with none of their own, -E: an empty line, -I: the command's name.";
 
@@ -89,7 +89,7 @@ public class Complete extends ShellCommand {
 				case 'P': s.prefix = arg; break;
 				case 'S': s.suffix = arg; break;
 				case 'X': s.filter = arg; break;
-				case 'G': break;
+				case 'G': s.globPattern = arg; break;
 				case 'a': s.actions.add("alias"); break;
 				case 'b': s.actions.add("builtin"); break;
 				case 'c': s.actions.add("command"); break;

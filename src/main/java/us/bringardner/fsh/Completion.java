@@ -487,7 +487,12 @@ public class Completion implements LineEditor.Completer {
 
 	/** the programs on $PATH whose names start with word */
 	static Set<String> pathCommands(ShellContext ctx, String word) {
-		Set<String> ret = new TreeSet<>();
+		return new TreeSet<>(pathCommandList(ctx, word));
+	}
+
+	/** pathCommands as bash's compgen -c finds them: in PATH's and each directory's order, one in two directories twice */
+	static List<String> pathCommandList(ShellContext ctx, String word) {
+		List<String> ret = new ArrayList<>();
 		Object path = ctx.getVariable("PATH");
 		if( path == null ) {
 			return ret;
@@ -505,6 +510,32 @@ public class Completion implements LineEditor.Completer {
 		return ret;
 	}
 
+
+	/** text with its quotes taken out: '...', "..." and \c (bash's bash_dequote_text) */
+	static String dequote(String text) {
+		StringBuilder ret = new StringBuilder();
+		char quote = 0;
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if( quote == '\'' ) {
+				if( c == '\'' ) {
+					quote = 0;
+				} else {
+					ret.append(c);
+				}
+			} else if( c == '\\' && i+1 < text.length() && (quote == 0 || "\"\\$`".indexOf(text.charAt(i+1)) >= 0)) {
+				ret.append(text.charAt(++i));
+			} else if( c == '"' ) {
+				quote = quote == '"' ? 0 : '"';
+			} else if( c == '\'' && quote == 0 ) {
+				quote = '\'';
+			} else {
+				ret.append(c);
+			}
+		}
+		return ret.toString();
+	}
+
 	static Set<String> variableNames(ShellContext sc) {
 		Set<String> ret = new TreeSet<>();
 		for(String n : sc.getVariables().keySet()) {
@@ -517,11 +548,49 @@ public class Completion implements LineEditor.Completer {
 				ret.add(n);
 			}
 		}
+		// the ones the shell works out when they are used (bash's compgen -v has them)
+		for(String n : ShellContext.DYNAMIC_VARIABLES) {
+			if( !ret.contains(n) && !sc.console.unsetSpecials.contains(n) && sc.getVariable(n) != null ) {
+				ret.add(n);
+			}
+		}
 		return ret;
 	}
 
-	/** the users (their home directories' names, and this user) */
+	/**
+	 * The system's user (-u) or group (-G) names in its order, as bash's getpwent and getgrent
+	 * give them (through the helper), or null where there is no helper.
+	 */
+	static List<String> systemNames(String flag) {
+		String helper = NativeKeyboard.helper();
+		if( helper == null ) {
+			return null;
+		}
+		try {
+			Process p = new ProcessBuilder(helper, flag).redirectError(ProcessBuilder.Redirect.DISCARD).start();
+			String out = new String(p.getInputStream().readAllBytes(), RawUtf8.CHARSET);
+			p.waitFor();
+			List<String> ret = new ArrayList<>();
+			for(String n : out.split("\n")) {
+				if( !n.isEmpty()) {
+					ret.add(n);
+				}
+			}
+			return ret;
+		} catch (java.io.IOException e) {
+			return null;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		}
+	}
+
+	/** the users: the system's (see systemNames), else their home directories' names and this user */
 	static Set<String> users() {
+		List<String> system = systemNames("-u");
+		if( system != null ) {
+			return new LinkedHashSet<>(system);
+		}
 		Set<String> ret = new TreeSet<>();
 		ret.add(System.getProperty("user.name"));
 		for(String dir : new String[] {"/Users", "/home"}) {
@@ -548,6 +617,8 @@ public class Completion implements LineEditor.Completer {
 	public static final class Spec {
 		public final List<String> actions = new ArrayList<>();
 		public String wordList;
+		/** -G: the files a pattern matches */
+		public String globPattern;
 		public String function;
 		public String command;
 		public String prefix = "";
@@ -557,13 +628,15 @@ public class Completion implements LineEditor.Completer {
 
 		/** the words for word: the command's (cmd), the word before it (prev) and the line's words */
 		public List<String> generate(ShellContext sc, String word, String cmd, String prev, List<String> words, String line, int point) {
-			Set<String> found = new LinkedHashSet<>();
+			// (bash's compgen keeps what two actions both give: compgen -f -d gives a directory twice)
+			List<String> found = new ArrayList<>();
 			Console console = sc.console;
 			for(String action : actions) {
 				// (in bash's order: its tables are sorted, its keywords are not)
 				// (files in the directory's order, as bash's compgen -f; keywords as listed)
-				Set<String> names = action.equals("keyword") || action.equals("file") || action.equals("directory")
-						? new LinkedHashSet<>() : new TreeSet<>();
+				Collection<String> names = action.equals("keyword") || action.equals("file") || action.equals("directory")
+						? new LinkedHashSet<>() : action.equals("user") || action.equals("group") || action.equals("signal") || action.equals("command")
+						? new ArrayList<>() : new TreeSet<>();
 				switch (action) {
 				case "alias": names.addAll(console.getAliases().keySet()); break;
 				case "arrayvar":
@@ -582,7 +655,17 @@ public class Completion implements LineEditor.Completer {
 						}
 					}
 					break;
-				case "command": names.addAll(new Completion(console).commandNames(sc, word)); break;
+				case "command": {
+					// (the shell's own names, then the programs on PATH as bash finds them)
+					Set<String> own = new TreeSet<>();
+					add(own, console.getAliases().keySet(), word);
+					add(own, console.getFunctions().keySet(), word);
+					add(own, Console.commands.keySet(), word);
+					add(own, List.of(KEYWORDS), word);
+					names.addAll(own);
+					names.addAll(pathCommandList(sc, word));
+					break;
+				}
 				case "directory":
 				case "file":
 					names.addAll(fileWords(sc, word, action.equals("directory")));
@@ -591,9 +674,21 @@ public class Completion implements LineEditor.Completer {
 				case "function": names.addAll(console.getFunctions().keySet()); break;
 				case "keyword": names.addAll(List.of(KEYWORDS)); break;
 				case "variable": names.addAll(variableNames(sc)); break;
-				case "user": names.addAll(users()); break;
+				case "user": {
+					// (the system's order, as bash's getpwent gives them)
+					List<String> system = systemNames("-u");
+					names.addAll(system != null ? system : users());
+					break;
+				}
 				case "helptopic": names.addAll(List.of(HELP_TOPICS)); break;
-				case "group": case "hostname": case "service": case "binding": break;
+				case "group": {
+					List<String> system = systemNames("-G");
+					if( system != null ) {
+						names.addAll(system);
+					}
+					break;
+				}
+				case "hostname": case "service": case "binding": break;
 				case "job":
 				case "running":
 				case "stopped":
@@ -612,9 +707,12 @@ public class Completion implements LineEditor.Completer {
 					break;
 				case "shopt": names.addAll(console.getShellOptions().keySet()); break;
 				case "signal":
-					for(String s : Trap.getLocalSignals().values()) {
+					// (as bash lists them: EXIT, the signals by number, then its own)
+					names.add("EXIT");
+					for(String s : new java.util.TreeMap<>(Trap.getLocalSignals()).values()) {
 						names.add("SIG"+s);
 					}
+					names.addAll(List.of("DEBUG", "ERR", "RETURN"));
 					break;
 				default:
 					throw new IllegalArgumentException(action+": invalid action name");
@@ -625,16 +723,24 @@ public class Completion implements LineEditor.Completer {
 					}
 				}
 			}
+			if( globPattern != null ) {
+				// the files it matches (not only those that start with the word, as bash's)
+				try {
+					found.addAll(Glob.expand(globPattern, sc));
+				} catch (java.io.IOException e) {
+				}
+			}
 			if( wordList != null ) {
 				// the words, expanded, in the order given
-				Object ifs = sc.getVariable(Console.IFS);
-				String expanded = wordList;
+				List<String> listed = List.of();
 				try {
-					expanded = us.bringardner.fsh.exec.Executor.expandWord(sc, wordList);
+					listed = us.bringardner.fsh.exec.Executor.expandWordList(sc, wordList);
 				} catch (RuntimeException e) {
 				}
-				for(String w : us.bringardner.fsh.commands.Read.split(expanded, ifs == null ? " \t\n" : ifs.toString(), Integer.MAX_VALUE)) {
-					if( w.startsWith(word)) {
+				// (the word without its quotes, as bash matches the list: compgen -W 'a b' -- "'a'" is a)
+				String plain = dequote(word);
+				for(String w : listed) {
+					if( w.startsWith(plain)) {
 						found.add(w);
 					}
 				}
@@ -777,6 +883,9 @@ public class Completion implements LineEditor.Completer {
 				if( a[1] == null && actions.contains(a[0])) {
 					ret.append(" -A ").append(a[0]);
 				}
+			}
+			if( globPattern != null ) {
+				ret.append(" -G ").append(q(globPattern));
 			}
 			if( wordList != null ) {
 				ret.append(" -W ").append(q(wordList));

@@ -15,7 +15,7 @@ import us.bringardner.fsh.ShellContext;
 public class Compgen extends ShellCommand{
 
 	static String name = "compgen";
-	static String help = "compgen [-abcdefgjksuv] [-o option] [-A action] [-W wordlist] [-F function] [-C command] [-P prefix] [-S suffix] [-X filterpat] [word]\n"
+	static String help = "compgen [-V varname] [-abcdefgjksuv] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [word]\n"
 			+ "The completions of word, one a line, as complete's options say (see complete). Status 1 if there are none.";
 
 	public Compgen() {
@@ -46,6 +46,13 @@ public class Compgen extends ShellCommand{
 		} catch (IllegalArgumentException e) {
 			ctx.error(name+": "+e.getMessage());
 			return 2;
+		}
+		if( p.spec.options.contains("plusdirs")) {
+			// -o plusdirs: the directories too (after the rest, a directory found already again)
+			Completion.Spec dirs = new Completion.Spec();
+			dirs.actions.add("directory");
+			found = new java.util.ArrayList<>(found);
+			found.addAll(dirs.generate(ctx, word, "", "", List.of(), "", 0));
 		}
 		if( found.isEmpty() && (p.spec.options.contains("default") || p.spec.options.contains("bashdefault"))) {
 			Completion.Spec files = new Completion.Spec();

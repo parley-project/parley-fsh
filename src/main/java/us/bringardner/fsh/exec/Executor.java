@@ -123,6 +123,34 @@ public final class Executor {
 	}
 
 	/** text with its parameters, commands and arithmetic expanded (as in "...") */
+	/**
+	 * compgen -W's list, as bash's: split at the characters of IFS that are not quoted, each
+	 * piece then expanded as a command word is (braces, ~, $x, $( ), splitting, quote removal)
+	 * but without filename expansion.
+	 */
+	public static List<String> expandWordList(ShellContext sc, String text) {
+		Object ifsValue = sc.getVariable(Console.IFS);
+		String ifs = ifsValue == null ? " \t\n" : ifsValue.toString();
+		Expander ex = expanderFor(sc);
+		int line = sc.currentLine();
+		List<String> ret = new ArrayList<>();
+		int start = 0;
+		while( start < text.length()) {
+			int end = text.length();
+			for(char c : ifs.toCharArray()) {
+				int k = Parser.indexOfUnquoted(text, c, start);
+				if( k >= 0 && k < end ) {
+					end = k;
+				}
+			}
+			if( end > start ) {
+				ret.addAll(ex.shellExpansions(Parser.fragment(text.substring(start, end), Parser.Fragment.WORD, line)));
+			}
+			start = end+1;
+		}
+		return ret;
+	}
+
 	public static String expandWord(ShellContext sc, String text) {
 		return expanderFor(sc).string(Parser.fragment(text, Parser.Fragment.QUOTED, sc.currentLine()));
 	}
@@ -314,7 +342,12 @@ public final class Executor {
 		sc.console.setLastExitCode(1);
 		if( e.kind == ExpansionError.Kind.FATAL && !sc.console.isInteractive ) {
 			// (with -c, 127, as bash's)
-			throw new ExitException(sc, sc.console.readsFrom == 'c' && e.status == 1 ? 127 : e.status);
+			int status = sc.console.readsFrom == 'c' && e.status == 1 ? 127 : e.status;
+			if( sc.console.isOptionEnabled(Option.ExitImediately) && !sc.isIsolated() && sc.isInFunction()) {
+				// with set -e bash exits right there, as exit does: the EXIT trap runs in the function
+				status = sc.console.runExitTrapAt(sc, status);
+			}
+			throw new ExitException(sc, status);
 		}
 		if( e.kind == ExpansionError.Kind.FAIL ) {
 			return 1;
@@ -439,7 +472,12 @@ public final class Executor {
 				sc.console.runTrap(ConsoleMetaSignal.Err, sc);
 			}
 			if( sc.console.isOptionEnabled(Option.ExitImediately)) {
-				throw new ExitException(sc, ret);
+				int status = ret;
+				if( !sc.isIsolated() && sc.isInFunction()) {
+					// set -e exits right there, as exit does: the EXIT trap runs in the function (bash's)
+					status = sc.console.runExitTrapAt(sc, status);
+				}
+				throw new ExitException(sc, status);
 			}
 		}
 		return ret;
@@ -798,7 +836,7 @@ public final class Executor {
 				}
 			});
 			BackgroundJob job = new BackgroundJob(thread);
-			if( !sc.console.isInteractive ) {
+			if( !sc.console.jobControl()) {
 				// as in bash, without job control a job started with & ignores SIGINT and SIGQUIT
 				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Interupt);
 				job.addIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Quit);
@@ -1086,7 +1124,7 @@ public final class Executor {
 			killed = e;
 		} finally {
 			// its EXIT trap runs as it ends (an exit in it is the subshell's status)
-			ret = sc.console.endSubshellTrap(trap, ret);
+			ret = sc.console.endSubshellTrap(trap, ret, sub);
 			sc.console.restore(saved);
 			sub.endSubshell(ret);
 		}
@@ -1540,6 +1578,11 @@ public final class Executor {
 	}
 
 	private boolean test(Ast.CondExpr e, ShellContext sc, Expander ex) {
+		return test(e, sc, ex, "");
+	}
+
+	/** not: set -x shows the test after ! (as bash's [[ ! -n '' ]]) */
+	private boolean test(Ast.CondExpr e, ShellContext sc, Expander ex, String not) {
 		switch (e) {
 		case Ast.CondAnd a -> {
 			return test(a.left(), sc, ex) && test(a.right(), sc, ex);
@@ -1548,17 +1591,18 @@ public final class Executor {
 			return test(o.left(), sc, ex) || test(o.right(), sc, ex);
 		}
 		case Ast.CondNot n -> {
-			return !test(n.expression(), sc, ex);
+			return !test(n.expression(), sc, ex, not+"! ");
 		}
 		case Ast.CondWord w -> {
 			String v = ex.string(w.word());
-			traceTest(sc, v);
+			// (a word alone is -n word, as bash shows it)
+			traceTest(sc, not+"-n "+traced(v));
 			return !v.isEmpty();
 		}
 		case Ast.CondUnary u -> {
 			// (-v m[$k]: the subscript as in (( )))
 			String v = u.op().equals("-v") ? ex.arithmeticOperand(u.operand()) : ex.string(u.operand());
-			traceTest(sc, u.op()+" "+traced(v));
+			traceTest(sc, not+u.op()+" "+traced(v));
 			if( u.op().equals("-t") && !v.trim().matches("[-+]?[0-9]+")) {
 				// (status 2, as bash)
 				throw new BadRegex(v+": integer expected");
@@ -1568,8 +1612,9 @@ public final class Executor {
 		case Ast.CondBinary b -> {
 			if( tracing(sc)) {
 				boolean arith = b.op().matches("-(eq|ne|lt|le|gt|ge)");
-				traceTest(sc, traced(arith ? ex.arithmeticOperand(b.left()) : ex.string(b.left()))+" "+b.op()+" "
-						+traced(arith ? ex.arithmeticOperand(b.right()) : ex.string(b.right())));
+				// (a pattern as it matches: its quoted characters escaped, a\*)
+				String right = arith ? ex.arithmeticOperand(b.right()) : b.op().matches("==?|!=") ? ex.pattern(b.right()) : ex.string(b.right());
+				traceTest(sc, not+traced(arith ? ex.arithmeticOperand(b.left()) : ex.string(b.left()))+" "+b.op()+" "+traced(right));
 			}
 			return binary(b, sc, ex);
 		}
@@ -1846,7 +1891,7 @@ public final class Executor {
 	private int simple(Ast.SimpleCommand c, ShellContext sc) throws IOException {
 		sc.line = c.line;
 		String text = commandText(c);
-		if( sc.trapLine == null ) {
+		if( sc.trapLine == null && !sc.keepCommand ) {
 			sc.currentCommand = text;
 		}
 		if( debugTrap(sc, text)) {
@@ -2363,7 +2408,7 @@ public final class Executor {
 	 * @return the command is to be skipped (extdebug, and the trap's status was not 0)
 	 */
 	private static boolean debugTrap(ShellContext sc, String text) {
-		if( sc.trapLine == null ) {
+		if( sc.trapLine == null && !sc.keepCommand ) {
 			// ($BASH_COMMAND: in a function too, where the trap does not run)
 			sc.currentCommand = text;
 		}
@@ -3311,8 +3356,11 @@ public final class Executor {
 		ctx.stdout = new PrintStream(bao, true, us.bringardner.fsh.RawUtf8.CHARSET);
 		Console.Snapshot saved = null;
 		int status = 0;
+		List<String> trap = null;
 		try {
 			saved = primary.console.snapshot();
+			// (the shell's EXIT trap is not its own: exit in it runs only one it sets, as bash's)
+			trap = primary.console.beginSubshellTrap();
 			// (posix mode keeps set -e in it, as bash's)
 			if( !Glob.option(primary, "inherit_errexit") && !primary.console.isOptionEnabled(Option.Posix)) {
 				primary.console.setOption(Option.ExitImediately, false);
@@ -3329,6 +3377,9 @@ public final class Executor {
 			status = 1;
 			primary.stderr.println(message(e));
 		} finally {
+			if( saved != null ) {
+				status = primary.console.endSubshellTrap(trap, status, ctx);
+			}
 			ctx.endSubshell(status);
 			if( saved != null ) {
 				try {

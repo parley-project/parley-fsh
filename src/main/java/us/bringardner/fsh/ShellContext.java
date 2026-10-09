@@ -1122,11 +1122,7 @@ $
 			return files;
 		}
 		if( name.equals("LINENO")) {
-			if( trapLine != null && functionDepth() <= trapLineDepth ) {
-				// in a trap: the line of the command it ran for
-				return trapLine;
-			}
-			return currentLine();
+			return lineNumber();
 		}
 		if( name.equals("BASH_COMMAND")) {
 			// the command running (in a trap: the one the trap ran for)
@@ -1206,6 +1202,9 @@ $
 			return hostName;
 		case "EPOCHSECONDS":
 			return System.currentTimeMillis()/1000;
+		case "BASH_MONOSECONDS":
+			// (the monotonic clock's seconds, as bash 5.3's)
+			return System.nanoTime()/1_000_000_000L;
 		case "EPOCHREALTIME": {
 			java.time.Instant now = java.time.Instant.now();
 			return String.format("%d.%06d", now.getEpochSecond(), now.getNano()/1000);
@@ -1581,6 +1580,11 @@ $
 	public boolean subshellPending;
 	/** which subshell this is (null: the shell itself): the jobs it starts are its children */
 	public Object subshell;
+	/** the variables the shell works out when they are used (bash's declare -p and compgen -v list them) */
+	public static final String [] DYNAMIC_VARIABLES = {"BASHPID", "BASH_ARGV0", "BASH_COMMAND", "BASH_MONOSECONDS",
+			"BASH_SUBSHELL", "EPOCHREALTIME", "EPOCHSECONDS", "EUID", "GROUPS", "HISTCMD", "HOSTNAME",
+			"LINENO", "PPID", "RANDOM", "SECONDS", "SRANDOM", "UID", "_"};
+
 	/** a job's or a pipe stage's own signal traps (see Console.trapsFor), or null: the shell's */
 	public Map<Integer,List<Console.ConsoleSignalHandler>> stageTraps;
 	/** the traps there were when this subshell started: they are not its own (a signal does what it does by default) */
@@ -1786,7 +1790,7 @@ $
 	/** source file: a frame for it (FUNCNAME source) */
 	public void enterSource(String path) {
 		sourceFiles.addLast(path);
-		callFrames.add(new String[] {"source", path, ""+currentLine()});
+		callFrames.add(new String[] {"source", path, ""+lineNumber()});
 	}
 
 	public void exitSource() {
@@ -1959,7 +1963,7 @@ $
 
 		FunctionInvocation inv = new FunctionInvocation(args,function);
 		// the line it was called from (caller)
-		inv.callLine = currentLine();
+		inv.callLine = lineNumber();
 		inv.errBlocked = !console.isOptionEnabled(Console.Option.ErrTrace);
 		if( inv.errBlocked ) {
 			errTrapBlocked++;
@@ -1976,7 +1980,7 @@ $
 		FunctionInvocation inv = new FunctionInvocation(new ArrayList<>());
 		// the caller's parameters themselves: shift and set -- in it change them
 		inv.args = functionStack.isEmpty() ? topPositional() : functionStack.peek().args;
-		inv.callLine = currentLine();
+		inv.callLine = lineNumber();
 		inv.getopts = console.getoptsState();
 		functionStack.push(inv);
 	}
@@ -2084,6 +2088,16 @@ $
 
 	/** while a trap runs: the line of the command it ran for ($LINENO), or null */
 	public Integer trapLine;
+	/** in the EXIT trap: $BASH_COMMAND stays the command it ran for (its $LINENO is its own, as bash's) */
+	public boolean keepCommand;
+
+	/** $LINENO: the line running, or in a trap the line of the command it ran for (a function a trap calls was called from there) */
+	public int lineNumber() {
+		if( trapLine != null && functionDepth() <= trapLineDepth ) {
+			return trapLine;
+		}
+		return currentLine();
+	}
 	/** how many functions were running when trapLine was set (in functions the trap calls $LINENO is theirs) */
 	public int trapLineDepth;
 	/** the simple command running, as bash shows it in $BASH_COMMAND */

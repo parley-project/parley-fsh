@@ -113,6 +113,15 @@ public class Kill extends ShellCommand{
 					}
 				}
 				return status;
+			} else if( !options && val.matches("-\\d+")) {
+				// kill -- -pgid: a process group (a job's: its id is the job's $!)
+				long group = Long.parseLong(val.substring(1));
+				IJob job = us.bringardner.fsh.StandIn.of(group) != null ? jm.getJobByPid(group) : null;
+				if( job != null ) {
+					jobs.add(job);
+				} else {
+					processes.add(-group);
+				}
 			} else if( val.equals("-s") || val.equals("-n")) {
 				signum = parseSigNum(""+args[++idx].getValue(ctx));								
 			} else if( val.startsWith("-")) {				
@@ -270,6 +279,21 @@ public class Kill extends ShellCommand{
 				return 0;
 			}
 			throw new us.bringardner.fsh.signal.ExitException(ctx, 128+signum);
+		}
+		if( pid < 0 ) {
+			// a process group that is not a job's: the system's kill
+			try {
+				Process k = new ProcessBuilder("kill", "-"+signum, "--", String.valueOf(pid)).redirectErrorStream(true).start();
+				String out = new String(k.getInputStream().readAllBytes()).trim();
+				int status = k.waitFor();
+				if( status != 0 ) {
+					ctx.error("kill: ("+pid+") - "+(out.contains("No such process") || out.isEmpty() ? "No such process" : out.replaceFirst("^.*: ", "")));
+				}
+				return status == 0 ? 0 : 1;
+			} catch (Exception e) {
+				ctx.error("kill: "+e.getMessage());
+				return 1;
+			}
 		}
 		us.bringardner.fsh.StandIn standIn = us.bringardner.fsh.StandIn.of(pid);
 		if( standIn != null ) {

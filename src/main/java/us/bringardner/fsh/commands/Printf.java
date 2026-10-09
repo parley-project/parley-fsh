@@ -260,8 +260,10 @@ public class Printf extends ShellCommand{
 				idx = close+1;
 				continue;
 			}
-			// length modifiers (l, h ...) mean nothing here
+			// length modifiers (l, h ...) mean nothing here, but %ls and %lc count characters
+			boolean longModifier = false;
 			while( idx < n && "hlLjzt".indexOf(format.charAt(idx)) >= 0 ) {
+				longModifier |= format.charAt(idx) == 'l';
 				idx++;
 			}
 			if( idx >= n ) {
@@ -287,6 +289,7 @@ public class Printf extends ShellCommand{
 				continue;
 			}
 			alternate = spec.indexOf("#") >= 0 && (conv == 'q' || conv == 'Q');
+			wide = longModifier || conv == 'S' || conv == 'C';
 			if( conv == 'S' || conv == 'C' ) {
 				// %S %C: %ls %lc
 				conv = Character.toLowerCase(conv);
@@ -327,12 +330,45 @@ public class Printf extends ShellCommand{
 	/** %#q: 'quoted' (bash's alternative form) */
 	private boolean alternate;
 
+	/** %ls %lc %S %C: width and precision count characters, not bytes */
+	private boolean wide;
+
+	/**
+	 * text as %s puts it, with spec's width (and - flag) and precision counted in bytes, as
+	 * bash's (%.1s of é is its first byte; %-4s of é adds two spaces), or in characters for %ls
+	 */
+	private String bytes(String spec, Integer precision, String text) {
+		int size;
+		if( wide ) {
+			size = text.codePointCount(0, text.length());
+			if( precision != null && precision < size ) {
+				text = text.substring(0, text.offsetByCodePoints(0, precision));
+				size = precision;
+			}
+		} else {
+			byte [] b = us.bringardner.fsh.RawUtf8.toBytes(text);
+			if( precision != null && precision < b.length ) {
+				b = java.util.Arrays.copyOf(b, precision);
+				text = us.bringardner.fsh.RawUtf8.toText(b);
+			}
+			size = Math.min(b.length, precision == null ? b.length : precision);
+		}
+		String flags = spec.replaceFirst("^%([-+ 0#]*).*$", "$1");
+		String width = spec.substring(1+flags.length());
+		int w = width.isEmpty() ? 0 : Integer.parseInt(width);
+		if( w <= size ) {
+			return text;
+		}
+		String pad = " ".repeat(w-size);
+		return flags.contains("-") ? text+pad : pad+text;
+	}
+
 	private String convert(char conv, String spec, Integer precision, String arg, ShellContext ctx) {
 		String prec = precision == null ? "" : "."+precision;
 		switch (conv) {
 		case 's':
 		case 'S':
-			return String.format(spec+prec+"s", arg == null ? "" : arg);
+			return bytes(spec, precision, arg == null ? "" : arg);
 		case 'b': {
 			StringBuilder b = new StringBuilder();
 			String text = arg == null ? "" : arg;
@@ -347,27 +383,30 @@ public class Printf extends ShellCommand{
 					b.append(text.charAt(idx));
 				}
 			}
-			return String.format(spec+prec+"s", b);
+			return bytes(spec, precision, b.toString());
 		}
 		case 'q': {
 			// %.Nq: the quoted text cut to N (bash's); %.NQ: the argument cut to N, then quoted
 			String q = alternate ? singleQuoted(arg == null ? "" : arg) : quote(arg == null ? "" : arg);
-			if( precision != null && precision < q.length()) {
-				q = q.substring(0, precision);
-			}
-			return String.format(spec+"s", q);
+			return bytes(spec, precision, q);
 		}
 		case 'Q': {
 			String a = arg == null ? "" : arg;
-			if( precision != null && precision < a.length()) {
-				a = a.substring(0, precision);
+			byte [] ab = us.bringardner.fsh.RawUtf8.toBytes(a);
+			if( precision != null && precision < ab.length ) {
+				a = us.bringardner.fsh.RawUtf8.toText(java.util.Arrays.copyOf(ab, precision));
 			}
-			return String.format(spec+"s", alternate ? singleQuoted(a) : quote(a));
+			return bytes(spec, null, alternate ? singleQuoted(a) : quote(a));
 		}
 		case 'c':
 		case 'C':
 			// (no argument: a NUL, as bash's)
-			return String.format(spec+"s", arg == null || arg.isEmpty() ? "\0" : arg.substring(0, 1));
+			// (its first byte, as bash's; %lc its first character)
+			if( arg == null || arg.isEmpty()) {
+				return bytes(spec, null, "\0");
+			}
+			return bytes(spec, null, wide ? arg.substring(0, arg.offsetByCodePoints(0, 1))
+					: us.bringardner.fsh.RawUtf8.toText(java.util.Arrays.copyOf(us.bringardner.fsh.RawUtf8.toBytes(arg), 1)));
 		case 'd':
 		case 'i':
 		case 'u':

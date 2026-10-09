@@ -801,9 +801,18 @@ public final class Parser {
 				break;
 			default:
 				if( !regex && "?*+@!".indexOf(c) >= 0 && ch(pos+1) == '(' ) {
-					// extglob: @(a|b) !(*.c) ... (blanks and | in it are part of the word)
+					// extglob: @(a|b) !(*.c) ... (blanks and | in it are part of the word); what is in
+					// it is read as a word is, so its quotes and \ quote (?(\[)b, ?("[")b)
 					int close = matchParen(pos+1);
-					lit.append(src, pos, close+1);
+					String inside = src.substring(pos+2, close);
+					if( inside.indexOf('\\') < 0 && inside.indexOf('\'') < 0 && inside.indexOf('"') < 0 && inside.indexOf('$') < 0 && inside.indexOf('`') < 0 ) {
+						lit.append(src, pos, close+1);
+					} else {
+						lit.append(src, pos, pos+2);
+						flush(w, lit);
+						w.parts.addAll(fragment(inside, Fragment.WORD).parts);
+						lit.append(')');
+					}
 					pos = close+1;
 				} else if( !regex && c == '[' && arrayElement && pos == w.start ) {
 					// ([key]=value): the key is read to its ] (blanks and all)

@@ -124,6 +124,20 @@ public final class Expander {
 		return expand0(w);
 	}
 
+	/** no filename expansion (see shellExpansions) */
+	private boolean noPathnames;
+
+	/** a word expanded as a command word is, but without filename expansion (compgen -W's words) */
+	public List<String> shellExpansions(Word w) {
+		boolean was = noPathnames;
+		noPathnames = true;
+		try {
+			return expand0(w);
+		} finally {
+			noPathnames = was;
+		}
+	}
+
 	private List<String> expand0(Word w) {
 		List<String> ret = new ArrayList<>();
 		List<Word> words = option(Console.Option.DoBraceExpantion) ? Braces.expand(w) : List.of(w);
@@ -1151,6 +1165,10 @@ public final class Expander {
 				if( !use ) {
 					return paramWord(e.arg, context, out);
 				}
+				if( v.isList() && !v.star && v.items.isEmpty()) {
+					// "${a[@]+word}" of no elements: no word at all, as "$@" of none
+					return emit(Val.list(List.of(), false), context, out);
+				}
 				return true;
 			}
 		}
@@ -1689,7 +1707,8 @@ public final class Expander {
 		}
 		if( !v.isList()) {
 			String s = v.scalar == null ? "" : v.scalar;
-			int n = s.length();
+			// (counted in characters, as bash's: 😁 is one, though Java has two chars for it)
+			int n = s.codePointCount(0, s.length());
 			if( off < 0 ) {
 				off += n;
 				if( off < 0 ) {
@@ -1709,7 +1728,7 @@ public final class Expander {
 					end = off;
 				}
 			}
-			return Val.of(s.substring((int) off, (int) end));
+			return Val.of(s.substring(s.offsetByCodePoints(0, (int) off), s.offsetByCodePoints(0, (int) end)));
 		}
 		if( len != null && len < 0 ) {
 			throw new ExpansionError(e.arg2.trim()+": substring expression < 0");
@@ -2084,7 +2103,7 @@ public final class Expander {
 	/** filename expansion of a field that has an unquoted pattern */
 	private void glob(Field f, List<String> out) {
 		String text = f.text.toString();
-		if( !f.wild || option(Console.Option.DisableFilenameExpansion) || !isPattern(f.pattern)) {
+		if( noPathnames || !f.wild || option(Console.Option.DisableFilenameExpansion) || !isPattern(f.pattern)) {
 			out.add(text);
 			return;
 		}

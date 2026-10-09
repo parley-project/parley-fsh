@@ -282,7 +282,8 @@ public abstract class GlobPattern {
 					}
 				}
 				case Star s -> {
-					return seq(nodes, i+1, pos, end);
+					// (not even matching nothing: *.bats is not .bats, as in bash)
+					return false;
 				}
 				case Group g -> {
 					if( g.kind() == '!' ) {

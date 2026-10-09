@@ -322,8 +322,8 @@ public class Find extends ShellCommand{
 				break;
 			}
 			default:
-				ctx.stderr.println("find: "+arg+": unknown primary or operator");
-				return 1;
+				// (one this find does not have, \( \) and the like: the system's find runs)
+				throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("find: "+arg+": unknown primary or operator");
 			}
 			if( negate ) {
 				Test t = test;

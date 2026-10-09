@@ -1838,6 +1838,14 @@ delimiter
 			variables.put("OPTIND", "1");
 			setInteger("OPTIND", true);
 			variables.put("OPTERR", "1");
+			// with no PATH from the environment, bash's own (not exported)
+			if( !environmentVariables.containsKey(PATH)) {
+				variables.put(PATH, "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:.");
+			}
+			// the characters completion splits a line's words at (bash's default)
+			if( !environmentVariables.containsKey("COMP_WORDBREAKS")) {
+				variables.put("COMP_WORDBREAKS", " \t\n\"'@><=;|&(:");
+			}
 			////Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
 
 			variables.put(Prompt.BeforeExecute.name, "");
@@ -3679,6 +3687,21 @@ delimiter
 		return osTraps();
 	}
 
+	/**
+	 * The signals a program ctx starts ignores, as bash's inherit SIG_IGN: those ignored when the
+	 * shell started and those trapped with ''.
+	 */
+	public java.util.Set<Integer> ignoredSignals(ShellContext ctx) {
+		java.util.Set<Integer> ret = new java.util.TreeSet<>(SignalState.IGNORED_AT_START);
+		for(Map.Entry<Integer,List<ConsoleSignalHandler>> e : trapsFor(ctx).entrySet()) {
+			List<ConsoleSignalHandler> h = e.getValue();
+			if( !h.isEmpty() && h.get(h.size()-1).action.isEmpty()) {
+				ret.add(e.getKey());
+			}
+		}
+		return ret;
+	}
+
 	/** the signal traps ctx has (from another thread: a signal for its subshell) */
 	public Map<Integer,List<ConsoleSignalHandler>> trapsFor(ShellContext ctx) {
 		return ctx.stageTraps != null ? ctx.stageTraps : osSignalHandlers;
@@ -3882,6 +3905,10 @@ delimiter
 
 	public void handleMetaSignal(ConsoleMetaSignal signal) {
 
+		if( signal == ConsoleMetaSignal.Exit && (exitTrapRunning || exitTrapRanAt != null && exitTrapRanAt == 0)) {
+			// (it ran where the shell exited: not again)
+			return;
+		}
 		if( !inProcess.contains(signal)) {			
 			List<String> actions = signalHandlers.get(signal);
 			if( actions !=null) {
@@ -4595,14 +4622,28 @@ delimiter
 	}
 
 	public int endSubshellTrap(List<String> shells, int status) {
+		return endSubshellTrap(shells, status, null);
+	}
+
+	/** endSubshellTrap, the trap run in ctx (the subshell's: its output goes where the subshell's does) */
+	public int endSubshellTrap(List<String> shells, int status, ShellContext ctx) {
 		int ret = status;
+		if( ctx != null && exitTrapRanAt != null && exitTrapRanAt == ctx.subshellLevel ) {
+			// (the subshell's ran as it exited; the shell's may run later)
+			exitTrapRanAt = null;
+			signalHandlers.remove(ConsoleMetaSignal.Exit);
+			if( shells != null ) {
+				signalHandlers.put(ConsoleMetaSignal.Exit, shells);
+			}
+			return ret;
+		}
 		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
 		if( actions != null ) {
 			// (exit in it ends just the subshell, with its status)
 			setLastExitCode(status);
 			for(String action : actions) {
 				try {
-					us.bringardner.fsh.exec.Executor.run(new ShellContext(this), action);
+					us.bringardner.fsh.exec.Executor.run(ctx != null ? ctx : new ShellContext(this), action);
 				} catch (ExitException e) {
 					ret = e.exitCode;
 					break;
@@ -4649,36 +4690,63 @@ delimiter
 	 * @return the status to exit with (an exit in the trap gives its own)
 	 */
 	public int runExitTrapAt(ShellContext ctx, int status) {
+		if( exitTrapRunning || exitTrapRanAt != null && exitTrapRanAt == ctx.subshellLevel ) {
+			// (exit in the EXIT trap, or after it: not again, even if it set another, as bash's)
+			return status;
+		}
 		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
 		if( actions == null ) {
 			return status;
 		}
+		exitTrapRunning = true;
+		exitTrapRanAt = ctx.subshellLevel;
 		setLastExitCode(status);
-		for(String action : actions) {
-			try {
-				us.bringardner.fsh.exec.Executor.run(ctx, action);
-			} catch (ExitException e) {
-				return e.exitCode;
-			} catch (Exception e) {
-				if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
-					getStdErr().println(e.getMessage());
-				}
-			}
-		}
-		return status;
-	}
-
-	private void runExitTrap() {
-		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
-		if( actions != null ) {
+		// ($BASH_COMMAND in it is the command it ran for; its $LINENO is its own, as bash's)
+		boolean savedKeep = ctx.keepCommand;
+		ctx.keepCommand = true;
+		try {
 			for(String action : actions) {
 				try {
-					executeScript(action);
+					us.bringardner.fsh.exec.Executor.run(ctx, action);
+				} catch (ExitException e) {
+					return e.exitCode;
 				} catch (Exception e) {
 					if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
 						getStdErr().println(e.getMessage());
 					}
 				}
+			}
+		} finally {
+			ctx.keepCommand = savedKeep;
+			exitTrapRunning = false;
+		}
+		return status;
+	}
+
+	/** the shell's EXIT trap is running (it does not run again, as bash's SIG_INPROGRESS) */
+	private volatile boolean exitTrapRunning;
+	/** the (sub)shell level whose EXIT trap has run as it exits (0: the shell's), or null */
+	private volatile Integer exitTrapRanAt;
+
+	private void runExitTrap() {
+		if( exitTrapRunning || exitTrapRanAt != null && exitTrapRanAt == 0 ) {
+			return;
+		}
+		List<String> actions = signalHandlers.remove(ConsoleMetaSignal.Exit);
+		if( actions != null ) {
+			exitTrapRunning = true;
+			try {
+				for(String action : actions) {
+					try {
+						executeScript(action);
+					} catch (Exception e) {
+						if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
+							getStdErr().println(e.getMessage());
+						}
+					}
+				}
+			} finally {
+				exitTrapRunning = false;
 			}
 		}
 	}

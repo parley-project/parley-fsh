@@ -141,7 +141,8 @@ public class Hash extends ShellCommand {
 				// (a path is not remembered)
 			} else if( ctx.console.builtin(n) == null && ctx.getFunction(n) == null ) {
 				FileSource file = us.bringardner.fsh.exec.Programs.which(n, ctx);
-				if( file == null ) {
+				if( file == null || !file.canExecute()) {
+					// (a file that cannot run is not remembered, as in bash)
 					ctx.error("hash: "+n+": not found");
 					ret = 1;
 				} else {
