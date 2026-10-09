@@ -371,7 +371,11 @@ public final class Programs {
 				// output and error files) itself, not through a pipe: vi, less and top work
 				boolean tty = NativeKeyboard.terminal();
 				boolean foreground = ctx.console.readsKeyboard(ctx);
-				boolean inheritIn = tty && foreground && isKeyboard(ctx.stdin);
+				boolean inheritIn = tty && foreground && isKeyboard(ctx.stdin)
+						// (an interactive shell reading a pipe: the program reads it itself, and what it
+						// does not read stays for the shell, as with bash)
+						|| ctx.stdin instanceof NativeKeyboard && Console.System_in instanceof us.bringardner.fsh.ProcessStdin
+						&& !NativeKeyboard.inputIsTerminal();
 				boolean inheritOut = isShellStream(ctx.stdout, Console.System_out);
 				boolean inheritErr = isShellStream(ctx.stderr, Console.System_err);
 				// with job control, as bash: the job's programs are a process group of their own,

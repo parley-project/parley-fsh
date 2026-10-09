@@ -992,6 +992,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	}
 	@Override
 	public InputStream getStdIn() {
-		return System.in;
+		// (the shell's own: a pipe or file is read unbuffered, so the programs it runs read the rest)
+		return Console.System_in;
 	}
 }
