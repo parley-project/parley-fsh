@@ -214,7 +214,7 @@ public class Set extends ShellCommand{
 	static String valueText(String s, boolean posix) {
 		boolean control = false;
 		for(char c : s.toCharArray()) {
-			control |= c < ' ' || c == 0x7f;
+			control |= us.bringardner.fsh.RawUtf8.unprintable(c);
 		}
 		if( control && !posix ) {
 			return us.bringardner.fsh.expand.Expander.quote(s);

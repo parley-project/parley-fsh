@@ -66,33 +66,8 @@ public final class ByteText {
 		}
 	}
 
-	/** bytes as UTF-8, where they are; another byte is the character with its value */
+	/** bytes as UTF-8, where they are; another byte is the character that stands for it (RawUtf8) */
 	private static String decode(byte [] bytes) {
-		CharsetDecoder d = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
-				.onUnmappableCharacter(CodingErrorAction.REPORT);
-		try {
-			return d.decode(ByteBuffer.wrap(bytes)).toString();
-		} catch (CharacterCodingException e) {
-			// decode what is valid, a byte at a time otherwise
-		}
-		StringBuilder ret = new StringBuilder();
-		int i = 0;
-		while( i < bytes.length ) {
-			int b = bytes[i] & 0xff;
-			int len = b >= 0xf0 && b < 0xf8 ? 4 : b >= 0xe0 ? 3 : b >= 0xc2 && b < 0xe0 ? 2 : 1;
-			if( len > 1 && i+len <= bytes.length ) {
-				try {
-					CharBuffer cb = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
-							.decode(ByteBuffer.wrap(bytes, i, len));
-					ret.append(cb);
-					i += len;
-					continue;
-				} catch (CharacterCodingException e) {
-				}
-			}
-			ret.append((char) b);
-			i++;
-		}
-		return ret.toString();
+		return RawUtf8.toText(bytes);
 	}
 }

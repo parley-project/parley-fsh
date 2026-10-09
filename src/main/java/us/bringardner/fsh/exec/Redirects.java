@@ -202,7 +202,7 @@ final class Redirects {
 			if( !r.hereDoc.quoted ) {
 				body = ex.hereDocument(body);
 			}
-			setIn(sc, fd == null ? 0 : fd, new ReadBack(new ByteArrayInputStream(body.getBytes())), opened);
+			setIn(sc, fd == null ? 0 : fd, new ReadBack(new ByteArrayInputStream(us.bringardner.fsh.RawUtf8.toBytes(body))), opened);
 			return;
 		}
 		switch (r.op) {
@@ -213,20 +213,20 @@ final class Redirects {
 			if( r.op.equals(">") && file.exists() && !file.isDirectory() && sc.console.isOptionEnabled(Option.NoClobberRedirect) && !word.equals("/dev/null")) {
 				throw new IOException(word+": cannot overwrite existing file");
 			}
-			setOut(sc, fd == null ? 1 : fd, new PrintStream(open(file, word, false)), file, opened);
+			setOut(sc, fd == null ? 1 : fd, new PrintStream(open(file, word, false), false, us.bringardner.fsh.RawUtf8.CHARSET), file, opened);
 			break;
 		}
 		case ">>": {
 			String word = target(r, ex);
 			FileSource file = sc.getFileSource(word);
-			setOut(sc, fd == null ? 1 : fd, new PrintStream(open(file, word, true)), file, opened);
+			setOut(sc, fd == null ? 1 : fd, new PrintStream(open(file, word, true), false, us.bringardner.fsh.RawUtf8.CHARSET), file, opened);
 			break;
 		}
 		case "&>":
 		case "&>>": {
 			String word = target(r, ex);
 			FileSource file = sc.getFileSource(word);
-			PrintStream out = new PrintStream(open(file, word, r.op.equals("&>>")));
+			PrintStream out = new PrintStream(open(file, word, r.op.equals("&>>")), false, us.bringardner.fsh.RawUtf8.CHARSET);
 			setOut(sc, 1, out, file, opened);
 			sc.stderr = out;
 			break;
@@ -256,14 +256,14 @@ final class Redirects {
 		}
 		case "<<<":
 			// a here-string: the word and a newline
-			setIn(sc, fd == null ? 0 : fd, new ReadBack(new ByteArrayInputStream((ex.string(r.target)+"\n").getBytes())), opened);
+			setIn(sc, fd == null ? 0 : fd, new ReadBack(new ByteArrayInputStream(us.bringardner.fsh.RawUtf8.toBytes(ex.string(r.target)+"\n"))), opened);
 			break;
 		case ">&": {
 			String word = target(r, ex);
 			if( fd == null && !isDescriptor(word)) {
 				// >&word is &>word
 				FileSource file = sc.getFileSource(word);
-				PrintStream out = new PrintStream(open(file, word, false));
+				PrintStream out = new PrintStream(open(file, word, false), false, us.bringardner.fsh.RawUtf8.CHARSET);
 				setOut(sc, 1, out, file, opened);
 				sc.stderr = out;
 			} else {
@@ -449,7 +449,7 @@ final class Redirects {
 			sc.stdout = new us.bringardner.fsh.ClosedStream();
 		} else if( n == 2 ) {
 			sc.stderr.flush();
-			sc.stderr = new PrintStream(OutputStream.nullOutputStream());
+			sc.stderr = new PrintStream(OutputStream.nullOutputStream(), false, us.bringardner.fsh.RawUtf8.CHARSET);
 		} else if( PERMANENT.get()) {
 			sc.console.closeFileDistcriptor(n);
 			sc.console.keptFds.remove(n);
@@ -504,7 +504,7 @@ final class Redirects {
 				}
 			};
 			FileDiscriptor fd = new FileDiscriptor(n, in, null);
-			fd.setOut(new PrintStream(out, true));
+			fd.setOut(new PrintStream(out, true, us.bringardner.fsh.RawUtf8.CHARSET));
 			setDescriptor(sc, fd);
 			if( n == 0 ) {
 				sc.stdin = in;
@@ -538,7 +538,7 @@ final class Redirects {
 			}
 		};
 		FileDiscriptor fd = new FileDiscriptor(n, in, rad);
-		fd.setOut(new PrintStream(out));
+		fd.setOut(new PrintStream(out, false, us.bringardner.fsh.RawUtf8.CHARSET));
 		setDescriptor(sc, fd);
 		if( n == 0 ) {
 			sc.stdin = in;

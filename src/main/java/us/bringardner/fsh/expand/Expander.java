@@ -1856,7 +1856,7 @@ public final class Expander {
 	public static String quote(String s) {
 		boolean control = false;
 		for(char c : s.toCharArray()) {
-			control |= c < ' ' || c == 0x7f;
+			control |= us.bringardner.fsh.RawUtf8.unprintable(c);
 		}
 		if( !control ) {
 			return "'"+s.replace("'", "'\\''")+"'";
@@ -1876,8 +1876,8 @@ public final class Expander {
 			case '\\' -> ret.append("\\\\");
 			case '\'' -> ret.append("\\'");
 			default -> {
-				if( c < ' ' || c == 0x7f ) {
-					ret.append(String.format("\\%03o", (int) c));
+				if( us.bringardner.fsh.RawUtf8.unprintable(c)) {
+					ret.append(String.format("\\%03o", us.bringardner.fsh.RawUtf8.valueOf(c)));
 				} else {
 					ret.append(c);
 				}

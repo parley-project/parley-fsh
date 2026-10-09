@@ -886,8 +886,11 @@ delimiter
 
 	public static void main(String args[]) throws IOException {
 		// the shell's standard output: a broken pipe ends the shell, as SIGPIPE ends bash
-		System_out = new PrintStream(new java.io.BufferedOutputStream(new BrokenPipeGuard(new java.io.FileOutputStream(java.io.FileDescriptor.out)), 8192), true);
+		System_out = new PrintStream(new java.io.BufferedOutputStream(new BrokenPipeGuard(new java.io.FileOutputStream(java.io.FileDescriptor.out)), 8192), true, us.bringardner.fsh.RawUtf8.CHARSET);
 		System.setOut(System_out);
+		// (its standard error too writes the bytes that are not UTF-8 as they were: RawUtf8)
+		System_err = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.err), true, RawUtf8.CHARSET);
+		System.setErr(System_err);
 
 			Console c = new Console();
 			shell = c;
@@ -1395,7 +1398,7 @@ delimiter
 			java.io.File local = new java.io.File(name);
 			if( !file.exists() && local.isAbsolute() && local.isFile()) {
 				// the command line names a local file (the shell's files may be another file system)
-				return runCommands(java.nio.file.Files.readString(local.toPath()));
+				return runCommands(us.bringardner.fsh.RawUtf8.toText(java.nio.file.Files.readAllBytes(local.toPath())));
 			}
 			if( !file.exists()) {
 				stdErr.println("fsh: "+name+": No such file or directory");
@@ -1414,7 +1417,7 @@ delimiter
 				stdErr.println(name+": "+name+": cannot execute binary file");
 				return 126;
 			}
-			return runCommands(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+			return runCommands(us.bringardner.fsh.RawUtf8.toText(bytes));
 		} catch (IOException e) {
 			stdErr.println("fsh: "+name+": "+e.getMessage());
 			return 126;
@@ -1677,14 +1680,14 @@ delimiter
 			int b;
 			while( (b = in.read()) >= 0 ) {
 				if( b == '\n' ) {
-					return line.toString(java.nio.charset.StandardCharsets.UTF_8);
+					return us.bringardner.fsh.RawUtf8.toText(line.toByteArray());
 				}
 				line.write(b);
 			}
 		} catch (IOException e) {
 		}
 		unterminated = line.size() > 0;
-		return line.size() > 0 ? line.toString(java.nio.charset.StandardCharsets.UTF_8) : null;
+		return line.size() > 0 ? us.bringardner.fsh.RawUtf8.toText(line.toByteArray()) : null;
 	}
 
 	public void setPositionalParameters(boolean isMain, List<Object> args) {
@@ -1713,7 +1716,7 @@ delimiter
 			}
 			try {
 				ShellContext sc = new ShellContext(this);
-				sc.stderr = new PrintStream(java.io.OutputStream.nullOutputStream());
+				sc.stderr = new PrintStream(java.io.OutputStream.nullOutputStream(), false, us.bringardner.fsh.RawUtf8.CHARSET);
 				String code = e.getKey()+" "+e.getValue();
 				// only a function definition, and nothing after it (bash's fix for CVE-2014-6271)
 				us.bringardner.fsh.syntax.Ast.Sequence seq = us.bringardner.fsh.syntax.Parser.parse(code);
@@ -3123,7 +3126,7 @@ delimiter
 			char comment = historyComment();
 			String text;
 			try(InputStream in = file.getInputStream()) {
-				text = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+				text = us.bringardner.fsh.RawUtf8.toText(in.readAllBytes());
 			}
 			// as bash's read_history: with time stamps (and HISTTIMEFORMAT set) the lines after
 			// one are one command, blank lines in it kept (not those right after the stamp);
@@ -3181,7 +3184,7 @@ delimiter
 					if( times ) {
 						out.write((""+comment+(e.time/1000)+"\n").getBytes());
 					}
-					out.write((e.command+"\n").getBytes());
+					out.write(us.bringardner.fsh.RawUtf8.toBytes(e.command+"\n"));
 				}
 			}
 			return true;
@@ -3226,7 +3229,7 @@ delimiter
 				try(InputStream in = file.getInputStream()) {
 					long loadTime = System.currentTimeMillis();
 					List<HistoryEntry> tmp = new ArrayList<>();
-					String [] lines = new String(in.readAllBytes()).split("\n");
+					String [] lines = us.bringardner.fsh.RawUtf8.toText(in.readAllBytes()).split("\n");
 					for (int lineNum = 0; lineNum < lines.length; lineNum++) {
 						String line = lines[lineNum].trim();						
 						if( line.isEmpty()) {
@@ -3326,7 +3329,7 @@ delimiter
 					if( stamps ) {
 						out.write((""+hist_comment+(e.time/1000)+"\n").getBytes());
 					}
-					out.write((e.command+"\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+					out.write(us.bringardner.fsh.RawUtf8.toBytes(e.command+"\n"));
 				}
 			}
 
@@ -4360,7 +4363,7 @@ delimiter
 				}
 				if( mode == 1 || mode == 2 ) {
 					// (appending: the file is not truncated, its offset is the one it was given)
-					PrintStream out = new PrintStream(new java.io.FileOutputStream(path, true), true);
+					PrintStream out = new PrintStream(new java.io.FileOutputStream(path, true), true, us.bringardner.fsh.RawUtf8.CHARSET);
 					if( f == null ) {
 						f = new FileDiscriptor(fd, out, null);
 					} else {

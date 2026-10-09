@@ -1026,7 +1026,7 @@ public final class Declarations {
 
 	/** an associative array's key: "quoted" if the shell would read it differently (as bash's) */
 	static String key(String k) {
-		if( k.chars().anyMatch(Character::isISOControl)) {
+		if( k.chars().anyMatch(c -> Character.isISOControl(c) || us.bringardner.fsh.RawUtf8.isEscape((char) c))) {
 			// $'..'
 			return quote(k);
 		}
@@ -1053,7 +1053,7 @@ public final class Declarations {
 		boolean ansi = false;
 		for (int i = 0; i < s.length() && !ansi; i++) {
 			char c = s.charAt(i);
-			ansi = Character.isISOControl(c);
+			ansi = Character.isISOControl(c) || us.bringardner.fsh.RawUtf8.isEscape(c);
 		}
 		if( ansi ) {
 			StringBuilder ret = new StringBuilder("$'");
@@ -1070,8 +1070,8 @@ public final class Declarations {
 				case '\t' -> ret.append("\\t");
 				case '\\', '\'' -> ret.append('\\').append(c);
 				default -> {
-					if( Character.isISOControl(c)) {
-						int b = c;
+					if( Character.isISOControl(c) || us.bringardner.fsh.RawUtf8.isEscape(c)) {
+						int b = us.bringardner.fsh.RawUtf8.valueOf(c);
 						ret.append('\\').append((b >> 6) & 7).append((b >> 3) & 7).append(b & 7);
 					} else {
 						ret.append(c);

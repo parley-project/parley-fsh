@@ -728,7 +728,7 @@ public class Printf extends ShellCommand{
 		if( s.isEmpty()) {
 			return "''";
 		}
-		if( s.chars().anyMatch(c -> c < ' ' || c == 0x7f)) {
+		if( s.chars().anyMatch(c -> us.bringardner.fsh.RawUtf8.unprintable((char) c))) {
 			// control characters: $'...', as bash does
 			StringBuilder ret = new StringBuilder("$'");
 			for(char c : s.toCharArray()) {
@@ -744,8 +744,8 @@ public class Printf extends ShellCommand{
 				case 11: ret.append("\\v"); break;
 				case 27: ret.append("\\E"); break;
 				default:
-					if( c < ' ' || c == 0x7f ) {
-						ret.append(String.format("\\%03o", (int) c));
+					if( us.bringardner.fsh.RawUtf8.unprintable(c)) {
+						ret.append(String.format("\\%03o", us.bringardner.fsh.RawUtf8.valueOf(c)));
 					} else {
 						ret.append(c);
 					}

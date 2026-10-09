@@ -200,7 +200,7 @@ public class Fc extends ShellCommand{
 			if( status != 0 ) {
 				return 1;
 			}
-			String code = java.nio.file.Files.readString(file.toPath());
+			String code = us.bringardner.fsh.RawUtf8.toText(java.nio.file.Files.readAllBytes(file.toPath()));
 			// (the commands are shown as they are read, as with set -v)
 			ctx.stderr.print(code);
 			ctx.stderr.flush();

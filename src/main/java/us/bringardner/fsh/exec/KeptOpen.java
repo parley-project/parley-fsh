@@ -11,7 +11,7 @@ final class KeptOpen extends PrintStream {
 	final PrintStream target;
 
 	KeptOpen(PrintStream target) {
-		super(target, true);
+		super(target, true, us.bringardner.fsh.RawUtf8.CHARSET);
 		this.target = target;
 	}
 

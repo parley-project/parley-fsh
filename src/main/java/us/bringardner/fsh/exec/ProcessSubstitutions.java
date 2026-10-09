@@ -61,7 +61,7 @@ final class ProcessSubstitutions {
 					int status;
 					try (OutputStream out = new FileOutputStream(fifo)) {
 						opened.set(true);
-						c.stdout = new PrintStream(new PipeOutput(out, c), true);
+						c.stdout = new PrintStream(new PipeOutput(out, c), true, us.bringardner.fsh.RawUtf8.CHARSET);
 						status = ex.list(seq, c);
 					}
 					// read again (wc -l < $1 twice), it is at its end at once, as bash's /dev/fd/N

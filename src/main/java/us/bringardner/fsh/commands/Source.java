@@ -124,7 +124,7 @@ public class Source extends ShellCommand{
 					public void close() {
 					}
 				} : file.getInputStream()) {
-				String code = new String(in.readAllBytes());
+				String code = us.bringardner.fsh.RawUtf8.toText(in.readAllBytes());
 				// in the caller's context (its functions and locals), and return ends the file
 				List<Object> saved = null;
 				List<Object> params = null;

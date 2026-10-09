@@ -107,13 +107,13 @@ public class Mapfile extends ShellCommand{
 			}
 			if( c == delim ) {
 				if( read++ >= skip ) {
-					add(ctx, lines, line.toString(java.nio.charset.StandardCharsets.UTF_8), callback, quantum, origin);
+					add(ctx, lines, us.bringardner.fsh.RawUtf8.toText(line.toByteArray()), callback, quantum, origin);
 				}
 				line.reset();
 			}
 		}
 		if( line.size() > 0 && (max < 0 || lines.size() < max) && read >= skip ) {
-			add(ctx, lines, line.toString(java.nio.charset.StandardCharsets.UTF_8), callback, quantum, origin);
+			add(ctx, lines, us.bringardner.fsh.RawUtf8.toText(line.toByteArray()), callback, quantum, origin);
 		}
 		if( origin != null ) {
 			Object old = ctx.getVariable(var);

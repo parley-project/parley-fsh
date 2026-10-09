@@ -461,7 +461,8 @@ public class Read extends ShellCommand{
 		}
 		int more = first >= 0xf0 && first < 0xf8 ? 3 : first >= 0xe0 ? 2 : first >= 0xc2 && first < 0xe0 ? 1 : 0;
 		if( more == 0 ) {
-			return String.valueOf((char) first);
+			// (a byte that is not UTF-8: the character that stands for it)
+			return String.valueOf(us.bringardner.fsh.RawUtf8.escape(first));
 		}
 		byte [] bytes = new byte[more+1];
 		bytes[0] = (byte) first;
@@ -472,15 +473,16 @@ public class Read extends ShellCommand{
 			int b = in.read();
 			if( b < 0x80 || b > 0xbf ) {
 				// not part of it: put back if the stream can, else keep it as it is
+				String done = us.bringardner.fsh.RawUtf8.toText(bytes, 0, k);
 				if( b >= 0 && in.markSupported()) {
 					in.reset();
 				} else if( b >= 0 ) {
-					return new String(bytes, 0, k, java.nio.charset.StandardCharsets.ISO_8859_1)+(char) b;
+					return done+us.bringardner.fsh.RawUtf8.toText(new byte[] {(byte) b});
 				}
-				return new String(bytes, 0, k, java.nio.charset.StandardCharsets.ISO_8859_1);
+				return done;
 			}
 			bytes[k] = (byte) b;
 		}
-		return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+		return us.bringardner.fsh.RawUtf8.toText(bytes);
 	}
 }
