@@ -1002,14 +1002,7 @@ public final class Executor {
 			}
 		}
 		case Ast.Select s -> {
-			// (bash's line_number in it is its own line)
-			int context = sc.contextLine;
-			sc.contextLine = s.line;
-			try {
-				return select(s, sc);
-			} finally {
-				sc.contextLine = context;
-			}
+			return select(s, sc);
 		}
 		case Ast.Case k -> {
 			// (bash's line_number in it is its own line)
@@ -1243,13 +1236,25 @@ public final class Executor {
 	/** select name in words: a numbered menu on standard error, a choice read from standard input */
 	private int select(Ast.Select s, ShellContext sc) throws IOException {
 		if( !isName(s.variable)) {
-			sc.line = s.line;
+			// (said before select's own line is bash's line_number: the line around it)
+			sc.line = sc.contextLine > 0 ? sc.contextLine : sc.commandEndLine > 0 ? sc.commandEndLine : s.line;
 			error(sc, "`"+s.variable+"': not a valid identifier");
 			if( sc.console.isOptionEnabled(Option.Posix) && !sc.console.isInteractive ) {
 				throw new ExitException(sc, 1);
 			}
 			return 1;
 		}
+		// (bash's line_number in it is its own line)
+		int context = sc.contextLine;
+		sc.contextLine = s.line;
+		try {
+			return selectLoop(s, sc);
+		} finally {
+			sc.contextLine = context;
+		}
+	}
+
+	private int selectLoop(Ast.Select s, ShellContext sc) throws IOException {
 		List<String> entries;
 		if( s.words == null ) {
 			entries = new ArrayList<>();
@@ -1737,18 +1742,23 @@ public final class Executor {
 
 	// ------------------------------------------------------------------ functions
 
+	/** the line an error about a function's definition says: bash's line_number (in a function, a ( ) ...), or where it ends */
+	private int definitionLine(Ast.FunctionDef f, ShellContext sc) {
+		return sc.contextLine > 0 ? sc.contextLine : f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+	}
+
 	private int define(Ast.FunctionDef f, ShellContext sc) {
 		if( sc.console.isOptionEnabled(Option.Posix) && SPECIAL_BUILTINS.contains(f.name)) {
 			// posix mode: not the name of a special builtin (and the shell ends, as bash's), said at
 			// the line it ends on
-			sc.line = f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+			sc.line = definitionLine(f, sc);
 			error(sc, "`"+f.name+"': is a special builtin");
 			throw new ExitException(sc, 2);
 		}
 		if( f.quotedName ) {
 			// as bash: a quoted or expanded name, said at the line it ends on
 			int saved = sc.line;
-			sc.line = f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+			sc.line = definitionLine(f, sc);
 			try {
 				error(sc, "`"+f.name+"': not a valid identifier");
 			} finally {
@@ -1759,7 +1769,7 @@ public final class Executor {
 		if( sc.console.isReadonlyFunction(f.name)) {
 			// (said at the line it ends on, as bash's)
 			int saved = sc.line;
-			sc.line = f.line+(int) text(f.start, f.end).chars().filter(c -> c == '\n').count();
+			sc.line = definitionLine(f, sc);
 			try {
 				error(sc, f.name+": readonly function");
 			} finally {
