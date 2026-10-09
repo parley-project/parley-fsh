@@ -1411,6 +1411,12 @@ delimiter
 		if( commandsContext == null ) {
 			commandsContext = scriptContext();
 		}
+		if( onlyComments(code)) {
+			// (comment lines run nothing: $? stays, as in bash; they are kept in the history)
+			int keep = getLastExitCode();
+			executeScript0(code, firstLine, commandsContext);
+			return keep;
+		}
 		try {
 			us.bringardner.fsh.syntax.Parser.parse(code, firstLine);
 		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
@@ -1418,6 +1424,17 @@ delimiter
 			return e.recoverable ? 1 : -1;
 		}
 		return executeScript0(code, firstLine, commandsContext);
+	}
+
+	/** text that is only blank lines and comments */
+	private static boolean onlyComments(String code) {
+		for(String line : code.split("\n")) {
+			String t = line.strip();
+			if( !t.isEmpty() && !t.startsWith("#")) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** the text's last line had no newline after it */
