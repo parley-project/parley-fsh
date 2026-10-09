@@ -957,9 +957,10 @@ public final class Expander {
 			return isList() ? items.isEmpty() : scalar == null;
 		}
 
-		boolean isNull() {
+		/** null for :-: the words joined (with a space for @, IFS's first character for *), as bash's */
+		boolean isNull(String starSeparator) {
 			if( isList()) {
-				return String.join("", items).isEmpty();
+				return String.join(star ? starSeparator : " ", items).isEmpty();
 			}
 			return scalar == null || scalar.isEmpty();
 		}
@@ -1013,7 +1014,7 @@ public final class Expander {
 			return emit(v, context, out);
 		}
 		if( conditional ) {
-			boolean use = op.startsWith(":") ? v.unset() || v.isNull() : v.unset();
+			boolean use = op.startsWith(":") ? v.unset() || v.isNull(ifsFirst()) : v.unset();
 			switch (op.charAt(op.length()-1)) {
 			case '-':
 				if( use ) {
@@ -1218,7 +1219,9 @@ public final class Expander {
 			return m.get(key);
 		}
 		// (as in $(( )): no ~, and '...' is not removed)
-		long idx = evaluate(arithmeticText(Parser.arithmeticFragment(e.subscript))).longValue();
+		Word subscript = Parser.arithmeticFragment(e.subscript);
+		// (the blanks after it stay, as bash's errors show them)
+		long idx = evaluate(arithmeticText(subscript)+trailingBlanks(subscript)).longValue();
 		if( idx < 0 ) {
 			long size = v instanceof FshList f ? (f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1)
 					: v instanceof List<?> l ? l.size() : v == null ? 0 : 1;
