@@ -176,6 +176,15 @@ public class Set extends ShellCommand{
 		java.util.Map<String, Object> all = new java.util.TreeMap<>();
 		all.putAll(ctx.getEnvironmentVariables());
 		all.putAll(ctx.getVariables());
+		// (the ones the shell works out when they are used, as bash's set shows them too)
+		for(String dynamic : new String[] {"EUID", "UID", "PPID", "GROUPS", "HOSTNAME", "_"}) {
+			if( !all.containsKey(dynamic)) {
+				Object v = ctx.getVariable(dynamic);
+				if( v != null ) {
+					all.put(dynamic, v);
+				}
+			}
+		}
 		for(java.util.Map.Entry<String, Object> e : all.entrySet()) {
 			String name = e.getKey();
 			if( !name.matches("[A-Za-z_][A-Za-z0-9_]*")) {

@@ -119,7 +119,7 @@ public class Console extends SignalEnabledThread {
 
 	/** $_: the last argument of the last simple command */
 	/** $_ (at the start, the shell's path from the environment's _, as bash's) */
-	public volatile String lastArgument = System.getenv("_") == null ? "" : System.getenv("_");
+	public volatile String lastArgument = System.getenv("_") != null ? System.getenv("_") : System.getProperty("fsh.argv0", "");
 
 	public static class FileDiscriptor {
 
@@ -1163,6 +1163,21 @@ delimiter
 
 		// interactive: -i, or commands from standard input that is the keyboard
 		isInteractive = inv.interactive || (inv.command == null && inv.file == null && isKeyboard(stdIn));
+		if( inv.command != null ) {
+			// the -c command, as bash keeps it
+			variables.put("BASH_EXECUTION_STRING", inv.command);
+		}
+		if( isInteractive ) {
+			// (completion's, as bash's line editor sets it)
+			variables.put("COMP_WORDBREAKS", " \t\n\"'@><=;|&(:");
+		}
+		if( !environmentVariables.containsKey("SHELL") && !variables.containsKey("SHELL")) {
+			// the user's login shell, as bash sets it when the environment has none
+			String shell = loginShell();
+			if( shell != null ) {
+				variables.put("SHELL", shell);
+			}
+		}
 		// (-n stays on in a shell -i makes interactive, as in bash; set -n there does nothing)
 		noExecAtStart = inv.interactive && isOptionEnabled(Option.NoExec);
 		if( isInteractive ) {
@@ -1816,7 +1831,10 @@ delimiter
 				variables.put(Prompt.EchoCommand.name, "+ ");
 			}
 			variables.put(VARIABLE_HISTCHARS, "!^#");
-			variables.put("COMP_WORDBREAKS", " \t\n\"'@><=;|&(:");
+			if( !environmentVariables.containsKey("TERM")) {
+				// (as bash: dumb when the environment has none)
+				variables.put("TERM", "dumb");
+			}
 			// the system it runs on, as bash describes it
 			String[] system = systemType();
 			variables.put("OSTYPE", system[0]);
@@ -1845,6 +1863,30 @@ delimiter
 		} catch (IOException e) {
 		}
 			importFunctions();
+	}
+
+	/** the user's login shell (from the user database), or null */
+	static String loginShell() {
+		String user = System.getProperty("user.name", "");
+		try {
+			if( systemType()[0].startsWith("darwin")) {
+				Process p = new ProcessBuilder("dscl", ".", "-read", "/Users/"+user, "UserShell").redirectErrorStream(true).start();
+				String out = new String(p.getInputStream().readAllBytes()).trim();
+				if( p.waitFor() == 0 && out.startsWith("UserShell:")) {
+					return out.substring("UserShell:".length()).trim();
+				}
+			} else {
+				for(String line : java.nio.file.Files.readAllLines(java.nio.file.Path.of("/etc/passwd"))) {
+					String[] f = line.split(":");
+					if( f.length >= 7 && f[0].equals(user)) {
+						return f[6];
+					}
+				}
+			}
+		} catch (Exception e) {
+			// (none known)
+		}
+		return null;
 	}
 
 	private static String[] systemTypeCache;
