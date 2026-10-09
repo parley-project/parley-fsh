@@ -2453,7 +2453,8 @@ public final class Executor {
 				backslashes++;
 			}
 			if( backslashes % 2 == 1 ) {
-				code += "\\";
+				// (and bash reads one more line after it: an unfinished command ends a line later)
+				code += "\\\n";
 			}
 			// (set -x shows its commands one level in)
 			sc.substitutionLevel++;
