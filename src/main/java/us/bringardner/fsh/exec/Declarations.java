@@ -372,6 +372,7 @@ public final class Declarations {
 					if( Executor.isName(t)) {
 						name = t;
 					} else if( assignment == null && text == null && t.endsWith("]") && t.indexOf('[') > 0
+							&& !command.equals("readonly") && !command.equals("export")
 							&& Executor.isName(t.substring(0, t.indexOf('[')))) {
 						// declare -i ref of a nameref to a[0]: the attributes are a's, as bash's
 						name = t.substring(0, t.indexOf('['));
