@@ -67,7 +67,8 @@ public class Export extends ShellCommand{
 				Map<String, Object> env = new java.util.TreeMap<>(ctx.getEnvironmentVariables());
 				for(String name : env.keySet()) {
 					Object v = env.get(name);
-					ctx.stdout.println("declare -x "+name+(v == null ? "" : "=\""+(""+v).replaceAll("([\"\\\\$`])", "\\\\$1")+"\""));
+					// (quoted as declare -p quotes them: $'..' when a character does not print)
+					ctx.stdout.println("declare -x "+name+(v == null ? "" : "="+us.bringardner.fsh.exec.Declarations.quote(v)));
 				}
 				
 			} else if(sa.options.contains(Arguments.n)) {
