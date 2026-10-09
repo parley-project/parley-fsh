@@ -2255,10 +2255,18 @@ public final class Executor {
 				sc.stderr.println("eval: usage: eval [arg ...]");
 				return 2;
 			}
-			String code = String.join(" ", evalArgs).trim();
-			// (read as bash reads it: a newline at its end)
-			if( code.isEmpty()) {
+			String code = String.join(" ", evalArgs).stripLeading();
+			if( code.isBlank()) {
 				return 0;
+			}
+			// (read as bash reads it: a newline at its end, unless it ends with a backslash, which
+			// is then kept as it is: eval 'echo a\' prints a\)
+			int backslashes = 0;
+			while( backslashes < code.length() && code.charAt(code.length()-1-backslashes) == '\\' ) {
+				backslashes++;
+			}
+			if( backslashes % 2 == 1 ) {
+				code += "\\";
 			}
 			// (set -x shows its commands one level in)
 			sc.substitutionLevel++;

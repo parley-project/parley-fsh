@@ -1069,15 +1069,25 @@ public final class Parser {
 		closers.add(close);
 		List<int []> outer = new ArrayList<>(open);
 		open.clear();
+		// (the here-documents started before it are read after its line, not in it, as in bash)
+		List<Redirect> outerHereDocs = new ArrayList<>(pendingHereDocs);
+		pendingHereDocs.clear();
 		Sequence body;
 		Token end;
+		boolean done = false;
 		try {
 			body = paren ? list(Set.of(), Set.of(")")) : list(Set.of("}"), Set.of());
 			end = take();
 			if( paren ? !isOp(end, ")") : !isWord(end, "}")) {
 				throw unexpected(end);
 			}
+			done = true;
 		} finally {
+			if( done && paren && !pendingHereDocs.isEmpty()) {
+				// $(cat <<EOF) with its lines after it: read there, with bash's warning
+				warnings.add(new Object[] {lineOf(from), "warning: command substitution: "+pendingHereDocs.size()+" unterminated here-document"+(pendingHereDocs.size() > 1 ? "s" : "")});
+			}
+			pendingHereDocs.addAll(0, outerHereDocs);
 			fragment = savedFragment;
 			if( !paren ) {
 				functionSubs--;

@@ -406,7 +406,32 @@ public final class Expander {
 
 		@Override
 		public String getMessage() {
-			return where+": bad substitution";
+			return (where.startsWith("${") ? ansiCQuoted(where) : where)+": bad substitution";
+		}
+
+		/** ${$'x'%$'t'} as bash says it: its $'..' read, as '..' (${'x'%'t'}) */
+		private static String ansiCQuoted(String text) {
+			StringBuilder ret = new StringBuilder();
+			int i = 0;
+			while( i < text.length()) {
+				int at = text.indexOf("$'", i);
+				if( at < 0 ) {
+					break;
+				}
+				int end = at+2;
+				while( end < text.length() && text.charAt(end) != '\'' ) {
+					if( text.charAt(end) == '\\' ) {
+						end++;
+					}
+					end++;
+				}
+				if( end >= text.length()) {
+					break;
+				}
+				ret.append(text, i, at).append('\'').append(ShellContext.ansiC(text.substring(at+2, end))).append('\'');
+				i = end+1;
+			}
+			return ret.append(text.substring(i)).toString();
 		}
 	}
 
@@ -568,6 +593,31 @@ public final class Expander {
 		}
 	}
 
+	/**
+	 * ${$'x1'}: a $'..' name is read as bash reads it (extquote): in "..." it is the name ("${$'x1'}"
+	 * is $x1); else it is quoted, '..', a bad substitution.
+	 */
+	/** how many "..." the part being expanded is in ("${x#${y}}": the ${y} is in one) */
+	private int doubleQuoted;
+
+	static String ansiCName(String body, boolean quoted) {
+		if( !body.startsWith("$'")) {
+			return body;
+		}
+		int i = 2;
+		while( i < body.length() && body.charAt(i) != '\'' ) {
+			if( body.charAt(i) == '\\' ) {
+				i++;
+			}
+			i++;
+		}
+		if( i >= body.length()) {
+			return body;
+		}
+		String name = ShellContext.ansiC(body.substring(2, i));
+		return (quoted ? name : "'"+name+"'")+body.substring(i+1);
+	}
+
 	private boolean part0(Word.Part p, int context, List<Piece> out) {
 		switch (p) {
 		case Word.Literal l -> out.add(new Piece(context, l.text()));
@@ -580,6 +630,8 @@ public final class Expander {
 			boolean emptyAt = false;
 			boolean literal = false;
 			List<Word.Part> inner = d.parts();
+			doubleQuoted++;
+			try {
 			for (int i = 0; i < inner.size(); i++) {
 				int used = indexed(inner, i, QUOTED, out);
 				if( used >= 0 ) {
@@ -598,6 +650,9 @@ public final class Expander {
 				literal |= (q instanceof Word.Literal l && !l.text().isEmpty()) || q instanceof Word.Escaped;
 				content |= r;
 			}
+			} finally {
+				doubleQuoted--;
+			}
 			if( emptyAt && !literal && out.subList(before, out.size()).stream().allMatch(x -> x.text.isEmpty())) {
 				// "$empty$@" with no positional parameters: no word, as in bash
 				out.subList(before, out.size()).clear();
@@ -613,7 +668,7 @@ public final class Expander {
 		}
 		case Word.ParamExpansion pe -> {
 			try {
-				return parameter(ParamExpr.parse(pe.body(), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
+				return parameter(ParamExpr.parse(ansiCName(pe.body(), context == QUOTED || doubleQuoted > 0 || inHereDocument), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
 			} catch (us.bringardner.fsh.syntax.SyntaxError e) {
 				// a $( in the word that does not end: said as bash says it, and the command is not run
 				throw commandSubstitutionError(e);
