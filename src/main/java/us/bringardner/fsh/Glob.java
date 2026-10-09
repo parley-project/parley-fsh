@@ -263,7 +263,8 @@ public class Glob {
 		if( spec.equals("nosort")) {
 			return;
 		}
-		java.util.Comparator<String> byName = Comparator.naturalOrder();
+		// (by name in the locale's order, as bash's strcoll)
+		java.util.Comparator<String> byName = Collation.current(ctx);
 		java.util.Comparator<String> order;
 		switch (spec) {
 		case "size", "blocks", "mtime", "atime", "ctime" -> {

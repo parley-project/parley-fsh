@@ -1502,10 +1502,11 @@ public final class Executor {
 			return !matches(ex.pattern(b.right()), l, sc);
 		case "=~":
 			return regex(l, ex.regex(b.right()), sc);
+		// (in the locale's order, as bash's strcoll)
 		case "<":
-			return l.compareTo(ex.string(b.right())) < 0;
+			return us.bringardner.fsh.Collation.current(sc).compare(l, ex.string(b.right())) < 0;
 		case ">":
-			return l.compareTo(ex.string(b.right())) > 0;
+			return us.bringardner.fsh.Collation.current(sc).compare(l, ex.string(b.right())) > 0;
 		case "-nt":
 		case "-ot":
 		case "-ef":
