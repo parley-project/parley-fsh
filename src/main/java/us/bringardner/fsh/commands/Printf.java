@@ -103,6 +103,13 @@ public class Printf extends ShellCommand{
 		do {
 			int before = used;
 			used = format(format, values, used, out, ctx);
+			if( var == null && !stop && used != before && used < values.size()) {
+				// each time through the format is written, as bash's (its errors come between)
+				us.bringardner.fsh.ByteText.finishInPlace(out);
+				ctx.stdout.print(out);
+				ctx.stdout.flush();
+				out.setLength(0);
+			}
 			if( used == before || stop ) {
 				// the format takes no arguments: once
 				break;
@@ -369,10 +376,15 @@ public class Printf extends ShellCommand{
 		case 'X':
 			return integer(conv, spec, precision, number(arg, ctx));
 		case 'g': case 'G':
-			return formatG(spec, precision, decimal(arg, ctx), conv == 'G');
+			return localized(formatG(spec, precision, decimal(arg, ctx), conv == 'G'), ctx);
 		case 'f': case 'F': case 'e': case 'E': {
 			double d = decimal(arg, ctx);
-			return String.format(spec+(precision == null ? "" : prec)+(conv == 'F' ? 'f' : conv), d);
+			if( Double.isNaN(d) || Double.isInfinite(d)) {
+				// inf, -inf, nan (INF, NAN for %F and %E), padded with blanks, as C's
+				String text = Double.isNaN(d) ? "nan" : d > 0 ? (spec.contains("+") ? "+inf" : spec.contains(" ") ? " inf" : "inf") : "-inf";
+				return String.format(spec.replaceAll("[0#+ ]", "")+"s", conv == 'F' || conv == 'E' ? text.toUpperCase() : text);
+			}
+			return localized(String.format(java.util.Locale.ROOT, spec+(precision == null ? "" : prec)+(conv == 'F' ? 'f' : conv), d), ctx);
 		}
 		default:
 			error(ctx, "printf: `"+conv+"': invalid format character");
@@ -579,18 +591,74 @@ public class Printf extends ShellCommand{
 	}
 
 	private double decimal(String arg, ShellContext ctx) {
-		if( arg == null || arg.isEmpty()) {
+		if( arg == null ) {
+			return 0;
+		}
+		if( arg.isEmpty()) {
+			// (an argument that is there and empty is not a number, as in bash)
+			error(ctx, "printf: : invalid number");
 			return 0;
 		}
 		if( arg.startsWith("'") || arg.startsWith("\"")) {
 			return arg.length() > 1 ? arg.codePointAt(1) : 0;
 		}
-		try {
-			return Double.parseDouble(arg.trim());
-		} catch (NumberFormatException e) {
-			error(ctx, "printf: "+arg+": invalid number");
-			return 0;
+		// as strtod in the locale: the longest number at the start (its decimal point the
+		// locale's), and an error if anything is left
+		char point = decimalPoint(ctx);
+		String t = arg.stripLeading();
+		if( point != '.' ) {
+			t = t.replace('.', '\u0000').replace(point, '.');
 		}
+		java.util.regex.Matcher m = NUMBER.matcher(t);
+		double value = 0;
+		boolean found = m.lookingAt() && m.end() > 0;
+		if( found ) {
+			String n = m.group();
+			try {
+				if( n.matches("[+-]?0[xX][0-9a-fA-F]+")) {
+					value = new java.math.BigInteger(n.replaceFirst("0[xX]", ""), 16).doubleValue();
+				} else if( n.matches("[+-]?(?i:inf(inity)?)")) {
+					value = n.startsWith("-") ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+				} else if( n.matches("[+-]?(?i:nan)")) {
+					value = Double.NaN;
+				} else {
+					value = Double.parseDouble(n);
+				}
+			} catch (NumberFormatException e) {
+				found = false;
+			}
+		}
+		if( !found || m.end() < t.length()) {
+			error(ctx, "printf: "+arg+": invalid number");
+		}
+		return value;
+	}
+
+	private static final java.util.regex.Pattern NUMBER = java.util.regex.Pattern.compile(
+			"[+-]?((?i:infinity|inf|nan)|0[xX][0-9a-fA-F]+(\\.[0-9a-fA-F]*)?([pP][+-]?\\d+)?|(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?)");
+
+	/** a number formatted with . as its decimal point, with the locale's (LC_NUMERIC) instead */
+	private static String localized(String number, ShellContext ctx) {
+		char point = decimalPoint(ctx);
+		return point == '.' ? number : number.replace('.', point);
+	}
+
+	/** the decimal point of the locale LC_ALL, LC_NUMERIC or LANG names, as bash's printf uses it */
+	static char decimalPoint(ShellContext ctx) {
+		for(String name : new String[] {"LC_ALL", "LC_NUMERIC", "LANG"}) {
+			Object v = ctx.getVariable(name);
+			if( v == null || v.toString().isEmpty()) {
+				continue;
+			}
+			String locale = v.toString().replaceAll("[.@].*$", "");
+			if( locale.equals("C") || locale.equals("POSIX")) {
+				return '.';
+			}
+			String[] parts = locale.split("_");
+			java.util.Locale l = parts.length > 1 ? java.util.Locale.of(parts[0], parts[1]) : java.util.Locale.of(parts[0]);
+			return java.text.DecimalFormatSymbols.getInstance(l).getDecimalSeparator();
+		}
+		return '.';
 	}
 
 	/**
@@ -611,9 +679,9 @@ public class Printf extends ShellCommand{
 		} else {
 			String sign = flags.indexOf('+') >= 0 ? "+" : flags.indexOf(' ') >= 0 ? " " : "";
 			// the exponent after rounding to p digits
-			String e = String.format("%."+(p-1)+"e", d);
+			String e = String.format(java.util.Locale.ROOT, "%."+(p-1)+"e", d);
 			int x = Integer.parseInt(e.substring(e.indexOf('e')+1));
-			body = x < -4 || x >= p ? e : String.format("%."+(p-1-x)+"f", d);
+			body = x < -4 || x >= p ? e : String.format(java.util.Locale.ROOT, "%."+(p-1-x)+"f", d);
 			if( flags.indexOf('#') < 0 ) {
 				int ePos = body.indexOf('e');
 				String mantissa = ePos < 0 ? body : body.substring(0, ePos);
