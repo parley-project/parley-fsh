@@ -802,17 +802,40 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 		InputStream in = console.getStdIn();
 		if( lineEditing ) {
-			// the shell's commands from what is not a terminal: the line as it is (the parser reads
-			// its backslashes), shown after the prompt as bash's line editor shows it
-			java.io.ByteArrayOutputStream line = new java.io.ByteArrayOutputStream();
-			int b;
-			while( (b = in.read()) >= 0 && b != lineTerminator ) {
-				line.write(b);
+			// the shell's commands from what is not a terminal: read by the line editor too, as
+			// bash's readline reads them (Ctrl-R, Ctrl-O, vi's keys ...), and the line shown after the
+			// prompt as readline shows it
+			LineEditor.Keys keys = new LineEditor.Keys() {
+				@Override
+				public int next() throws IOException {
+					int b = in.read();
+					return b < 0 ? LineEditor.KEY_EOF : b;
+				}
+
+				@Override
+				public int nextWithin(long millis) throws IOException {
+					long until = System.currentTimeMillis()+millis;
+					while( in.available() <= 0 && System.currentTimeMillis() < until ) {
+						try {
+							Thread.sleep(5);
+						} catch (InterruptedException e) {
+							break;
+						}
+					}
+					return in.available() > 0 ? next() : LineEditor.KEY_NONE;
+				}
+			};
+			java.util.List<String> history = new java.util.ArrayList<>();
+			for(Console.HistoryEntry e : console.history) {
+				history.add(e.command);
 			}
-			if( b < 0 && line.size() == 0 ) {
+			LineEditor editor = new LineEditor(keys, new PrintStream(java.io.OutputStream.nullOutputStream()), history);
+			editor.setCompleter(new Completion(console));
+			editor.setViMode(console.isOptionEnabled(Console.Option.Vi));
+			String text = editor.readLine(prompt == null ? "" : prompt);
+			if( text == null ) {
 				return null;
 			}
-			String text = line.toString(java.nio.charset.StandardCharsets.UTF_8);
 			console.getStdErr().print(text+"\n");
 			console.getStdErr().flush();
 			return text;

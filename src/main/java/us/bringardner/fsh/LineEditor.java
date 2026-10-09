@@ -64,7 +64,7 @@ public class LineEditor {
 			{16, "previous-history"}, {K_UP, "previous-history"}, {14, "next-history"}, {K_DOWN, "next-history"},
 			{META+'<', "beginning-of-history"}, {META+'>', "end-of-history"}, {META+'.', "yank-last-arg"},
 			{META+'_', "yank-last-arg"}, {18, "reverse-search-history"}, {19, "forward-search-history"},
-			{22, "quoted-insert"}, {(int) '\t', "complete"}, {7, "abort"}, {(int) '\n', "accept-line"}, {(int) '\r', "accept-line"},
+			{22, "quoted-insert"}, {15, "operate-and-get-next"}, {(int) '\t', "complete"}, {7, "abort"}, {(int) '\n', "accept-line"}, {(int) '\r', "accept-line"},
 		};
 		for(Object [] k : keys) {
 			DEFAULTS.put((Integer) k[0], (String) k[1]);
@@ -286,6 +286,10 @@ public class LineEditor {
 		this.history = history;
 	}
 
+	/** Ctrl-O: the history line to edit next, as its distance from the end (once the line is added) and text */
+	private static int operateFromEnd = -1;
+	private static String operateText;
+
 	/** set -o vi: vi's keys (insert mode at the start of a line, Escape for command mode) */
 	private boolean vi;
 	/** in vi's command mode */
@@ -319,12 +323,31 @@ public class LineEditor {
 		viCommand = false;
 		viCount.setLength(0);
 		viOperator = 0;
+		if( operateFromEnd >= 0 ) {
+			// after Ctrl-O: the history line after the one entered (counted from the end: the
+			// entered one was added after it, and the oldest may have gone)
+			int at = history.size()-1-operateFromEnd;
+			if( at >= 0 && at < history.size() && !history.get(at).equals(operateText) && at+1 < history.size()
+					&& history.get(at+1).equals(operateText)) {
+				at++;
+			}
+			if( at >= 0 && at < history.size()) {
+				histIndex = at;
+				buf.append(history.get(at));
+				pos = buf.length();
+			}
+			operateFromEnd = -1;
+		}
 		out.print(this.prompt);
 		out.flush();
 		int lastLine = this.prompt.lastIndexOf('\n');
 		if( lastLine >= 0 ) {
 			// redraws start from the prompt's last line
 			this.prompt = this.prompt.substring(lastLine+1);
+		}
+		if( buf.length() > 0 ) {
+			// (the line Ctrl-O left)
+			redraw();
 		}
 		while( true ) {
 			int key = readKey();
@@ -530,6 +553,12 @@ public class LineEditor {
 			case 18: // Ctrl-R
 				search(true);
 				break;
+			case 15: // Ctrl-O: operate-and-get-next
+				if( histIndex+1 < history.size()) {
+					operateFromEnd = history.size()-1-(histIndex+1)+1;
+					operateText = history.get(histIndex+1);
+				}
+				return accept();
 			case K_HISTORY_BACK:
 				historySearch(-1);
 				break;
