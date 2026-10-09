@@ -2000,7 +2000,7 @@ public final class Expander {
 	}
 
 	private static boolean isName(String s) {
-		return s.matches("[A-Za-z_][A-Za-z0-9_]*");
+		return us.bringardner.fsh.exec.Executor.isName(s);
 	}
 
 	// ------------------------------------------------------------------ splitting and globbing

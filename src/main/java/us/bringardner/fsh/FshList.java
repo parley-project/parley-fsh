@@ -51,6 +51,11 @@ public class FshList implements List<Object> {
 		return buf.toString();
 	}
 	
+	/** the highest index there is, or -1 when it is empty (without listing them all) */
+	public int lastIndex() {
+		return entries.isEmpty() ? -1 : ((TreeMap<Integer,ListEntry>) entries).lastKey();
+	}
+
 	public List<Integer> getIndexes() {
 		List<Integer> ret = new ArrayList<>();
 		for(int idx : entries.keySet()) {

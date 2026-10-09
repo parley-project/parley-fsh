@@ -1,0 +1,40 @@
+#!/bin/sh
+# Run the shell from its packaged jar (target/fsh-*.jar: mvn package), passing the arguments to it.
+# With JDK 25 or later it uses an AOT cache (target/fsh.aot), which makes it start and warm up
+# faster; the cache is made the first time (from tools/aot-training.sh) and again when the jar
+# changes.
+
+LIB_DIR=$(cd "$(dirname "$0")" && pwd)
+PROJECT_DIR=$(dirname "$LIB_DIR")
+cp_file="$PROJECT_DIR/target/runtime-classpath.txt"
+
+jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar 2>/dev/null | head -1)
+if [ -z "$jar" ]; then
+	(cd "$PROJECT_DIR" && mvn -q package -DskipTests) || exit 1
+	jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar | head -1)
+fi
+if [ ! -f "$cp_file" ] || [ "$PROJECT_DIR/pom.xml" -nt "$cp_file" ]; then
+	(cd "$PROJECT_DIR" && mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile="$cp_file") || exit 1
+fi
+cp="$jar:$(cat "$cp_file")"
+opts="--enable-native-access=ALL-UNNAMED -Djava.library.path=$LIB_DIR"
+
+aot=""
+cache="$PROJECT_DIR/target/fsh.aot"
+if [ ! -f "$cache" ] && [ ! -f "$cache.none" ] || [ "$jar" -nt "$cache" ] && [ "$jar" -nt "$cache.none" ]; then
+	# (made aside and moved: two shells starting at once do not use a half-made one; a JDK before
+	# 25 makes none, which cache.none remembers until the jar changes)
+	tmp="$cache.$$"
+	java -XX:+IgnoreUnrecognizedVMOptions -XX:AOTCacheOutput="$tmp" $opts -cp "$cp" us.bringardner.fsh.Console \
+		"$PROJECT_DIR/tools/aot-training.sh" > /dev/null 2>&1
+	if [ -f "$tmp" ]; then
+		mv -f "$tmp" "$cache"
+		rm -f "$cache.none"
+	else
+		touch "$cache.none"
+	fi
+	rm -f "$tmp" "$tmp.config"
+fi
+[ -f "$cache" ] && aot="-XX:+IgnoreUnrecognizedVMOptions -XX:AOTCache=$cache -Xlog:aot=off -Xlog:cds=off"
+
+exec java $aot $opts -cp "$cp" us.bringardner.fsh.Console "$@"

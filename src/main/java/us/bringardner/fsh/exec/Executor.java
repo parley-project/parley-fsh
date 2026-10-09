@@ -624,11 +624,15 @@ public final class Executor {
 					ctx.jobsCleared = true;
 					ctx.wholeSubshell = c instanceof Ast.Subshell;
 				}
-				if( ctx != sc && c instanceof Ast.SimpleCommand ) {
+				if( ctx != sc && c instanceof Ast.SimpleCommand sc0 ) {
 					// (bash expands a simple command's words before its subshell counts: echo
 					// $BASH_SUBSHELL | cat is 0, a builtin or function it runs is 1 deeper)
 					ctx.subshellLevel--;
 					ctx.subshellPending = true;
+					// the DEBUG trap for it runs here, in the shell, as bash runs it before the fork
+					// (its output is the shell's, not the pipe's)
+					ctx.debugTrapSkips = debugTrap(sc, commandText(sc0));
+					ctx.debugTrapRan = true;
 				}
 				int stageIndex = i;
 				threads[i] = new CommandThread(ctx, new ShellTask() {
@@ -1899,7 +1903,13 @@ public final class Executor {
 		if( sc.trapLine == null && !sc.keepCommand ) {
 			sc.currentCommand = text;
 		}
-		if( debugTrap(sc, text)) {
+		if( sc.debugTrapRan ) {
+			// (a pipe stage's: the shell ran it before the stage started)
+			sc.debugTrapRan = false;
+			if( sc.debugTrapSkips ) {
+				return 0;
+			}
+		} else if( debugTrap(sc, text)) {
 			return 0;
 		}
 		Expander ex = expander(sc);
@@ -2762,7 +2772,18 @@ public final class Executor {
 	}
 
 	public static boolean isName(String s) {
-		return s.matches("[A-Za-z_][A-Za-z0-9_]*");
+		// ([A-Za-z_][A-Za-z0-9_]*, without a regular expression: this is checked for every word)
+		int n = s.length();
+		if( n == 0 ) {
+			return false;
+		}
+		for (int i = 0; i < n; i++) {
+			char c = s.charAt(i);
+			if( !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || i > 0 && c >= '0' && c <= '9')) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// ------------------------------------------------------------------ assignments
@@ -3008,10 +3029,26 @@ public final class Executor {
 		}
 		FshList list = new FshList();
 		int next = 0;
+		if( a.append && old instanceof FshList f && sc.changesArrayInPlace(a.name)
+				&& a.array.stream().allMatch(w -> keyValue(w) == null)) {
+			// a+=(v ...): added to the array itself (not a copy of it each time, which made a loop of
+			// them take time by the square of their number); the words are expanded first, as bash's
+			// are (a+=(${#a[@]} ${#a[@]}) sees the array as it was)
+			boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
+			List<String> values = new ArrayList<>();
+			for(Word w : a.array) {
+				values.addAll(ex.expand(w));
+			}
+			int at = f.lastIndex()+1;
+			for(String s : values) {
+				f.set(at++, sc.cased(a.name, elementValue(null, s, false, integer, sc)));
+			}
+			return f;
+		}
 		if( a.append ) {
 			if( old instanceof FshList f ) {
 				list = copy(f);
-				next = f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1;
+				next = f.lastIndex()+1;
 			} else if( old instanceof List<?> l ) {
 				for(Object o : l) {
 					list.set(next++, o);

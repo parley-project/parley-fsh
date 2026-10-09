@@ -415,7 +415,8 @@ delimiter
 	public boolean isInteractive=false;	
 	private Map<String,ShellFunction> functions = new ConcurrentSkipListMap<>();
 
-	Map<String,Object> variables = new ConcurrentSkipListMap<>();
+	// (a hash map: it is looked up several times for each command; listings sort it themselves)
+	Map<String,Object> variables = new ConcurrentHashMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
 	public List<Option> options = new ArrayList<>();
 	// (names differ by case, except on Windows: A and a are two variables)
@@ -894,7 +895,45 @@ delimiter
 		}
 	}
 
+	/**
+	 * The shell will not open a window (ConsoleFrame): it runs a script or -c's command, or its
+	 * input is a terminal, a pipe or a file. (Only an interactive shell started with none of them,
+	 * as from an IDE, has one.)
+	 */
+	static boolean noWindow(String [] args) {
+		for (int i = 0; i < args.length; i++) {
+			String a = args[i];
+			if( a.equals("--")) {
+				return i+1 < args.length;
+			}
+			if( a.startsWith("--")) {
+				if( a.equals("--rcfile") || a.equals("--init-file")) {
+					i++;
+				}
+				continue;
+			}
+			if( a.startsWith("-") || a.startsWith("+")) {
+				if( a.length() > 1 && a.substring(1).chars().allMatch(Character::isLetter) && a.indexOf('c') > 0 && a.startsWith("-")) {
+					return true;
+				}
+				if( a.matches("[-+][a-zA-Z]*[oO]")) {
+					// (-o name: its name)
+					i++;
+				}
+				continue;
+			}
+			// a script
+			return true;
+		}
+		return NativeKeyboard.isAvailible() && (NativeKeyboard.inputIsTerminal() || NativeKeyboard.inputIsPipeOrFile());
+	}
+
 	public static void main(String args[]) throws IOException {
+		if( System.getProperty("java.awt.headless") == null && noWindow(args)) {
+			// (asking whether there is a display loads AWT, which takes longer than the rest of the
+			// start: with a script, -c or a terminal there is never a window, so it is not asked)
+			System.setProperty("java.awt.headless", "true");
+		}
 		// the shell's standard output: a broken pipe ends the shell, as SIGPIPE ends bash
 		System_out = new PrintStream(new java.io.BufferedOutputStream(new BrokenPipeGuard(new java.io.FileOutputStream(java.io.FileDescriptor.out)), 8192), true, us.bringardner.fsh.RawUtf8.CHARSET);
 		System.setOut(System_out);
@@ -3537,7 +3576,7 @@ delimiter
 		private final Map<Integer,List<ConsoleSignalHandler>> osTraps;
 
 		private Snapshot(Console c) throws IOException {
-			traps = new java.util.HashMap<>(c.signalHandlers);
+			traps = new java.util.HashMap<>(c.metaTraps());
 			osTraps = new java.util.HashMap<>(c.osSignalHandlers);
 			readonly = new java.util.HashSet<>(c.readonlyVariables);
 			integer = new java.util.HashSet<>(c.integerVariables);
@@ -3573,8 +3612,9 @@ delimiter
 	}
 
 	public void restore(Snapshot s) throws IOException {
-		signalHandlers.clear();
-		signalHandlers.putAll(s.traps);
+		Map<ConsoleMetaSignal,List<String>> meta = metaTraps();
+		meta.clear();
+		meta.putAll(s.traps);
 		osSignalHandlers.clear();
 		osSignalHandlers.putAll(s.osTraps);
 		// (umask, ulimit and hash in a subshell are its own)
@@ -3650,6 +3690,9 @@ delimiter
 		boolean ownExitTrap;
 		/** the stage's own signal traps (trap in a job or a pipe stage does not change the shell's) */
 		Map<Integer,List<ConsoleSignalHandler>> osTraps;
+		/** and its own DEBUG, ERR and RETURN traps, as they were when it started (one the shell sets
+		 * later is not its: bats starts its timeout's subshell before it sets its DEBUG trap) */
+		Map<ConsoleMetaSignal,List<String>> metaTraps;
 		/** the stage's own descriptors (exec 3>&- in a pipe stage does not close the shell's 3) */
 		Map<Integer,FileDiscriptor> files;
 		/** the descriptors it was started with: closing one there leaves the stream open for the shell */
@@ -3667,6 +3710,7 @@ delimiter
 		s.options = new java.util.concurrent.CopyOnWriteArrayList<>(optionList());
 		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
 		s.osTraps = new ConcurrentSkipListMap<>(osTraps());
+		s.metaTraps = new ConcurrentSkipListMap<>(metaTraps());
 		Map<Integer,FileDiscriptor> fds = getFiles();
 		synchronized (fds) {
 			s.files = new TreeMap<>(fds);
@@ -3674,6 +3718,12 @@ delimiter
 		s.inheritedFds = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 		s.inheritedFds.addAll(s.files.values());
 		stage.set(s);
+	}
+
+	/** the DEBUG, ERR and RETURN traps on this thread: a stage's own, or the shell's (EXIT is the shell's) */
+	private Map<ConsoleMetaSignal,List<String>> metaTraps() {
+		StageState s = stage.get();
+		return s != null && s.metaTraps != null ? s.metaTraps : signalHandlers;
 	}
 
 	/** the signal traps on this thread: a stage's own, or the shell's */
@@ -3900,7 +3950,8 @@ delimiter
 	}
 
 
-	private Stack<ConsoleMetaSignal> inProcess = new Stack<>();
+	/** the traps running on this thread (a pipe stage's runs while the shell's does: each its own) */
+	private final ThreadLocal<Stack<ConsoleMetaSignal>> trapsRunning = ThreadLocal.withInitial(Stack::new);
 
 
 	public void handleMetaSignal(ConsoleMetaSignal signal) {
@@ -3909,10 +3960,10 @@ delimiter
 			// (it ran where the shell exited: not again)
 			return;
 		}
-		if( !inProcess.contains(signal)) {			
+		if( !trapsRunning.get().contains(signal)) {			
 			List<String> actions = signalHandlers.get(signal);
 			if( actions !=null) {
-				inProcess.push(signal);
+				trapsRunning.get().push(signal);
 				for(int idx=0, sz=actions.size(); idx < sz; idx++ ) {			
 					String code = actions.get(idx);
 
@@ -3922,7 +3973,7 @@ delimiter
 						e.printStackTrace();
 					}
 				}
-				inProcess.pop();
+				trapsRunning.get().pop();
 			}
 		}
 	}
@@ -4180,7 +4231,7 @@ delimiter
 
 	private Map<ConsoleMetaSignal,List<String>> signalHandlers = new ConcurrentSkipListMap<>();
 	public void registerHandler(ConsoleMetaSignal signal, String action) {
-		signalHandlers.computeIfAbsent(signal, k -> new CopyOnWriteArrayList<>()).add(action);		
+		metaTraps().computeIfAbsent(signal, k -> new CopyOnWriteArrayList<>()).add(action);
 	}
 
 	/** trap action EXIT/ERR/RETURN/DEBUG: the action replaces the one before; null removes it */
@@ -4191,10 +4242,11 @@ delimiter
 			st.exitTrap = action == null ? null : new CopyOnWriteArrayList<>(List.of(action));
 			return;
 		}
+		Map<ConsoleMetaSignal,List<String>> meta = signal == ConsoleMetaSignal.Exit ? signalHandlers : metaTraps();
 		if( action == null ) {
-			signalHandlers.remove(signal);
+			meta.remove(signal);
 		} else {
-			signalHandlers.put(signal, new CopyOnWriteArrayList<>(List.of(action)));
+			meta.put(signal, new CopyOnWriteArrayList<>(List.of(action)));
 		}
 	}
 
@@ -4295,7 +4347,7 @@ delimiter
 		List<String[]> ret = new ArrayList<>();
 		StageState st = stage.get();
 		java.util.function.BiConsumer<ConsoleMetaSignal,String> meta = (s, name) -> {
-			List<String> a = s == ConsoleMetaSignal.Exit && st != null && st.ownExitTrap ? st.exitTrap : signalHandlers.get(s);
+			List<String> a = s == ConsoleMetaSignal.Exit ? (st != null && st.ownExitTrap ? st.exitTrap : signalHandlers.get(s)) : metaTraps().get(s);
 			if( a != null && !a.isEmpty()) {
 				ret.add(new String[] {name, a.get(a.size()-1)});
 			}
@@ -4320,17 +4372,17 @@ delimiter
 	 * @return the trap's status (0 if it did not run)
 	 */
 	public int runTrap(ConsoleMetaSignal signal, ShellContext ctx) {
-		List<String> actions = signalHandlers.get(signal);
-		if( actions == null || actions.isEmpty() || inProcess.contains(signal)) {
+		List<String> actions = metaTraps().get(signal);
+		if( actions == null || actions.isEmpty() || trapsRunning.get().contains(signal)) {
 			return 0;
 		}
-		if( signal == ConsoleMetaSignal.Return && inProcess.contains(ConsoleMetaSignal.Debug)) {
+		if( signal == ConsoleMetaSignal.Return && trapsRunning.get().contains(ConsoleMetaSignal.Debug)) {
 			// (not for the functions the DEBUG trap calls, as bash's)
 			return 0;
 		}
 		int saved = getLastExitCode();
 		int status = 0;
-		inProcess.push(signal);
+		trapsRunning.get().push(signal);
 		Integer savedLine = ctx.trapLine;
 		String savedCommand = ctx.currentCommand;
 		// (the line the shell is on: the command the trap ran for goes on with it)
@@ -4350,7 +4402,7 @@ delimiter
 		} catch (Exception e) {
 			ctx.stderr.println(e.getMessage());
 		} finally {
-			inProcess.pop();
+			trapsRunning.get().pop();
 			setLastExitCode(saved);
 			ctx.trapLine = savedLine;
 			ctx.trapLineDepth = savedLineDepth;

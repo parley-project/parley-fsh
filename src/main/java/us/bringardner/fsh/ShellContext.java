@@ -432,15 +432,31 @@ $
 		return console.getVariable(name);
 	}
 
+	/** in a pipe stage (isolated): the arrays it has a copy of its own of (it may change them in place) */
+	private java.util.Set<String> isolatedOwn = new java.util.HashSet<>();
+
 	private void setGlobalVariable(String name, Object value) {
 		if( isolated != null ) {
 			isolated.put(name, value == null ? UNSET : value);
+			if( value instanceof List<?> || value instanceof Map<?,?> ) {
+				// (one made here: an array the shell has is copied before it is set, see setVariable)
+				isolatedOwn.add(name);
+			}
 		} else {
 			console.setVariable(name, value);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
+	/**
+	 * name's array may be changed in place (a[i]=v and a+=(v) do so): a global one this context
+	 * has (not a function's local, which subshells share, nor the shell's seen from a pipe stage)
+	 */
+	public boolean changesArrayInPlace(String name) {
+		// (a function's local arrays are its own: a subshell gets copies of them, see FunctionInvocation)
+		return localScope(name) != null || isolated == null || isolatedOwn.contains(name);
+	}
+
 	public void setVariable(String name,Object index, Object value) {
 		name = resolveName(name);
 		if( name.equals("GROUPS") && !console.unsetSpecials.contains(name)) {
@@ -491,9 +507,17 @@ $
 		console.declaredUnset.remove(name);
 		FunctionInvocation scope = localScope(name);
 		if( scope != null ) {
-			// a function's local array: its element (a copy, as subshells share the value)
+			// a function's local array: its element (in place: a subshell has copies of them)
 			Object cur = scope.local.get(name);
 			Object val;
+			if( cur instanceof FshList f && index instanceof Integer idx ) {
+				f.set(idx, value);
+				return;
+			}
+			if( cur instanceof Map<?,?> m && !(index instanceof Integer)) {
+				((Map<String,Object>) m).put(""+index, value);
+				return;
+			}
 			if( cur instanceof Map<?,?> m ) {
 				Map<String,Object> map = new TreeMap<>();
 				for(Map.Entry<?,?> e : m.entrySet()) {
@@ -525,8 +549,8 @@ $
 			return;
 		}
 		Object val = globalVariable(name);
-		if( isolated != null && !isolated.containsKey(name)) {
-			// the shell's array: change a copy
+		if( isolated != null && !isolatedOwn.contains(name)) {
+			// the shell's array (or the one it shares with the shell): change a copy
 			if( val instanceof FshList ) {
 				FshList copy = new FshList();
 				for(int idx : ((FshList) val).getIndexes()) {
@@ -1592,6 +1616,10 @@ $
 	public int commandEndLine;
 	/** a pipe stage's simple command: its subshell counts once its words are expanded */
 	public boolean subshellPending;
+	/** the DEBUG trap ran for this pipe stage's simple command already, in the shell (as bash runs it before the fork) */
+	public boolean debugTrapRan;
+	/** ... and said to skip it (extdebug, a status that is not 0) */
+	public boolean debugTrapSkips;
 	/** which subshell this is (null: the shell itself): the jobs it starts are its children */
 	public Object subshell;
 	/** the variables the shell works out when they are used (bash's declare -p and compgen -v list them) */
