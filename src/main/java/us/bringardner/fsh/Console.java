@@ -3091,7 +3091,12 @@ delimiter
 		dirStack.addAll(s.dirStack);
 		umask = s.umask;
 		hashTable.clear();
-		hashTable.putAll(s.hashTable);
+		// (in reverse: each goes back to the head of its bucket, so the order is bash's again)
+		List<Map.Entry<String,Object[]>> back = new ArrayList<>(s.hashTable.entrySet());
+		java.util.Collections.reverse(back);
+		for(Map.Entry<String,Object[]> e : back) {
+			hashTable.put(e.getKey(), e.getValue());
+		}
 		variables.clear();
 		variables.putAll(s.variables);
 		environmentVariables.clear();
@@ -3465,7 +3470,8 @@ delimiter
 	}
 
 	/** hash: name -> {path, int[] {hits}}, the programs found on PATH (PATH=... forgets them) */
-	public final Map<String,Object []> hashTable = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>());
+	/** (hash lists it in bash's order: its table has 256 buckets) */
+	public final Map<String,Object []> hashTable = java.util.Collections.synchronizedMap(new BashHashTable<>(256));
 
 	/** RANDOM, SECONDS ... after unset: ordinary variables from then on, as in bash */
 	public final java.util.Set<String> unsetSpecials = ConcurrentHashMap.newKeySet();
