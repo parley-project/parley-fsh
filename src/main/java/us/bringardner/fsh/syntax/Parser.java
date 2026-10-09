@@ -1351,20 +1351,22 @@ public final class Parser {
 	/** warnings found while reading: {line, message}, as bash prints them (see Sequence.warnings) */
 	private final List<Object []> warnings = new ArrayList<>();
 
-	private String hereDocWarning(Redirect r) {
-		return "warning: here-document at line "+r.line+" delimited by end-of-file (wanted `"+r.hereDoc.delimiter+"')";
+	private String hereDocWarning(Redirect r, int at) {
+		return "warning: here-document at line "+at+" delimited by end-of-file (wanted `"+r.hereDoc.delimiter+"')";
 	}
 
 	/** after a newline: the bodies of the here-documents started on the line before it */
 	private void readHereDocs() {
 		for(Redirect r : pendingHereDocs) {
 			HereDoc h = r.hereDoc;
+			// (the line bash says it is at: the one its command ends on, before its lines)
+			int at = Math.max(1, lineOf(pos)-1);
 			StringBuilder body = new StringBuilder();
 			while( true ) {
 				if( atEnd(pos)) {
 					// bash warns and takes the rest of the file
 					hereDocumentOpen = true;
-					warnings.add(new Object[] {lineOf(pos)-(src.endsWith("\n") ? 1 : 0), hereDocWarning(r)});
+					warnings.add(new Object[] {lineOf(pos)-(src.endsWith("\n") ? 1 : 0), hereDocWarning(r, at)});
 					break;
 				}
 				int lineStart = pos;
@@ -1397,7 +1399,7 @@ public final class Parser {
 						&& check.substring(h.delimiter.length()).stripLeading().startsWith(")") && line.length() == lineEnd-lineStart ) {
 					// $(cat <<EOF ... EOF) (or EOF )): the ) ends the here-document and the $( ), as in
 					// bash (with a warning)
-					warnings.add(new Object[] {lineOf(lineStart), hereDocWarning(r)});
+					warnings.add(new Object[] {lineOf(lineStart), hereDocWarning(r, at)});
 					pos = lineStart+(line.length()-check.length())+h.delimiter.length();
 					break;
 				}
