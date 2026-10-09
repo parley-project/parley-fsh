@@ -39,6 +39,11 @@ public class Let extends ShellCommand{
 				last = Arithmetic.evaluate(""+arg.getValue(ctx), ctx);
 			} catch (Arithmetic.ArithmeticError e) {
 				ctx.error((e.bare ? "" : "let: ")+e.getMessage());
+				if( e.inSubscript ) {
+					// (one in a subscript ends the command line, as bash's)
+					ctx.console.setLastExitCode(1);
+					throw new us.bringardner.fsh.exec.Executor.AbandonLine(ctx.currentLine(), 1);
+				}
 				return 1;
 			}
 		}

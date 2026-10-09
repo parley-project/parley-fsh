@@ -38,6 +38,8 @@ public class Arithmetic {
 		private static final long serialVersionUID = 1L;
 		/** from an expression inside one (a variable's value, a subscript): bash says it without ((: */
 		public boolean bare;
+		/** found in a subscript (a[" "]): bash's let does not catch it, the command line ends */
+		public boolean inSubscript;
 		public ArithmeticError(String msg) {
 			super(msg);
 		}
@@ -448,12 +450,13 @@ public class Arithmetic {
 		Number rval = cval;
 		if( curtok == '?' ) {
 			boolean c = isTrue(cval);
+			// (as bash's: not evaluating before the next token is read, which reads a name's value)
+			if( !c ) {
+				noeval++;
+			}
 			readtok();
 			if( curtok == EOF || curtok == ':' ) {
 				throw evalerror("expression expected");
-			}
-			if( !c ) {
-				noeval++;
 			}
 			Number val1 = expcomma();
 			if( !c ) {
@@ -462,12 +465,12 @@ public class Arithmetic {
 			if( curtok != ':' ) {
 				throw evalerror("`:' expected for conditional expression");
 			}
+			if( c ) {
+				noeval++;
+			}
 			readtok();
 			if( curtok == EOF ) {
 				throw evalerror("expression expected");
-			}
-			if( c ) {
-				noeval++;
 			}
 			Number val2 = expcond();
 			if( c ) {
@@ -810,7 +813,7 @@ public class Arithmetic {
 			return valueOf(m.get(key(sub)));
 		}
 		// (a subscript's double quotes are removed: a[\"\"] in (( )) is a[0])
-		long index = evaluate(dequote(sub), ctx, depth+1).longValue();
+		long index = subscriptValue(sub).longValue();
 		lastElement = tok;
 		lastIndex = index;
 		Object e = element(v, index);
@@ -818,6 +821,16 @@ public class Arithmetic {
 			throw new Unbound(name);
 		}
 		return valueOf(e);
+	}
+
+	/** an indexed subscript's value (an error in it is marked as one) */
+	private Number subscriptValue(String sub) {
+		try {
+			return evaluate(dequote(sub), ctx, depth+1);
+		} catch (ArithmeticError e) {
+			e.inSubscript = true;
+			throw e;
+		}
 	}
 
 	/** the element streval read last, and its index (x[RANDOM]++ evaluates the subscript once) */
@@ -848,7 +861,7 @@ public class Arithmetic {
 		if( ctx.getVariable(name) instanceof Map<?,?> ) {
 			ctx.setVariable(name, key(sub), value);
 		} else {
-			long index = tok.equals(lastElement) ? lastIndex : evaluate(dequote(sub), ctx, depth+1).longValue();
+			long index = tok.equals(lastElement) ? lastIndex : subscriptValue(sub).longValue();
 			if( index < 0 ) {
 				Object v = ctx.getVariable(name);
 				long size = v instanceof us.bringardner.fsh.FshList f ? (f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1)
