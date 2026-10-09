@@ -18,7 +18,7 @@ public class Set extends ShellCommand{
 	static String name = "set";
 	static String help = "If no options or arguments are supplied, set displays the names and values of all shell variables and functions, sorted according to the current locale, in a format that may be reused as input for setting or resetting the currently-set variables. Read-only variables cannot be reset.\n"
 			+ "In POSIX mode, only shell variables are listed.\n"
-			+ "When options are supplied, they set(-) or unset(+) shell attributes."
+			+ "When options are supplied, they set(-) or unset(+) shell attributes.\n"
 			+ ""
 			+ "set [-abCefhmnuvx] [argument...]\n"
 			+ "set [+abCefhmnuvx] [argument...]\n"

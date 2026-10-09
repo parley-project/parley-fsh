@@ -92,7 +92,8 @@ public final class Expander {
 		List<Word> words = option(Console.Option.DoBraceExpantion) ? Braces.expand(w) : List.of(w);
 		for(Word b : words) {
 			List<Piece> pieces = new ArrayList<>();
-			word(b, pieces, looksLikeAssignment(b) ? TILDE_ARGUMENT : TILDE_START);
+			// (posix mode: echo foo=bar:~ is no assignment, its ~ stays)
+			word(b, pieces, looksLikeAssignment(b) && !option(Console.Option.Posix) ? TILDE_ARGUMENT : TILDE_START);
 			for(Field f : split(pieces)) {
 				glob(f, ret);
 			}

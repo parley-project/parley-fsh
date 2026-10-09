@@ -8,7 +8,7 @@ import us.bringardner.fsh.signal.ExitException;
 
 public class Exit extends ShellCommand{
 	static String name = "exit";
-	static String help = "Exit the process \n"
+	static String help = "exit [n]\n\tEnd the shell, with status n (the last command's status without n).\n"
 			;
 	
 	static int cnt = 0;

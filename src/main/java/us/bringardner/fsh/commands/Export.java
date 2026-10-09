@@ -11,8 +11,7 @@ public class Export extends ShellCommand{
 	enum Arguments {f,n,p};
 
 	static String name = "export";
-	static String help = "print the current directory\n"
-			+ "\t export [-fn] [-p] [name[=value]]\n"
+	static String help = "export [-fn] [-p] [name[=value] ...]\n"
 			+ "\n"
 			+ "Mark each name to be passed to child processes in the environment. "
 			+ "	If the -f option is supplied, the names refer to shell functions; otherwise the names refer to shell variables. "

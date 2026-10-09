@@ -14,8 +14,8 @@ import us.bringardner.fsh.ShellContext;
 public class Find extends ShellCommand{
 	static String name = "find";
 	// physical 
-	static String help = "find file in a directory structure\n"
-			+ "find [-P] starting-point... [expression]\n"
+	static String help = "find [-P] starting-point... [expression]\n"
+			+ "Find files in a directory structure.\n"
 			+ "Tests (expresiion)\n"
 			+ "A numeric argument n can be specified to tests (like -amin,-mtime and -size) as\n"
 			+ "       +n     for greater than n,\n"

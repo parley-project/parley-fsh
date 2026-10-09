@@ -12,7 +12,7 @@ import us.bringardner.fsh.ShellContext;
 public class Cd extends ShellCommand{
 	static String name = "cd";
 	// physical 
-	static String help = "change the current directory\n"
+	static String help = "cd [-L|-P] [dir]\n\tChange the current directory (to $HOME without dir).\n"
 			+ "\t [-L] (default) Change the current working directory\n"
 			+ "\t -P (physical) Change current working directory after following all symbolic links.";
 	

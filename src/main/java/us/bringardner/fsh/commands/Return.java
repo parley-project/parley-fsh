@@ -8,7 +8,7 @@ import us.bringardner.fsh.signal.ReturnException;
 
 public class Return extends ShellCommand{
 	static String name = "return";
-	static String help = "set the exit code \n"
+	static String help = "return [n]\n\tEnd a function or a sourced file, with status n (the last command's status\n\twithout n).\n"
 			;
 	
 	public Return() {

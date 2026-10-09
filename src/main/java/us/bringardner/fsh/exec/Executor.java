@@ -2192,6 +2192,9 @@ public final class Executor {
 	}
 
 	/** the builtins the executor runs itself (not a ShellCommand) */
+	/** the builtins that take --help as an argument like any other (as bash's) */
+	private static final java.util.Set<String> NO_HELP_OPTION = java.util.Set.of("echo", "test", "[", "true", "false", ":");
+
 	private static final java.util.Set<String> OWN_BUILTINS = java.util.Set.of("break", "continue", "eval", "declare",
 			"typeset", "local", "readonly", "export", "exec");
 
@@ -2229,6 +2232,15 @@ public final class Executor {
 		ShellFunction fn = functions ? sc.getFunction(name) : null;
 		if( fn != null && !(sc.console.isOptionEnabled(Option.Posix) && SPECIAL_BUILTINS.contains(name))) {
 			return fn.invoke(arguments(strings(args)), sc);
+		}
+		if( !args.isEmpty() && "--help".equals(String.valueOf(args.get(0))) && !NO_HELP_OPTION.contains(name)
+				&& (OWN_BUILTINS.contains(name) || sc.console.builtin(name) != null)) {
+			// shift --help: the builtin's help, status 2, as bash's
+			String text = us.bringardner.fsh.commands.Help.text(sc, name);
+			if( text != null ) {
+				sc.stdout.print(text);
+				return 2;
+			}
 		}
 		switch (name) {
 		case "[": {

@@ -22,7 +22,7 @@ public class Touch extends ShellCommand{
 	private enum Arguments {A, a, c, h, m,r,t,d};
 
 	static String name = "touch";
-	static String help = ""
+	static String help = "touch [-acm] [-r file] [-t time] [-d date] file ...\n"
 			+ "The touch utility sets the modification and access times of files.\n"
 			+ "If any file does not exist, it is created with default permissions.\n"
 			+ "\n"

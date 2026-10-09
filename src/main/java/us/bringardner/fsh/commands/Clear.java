@@ -13,7 +13,7 @@ import us.bringardner.fsh.exec.Programs;
 public class Clear extends ShellCommand{
 	static String name = "clear";
 	// physical 
-	static String help = "Clear the terminal screen";
+	static String help = "clear\n\tClear the terminal screen.";
 	
 	public Clear() {
 		super(name, help);

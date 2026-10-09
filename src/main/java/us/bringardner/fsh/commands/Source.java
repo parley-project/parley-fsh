@@ -12,7 +12,7 @@ import us.bringardner.fsh.ShellContext;
 
 public class Source extends ShellCommand{
 	static String name = "source";
-	static String help = " .  filename [arguments]\n"
+	static String help = ". filename [arguments]\n"
 			+ "source filename [arguments]\n"
 			+ "\tRead  and  execute  commands  from  filename  in the current shell environment and return the exit status of the last command executed from filename."
 			+ "  If filename does not contain a slash, file names in PATH are used to find the directory containing filename."

@@ -24,7 +24,7 @@ public class Ls extends ShellCommand {
 
 
 	static String name = "ls";
-	static String help = "ls [-1aCdgGhlLQrRStuxX].. [--] [path].."
+	static String help = "ls [-1aCdgGhlLQrRStuxX].. [--] [path]..\n"
 			+ "List information about the FILEs (the current directory by default).  Sort entries alphabetically if none of -ctuSUX is specified.\n"
 			+ "\n"
 			+ "       -1	list one entry per line\n"

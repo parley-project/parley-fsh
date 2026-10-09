@@ -8,7 +8,7 @@ import us.bringardner.fsh.ShellContext;
 
 public class Pwd extends ShellCommand{
 	static String name = "pwd";
-	static String help = "print the current directory\n"
+	static String help = "pwd [-LP]\n\tPrint the current directory.\n"
 			+ "\t [-L] (default) Display the logical current working directory\n"
 			+ "\t -P Display the physical current working directory (all symbolic links resolved).";
 	
