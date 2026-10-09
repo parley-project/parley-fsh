@@ -27,7 +27,8 @@ public class Cd extends ShellCommand{
 			return 1;
 		}
 		int ret = 0;
-		boolean follow = false;
+		// (set -P: physically, unless -L)
+		boolean follow = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.DontFollowLinks);
 		List<String> sargs = new ArrayList<>();
 		boolean options = true;
 		for(int idx=0; idx < args.length; idx++ ) {
@@ -35,7 +36,13 @@ public class Cd extends ShellCommand{
 			if( options && arg.equals("--")) {
 				options = false;
 			} else if( options && arg.startsWith("-") && arg.length() > 1 ) {
-				follow = arg.equals("-P");
+				for(char c : arg.substring(1).toCharArray()) {
+					if( c == 'P' ) {
+						follow = true;
+					} else if( c == 'L' ) {
+						follow = false;
+					}
+				}
 			} else {
 				sargs.add(arg);
 			}
@@ -102,6 +109,12 @@ public class Cd extends ShellCommand{
 		if( dir == null ) {
 			List<FileSource> dirs = getFiles(ctx, path);
 			if( dirs==null || dirs.size()==0 || !dirs.get(0).exists()) {
+				Object named = us.bringardner.fsh.Glob.option(ctx, "cdable_vars") && path.matches("[A-Za-z_][A-Za-z0-9_]*")
+						? ctx.getVariable(path) : null;
+				if( named != null && !named.toString().isEmpty()) {
+					// shopt -s cdable_vars: a variable's value is the directory (and is said)
+					return change(ctx, who, named.toString(), follow, true);
+				}
 				ctx.error(who+": "+path+": No such file or directory");
 				return 1;
 			}
@@ -113,6 +126,10 @@ public class Cd extends ShellCommand{
 			while(link !=null ) {
 				dir = link;
 				link = dir.getLinkedTo();
+			}
+			if( dir instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy && proxy.getTarget().exists()) {
+				// (every link in the path resolved, as cd -P does)
+				dir = ctx.console.createFileSource(proxy.getTarget().getCanonicalPath());
 			}
 		}
 		if( !dir.isDirectory()) {

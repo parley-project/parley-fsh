@@ -1580,6 +1580,10 @@ delimiter
 					lastExitCode = status;
 					code.setLength(0);
 					first = line+1;
+					if( isOptionEnabled(Option.ExitAfterOne)) {
+						// set -t: the shell ends after the command it was read in
+						break;
+					}
 				}
 			}
 		} finally {
@@ -2063,6 +2067,10 @@ delimiter
 				IJob job = readLineToJob(kb);
 				int exitCode = waitForeground(job, true);
 				setLastExitCode(exitCode);
+				if( isOptionEnabled(Option.ExitAfterOne)) {
+					// set -t: one command, then the end
+					Console.exit(this, exitCode);
+				}
 				if( exitCode!=0 && isOptionEnabled(Option.ExitImediately)) {
 					Console.exit(this,exitCode);
 				}
