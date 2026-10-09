@@ -500,7 +500,9 @@ public class Completion implements LineEditor.Completer {
 			Console console = sc.console;
 			for(String action : actions) {
 				// (in bash's order: its tables are sorted, its keywords are not)
-				Set<String> names = action.equals("keyword") ? new LinkedHashSet<>() : new TreeSet<>();
+				// (files in the directory's order, as bash's compgen -f; keywords as listed)
+				Set<String> names = action.equals("keyword") || action.equals("file") || action.equals("directory")
+						? new LinkedHashSet<>() : new TreeSet<>();
 				switch (action) {
 				case "alias": names.addAll(console.getAliases().keySet()); break;
 				case "arrayvar":
@@ -670,10 +672,17 @@ public class Completion implements LineEditor.Completer {
 				FileSource d = sc.getFileSource(dirPart.isEmpty() ? "." : expandTilde(sc, dirPart));
 				FileSource[] kids = d.isDirectory() ? d.listFiles() : null;
 				if( kids != null ) {
-					Set<String> names = new TreeSet<>();
+					Set<String> names = new LinkedHashSet<>();
+					for(String dot : new String[] {".", ".."}) {
+						// (a name starting with . matches the directory's . and .., listed first)
+						if( !namePart.isEmpty() && dot.startsWith(namePart)) {
+							names.add(dirPart+dot);
+						}
+					}
 					for(FileSource k : kids) {
 						String n = k.getName();
-						if( n.startsWith(namePart) && !(n.startsWith(".") && !namePart.startsWith(".")) && (!dirsOnly || k.isDirectory())) {
+						// (hidden files too: readline's match-hidden-files is on)
+						if( n.startsWith(namePart) && (!dirsOnly || k.isDirectory())) {
 							names.add(dirPart+n);
 						}
 					}

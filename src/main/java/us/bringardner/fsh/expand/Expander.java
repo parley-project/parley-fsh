@@ -87,6 +87,18 @@ public final class Expander {
 	}
 
 	/** a command word: braces, expansions, splitting, filename expansion and quote removal */
+	/** "text" with its \ " $ and ` escaped (bash's sh_double_quote) */
+	private static String doubleQuoted(String s) {
+		StringBuilder ret = new StringBuilder("\"");
+		for(char c : s.toCharArray()) {
+			if( c == '\\' || c == '"' || c == '$' || c == '`' ) {
+				ret.append('\\');
+			}
+			ret.append(c);
+		}
+		return ret.append('"').toString();
+	}
+
 	/**
 	 * set -x of a declaration builtin (declare x=$(cmd)): what its words expanded to when they
 	 * were shown, so the builtin does not expand them again (null: not kept)
@@ -1803,7 +1815,9 @@ public final class Expander {
 					List<String> ks = keys(raw);
 					List<String> vs = values(raw);
 					for (int i = 0; i < ks.size(); i++) {
-						words.add(ks.get(i)+" \""+vs.get(i).replace("\\", "\\\\").replace("\"", "\\\"")+"\"");
+						// (an associative array's keys are quoted too, as bash's)
+						String k = raw instanceof Map<?,?> ? doubleQuoted(ks.get(i)) : ks.get(i);
+						words.add(k+" "+doubleQuoted(vs.get(i)));
 					}
 					return Val.list(words, v.star);
 				}
