@@ -531,10 +531,18 @@ public final class Executor {
 			for (int i = 0; i < n; i++) {
 				Ast.Command c = p.commands.get(i);
 				ShellContext ctx = lastInShell && i == n-1 ? sc : sc.isolatedSubShell();
+				int stageIndex = i;
 				threads[i] = new CommandThread(ctx, new ShellTask() {
 					@Override
 					public int run(ShellContext stage) throws IOException {
-						return command(c, stage);
+						try {
+							return command(c, stage);
+						} finally {
+							if( stageIndex > 0 && stageIndex-1 < pipes.size()) {
+								// it reads no more: what writes to it learns so (yes | head -1 ends)
+								pipes.get(stageIndex-1).in.close();
+							}
+						}
 					}
 
 					@Override
@@ -546,7 +554,7 @@ public final class Executor {
 			for (int i = 0; i < n-1; i++) {
 				Pipe pipe = new Pipe();
 				pipes.add(pipe);
-				threads[i].ctx.stdout = new PrintStream(pipe.out);
+				threads[i].ctx.stdout = new StagePipeOut(pipe.out);
 				threads[i+1].ctx.stdin = pipe.in;
 				if( p.stderrToo.get(i)) {
 					threads[i].ctx.stderr = threads[i].ctx.stdout;
@@ -614,6 +622,58 @@ public final class Executor {
 			sc.stdin = callerIn;
 			for(Pipe pipe : pipes) {
 				pipe.in.close();
+			}
+		}
+	}
+
+	/**
+	 * A pipe stage's output: once no one reads it (while :; do echo y; done | head -1), writing
+	 * ends the stage as SIGPIPE ends bash's (status 141).
+	 */
+	static final class StagePipeOut extends PrintStream {
+		StagePipeOut(java.io.OutputStream o) {
+			super(o, false);
+		}
+
+		@Override
+		public void write(byte[] b, int off, int len) {
+			if( out == null ) {
+				// (closed: the stage is done)
+				setError();
+				return;
+			}
+			try {
+				out.write(b, off, len);
+			} catch (IOException e) {
+				throw new us.bringardner.fsh.signal.SignalException(13);
+			}
+		}
+
+		@Override
+		public void write(int b) {
+			if( out == null ) {
+				// (closed: the stage is done)
+				setError();
+				return;
+			}
+			try {
+				out.write(b);
+			} catch (IOException e) {
+				throw new us.bringardner.fsh.signal.SignalException(13);
+			}
+		}
+
+		@Override
+		public void flush() {
+			if( out == null ) {
+				// (closed: the stage is done)
+				setError();
+				return;
+			}
+			try {
+				out.flush();
+			} catch (IOException e) {
+				throw new us.bringardner.fsh.signal.SignalException(13);
 			}
 		}
 	}

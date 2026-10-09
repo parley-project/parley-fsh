@@ -165,8 +165,34 @@ public class JobManager {
 	}
 
 	/** the status of a job that finished and left the table (wait pid still gets it, as in bash) */
-	public synchronized Integer finishedStatus(long pid) {
-		return finished.get(pid);
+	public Integer finishedStatus(long pid) {
+		us.bringardner.fsh.Console.CommandThread sub;
+		synchronized (this) {
+			Integer status = finished.get(pid);
+			if( status != null ) {
+				return status;
+			}
+			sub = substitutions.get(pid);
+		}
+		if( sub != null ) {
+			// a process substitution ($! after <(cmd)): its status once it is done
+			try {
+				sub.join(0);
+			} catch (InterruptedException e) {
+			}
+			return sub.exitCode;
+		}
+		return null;
+	}
+
+	/** the process substitutions, by the pid they were given ($!) */
+	private final java.util.Map<Long,us.bringardner.fsh.Console.CommandThread> substitutions = new java.util.HashMap<>();
+
+	/** a process substitution: a pid for it ($!), for wait */
+	public synchronized int processSubstitution(us.bringardner.fsh.Console.CommandThread thread) {
+		int pid = getNextPid();
+		substitutions.put((long) pid, thread);
+		return pid;
 	}
 
 	public synchronized boolean contains(IJob job) {

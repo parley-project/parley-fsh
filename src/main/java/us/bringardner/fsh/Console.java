@@ -341,6 +341,48 @@ delimiter
 	public static boolean debugPositional = false;
 	//terminal used for debugging
 	public static PrintStream System_out = System.out;
+
+	/** writes to the shell's own standard output: on a broken pipe the shell ends with 141 (bash dies of SIGPIPE) */
+	static final class BrokenPipeGuard extends java.io.FilterOutputStream {
+		BrokenPipeGuard(java.io.OutputStream out) {
+			super(out);
+		}
+
+		@Override
+		public void write(byte[] b, int off, int len) throws IOException {
+			try {
+				out.write(b, off, len);
+			} catch (IOException e) {
+				throw broken(e);
+			}
+		}
+
+		@Override
+		public void write(int b) throws IOException {
+			try {
+				out.write(b);
+			} catch (IOException e) {
+				throw broken(e);
+			}
+		}
+
+		@Override
+		public void flush() throws IOException {
+			try {
+				out.flush();
+			} catch (IOException e) {
+				throw broken(e);
+			}
+		}
+
+		private static IOException broken(IOException e) {
+			String m = String.valueOf(e.getMessage());
+			if( m.contains("Broken pipe") || m.contains("EPIPE")) {
+				Runtime.getRuntime().halt(141);
+			}
+			return e;
+		}
+	}
 	public static PrintStream System_err = System.err;
 	public static InputStream System_in = System.in;
 	private InputStream stdIn = System.in;
@@ -371,6 +413,11 @@ delimiter
 			? new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER) : new ConcurrentSkipListMap<>();
 	DebugContext debugContext = new DebugContext();
 	private int lastPid = 0;
+
+	/** $! */
+	public void setLastPid(int pid) {
+		lastPid = pid;
+	}
 	public JobManager jobManager = new JobManager();
 
 
@@ -616,6 +663,12 @@ delimiter
 		if( name.equals("CHLD") || name.equals("WINCH") || name.equals("CONT") || name.equals("URG") || name.equals("INFO")) {
 			return;
 		}
+		if( name.equals("PIPE") && !osSignalHandlers.containsKey(signum)) {
+			// a write to a pipe no one reads fails instead (an internal pipe's writer goes on); the
+			// shell's own standard output on a broken pipe ends it with 141, as SIGPIPE ends bash
+			// (see BrokenPipeGuard). (A handler, not SIG_IGN, so programs get SIGPIPE as usual.)
+			return;
+		}
 		if( isInteractive && !name.equals("HUP")) {
 			if( name.equals("INT")) {
 				// (the program it ended may have given the terminal back already)
@@ -828,6 +881,9 @@ delimiter
 	}
 
 	public static void main(String args[]) throws IOException {
+		// the shell's standard output: a broken pipe ends the shell, as SIGPIPE ends bash
+		System_out = new PrintStream(new java.io.BufferedOutputStream(new BrokenPipeGuard(new java.io.FileOutputStream(java.io.FileDescriptor.out)), 8192), true);
+		System.setOut(System_out);
 
 			Console c = new Console();
 			shell = c;
@@ -4040,7 +4096,9 @@ delimiter
 					ret = e.exitCode;
 					break;
 				} catch (Exception e) {
-					getStdErr().println(e.getMessage());
+					if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
+						getStdErr().println(e.getMessage());
+					}
 				}
 			}
 		}
@@ -4067,7 +4125,9 @@ delimiter
 				ret = e.exitCode;
 				break;
 			} catch (Exception e) {
-				getStdErr().println(e.getMessage());
+				if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
+					getStdErr().println(e.getMessage());
+				}
 			}
 		}
 		return ret;
@@ -4089,7 +4149,9 @@ delimiter
 			} catch (ExitException e) {
 				return e.exitCode;
 			} catch (Exception e) {
-				getStdErr().println(e.getMessage());
+				if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
+					getStdErr().println(e.getMessage());
+				}
 			}
 		}
 		return status;
@@ -4102,7 +4164,9 @@ delimiter
 				try {
 					executeScript(action);
 				} catch (Exception e) {
-					getStdErr().println(e.getMessage());
+					if( !(e instanceof us.bringardner.fsh.signal.SignalException)) {
+						getStdErr().println(e.getMessage());
+					}
 				}
 			}
 		}

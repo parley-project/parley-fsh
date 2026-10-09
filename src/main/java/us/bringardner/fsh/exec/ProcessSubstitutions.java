@@ -88,6 +88,8 @@ final class ProcessSubstitutions {
 		});
 		thread.setDaemon(true);
 		thread.start();
+		// ($! is it, and wait $! gets its status, as bash's)
+		sc.console.setLastPid(sc.console.jobManager.processSubstitution(thread));
 		sc.afterCommand.add(() -> finish(direction, fifo, thread, opened, done));
 		return fifo.getAbsolutePath();
 	}

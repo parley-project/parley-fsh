@@ -180,6 +180,11 @@ public final class Programs {
 						if( cnt > 0 ) {
 							out.write(buffer, 0, cnt);
 							out.flush();
+							if( out instanceof java.io.PrintStream ps && ps.checkError()) {
+								// no one reads it any more (yes | head -1): the program's output is
+								// closed, so it gets SIGPIPE, as under bash
+								break;
+							}
 						}
 					}
 				}
