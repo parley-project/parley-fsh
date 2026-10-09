@@ -802,7 +802,9 @@ public class Arithmetic {
 		String name = tok.substring(0, b);
 		String sub = tok.substring(b+1, tok.length()-1);
 		if( sub.isEmpty()) {
-			badName(tok);
+			// (as bash says it reading one: twice, its value 0)
+			ctx.error(tok+": bad array subscript");
+			ctx.error(tok+": bad array subscript");
 			return ZERO;
 		}
 		Object v = ctx.getVariable(name);

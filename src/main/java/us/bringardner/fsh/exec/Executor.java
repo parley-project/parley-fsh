@@ -2685,9 +2685,10 @@ public final class Executor {
 			boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
 			if( !a.array.isEmpty() && keyValue(a.array.get(0)) == null ) {
 				// m=(k1 v1 k2 v2): keys and values in turn (a key with no value gets ""), bash 5.1's
+				// (each word as it is: no splitting or globbing of what it expands to, as in bash)
 				List<String> words = new ArrayList<>();
 				for(Word w : a.array) {
-					words.addAll(ex.expand(w));
+					words.add(ex.assignment(w));
 				}
 				for (int i = 0; i < words.size(); i += 2) {
 					String k = words.get(i);
