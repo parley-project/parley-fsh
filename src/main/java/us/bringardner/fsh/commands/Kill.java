@@ -282,6 +282,13 @@ public class Kill extends ShellCommand{
 		}
 		if( pid < 0 ) {
 			// a process group that is not a job's: the system's kill
+			if( us.bringardner.fsh.exec.NativeProcess.usable()) {
+				int err = us.bringardner.fsh.NativeKeyboard.kill0((int) pid, signum);
+				if( err != 0 ) {
+					ctx.error("kill: ("+pid+") - "+us.bringardner.fsh.NativeKeyboard.strerror0(-err));
+				}
+				return err == 0 ? 0 : 1;
+			}
 			try {
 				Process k = new ProcessBuilder("kill", "-"+signum, "--", String.valueOf(pid)).redirectErrorStream(true).start();
 				String out = new String(k.getInputStream().readAllBytes()).trim();
@@ -315,6 +322,13 @@ public class Kill extends ShellCommand{
 			return 0;
 		}
 		// another signal: the system's kill
+		if( us.bringardner.fsh.exec.NativeProcess.usable()) {
+			int err = us.bringardner.fsh.NativeKeyboard.kill0((int) pid, signum);
+			if( err != 0 ) {
+				ctx.error("kill: ("+pid+") - "+us.bringardner.fsh.NativeKeyboard.strerror0(-err));
+			}
+			return err == 0 ? 0 : 1;
+		}
 		try {
 			return new ProcessBuilder("kill", "-"+signum, ""+pid).inheritIO().start().waitFor() == 0 ? 0 : 1;
 		} catch (Exception e) {

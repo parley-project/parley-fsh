@@ -158,6 +158,35 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	private native int stoppedBy(long pid);
 
+	// starting programs without Java's jspawnhelper (see exec.NativeProcess)
+
+	/**
+	 * Start path with argv and envp (bytes, as given) in dir (null: here); fds are pairs of the
+	 * program's descriptor and the shell's it is to be (all others closed); pgroup: the process
+	 * group (-1: the shell's, 0: a new one).
+	 * @return its process id, or -errno
+	 */
+	public static native int spawn0(byte [] path, byte [][] argv, byte [][] envp, byte [] dir, int [] fds, int pgroup);
+
+	/** {read, write}, both close-on-exec; null on failure */
+	public static native int [] pipe0();
+
+	/** open path to read ('r'), write ('w': created or truncated) or append ('a'), close-on-exec: the descriptor or -errno */
+	public static native int open0(byte [] path, int how);
+
+	public static native void close0(int fd);
+
+	/** wait until child pid ends: its wait status, or -1 if it is not a child */
+	public static native int waitExit0(int pid);
+
+	/** fd as a FileDescriptor (closing a stream on it closes it) */
+	public static native java.io.FileDescriptor fd0(int fd);
+
+	/** kill(2): 0 or -errno */
+	public static native int kill0(int pid, int sig);
+
+	public static native String strerror0(int err);
+
 	/** {the fsh.exec property it was found with, the helper ("" if none)} */
 	private static volatile String [] helper;
 	private static volatile Boolean groups;

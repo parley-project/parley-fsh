@@ -60,7 +60,7 @@ public final class StandIn {
 		try {
 			ProcessBuilder builder = group ? new ProcessBuilder(helper, "-s", "-g") : new ProcessBuilder(helper, "-s");
 			builder.redirectError(ProcessBuilder.Redirect.DISCARD);
-			StandIn ret = new StandIn(builder.start(), signals);
+			StandIn ret = new StandIn(us.bringardner.fsh.exec.NativeProcess.start(builder), signals);
 			running.put(ret.pid(), ret);
 			return ret;
 		} catch (IOException e) {

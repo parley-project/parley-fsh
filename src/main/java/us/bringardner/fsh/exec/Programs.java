@@ -499,7 +499,7 @@ public final class Programs {
 						// (after the outer helper's options, if any)
 						args.set(args.indexOf("-g")+1, String.valueOf(job.getProcessGroup()));
 						builder.command(args);
-						p = builder.start();
+						p = NativeProcess.start(builder);
 						long group = job.getProcessGroup();
 						if( group == 0 ) {
 							group = p.pid();
@@ -508,7 +508,7 @@ public final class Programs {
 						NativeKeyboard.processGroup(p.pid(), group);
 					}
 				} else {
-					p = builder.start();
+					p = NativeProcess.start(builder);
 				}
 				// stopped (Ctrl-Z), continued and signalled with its job
 				if( job != null ) {

@@ -73,6 +73,14 @@ public final class ProcessSignals {
 		if( cmd.size() == 2 ) {
 			return;
 		}
+		int signum = number(name);
+		if( signum > 0 && us.bringardner.fsh.exec.NativeProcess.usable()) {
+			// (without starting a kill program for it)
+			for(String pid : cmd.subList(2, cmd.size())) {
+				us.bringardner.fsh.NativeKeyboard.kill0(Integer.parseInt(pid), signum);
+			}
+			return;
+		}
 		try {
 			Process k = new ProcessBuilder(cmd).redirectErrorStream(true).start();
 			k.getInputStream().readAllBytes();

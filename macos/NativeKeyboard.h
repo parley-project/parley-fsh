@@ -151,6 +151,70 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    spawn0
+ * Signature: ([B[[B[[B[B[II)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_spawn0
+  (JNIEnv *, jclass, jbyteArray, jobjectArray, jobjectArray, jbyteArray, jintArray, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    pipe0
+ * Signature: ()[I
+ */
+JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_pipe0
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    open0
+ * Signature: ([BI)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_open0
+  (JNIEnv *, jclass, jbyteArray, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    close0
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_close0
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    waitExit0
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_waitExit0
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    fd0
+ * Signature: (I)Ljava/io/FileDescriptor;
+ */
+JNIEXPORT jobject JNICALL Java_us_bringardner_fsh_NativeKeyboard_fd0
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    kill0
+ * Signature: (II)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_kill0
+  (JNIEnv *, jclass, jint, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    strerror0
+ * Signature: (I)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_strerror0
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    columns0
  * Signature: ()I
  */

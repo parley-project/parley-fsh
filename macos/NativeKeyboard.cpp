@@ -353,3 +353,179 @@ JNIEXPORT jobjectArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_openDescri
 	free(lines);
 	return ret;
 }
+
+/* ------------------------------------------------------------------ starting programs
+ * posix_spawn straight from the shell (Java's ProcessBuilder goes through jspawnhelper, an exec
+ * more for each program): see NativeProcess.java.
+ */
+#include <spawn.h>
+
+// (posix_spawn_file_actions_addchdir, its new name, is only in macOS 26)
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
+/* a byte[] as a NUL-terminated C string (malloc'd) */
+static char *cstring(JNIEnv *env, jbyteArray a) {
+	if( a == NULL ) {
+		return NULL;
+	}
+	jsize n = env->GetArrayLength(a);
+	char *ret = (char *) malloc((size_t) n+1);
+	env->GetByteArrayRegion(a, 0, n, (jbyte *) ret);
+	ret[n] = '\0';
+	return ret;
+}
+
+/* a byte[][] as a NULL-terminated array of C strings (malloc'd) */
+static char **cstrings(JNIEnv *env, jobjectArray a) {
+	jsize n = a == NULL ? 0 : env->GetArrayLength(a);
+	char **ret = (char **) calloc((size_t) n+1, sizeof(char *));
+	for(jsize i = 0; i < n; i++) {
+		jbyteArray e = (jbyteArray) env->GetObjectArrayElement(a, i);
+		ret[i] = cstring(env, e);
+		env->DeleteLocalRef(e);
+	}
+	return ret;
+}
+
+static void freeStrings(char **s) {
+	if( s != NULL ) {
+		for(char **p = s; *p != NULL; p++) {
+			free(*p);
+		}
+		free(s);
+	}
+}
+
+/*
+ * Start path with argv and envp in dir (null: here), its descriptors fds[i]=child, fds[i+1]=the
+ * shell's (all others closed), in process group pgroup (-1: the shell's, 0: a new one), with no
+ * signals blocked.
+ * @return its process id, or -errno
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_spawn0(JNIEnv *env, jclass, jbyteArray jpath, jobjectArray jargv,
+		jobjectArray jenvp, jbyteArray jdir, jintArray jfds, jint pgroup) {
+	char *path = cstring(env, jpath);
+	char **argv = cstrings(env, jargv);
+	char **envp = cstrings(env, jenvp);
+	char *dir = cstring(env, jdir);
+	jsize nfds = jfds == NULL ? 0 : env->GetArrayLength(jfds);
+	jint *fds = nfds > 0 ? env->GetIntArrayElements(jfds, NULL) : NULL;
+
+	posix_spawn_file_actions_t fa;
+	posix_spawn_file_actions_init(&fa);
+	posix_spawnattr_t at;
+	posix_spawnattr_init(&at);
+	// (handlers are reset by exec itself; those the shell ignores stay ignored, as in bash)
+	short flags = POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGMASK;
+	sigset_t none;
+	sigemptyset(&none);
+	posix_spawnattr_setsigmask(&at, &none);
+	if( pgroup >= 0 ) {
+		flags |= POSIX_SPAWN_SETPGROUP;
+		posix_spawnattr_setpgroup(&at, (pid_t) pgroup);
+	}
+	posix_spawnattr_setflags(&at, flags);
+
+	// (each of the shell's descriptors copied above all the child's numbers first, so that one
+	// mapping does not overwrite another's source)
+	int top = 2;
+	for(jsize i = 0; i+1 < nfds; i += 2) {
+		if( fds[i] > top ) {
+			top = fds[i];
+		}
+	}
+	int *temps = (int *) calloc((size_t) nfds/2+1, sizeof(int));
+	int err = 0;
+	for(jsize i = 0; i+1 < nfds; i += 2) {
+		int t = fcntl(fds[i+1], F_DUPFD_CLOEXEC, top+1);
+		if( t < 0 ) {
+			err = errno;
+			temps[i/2] = -1;
+			continue;
+		}
+		temps[i/2] = t;
+		posix_spawn_file_actions_adddup2(&fa, t, fds[i]);
+	}
+	if( dir != NULL ) {
+		posix_spawn_file_actions_addchdir_np(&fa, dir);
+	}
+	pid_t pid = -1;
+	if( err == 0 ) {
+		err = posix_spawn(&pid, path, &fa, &at, argv, envp);
+	}
+	for(jsize i = 0; i < nfds/2; i++) {
+		if( temps[i] >= 0 ) {
+			close(temps[i]);
+		}
+	}
+	free(temps);
+	posix_spawn_file_actions_destroy(&fa);
+	posix_spawnattr_destroy(&at);
+	if( fds != NULL ) {
+		env->ReleaseIntArrayElements(jfds, fds, JNI_ABORT);
+	}
+	free(path);
+	free(dir);
+	freeStrings(argv);
+	freeStrings(envp);
+	return err == 0 ? (jint) pid : (jint) -err;
+}
+
+/* a pipe {read, write}, both close-on-exec; null on failure */
+JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_pipe0(JNIEnv *env, jclass) {
+	int p[2];
+	if( pipe(p) != 0 ) {
+		return NULL;
+	}
+	fcntl(p[0], F_SETFD, FD_CLOEXEC);
+	fcntl(p[1], F_SETFD, FD_CLOEXEC);
+	jintArray ret = env->NewIntArray(2);
+	jint v[2] = { p[0], p[1] };
+	env->SetIntArrayRegion(ret, 0, 2, v);
+	return ret;
+}
+
+/* open path to read ('r'), write ('w': created or truncated) or append ('a'), close-on-exec:
+ * the descriptor or -errno */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_open0(JNIEnv *env, jclass, jbyteArray jpath, jint how) {
+	int flags = how == 'w' ? O_WRONLY|O_CREAT|O_TRUNC : how == 'a' ? O_WRONLY|O_CREAT|O_APPEND : O_RDONLY;
+	char *path = cstring(env, jpath);
+	int fd = open(path, flags | O_CLOEXEC, 0666);
+	int err = errno;
+	free(path);
+	return fd >= 0 ? fd : -err;
+}
+
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_close0(JNIEnv *, jclass, jint fd) {
+	close(fd);
+}
+
+/* wait for child pid to end: its wait status, or -1 (not a child) */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_waitExit0(JNIEnv *, jclass, jint pid) {
+	int status = 0;
+	while( waitpid((pid_t) pid, &status, 0) < 0 ) {
+		if( errno != EINTR ) {
+			return -1;
+		}
+	}
+	return status;
+}
+
+/* fd as a java.io.FileDescriptor (its own: closing the stream closes it) */
+JNIEXPORT jobject JNICALL Java_us_bringardner_fsh_NativeKeyboard_fd0(JNIEnv *env, jclass, jint fd) {
+	jclass c = env->FindClass("java/io/FileDescriptor");
+	jmethodID init = env->GetMethodID(c, "<init>", "()V");
+	jobject ret = env->NewObject(c, init);
+	jfieldID f = env->GetFieldID(c, "fd", "I");
+	env->SetIntField(ret, f, fd);
+	return ret;
+}
+
+/* send sig to pid: 0, or -errno */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_kill0(JNIEnv *, jclass, jint pid, jint sig) {
+	return kill((pid_t) pid, sig) == 0 ? 0 : -errno;
+}
+
+JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_strerror0(JNIEnv *env, jclass, jint err) {
+	return env->NewStringUTF(strerror(err));
+}
