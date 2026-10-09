@@ -116,6 +116,10 @@ public final class ProcessSignals {
 		case "XFSZ" -> "Filesize limit exceeded";
 		case "VTALRM" -> "Virtual timer expired";
 		case "PROF" -> "Profiling timer expired";
+		case "STOP" -> MAC ? "Suspended (signal)" : "Stopped (signal)";
+		case "TSTP" -> MAC ? "Suspended" : "Stopped";
+		case "TTIN" -> "Stopped (tty input)";
+		case "TTOU" -> "Stopped (tty output)";
 		default -> null;
 		};
 		if( text == null ) {

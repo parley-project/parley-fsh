@@ -691,7 +691,7 @@ delimiter
 					// the program stopped (the terminal echoed ^Z): so does its job
 					System_out.println();
 					System_out.flush();
-					Thread t = new Thread(() -> job.stopJob("Stopped"), "Ctrl-Z");
+					Thread t = new Thread(() -> job.stopJob("TSTP"), "Ctrl-Z");
 					t.setDaemon(true);
 					t.start();
 				}
@@ -2189,7 +2189,7 @@ delimiter
 			} else if( key == NativeKeyboard.CTRL_Z ) {
 				System.out.print("^Z\n");
 				System.out.flush();
-				Thread t = new Thread(() -> job.stopJob("Stopped"), "Ctrl-Z");
+				Thread t = new Thread(() -> job.stopJob("TSTP"), "Ctrl-Z");
 				t.setDaemon(true);
 				t.start();
 			}

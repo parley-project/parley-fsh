@@ -399,11 +399,11 @@ static void freeStrings(char **s) {
 /*
  * Start path with argv and envp in dir (null: here), its descriptors fds[i]=child, fds[i+1]=the
  * shell's (all others closed), in process group pgroup (-1: the shell's, 0: a new one), with no
- * signals blocked.
+ * signals blocked; suspended: it does not run until it gets SIGCONT.
  * @return its process id, or -errno
  */
 JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_spawn0(JNIEnv *env, jclass, jbyteArray jpath, jobjectArray jargv,
-		jobjectArray jenvp, jbyteArray jdir, jintArray jfds, jint pgroup) {
+		jobjectArray jenvp, jbyteArray jdir, jintArray jfds, jint pgroup, jboolean suspended) {
 	char *path = cstring(env, jpath);
 	char **argv = cstrings(env, jargv);
 	char **envp = cstrings(env, jenvp);
@@ -423,6 +423,9 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_spawn0(JNIEnv *env
 	if( pgroup >= 0 ) {
 		flags |= POSIX_SPAWN_SETPGROUP;
 		posix_spawnattr_setpgroup(&at, (pid_t) pgroup);
+	}
+	if( suspended ) {
+		flags |= POSIX_SPAWN_START_SUSPENDED;
 	}
 	posix_spawnattr_setflags(&at, flags);
 
@@ -599,4 +602,19 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_sendWithDescriptor
 	}
 	free(buf);
 	return -err;
+}
+
+/* the terminal (/dev/tty) is process group group's, as fshexec -g gives it (fg) */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyTo0(JNIEnv *, jclass, jint group) {
+	int tty = open("/dev/tty", O_RDWR | O_CLOEXEC);
+	if( tty < 0 ) {
+		return;
+	}
+	sigset_t block, old;
+	sigemptyset(&block);
+	sigaddset(&block, SIGTTOU);
+	pthread_sigmask(SIG_BLOCK, &block, &old);
+	tcsetpgrp(tty, (pid_t) group);
+	pthread_sigmask(SIG_SETMASK, &old, NULL);
+	close(tty);
 }

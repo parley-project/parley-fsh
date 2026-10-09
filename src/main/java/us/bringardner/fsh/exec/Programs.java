@@ -397,14 +397,19 @@ public final class Programs {
 				// shell goes on from where the program left it (head -n 1 seeks back after its line)
 				onFile = !inheritIn && absolute && ctx.stdin instanceof ReadBack rb && rb.file() != null
 						&& NativeKeyboard.helper() != null ? (ReadBack) ctx.stdin : null;
-				if( grouped || onFile != null ) {
+				// (where it can, the shell starts it in the group itself)
+				boolean spawnGrouped = grouped && NativeProcess.usable();
+				// the group gets the terminal: a foreground job's (in a script, grouped ones are
+				// started with &, and bash's do not get it)
+				boolean takesTerminal = foreground && ctx.console.isInteractive;
+				if( grouped && !spawnGrouped || onFile != null ) {
 					List<String> run = new java.util.ArrayList<>();
 					run.add(NativeKeyboard.helper());
-					if( grouped ) {
+					if( grouped && !spawnGrouped ) {
 						run.add("-g");
 						// (the group is set when it starts)
 						run.add("0");
-						run.add(foreground ? "1" : "0");
+						run.add(takesTerminal ? "1" : "0");
 					}
 					if( onFile != null ) {
 						report = java.io.File.createTempFile("fsh-", ".pos");
@@ -495,17 +500,27 @@ public final class Programs {
 				if( grouped ) {
 					synchronized (job) {
 						// the first program makes the group; the others of the job (a pipeline) join it
-						List<String> args = new java.util.ArrayList<>(builder.command());
-						// (after the outer helper's options, if any)
-						args.set(args.indexOf("-g")+1, String.valueOf(job.getProcessGroup()));
-						builder.command(args);
-						p = NativeProcess.start(builder);
+						if( spawnGrouped ) {
+							p = NativeProcess.startInGroup(builder, job.getProcessGroup(), takesTerminal);
+							if( job.getProcessGroup() != 0 && ((NativeProcess) p).group() != job.getProcessGroup()) {
+								// (the job's group had ended: it leads a new one)
+								job.setProcessGroup(((NativeProcess) p).group());
+							}
+						} else {
+							List<String> args = new java.util.ArrayList<>(builder.command());
+							// (after the outer helper's options, if any)
+							args.set(args.indexOf("-g")+1, String.valueOf(job.getProcessGroup()));
+							builder.command(args);
+							p = NativeProcess.start(builder);
+						}
 						long group = job.getProcessGroup();
 						if( group == 0 ) {
 							group = p.pid();
 							job.setProcessGroup(group);
 						}
-						NativeKeyboard.processGroup(p.pid(), group);
+						if( !spawnGrouped ) {
+							NativeKeyboard.processGroup(p.pid(), group);
+						}
 					}
 				} else {
 					// in a subshell with a process of its own: its child, as in bash
@@ -563,12 +578,7 @@ public final class Programs {
 					int stop = grouped ? NativeKeyboard.stopSignal(p.pid()) : 0;
 					if( stop != 0 && job.getState() == us.bringardner.fsh.job.JobState.Running ) {
 						// Ctrl-Z (or reading the terminal in the background): the job stops, as in bash
-						String how = switch (String.valueOf(us.bringardner.fsh.job.ProcessSignals.name(stop))) {
-						case "TTIN" -> "Stopped (tty input)";
-						case "TTOU" -> "Stopped (tty output)";
-						case "STOP" -> "Stopped (signal)";
-						default -> "Stopped";
-						};
+						String how = String.valueOf(us.bringardner.fsh.job.ProcessSignals.name(stop));
 						if( terminalUser != null ) {
 							// after the terminal's ^Z
 							Console.System_out.println();

@@ -206,7 +206,7 @@ public class Kill extends ShellCommand{
 			return;
 		}
 		switch (name) {
-		case "STOP", "TSTP", "TTIN", "TTOU" -> job.stopJob("Stopped");
+		case "STOP", "TSTP", "TTIN", "TTOU" -> job.stopJob(name);
 		case "CONT" -> {
 			// (a stopped one that goes on is the current job again, as with bash)
 			boolean stopped = job.getState() == us.bringardner.fsh.job.JobState.Suspended;

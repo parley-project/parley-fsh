@@ -163,10 +163,13 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/**
 	 * Start path with argv and envp (bytes, as given) in dir (null: here); fds are pairs of the
 	 * program's descriptor and the shell's it is to be (all others closed); pgroup: the process
-	 * group (-1: the shell's, 0: a new one).
+	 * group (-1: the shell's, 0: a new one); suspended: it does not run until it gets SIGCONT.
 	 * @return its process id, or -errno
 	 */
-	public static native int spawn0(byte [] path, byte [][] argv, byte [][] envp, byte [] dir, int [] fds, int pgroup);
+	public static native int spawn0(byte [] path, byte [][] argv, byte [][] envp, byte [] dir, int [] fds, int pgroup, boolean suspended);
+
+	/** the terminal (/dev/tty) is process group group's */
+	public static native void ttyTo0(int group);
 
 	/** {read, write}, both close-on-exec; null on failure */
 	public static native int [] pipe0();

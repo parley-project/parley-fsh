@@ -158,6 +158,7 @@ public class Wait extends ShellCommand{
 				}
 				for(IJob job : all) {
 					waitAny(ctx, List.of(job));
+					reportAndRemove(ctx, jm, job);
 					jm.remove(job);
 				}
 				jm.forgetFinished();

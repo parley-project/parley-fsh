@@ -217,14 +217,21 @@ public class JobManager {
 		return jobs.contains(job);
 	}
 
-	/** a job's state as jobs shows it: Running, Stopped, Done, Exit 3, Terminated: 15 ... */
-	public static String status(IJob job) {
+	/**
+	 * A job's state as jobs shows it: Running, Stopped, Done, Exit 3, Terminated: 15 ... A stopped
+	 * one is Stopped (Stopped(SIGTSTP) in posix mode), or with jobs -l (longer) what stopped it.
+	 */
+	public static String status(IJob job, boolean longer) {
 		switch (job.getState()) {
 		case Running:
 		case Idel:
 			return "Running";
 		case Suspended:
-			return job.getStoppedHow();
+			if( longer ) {
+				return ProcessSignals.describe(ProcessSignals.number(job.getStoppedHow()));
+			}
+			us.bringardner.fsh.ShellContext sc = job.getShellContext();
+			return sc != null && sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) ? "Stopped(SIG"+job.getStoppedHow()+")" : "Stopped";
 		default:
 			Integer by = job.getTerminatedBy();
 			if( by != null ) {
@@ -240,9 +247,11 @@ public class JobManager {
 		JobState state = job.getState();
 		String text = job.getCommandLine()+(state == JobState.Running || state == JobState.Idel ? " &" : "");
 		if( withPid ) {
-			return String.format("[%d]%c %d %-27s%s", job.getJobNumber(), marker(job), job.getPid(), status(job), text);
+			// (its first program's, which leads its process group, as bash shows it)
+			long pid = job.getProcessGroup() != 0 ? job.getProcessGroup() : job.getPid();
+			return String.format("[%d]%c %d %-27s%s", job.getJobNumber(), marker(job), pid, status(job, true), text);
 		}
-		return String.format("[%d]%c  %-27s%s", job.getJobNumber(), marker(job), status(job), text);
+		return String.format("[%d]%c  %-27s%s", job.getJobNumber(), marker(job), status(job, false), text);
 	}
 
 	/** finished (and not waited for or reported yet) */

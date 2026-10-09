@@ -49,7 +49,7 @@ public interface IJob {
 
 	void removeProcess(Process p);
 
-	/** stop the job (Ctrl-Z, kill -STOP); how is what jobs says: Stopped or Stopped (signal) */
+	/** stop the job (Ctrl-Z, kill -STOP); how: the signal that stopped it (TSTP, STOP, TTIN, TTOU) */
 	void stopJob(String how);
 
 	/** a stopped job runs again (fg, bg, kill -CONT) */

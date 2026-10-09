@@ -31,8 +31,8 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	private volatile Integer terminatedBy;
 	/** what its commands throw once a signal has ended the job */
 	private volatile RuntimeException stopRequest;
-	/** why it is stopped, as jobs shows it: Stopped (Ctrl-Z) or Stopped (signal) */
-	private volatile String stoppedHow = "Stopped";
+	/** the signal that stopped it: TSTP (Ctrl-Z), STOP, TTIN, TTOU */
+	private volatile String stoppedHow = "TSTP";
 	/** stopped while in the foreground: the shell says so before the next prompt */
 	private volatile boolean stopNoticeDue;
 	/** process() has returned */
@@ -119,11 +119,10 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 			continueJob();
 			break;
 		case Suspend:
-			stopJob("Stopped");
+			stopJob("TSTP");
 			break;
 		case Stop:
-			// bash says Stopped for both
-			stopJob("Stopped");
+			stopJob("STOP");
 			break;
 		default:
 			int signum = ProcessSignals.number(signal.label);

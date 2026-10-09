@@ -152,10 +152,18 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_stoppedBy
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    spawn0
- * Signature: ([B[[B[[B[B[II)I
+ * Signature: ([B[[B[[B[B[IIZ)I
  */
 JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_spawn0
-  (JNIEnv *, jclass, jbyteArray, jobjectArray, jobjectArray, jbyteArray, jintArray, jint);
+  (JNIEnv *, jclass, jbyteArray, jobjectArray, jobjectArray, jbyteArray, jintArray, jint, jboolean);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    ttyTo0
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyTo0
+  (JNIEnv *, jclass, jint);
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard

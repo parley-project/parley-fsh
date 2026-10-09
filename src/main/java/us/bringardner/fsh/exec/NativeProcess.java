@@ -71,18 +71,60 @@ public final class NativeProcess extends Process {
 
 	/** the shell starts it and waits for it itself */
 	public static final Spawner DIRECT = (path, argv, envp, dir, fds, process) -> {
-		int pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, -1);
+		int pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, -1, false);
+		waitFor(pid, process);
+		return pid;
+	};
+
+	private static void waitFor(int pid, NativeProcess process) {
 		if( pid > 0 ) {
 			Thread.ofPlatform().daemon().name("fsh wait "+pid).stackSize(64*1024).start(() -> process.exited(NativeKeyboard.waitExit0(pid)));
 		}
-		return pid;
-	};
+	}
+
+	/**
+	 * start, in process group group (0: a new one, its own; it is new too if that one is gone), as
+	 * bash runs a job's programs; foreground: the group gets the terminal before it runs (so that
+	 * reading it does not stop it).
+	 */
+	public static Process startInGroup(ProcessBuilder builder, long group, boolean foreground) throws IOException {
+		return new NativeProcess(builder, (path, argv, envp, dir, fds, process) -> {
+			int pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, (int) group, foreground && group == 0);
+			process.group = group == 0 ? pid : group;
+			if( pid == -1 || pid == -3 ) {
+				// (EPERM, ESRCH: its programs have all ended)
+				pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, 0, foreground);
+				process.group = pid;
+				if( foreground && pid > 0 ) {
+					NativeKeyboard.ttyTo0(pid);
+					NativeKeyboard.kill0(pid, CONT);
+				}
+			} else if( foreground && pid > 0 ) {
+				NativeKeyboard.ttyTo0(group == 0 ? pid : (int) group);
+				if( group == 0 ) {
+					NativeKeyboard.kill0(pid, CONT);
+				}
+			}
+			waitFor(pid, process);
+			return pid;
+		}, null);
+	}
+
+	private static final int CONT = Math.max(1, us.bringardner.fsh.job.ProcessSignals.number("CONT"));
 
 	private final int pid;
 	private final OutputStream stdin;
 	private final InputStream stdout;
 	private final InputStream stderr;
 	private final CompletableFuture<Process> exit = new CompletableFuture<>();
+	/** the process group it was started in (see startInGroup), else 0 */
+	private long group;
+
+	/** the process group it was started in (see startInGroup), else 0 */
+	public long group() {
+		return group;
+	}
+
 	/** its exit value once it has ended */
 	private volatile int exitValue;
 

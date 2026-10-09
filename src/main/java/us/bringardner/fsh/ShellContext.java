@@ -1763,7 +1763,7 @@ $
 		}
 		case "STOP", "TSTP", "TTIN", "TTOU" -> {
 			if( jobTop ) {
-				job.stopJob("Stopped (signal)");
+				job.stopJob(name);
 			}
 		}
 		default -> {
