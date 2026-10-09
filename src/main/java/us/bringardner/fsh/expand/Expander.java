@@ -1815,8 +1815,9 @@ public final class Expander {
 					List<String> ks = keys(raw);
 					List<String> vs = values(raw);
 					for (int i = 0; i < ks.size(); i++) {
-						// (an associative array's keys are quoted too, as bash's)
-						String k = raw instanceof Map<?,?> ? doubleQuoted(ks.get(i)) : ks.get(i);
+						// (an associative array's keys are quoted when they need it, as bash's)
+						String k = raw instanceof Map<?,?> && us.bringardner.fsh.commands.Set.containsShellMetas(ks.get(i))
+								? doubleQuoted(ks.get(i)) : ks.get(i);
 						words.add(k+" "+doubleQuoted(vs.get(i)));
 					}
 					return Val.list(words, v.star);

@@ -220,7 +220,7 @@ public class Set extends ShellCommand{
 	}
 
 	/** bash's sh_contains_shell_metas */
-	private static boolean containsShellMetas(String s) {
+	public static boolean containsShellMetas(String s) {
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
 			if( " \t\n'\"\\|&;()<>!{}*[?]^$`".indexOf(c) >= 0 ) {
