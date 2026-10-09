@@ -1598,6 +1598,9 @@ delimiter
 	/** the context the commands of runCommands run in */
 	private ShellContext commandsContext;
 
+	/** the commands a script has read (\# in a prompt) */
+	private int scriptCommandsRead;
+
 	/** fsh -in: commands are read, not run, though the shell is interactive */
 	public boolean noExecAtStart;
 
@@ -1633,6 +1636,10 @@ delimiter
 				executeScript0(code, firstLine, commandsContext);
 				return -1;
 			}
+		}
+		if( !isInteractive && !onlyComments(code)) {
+			// (\# in a prompt: the commands read so far, as bash counts them in a script)
+			commandNumber = ++scriptCommandsRead+1;
 		}
 		if( onlyComments(code)) {
 			// (comment lines run nothing: $? stays, as in bash; they are kept in the history)
