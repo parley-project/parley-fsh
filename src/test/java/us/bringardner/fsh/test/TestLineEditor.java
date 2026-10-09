@@ -136,6 +136,10 @@ public class TestLineEditor {
 		assertEquals("myfn_abc ", complete(c, "myfn_"));
 		assertEquals("tcmd alpha ", complete(c, "tcmd al"));
 		assertEquals("echo $HOME ", complete(c, "echo $HOM"));
+		// complete -F: the words broken at $COMP_WORDBREAKS (--opt=va: --opt, =, va), and the part after = replaced
+		console.executeScript("_wb() { COMPREPLY=(\"$2-${#COMP_WORDS[@]}-$COMP_CWORD-$3\"); }; complete -F _wb wcmd");
+		assertEquals("wcmd --opt=va-4-3-= ", complete(c, "wcmd --opt=va"));
+		assertEquals("wcmd user@-4-3-@ ", complete(c, "wcmd user@"));
 		Completion.Result r = c.complete("echo file", 9);
 		assertEquals(2, r.candidates.size());
 		assertEquals("fileone", r.candidates.get(0).display);

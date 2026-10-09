@@ -265,8 +265,41 @@ public class Completion implements LineEditor.Completer {
 
 	/** what a complete spec gives for the word; null to go on as if there were none */
 	private Result programmable(Spec spec, ShellContext sc, Parsed p, String line, int cursor) {
-		String prev = p.words.get(p.words.size()-1);
-		List<String> words = spec.generate(sc, p.value, p.words.get(0), prev, p.words, line, cursor);
+		// as bash's: the words are split again at $COMP_WORDBREAKS (--opt=va is --opt, =, va), and
+		// what is completed is the last part of the current word
+		Object wb = sc.getVariable("COMP_WORDBREAKS");
+		String breaks = (wb == null ? " \t\n\"'@><=;|&(:" : wb.toString()).replaceAll("[\\s\"']", "");
+		List<String> split = new ArrayList<>();
+		for(String w : p.words) {
+			split.addAll(breakApart(w, breaks));
+		}
+		String word = p.value;
+		int offset = 0;
+		if( p.quote == 0 ) {
+			List<String> parts = breakApart(p.value, breaks);
+			if( parts.size() > 1 ) {
+				String last = parts.get(parts.size()-1);
+				boolean lastIsBreak = !last.isEmpty() && breaks.indexOf(last.charAt(0)) >= 0;
+				// (after a break, the word to complete is empty)
+				word = lastIsBreak ? "" : last;
+				split.addAll(parts.subList(0, lastIsBreak ? parts.size() : parts.size()-1));
+				offset = p.raw.length()-word.length();
+			}
+		}
+		String prev = split.get(split.size()-1);
+		List<String> words = spec.generate(sc, word, split.get(0), prev, split, line, cursor);
+		if( offset > 0 ) {
+			// (the candidates replace only that part)
+			Parsed part = new Parsed();
+			part.start = p.start+offset;
+			part.raw = word;
+			part.value = word;
+			part.quote = p.quote;
+			part.command = p.command;
+			part.redirect = p.redirect;
+			part.words.addAll(p.words);
+			p = part;
+		}
 		List<Candidate> ret = new ArrayList<>();
 		boolean filenames = spec.options.contains("filenames");
 		boolean nospace = spec.options.contains("nospace");
@@ -293,6 +326,26 @@ public class Completion implements LineEditor.Completer {
 			}
 		}
 		return new Result(p.start, ret);
+	}
+
+	/** a word broken at the break characters: its parts, each run of breaks a part of its own */
+	static List<String> breakApart(String w, String breaks) {
+		List<String> ret = new ArrayList<>();
+		StringBuilder part = new StringBuilder();
+		boolean inBreak = false;
+		for(char c : w.toCharArray()) {
+			boolean b = breaks.indexOf(c) >= 0;
+			if( part.length() > 0 && b != inBreak ) {
+				ret.add(part.toString());
+				part.setLength(0);
+			}
+			inBreak = b;
+			part.append(c);
+		}
+		if( part.length() > 0 || ret.isEmpty()) {
+			ret.add(part.toString());
+		}
+		return ret;
 	}
 
 	private static String closing(char quote) {
