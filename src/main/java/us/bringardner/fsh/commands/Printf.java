@@ -431,7 +431,7 @@ public class Printf extends ShellCommand{
 				long v = Long.parseLong(when.trim());
 				if( v == -2 ) {
 					// when the shell started
-					seconds = System.currentTimeMillis()/1000-ctx.console.seconds();
+					seconds = ctx.console.startSeconds();
 				} else if( v != -1 ) {
 					seconds = v;
 				}

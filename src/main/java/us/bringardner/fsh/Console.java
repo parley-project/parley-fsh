@@ -4005,6 +4005,11 @@ delimiter
 		return (System.currentTimeMillis()-secondsStart)/1000;
 	}
 
+	/** when the shell started (moved by SECONDS=n, as bash's shell_start_time), in seconds since 1970 */
+	public long startSeconds() {
+		return secondsStart/1000;
+	}
+
 	public void setSeconds(long n) {
 		secondsStart = System.currentTimeMillis()-n*1000;
 	}
