@@ -2902,6 +2902,22 @@ delimiter
 		return Math.max(1, historyBase+history.size()-1);
 	}
 	/** entries added since the history file was last read or written (history -a writes them) */
+	/** the history as it is (see restoreHistory) */
+	public Object[] saveHistoryState() {
+		return new Object[] {new ArrayList<>(history), historyBase, historyLinesThisSession, historyLinesInFile, historyLastLineAdded};
+	}
+
+	/** the history as saveHistoryState had it (a subshell's changes to it are its own, as in bash) */
+	@SuppressWarnings("unchecked")
+	public void restoreHistoryState(Object[] state) {
+		history.clear();
+		history.addAll((List<HistoryEntry>) state[0]);
+		historyBase = (Integer) state[1];
+		historyLinesThisSession = (Integer) state[2];
+		historyLinesInFile = (Integer) state[3];
+		historyLastLineAdded = (Boolean) state[4];
+	}
+
 	public int historyLinesThisSession;
 	/** the lines of the history file read (history -n reads those after them) */
 	public int historyLinesInFile;

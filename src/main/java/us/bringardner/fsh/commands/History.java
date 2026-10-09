@@ -35,6 +35,19 @@ public class History extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
+		if( ctx.subshellLevel == 0 ) {
+			return process0(ctx);
+		}
+		// (in a subshell, what it does to the history is the subshell's: fc -s | cat, as in bash)
+		Object[] saved = ctx.console.saveHistoryState();
+		try {
+			return process0(ctx);
+		} finally {
+			ctx.console.restoreHistoryState(saved);
+		}
+	}
+
+	private int process0(ShellContext ctx) throws IOException {
 		List<HistoryEntry> list = ctx.console.history;
 		List<String> words = new ArrayList<>();
 		for(Argument a : args) {
