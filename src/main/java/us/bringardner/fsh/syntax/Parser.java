@@ -128,6 +128,14 @@ public final class Parser {
 		return p.script();
 	}
 
+	/** parse as parse(source, firstLine) does, with no aliases (text whose aliases were expanded already) */
+	public static Sequence parseWithoutAliases(String source, int firstLine) {
+		Parser p = new Parser(source);
+		p.firstLine = firstLine;
+		p.aliasing = false;
+		return p.script();
+	}
+
 	/** the line of the input the text starts on */
 	private int firstLine = 1;
 

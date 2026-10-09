@@ -3071,6 +3071,14 @@ public final class Executor {
 				}
 				ex = new Executor(seq.source);
 			}
+			if( body != null ) {
+				// (its commands' lines as bash numbers them: from the line it ends on)
+				try {
+					SubstitutionLines.renumber(body, CommandPrinter.comsub(ex, body), text);
+				} catch (RuntimeException e) {
+					// (as they were read)
+				}
+			}
 			String file = ex.readFileForm(seq, sc);
 			if( file != null ) {
 				return file;
