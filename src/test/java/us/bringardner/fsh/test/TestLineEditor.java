@@ -188,4 +188,75 @@ public class TestLineEditor {
 			LineEditor.setCommandRunner(null);
 		}
 	}
+
+	private static String editVi(Object ... parts) throws Exception {
+		LineEditor e = new LineEditor(LineEditor.keys(keys(parts)), new PrintStream(new ByteArrayOutputStream()), new ArrayList<>());
+		e.setViMode(true);
+		return e.readLine("$ ");
+	}
+
+	/** set -o vi: command mode's motions and changes (each checked against bash 5.3's readline) */
+	@Test
+	public void viMode() throws Exception {
+		String[][] cases = {
+			{"echo hello world\u001bbdwi", "echo hello "},
+			{"echo one two three\u001b0wcwXX\u001b", "echo XX two three"},
+			{"echo abc\u001bhhx", "echo bc"},
+			{"echo abcdef\u001b02dl", "ho abcdef"},
+			{"echo foo bar\u001bFbd$", "echo foo "},
+			{"echo foo bar\u001b0fod;", "echo bar"},
+			{"echo aaa\u001b0yyP", "echo aaaecho aaa"},
+			{"echo xyz\u001br1", "echo xy1"},
+			{"echo case\u001b0~~~", "ECHo case"},
+			{"echo one two\u001b0wDiend", "echoend "},
+			{"echo q w e\u001b02wiZ \u001b", "echo q Z w e"},
+			{"echo t1\u001bIa \u001b", "a echo t1"},
+			{"echo xx\u001buAyy", "echo xxyy"},
+			{"echo 12345\u001b0ft3x", "o 12345"},
+			{"echo abc def\u001b0wdeAZ", "echo  defZ"},
+			{"echo abc def\u001b02bcbQ\u001b", "Qecho abc def"},
+			{"echo abcdef\u001b0w3x", "echo def"},
+			{"echo abcdef\u001bXi", "echo abcdf"},
+			{"echo abc\u001b0wsZ", "echo Zbc"},
+			{"echo abc def\u001b0wSecho new", "echo new"},
+			{"echo abc def\u001b0wCnew", "echo new"},
+			{"echo abc\u001bccecho cc", "echo cc"},
+			{"echo zzz\u001bddiecho dd", "echo dd"},
+			{"echo 1234567\u001b0t5d0", "4567"},
+			{"echo 1234567\u001bT2x", "echo 124567"},
+			{"echo abcdef\u001b8|x", "echo abdef"},
+			{"echo abc def\u001b0wywP", "echo abc abc def"},
+			{"echo abcdef\u001b0w3rZ", "echo ZZZdef"},
+			{"echo one two three\u001b0w2dw", "echo three"},
+			{"echo one two three\u001b0wd2w", "echo three"},
+			{"echo aXbXc\u001b0fX;x", "echo aXbc"},
+			{"echo aXbXc\u001b$FX,x", "echo aXbc"},
+			{"echo hello\u001b0wea!", "echo hello!"},
+		};
+		for(String [] c : cases) {
+			List<Object> parts = new ArrayList<>();
+			for(String piece : c[0].split("(?<=\u001b)|(?=\u001b)")) {
+				if( piece.equals("\u001b")) {
+					// (Escape alone: nothing comes right after it)
+					parts.add(27);
+					parts.add(LineEditor.KEY_NONE);
+				} else {
+					parts.add(piece);
+				}
+			}
+			assertEquals(c[1], editVi(parts.toArray()), c[0]);
+		}
+		// the history: k and j, / and n (as bash's readline in vi mode)
+		List<String> history = new ArrayList<>(List.of("echo first", "echo second", "echo second"));
+		assertEquals("echo second", editViHistory(history, 27, LineEditor.KEY_NONE, "k"));
+		assertEquals("echo second", editViHistory(history, 27, LineEditor.KEY_NONE, "kk"));
+		assertEquals("echo first", editViHistory(history, 27, LineEditor.KEY_NONE, "/first\n"));
+		assertEquals("echo second", editViHistory(history, 27, LineEditor.KEY_NONE, "kkkj"));
+	}
+
+	private static String editViHistory(List<String> history, Object ... parts) throws Exception {
+		LineEditor e = new LineEditor(LineEditor.keys(keys(parts)), new PrintStream(new ByteArrayOutputStream()), history);
+		e.setViMode(true);
+		return e.readLine("$ ");
+	}
 }

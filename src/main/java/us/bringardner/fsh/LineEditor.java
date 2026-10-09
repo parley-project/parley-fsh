@@ -286,6 +286,15 @@ public class LineEditor {
 		this.history = history;
 	}
 
+	/** set -o vi: vi's keys (insert mode at the start of a line, Escape for command mode) */
+	private boolean vi;
+	/** in vi's command mode */
+	private boolean viCommand;
+
+	public void setViMode(boolean on) {
+		this.vi = on;
+	}
+
 	public void setCompleter(Completer completer) {
 		this.completer = completer;
 	}
@@ -307,6 +316,9 @@ public class LineEditor {
 		histIndex = history.size();
 		edited.clear();
 		undo.clear();
+		viCommand = false;
+		viCount.setLength(0);
+		viOperator = 0;
 		out.print(this.prompt);
 		out.flush();
 		int lastLine = this.prompt.lastIndexOf('\n');
@@ -372,6 +384,31 @@ public class LineEditor {
 						insert(character(key), false);
 					}
 					continue;
+				}
+			}
+			if( vi ) {
+				if( !viCommand && (key == 27+META || key > META && key < META+256)) {
+					// Escape: command mode, the cursor one back (Escape and a key at once: that key, there)
+					viEnterCommand();
+					if( key == 27+META ) {
+						continue;
+					}
+					key -= META;
+				}
+				if( viCommand ) {
+					int done = viKey(key);
+					if( done == VI_ACCEPT ) {
+						return accept();
+					}
+					if( done == VI_EOF ) {
+						out.println();
+						out.flush();
+						return null;
+					}
+					if( done == VI_DONE ) {
+						continue;
+					}
+					// (a control key: as in insert mode)
 				}
 			}
 			boolean wasKill = lastWasKill;
@@ -539,6 +576,442 @@ public class LineEditor {
 				yankStart = yankEnd = -1;
 			}
 		}
+	}
+
+	// ------------------------------------------------------------------ vi's command mode
+
+	private static final int VI_DONE = 0, VI_ACCEPT = 1, VI_EOF = 2, VI_OTHER = 3;
+	/** the count typed before a command (3dw) */
+	private final StringBuilder viCount = new StringBuilder();
+	/** d, c or y waiting for its motion, or 0 */
+	private int viOperator;
+	/** the count typed before the operator (2d3w is 6 words) */
+	private int viOperatorCount = 1;
+	/** the last f, F, t or T and its character, for ; and , */
+	private int viFindKind, viFindChar;
+	/** the last / or ? and its text, for n and N */
+	private String viSearchText;
+	private boolean viSearchBack;
+
+	private void viEnterCommand() {
+		viCommand = true;
+		viCount.setLength(0);
+		viOperator = 0;
+		// (what was typed is not undone by u, as with bash's readline)
+		undo.clear();
+		if( pos > 0 ) {
+			moveTo(pos-1);
+		}
+	}
+
+	private void viInsert(int at) {
+		viCommand = false;
+		moveTo(at);
+	}
+
+	/** the cursor in command mode is on a character (not after the last) */
+	private void viClamp() {
+		if( buf.length() > 0 && pos >= buf.length()) {
+			moveTo(buf.length()-1);
+		}
+	}
+
+	private static int viClass(char c, boolean big) {
+		if( Character.isWhitespace(c)) {
+			return 0;
+		}
+		if( big || Character.isLetterOrDigit(c) || c == '_' ) {
+			return 1;
+		}
+		return 2;
+	}
+
+	/** w, W: the start of the next word (the line's end if there is none) */
+	private int viNextWord(int at, boolean big) {
+		int n = buf.length();
+		if( at >= n ) {
+			return n;
+		}
+		int c = viClass(buf.charAt(at), big);
+		int i = at;
+		if( c != 0 ) {
+			while( i < n && viClass(buf.charAt(i), big) == c ) {
+				i++;
+			}
+		}
+		while( i < n && Character.isWhitespace(buf.charAt(i))) {
+			i++;
+		}
+		return i;
+	}
+
+	/** b, B: the start of this word or the one before */
+	private int viPrevWord(int at, boolean big) {
+		int i = at-1;
+		while( i > 0 && Character.isWhitespace(buf.charAt(i))) {
+			i--;
+		}
+		if( i <= 0 ) {
+			return 0;
+		}
+		int c = viClass(buf.charAt(i), big);
+		while( i > 0 && viClass(buf.charAt(i-1), big) == c ) {
+			i--;
+		}
+		return i;
+	}
+
+	/** e, E: the end (the last character) of this word or the next */
+	private int viWordEnd(int at, boolean big) {
+		int n = buf.length();
+		int i = at+1;
+		while( i < n && Character.isWhitespace(buf.charAt(i))) {
+			i++;
+		}
+		if( i >= n ) {
+			return Math.max(0, n-1);
+		}
+		int c = viClass(buf.charAt(i), big);
+		while( i+1 < n && viClass(buf.charAt(i+1), big) == c ) {
+			i++;
+		}
+		return i;
+	}
+
+	/** f F t T c from at: where it lands, or -1 */
+	private int viFind(int kind, int ch, int at) {
+		if( kind == 'f' || kind == 't' ) {
+			int i = buf.indexOf(String.valueOf((char) ch), at+1);
+			return i < 0 ? -1 : kind == 't' ? i-1 : i;
+		}
+		int i = at <= 0 ? -1 : buf.lastIndexOf(String.valueOf((char) ch), at-1);
+		return i < 0 ? -1 : kind == 'T' ? i+1 : i;
+	}
+
+	/**
+	 * A key in command mode.
+	 * @return VI_DONE, VI_ACCEPT (Enter), VI_EOF (Ctrl-D on an empty line), or VI_OTHER for a
+	 *     key that does what it does in insert mode (Ctrl-L, Ctrl-R, Tab ...)
+	 */
+	private int viKey(int key) throws IOException {
+		switch (key) {
+		case K_LEFT: key = 'h'; break;
+		case K_RIGHT: key = 'l'; break;
+		case K_UP: key = 'k'; break;
+		case K_DOWN: key = 'j'; break;
+		case K_HOME: key = '0'; break;
+		case K_END: key = '$'; break;
+		case K_DELETE: key = 'x'; break;
+		default:
+		}
+		if( key == '\n' || key == '\r' ) {
+			return VI_ACCEPT;
+		}
+		if( key == 4 ) {
+			return buf.length() == 0 ? VI_EOF : VI_DONE;
+		}
+		if( key == 27+META || key == 27 ) {
+			// (Escape in command mode: what was typed of a command is dropped)
+			viCount.setLength(0);
+			viOperator = 0;
+			return VI_DONE;
+		}
+		if( key < 32 || key >= META ) {
+			return VI_OTHER;
+		}
+		if( key >= '1' && key <= '9' || key == '0' && viCount.length() > 0 ) {
+			viCount.append((char) key);
+			return VI_DONE;
+		}
+		int count = viCount.length() == 0 ? 1 : Integer.parseInt(viCount.toString());
+		viCount.setLength(0);
+		if( viOperator != 0 ) {
+			int op = viOperator;
+			viOperator = 0;
+			count *= viOperatorCount;
+			viOperate(op, key, count);
+			return VI_DONE;
+		}
+		int n = buf.length();
+		switch (key) {
+		case 'd': case 'c': case 'y':
+			viOperator = key;
+			viOperatorCount = count;
+			return VI_DONE;
+		case 'i': viInsert(pos); return VI_DONE;
+		case 'a': viInsert(Math.min(n, pos+(n > 0 ? 1 : 0))); return VI_DONE;
+		case 'I': viInsert(0); return VI_DONE;
+		case 'A': viInsert(n); return VI_DONE;
+		case 'x':
+			if( n > 0 ) {
+				kill(pos, Math.min(n, pos+count), false, true);
+				viClamp();
+			}
+			return VI_DONE;
+		case 'X':
+			if( pos > 0 ) {
+				kill(Math.max(0, pos-count), pos, false, true);
+			}
+			return VI_DONE;
+		case 'D':
+			kill(pos, n, false, true);
+			viClamp();
+			return VI_DONE;
+		case 'C':
+			kill(pos, n, false, true);
+			viInsert(buf.length());
+			return VI_DONE;
+		case 's':
+			kill(pos, Math.min(n, pos+count), false, true);
+			viInsert(pos);
+			return VI_DONE;
+		case 'S':
+			kill(0, n, false, true);
+			viInsert(0);
+			return VI_DONE;
+		case 'r': {
+			int c = keys.next();
+			if( c < 32 || pos+count > n ) {
+				bell();
+				return VI_DONE;
+			}
+			saveUndo();
+			for (int i = 0; i < count; i++) {
+				buf.setCharAt(pos+i, (char) c);
+			}
+			pos += count-1;
+			redraw();
+			return VI_DONE;
+		}
+		case '~': {
+			if( n == 0 ) {
+				return VI_DONE;
+			}
+			saveUndo();
+			int end = Math.min(n, pos+count);
+			for (int i = pos; i < end; i++) {
+				char c = buf.charAt(i);
+				buf.setCharAt(i, Character.isUpperCase(c) ? Character.toLowerCase(c) : Character.toUpperCase(c));
+			}
+			pos = Math.min(end, n-1);
+			redraw();
+			return VI_DONE;
+		}
+		case 'p': case 'P': {
+			if( killRing.isEmpty()) {
+				bell();
+				return VI_DONE;
+			}
+			String text = killRing.get(killRing.size()-1).repeat(count);
+			int at = key == 'p' && n > 0 ? pos+1 : pos;
+			moveTo(at);
+			insert(text, false);
+			moveTo(pos-1);
+			return VI_DONE;
+		}
+		case 'u':
+			undo();
+			viClamp();
+			return VI_DONE;
+		case 'k': case '-':
+			historyMove(histIndex-count);
+			moveTo(0);
+			return VI_DONE;
+		case 'j': case '+':
+			historyMove(histIndex+count);
+			moveTo(0);
+			return VI_DONE;
+		case '#':
+			// insert-comment: the line as a comment, entered
+			saveUndo();
+			buf.insert(0, '#');
+			redraw();
+			return VI_ACCEPT;
+		case '/': case '?':
+			viSearch(key == '/');
+			return VI_DONE;
+		case 'n': case 'N':
+			if( viSearchText == null ) {
+				bell();
+			} else {
+				viSearchAgain(key == 'n' ? viSearchBack : !viSearchBack);
+			}
+			return VI_DONE;
+		default:
+		}
+		int target = viMotion(key, count);
+		if( target == Integer.MIN_VALUE ) {
+			bell();
+			return VI_DONE;
+		}
+		moveTo(target);
+		viClamp();
+		return VI_DONE;
+	}
+
+	/** a motion from the cursor: where it goes, or Integer.MIN_VALUE if key is none (or goes nowhere) */
+	private int viMotion(int key, int count) throws IOException {
+		int n = buf.length();
+		int at = pos;
+		switch (key) {
+		case 'h': return Math.max(0, pos-count);
+		case 'l': case ' ': return Math.min(n, pos+count);
+		case '0': return 0;
+		case '^': {
+			int i = 0;
+			while( i < n && Character.isWhitespace(buf.charAt(i))) {
+				i++;
+			}
+			return i;
+		}
+		case '$': return n;
+		case '|': return Math.min(n, count-1);
+		case 'w': case 'W':
+			for (int i = 0; i < count; i++) {
+				at = viNextWord(at, key == 'W');
+			}
+			return at;
+		case 'b': case 'B':
+			for (int i = 0; i < count; i++) {
+				at = viPrevWord(at, key == 'B');
+			}
+			return at;
+		case 'e': case 'E':
+			for (int i = 0; i < count; i++) {
+				at = viWordEnd(at, key == 'E');
+			}
+			return at;
+		case 'f': case 'F': case 't': case 'T': {
+			int c = keys.next();
+			viFindKind = key;
+			viFindChar = c;
+			return viRepeatFind(key, c, count);
+		}
+		case ';': case ',': {
+			if( viFindKind == 0 ) {
+				return Integer.MIN_VALUE;
+			}
+			int kind = viFindKind;
+			if( key == ',' ) {
+				kind = switch (kind) { case 'f' -> 'F'; case 'F' -> 'f'; case 't' -> 'T'; default -> 't'; };
+			}
+			return viRepeatFind(kind, viFindChar, count);
+		}
+		default:
+			return Integer.MIN_VALUE;
+		}
+	}
+
+	private int viRepeatFind(int kind, int c, int count) {
+		int at = pos;
+		for (int i = 0; i < count; i++) {
+			// (t and T again: from past the character they stopped before)
+			int from = kind == 't' && i > 0 ? at+1 : kind == 'T' && i > 0 ? at-1 : at;
+			int next = viFind(kind, c, from);
+			if( next < 0 ) {
+				return Integer.MIN_VALUE;
+			}
+			at = next;
+		}
+		return at;
+	}
+
+	/** d, c or y with a motion (or doubled: the whole line) */
+	private void viOperate(int op, int key, int count) throws IOException {
+		int n = buf.length();
+		int from;
+		int to;
+		if( key == op ) {
+			from = 0;
+			to = n;
+		} else {
+			boolean change = op == 'c';
+			int motion = key;
+			if( change && (key == 'w' || key == 'W') && pos < n && !Character.isWhitespace(buf.charAt(pos))) {
+				// cw is ce, as in vi
+				motion = key == 'w' ? 'e' : 'E';
+			}
+			int target = viMotion(motion, count);
+			if( target == Integer.MIN_VALUE ) {
+				bell();
+				return;
+			}
+			boolean inclusive = motion == 'e' || motion == 'E' || motion == 'f' || motion == 't'
+					|| motion == ';' || motion == ',';
+			from = Math.min(pos, target);
+			to = Math.max(pos, target)+(inclusive && target >= pos ? 1 : 0);
+			to = Math.min(n, to);
+		}
+		String text = buf.substring(Math.max(0, from), Math.max(from, to));
+		if( op == 'y' ) {
+			killRing.add(text);
+			moveTo(from);
+			return;
+		}
+		kill(from, to, false, true);
+		if( op == 'c' ) {
+			viInsert(from);
+		} else {
+			viClamp();
+		}
+	}
+
+	/** / and ?: the text to look for in the history, typed after the prompt's character */
+	private void viSearch(boolean back) throws IOException {
+		String saved = buf.toString();
+		int savedPos = pos;
+		StringBuilder text = new StringBuilder();
+		while( true ) {
+			buf = new StringBuilder((back ? "/" : "?")+text);
+			pos = buf.length();
+			redraw();
+			int k = keys.next();
+			if( k == '\n' || k == '\r' ) {
+				break;
+			}
+			if( k == 27 || k == 7 || k == KEY_EOF ) {
+				buf = new StringBuilder(saved);
+				pos = savedPos;
+				redraw();
+				return;
+			}
+			if( k == 127 || k == 8 ) {
+				if( text.length() == 0 ) {
+					buf = new StringBuilder(saved);
+					pos = savedPos;
+					redraw();
+					return;
+				}
+				text.setLength(text.length()-1);
+				continue;
+			}
+			if( k >= 32 ) {
+				text.append(character(k));
+			}
+		}
+		buf = new StringBuilder(saved);
+		pos = savedPos;
+		if( text.length() > 0 ) {
+			viSearchText = text.toString();
+		}
+		viSearchBack = back;
+		viSearchAgain(back);
+	}
+
+	private void viSearchAgain(boolean back) {
+		if( viSearchText == null ) {
+			bell();
+			redraw();
+			return;
+		}
+		int[] found = find(viSearchText, back, back ? histIndex-1 : histIndex+1, back);
+		if( found == null ) {
+			bell();
+			redraw();
+			return;
+		}
+		historyMove(found[0]);
+		moveTo(0);
 	}
 
 	private String accept() {
