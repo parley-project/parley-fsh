@@ -294,6 +294,13 @@ final class Redirects {
 			if( parent != null && !parent.exists()) {
 				throw new IOException(word+": No such file or directory");
 			}
+			// the system's reason, as bash says it (Java's: "path (Device not configured)")
+			for(Throwable t = e; t != null; t = t.getCause()) {
+				String m = t.getMessage();
+				if( m != null && m.endsWith(")") && m.lastIndexOf(" (") > 0 ) {
+					throw new IOException(word+": "+m.substring(m.lastIndexOf(" (")+2, m.length()-1));
+				}
+			}
 			throw new IOException(word+": Permission denied");
 		}
 	}
