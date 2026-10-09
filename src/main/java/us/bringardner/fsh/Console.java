@@ -2214,15 +2214,26 @@ delimiter
 	 * before was not an exit that was warned of them, as in bash.
 	 */
 	public boolean stoppedJobsWarning(IJob line) {
+		return exitJobsWarning(line) != null;
+	}
+
+	/**
+	 * exit with stopped jobs (or running ones, with shopt -s checkjobs) in an interactive shell:
+	 * bash's warning (the shell stays, until exit comes again right after); null if it may end
+	 */
+	public String exitJobsWarning(IJob line) {
 		boolean stopped = false;
+		boolean running = false;
 		for(IJob job : jobManager.getJobs()) {
 			stopped |= job.getState() == JobState.Suspended;
+			running |= job.getState() == JobState.Running || job.getState() == JobState.Idel;
 		}
-		if( !stopped || (previousLine != null && (exitWarnedOn == previousLine || jobsListedOn == previousLine))) {
-			return false;
+		boolean check = Boolean.TRUE.equals(getShellOptions().get("checkjobs"));
+		if( !stopped && !(check && running) || (previousLine != null && (exitWarnedOn == previousLine || jobsListedOn == previousLine))) {
+			return null;
 		}
 		exitWarnedOn = line;
-		return true;
+		return stopped ? "There are stopped jobs." : "There are running jobs.";
 	}
 
 	/**

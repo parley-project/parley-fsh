@@ -40,8 +40,15 @@ public class Exit extends ShellCommand{
 			// the shell itself (not a subshell) leaves; as bash, it says so, but not at once with stopped jobs
 			// (a login shell says logout)
 			ctx.stderr.println(ctx.console.isLogin ? "logout" : "exit");
-			if( ctx.console.stoppedJobsWarning(typed)) {
-				ctx.stderr.println("There are stopped jobs.");
+			String warning = ctx.console.exitJobsWarning(typed);
+			if( warning != null ) {
+				ctx.stderr.println(warning);
+				if( us.bringardner.fsh.Glob.option(ctx, "checkjobs")) {
+					// (and what they are, as bash lists them)
+					for(us.bringardner.fsh.job.IJob job : ctx.console.jobManager.getJobs()) {
+						ctx.stdout.println(ctx.console.jobManager.describe(job, false));
+					}
+				}
 				return 1;
 			}
 		}

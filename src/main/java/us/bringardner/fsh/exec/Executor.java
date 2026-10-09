@@ -2567,6 +2567,19 @@ public final class Executor {
 			error(sc, name+": restricted: cannot specify `/' in command names");
 			return 1;
 		}
+		if( sc.console.isInteractive && Glob.option(sc, "autocd") && sc.getFileSource(name).isDirectory()) {
+			// shopt -s autocd: a directory is cd's argument (said as bash shows it)
+			List<Object> cd = new ArrayList<>();
+			cd.add("--");
+			cd.add(name);
+			cd.addAll(args);
+			StringBuilder shown = new StringBuilder("cd -- ").append(quote(name));
+			for(String a : strings(args)) {
+				shown.append(' ').append(quote(a));
+			}
+			sc.stderr.println(shown);
+			return dispatch("cd", cd, sc, ex, false);
+		}
 		return Programs.run(name, strings(args), sc);
 	}
 
