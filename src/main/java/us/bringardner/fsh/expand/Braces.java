@@ -141,6 +141,10 @@ public final class Braces {
 				}
 				for(String s : seq) {
 					List<Item> alt = new ArrayList<>();
+					if( s.isEmpty()) {
+						// (the \ of {Z..a}: an empty word, as a quoted one)
+						alt.add(new Item(-1, new Word.SingleQuoted("")));
+					}
 					for(char c : s.toCharArray()) {
 						// the generated text is not looked at again
 						alt.add(new Item(-1, new Word.Literal(String.valueOf(c))));
@@ -206,7 +210,8 @@ public final class Braces {
 			char to = parts[1].charAt(0);
 			long dir = from <= to ? step : -step;
 			for (long c = from; from <= to ? c <= to : c >= to; c += dir) {
-				ret.add(String.valueOf((char) c));
+				// (bash reads what it makes again: a \ is removed as a quote, {Z..a} has an empty word)
+				ret.add(c == '\\' ? "" : String.valueOf((char) c));
 			}
 			return ret;
 		}

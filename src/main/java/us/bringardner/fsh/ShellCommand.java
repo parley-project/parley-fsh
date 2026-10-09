@@ -417,7 +417,12 @@ public abstract class ShellCommand {
 					String name = body.substring(b+2, close);
 					b = close+1;
 					if( kind == ':' ) {
-						items.add(posixToJava("[:"+name+":]"));
+						String cls = posixToJava("[:"+name+":]");
+						if( cls.equals("[:"+name+":]")) {
+							// a class that is not one ([:aleph:]): it matches nothing, as in bash
+							continue;
+						}
+						items.add(cls);
 					} else if( name.length() == 1 ) {
 						items.add((int) name.charAt(0));
 					} else if( kind == '.' && COLLATING.containsKey(name)) {

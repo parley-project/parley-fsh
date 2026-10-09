@@ -89,16 +89,20 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 	 * as "C:\\"). Keeps the path's own separator.
 	 */
 	public static String logicalPath(String path) {
-		char sep = path.indexOf('\\') >= 0 && path.indexOf('/') < 0 ? '\\' : '/';
+		// (only on Windows, or in a path with a drive (C:\a), is \ a separator: elsewhere it is
+		// part of a name, touch 'a\b')
+		boolean windows = java.io.File.separatorChar == '\\'
+				|| path.length() > 1 && Character.isLetter(path.charAt(0)) && path.charAt(1) == ':';
+		char sep = windows && path.indexOf('\\') >= 0 && path.indexOf('/') < 0 ? '\\' : '/';
 		String prefix = "";
 		String rest = path;
 		if( rest.length() > 1 && Character.isLetter(rest.charAt(0)) && rest.charAt(1) == ':') {
 			prefix = rest.substring(0, 2);
 			rest = rest.substring(2);
 		}
-		boolean absolute = rest.startsWith("/") || rest.startsWith("\\");
+		boolean absolute = rest.startsWith("/") || windows && rest.startsWith("\\");
 		Deque<String> parts = new ArrayDeque<>();
-		for(String part : rest.split("[/\\\\]")) {
+		for(String part : rest.split(windows ? "[/\\\\]" : "/")) {
 			if( part.isEmpty() || part.equals(".")) {
 				continue;
 			}
@@ -152,7 +156,7 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 			if( FileSourceFactory.isSameOrDescendant(rootPath, realPath)) {
 				ret=root = tmp;
 				realPath = realPath.substring(rootPath.length());
-				while( realPath.startsWith("/") || realPath.startsWith("\\")) {
+				while( realPath.startsWith("/") || isWindows() && realPath.startsWith("\\")) {
 					realPath=realPath.substring(1);
 				}
 
