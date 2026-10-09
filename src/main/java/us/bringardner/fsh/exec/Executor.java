@@ -384,8 +384,9 @@ public final class Executor {
 	 */
 	private int pipeline(Ast.Pipeline p, ShellContext sc, boolean condition) throws IOException {
 		boolean cond = condition || p.negated;
-		long start = System.nanoTime();
+		// (the CPU times first: their first reading is slow, and is not the command's)
 		long [] cpu = p.timed ? cpuTimes() : null;
+		long start = System.nanoTime();
 		int ret;
 		if( cond ) {
 			sc.conditionDepth++;
