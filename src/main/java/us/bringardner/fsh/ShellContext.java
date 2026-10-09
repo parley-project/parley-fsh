@@ -1042,7 +1042,11 @@ $
 		if( name.equals("BASHPID")) {
 			return ProcessHandle.current().pid();
 		}
-		if( name.equals("BASH_SUBSHELL") && !console.unsetSpecials.contains(name)) {
+		if( name.equals("HISTCMD") && !console.unsetSpecials.contains(name)) {
+			// the history number of the command running (0 with no history, as in bash)
+			return String.valueOf(console.isOptionEnabled(Console.Option.History) ? console.historyNumber() : 0);
+		}
+				if( name.equals("BASH_SUBSHELL") && !console.unsetSpecials.contains(name)) {
 			// how many subshells deep this is: ( ), $( ), a pipe stage, a job
 			return String.valueOf(subshellLevel);
 		}

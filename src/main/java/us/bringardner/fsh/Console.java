@@ -1782,6 +1782,24 @@ delimiter
 				variables.put(Prompt.EchoCommand.name, "+ ");
 			}
 			variables.put(VARIABLE_HISTCHARS, "!^#");
+			variables.put("COMP_WORDBREAKS", " \t\n\"'@><=;|&(:");
+			// the system it runs on, as bash describes it
+			String[] system = systemType();
+			variables.put("OSTYPE", system[0]);
+			variables.put("HOSTTYPE", system[1]);
+			variables.put("MACHTYPE", system[2]);
+			// SHLVL: one more than the environment's, exported (bash's adjust_shell_level)
+			long level = 0;
+			try {
+				level = Long.parseLong(String.valueOf(environmentVariables.get("SHLVL")).trim());
+			} catch (NumberFormatException e) {
+			}
+			level = level < 0 ? 0 : level+1;
+			if( level >= 1000 ) {
+				System.err.println("fsh: warning: shell level ("+level+") too high, resetting to 1");
+				level = 1;
+			}
+			environmentVariables.put("SHLVL", String.valueOf(level));
 			positionalParameters.add("fsh");
 			options.add(Option.DoBraceExpantion);
 			options.add(Option.Hashall);
@@ -1793,6 +1811,44 @@ delimiter
 		} catch (IOException e) {
 		}
 			importFunctions();
+	}
+
+	private static String[] systemTypeCache;
+
+	/** {OSTYPE, HOSTTYPE, MACHTYPE} for this system: darwin25.6.0, x86_64, x86_64-apple-darwin25.6.0 */
+	static synchronized String[] systemType() {
+		if( systemTypeCache == null ) {
+			String os = System.getProperty("os.name", "").toLowerCase();
+			String arch = System.getProperty("os.arch", "");
+			String host = arch.equals("amd64") ? "x86_64" : arch;
+			String ostype;
+			String vendor;
+			if( os.startsWith("mac") || os.contains("darwin")) {
+				String release = System.getProperty("os.version", "");
+				try {
+					Process p = new ProcessBuilder("uname", "-r").redirectErrorStream(true).start();
+					String r = new String(p.getInputStream().readAllBytes()).trim();
+					if( p.waitFor() == 0 && !r.isEmpty()) {
+						release = r;
+					}
+				} catch (Exception e) {
+					// (the product version, then)
+				}
+				ostype = "darwin"+release;
+				vendor = "apple";
+			} else if( os.startsWith("linux")) {
+				ostype = "linux-gnu";
+				vendor = "pc";
+			} else if( os.startsWith("windows")) {
+				ostype = "msys";
+				vendor = "pc";
+			} else {
+				ostype = os.replace(' ', '-');
+				vendor = "unknown";
+			}
+			systemTypeCache = new String[] {ostype, host, host+"-"+vendor+"-"+ostype};
+		}
+		return systemTypeCache;
 	}
 
 	/** ~/.fshrc: what an interactive shell (not a login shell) runs at the start */
@@ -2807,6 +2863,11 @@ delimiter
 
 	/** the number of the first entry (it grows as HISTSIZE drops the oldest) */
 	public int historyBase = 1;
+
+	/** $HISTCMD: the history number of the command running (it is in the history already) */
+	public int historyNumber() {
+		return Math.max(1, historyBase+history.size()-1);
+	}
 	/** entries added since the history file was last read or written (history -a writes them) */
 	public int historyLinesThisSession;
 	/** the lines of the history file read (history -n reads those after them) */
