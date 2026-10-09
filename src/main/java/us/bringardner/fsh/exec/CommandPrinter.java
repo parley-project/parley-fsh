@@ -354,6 +354,18 @@ final class CommandPrinter {
 
 	/** x=v as written (its $( ) as bash keeps them) */
 	private String assignment(Ast.Assignment a) {
+		if( a.array != null ) {
+			// name=( x "y z" ) as bash prints it: name=(x "y z")
+			StringBuilder ret = new StringBuilder(a.name);
+			if( a.index != null ) {
+				ret.append('[').append(a.index).append(']');
+			}
+			ret.append(a.append ? "+=(" : "=(");
+			for (int i = 0; i < a.array.size(); i++) {
+				ret.append(i > 0 ? " " : "").append(word(a.array.get(i)));
+			}
+			return ret.append(')').toString();
+		}
 		List<Word.CommandSub> subs = new ArrayList<>();
 		if( a.value != null ) {
 			commandSubs(a.value.parts, subs);
