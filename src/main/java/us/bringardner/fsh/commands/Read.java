@@ -101,7 +101,7 @@ public class Read extends ShellCommand{
 				case 'a':arrayName = value; break;
 				case 'd':
 					// -d '': up to a NUL (find -print0)
-					lineDelim = value.isEmpty() ? '\0' : value.charAt(0);
+					lineDelim = value.isEmpty() ? '\0' : (char) (us.bringardner.fsh.RawUtf8.toBytes(value)[0] & 0xff);
 					break;
 				case 'e':options.add(Options.e);break;
 				case 'i':editLineText = value; break;
@@ -410,12 +410,13 @@ public class Read extends ShellCommand{
 		eof = false;
 		timedOut = false;
 		long deadline = timeoutSeconds > 0 ? System.currentTimeMillis()+(long)(timeoutSeconds*1000) : -1;
+		pushed = -1;
 		while( true ) {
-			if( !waitForInput(ctx, deadline)) {
+			if( pushed < 0 && !waitForInput(ctx, deadline)) {
 				timedOut = true;
 				return buf.toString();
 			}
-			if( (i=ctx.stdin.read()) == -1 ) {
+			if( (i=nextByte(ctx.stdin)) == -1 ) {
 				break;
 			}
 			if(i == '\\' && !options.contains(Options.r)) {
@@ -451,15 +452,28 @@ public class Read extends ShellCommand{
 	}
 
 
+	/** a byte utf8 read that was not part of the character (read next), or -1 */
+	private int pushed = -1;
+
+	private int nextByte(java.io.InputStream in) throws IOException {
+		int ret = pushed;
+		if( ret >= 0 ) {
+			pushed = -1;
+			return ret;
+		}
+		return in.read();
+	}
+
 	/**
 	 * The character whose first byte is first, the rest read from in (only bytes that go on a
-	 * UTF-8 character are taken); a byte that does not start one is the character of its value.
+	 * UTF-8 character are taken); a byte that does not start one is the character that stands
+	 * for it (see RawUtf8).
 	 */
-	static String utf8(int first, java.io.InputStream in) throws IOException {
+	private String utf8(int first, java.io.InputStream in) throws IOException {
 		if( first < 0x80 ) {
 			return String.valueOf((char) first);
 		}
-		int more = first >= 0xf0 && first < 0xf8 ? 3 : first >= 0xe0 ? 2 : first >= 0xc2 && first < 0xe0 ? 1 : 0;
+		int more = first >= 0xf5 ? 0 : first >= 0xf0 ? 3 : first >= 0xe0 ? 2 : first >= 0xc2 && first < 0xe0 ? 1 : 0;
 		if( more == 0 ) {
 			// (a byte that is not UTF-8: the character that stands for it)
 			return String.valueOf(us.bringardner.fsh.RawUtf8.escape(first));
@@ -467,19 +481,11 @@ public class Read extends ShellCommand{
 		byte [] bytes = new byte[more+1];
 		bytes[0] = (byte) first;
 		for (int k = 1; k <= more; k++) {
-			if( in.markSupported()) {
-				in.mark(1);
-			}
 			int b = in.read();
 			if( b < 0x80 || b > 0xbf ) {
-				// not part of it: put back if the stream can, else keep it as it is
-				String done = us.bringardner.fsh.RawUtf8.toText(bytes, 0, k);
-				if( b >= 0 && in.markSupported()) {
-					in.reset();
-				} else if( b >= 0 ) {
-					return done+us.bringardner.fsh.RawUtf8.toText(new byte[] {(byte) b});
-				}
-				return done;
+				// not part of it: read next (it may be the delimiter)
+				pushed = b;
+				return us.bringardner.fsh.RawUtf8.toText(bytes, 0, k);
 			}
 			bytes[k] = (byte) b;
 		}

@@ -419,6 +419,11 @@ public final class Programs {
 					// $_ in its environment is the program's path, as bash puts it there
 					env.put("_", name);
 				}
+				// bytes that are not UTF-8 in its arguments or environment: through the helper
+				List<String> raw = rawBytes(command, env);
+				if( raw != null ) {
+					builder.command(raw);
+				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
 				if (dir instanceof FileProxy) {
@@ -757,4 +762,49 @@ public final class Programs {
 		return null;
 	}
 
+
+	/**
+	 * command run through the helper with -r, when it or env has bytes that are not UTF-8 (which
+	 * Java would pass as ?): the arguments, and the variables that have such bytes, written with
+	 * %XX for the helper to make bytes again. Null when there are none, or no helper.
+	 */
+	static List<String> rawBytes(List<String> command, Map<String,String> env) {
+		String helper = NativeKeyboard.helper();
+		if( helper == null || command.stream().noneMatch(Programs::hasRawBytes)
+				&& env.entrySet().stream().noneMatch(e -> hasRawBytes(e.getKey()) || hasRawBytes(e.getValue()))) {
+			return null;
+		}
+		List<String> ret = new java.util.ArrayList<>(List.of(helper, "-r"));
+		for(java.util.Iterator<Map.Entry<String,String>> it = env.entrySet().iterator(); it.hasNext(); ) {
+			Map.Entry<String,String> e = it.next();
+			if( hasRawBytes(e.getKey()) || hasRawBytes(e.getValue())) {
+				ret.add("-e");
+				ret.add(percent(e.getKey()+"="+e.getValue()));
+				it.remove();
+			}
+		}
+		ret.add("--");
+		for(String arg : command) {
+			ret.add(percent(arg));
+		}
+		return ret;
+	}
+
+	private static boolean hasRawBytes(String s) {
+		return s != null && s.chars().anyMatch(c -> us.bringardner.fsh.RawUtf8.isEscape((char) c));
+	}
+
+	/** s's bytes, with % and those that are not ASCII written %XX */
+	private static String percent(String s) {
+		StringBuilder ret = new StringBuilder();
+		for(byte b : us.bringardner.fsh.RawUtf8.toBytes(s)) {
+			int v = b & 0xff;
+			if( v == '%' || v >= 0x80 ) {
+				ret.append(String.format("%%%02X", v));
+			} else {
+				ret.append((char) v);
+			}
+		}
+		return ret.toString();
+	}
 }

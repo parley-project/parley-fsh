@@ -64,7 +64,7 @@ public class Mapfile extends ShellCommand{
 					break;
 				case "-d": {
 					String d = ""+args[++idx].getValue(ctx);
-					delim = d.isEmpty() ? '\0' : d.charAt(0);
+					delim = d.isEmpty() ? '\0' : (char) (us.bringardner.fsh.RawUtf8.toBytes(d)[0] & 0xff);
 					break;
 				}
 				default:

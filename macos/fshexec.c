@@ -1,5 +1,5 @@
 /*
- * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [--] program [args...]
+ * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [--] program [args...]
  *
  * Runs a program for fsh as bash would run it.
  *
@@ -11,6 +11,9 @@
  *     back after its line) is written to REPORT, for the shell to go on reading from there.
  *     The status is the program's (a signal that ended it ends this too).
  * -0: the program's argv[0] is NAME (exec -a NAME, exec -l), not its path.
+ * -r: the program and its arguments, and each -e NAME=VALUE that follows, are written with %XX
+ *     for bytes (Java cannot pass bytes that are not UTF-8 itself); -e puts NAME=VALUE in the
+ *     program's environment.
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -23,6 +26,22 @@
 #include <unistd.h>
 
 static const char *argv0 = NULL;
+
+/* s with each %XX made the byte XX, in place */
+static char *decode(char *s) {
+	char *out = s;
+	for(char *in = s; *in != '\0'; in++) {
+		if( in[0] == '%' && in[1] != '\0' && in[2] != '\0' ) {
+			char hex[3] = { in[1], in[2], '\0' };
+			*out++ = (char) strtol(hex, NULL, 16);
+			in += 2;
+		} else {
+			*out++ = *in;
+		}
+	}
+	*out = '\0';
+	return s;
+}
 
 static void run(char **argv) {
 	const char *path = argv[0];
@@ -42,6 +61,7 @@ int main(int argc, char **argv) {
 	pid_t pgid = 0;
 	const char *file = NULL, *report = NULL;
 	off_t offset = 0;
+	int raw = 0;
 	while( i < argc && argv[i][0] == '-' ) {
 		if( strcmp(argv[i], "--") == 0 ) {
 			i++;
@@ -51,6 +71,17 @@ int main(int argc, char **argv) {
 			pgid = (pid_t) atol(argv[i+1]);
 			fg = atoi(argv[i+2]);
 			i += 3;
+		} else if( strcmp(argv[i], "-r") == 0 ) {
+			raw = 1;
+			i++;
+		} else if( strcmp(argv[i], "-e") == 0 && raw && i+1 < argc ) {
+			char *entry = decode(argv[i+1]);
+			char *eq = strchr(entry, '=');
+			if( eq != NULL ) {
+				*eq = '\0';
+				setenv(entry, eq+1, 1);
+			}
+			i += 2;
 		} else if( strcmp(argv[i], "-0") == 0 && i+1 < argc ) {
 			argv0 = argv[i+1];
 			i += 2;
@@ -64,8 +95,13 @@ int main(int argc, char **argv) {
 		}
 	}
 	if( i >= argc ) {
-		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [--] program [args...]\n");
+		fprintf(stderr, "usage: fshexec [-g pgid fg] [-i file offset report] [-0 name] [-r [-e name=value]...] [--] program [args...]\n");
 		return 2;
+	}
+	if( raw ) {
+		for(int k = i; k < argc; k++) {
+			decode(argv[k]);
+		}
 	}
 	if( group ) {
 		if( pgid == 0 || setpgid(0, pgid) != 0 ) {

@@ -162,6 +162,10 @@ public final class RawUtf8 extends Charset {
 		return cs instanceof RawUtf8 || StandardCharsets.UTF_8.contains(cs);
 	}
 
+	/**
+	 * (Bytes of a character cut off by the end of the input are one U+FFFD here, as Java's
+	 * CharsetDecoder does that itself; toText keeps them.)
+	 */
 	@Override
 	public CharsetDecoder newDecoder() {
 		return new CharsetDecoder(this, 1f, 1f) {
