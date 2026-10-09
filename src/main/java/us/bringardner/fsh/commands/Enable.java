@@ -56,13 +56,13 @@ public class Enable extends ShellCommand{
 		}
 		TreeSet<String> known = new TreeSet<>(Console.commands.keySet());
 		// (the ones the shell runs itself)
-		known.addAll(List.of("break", "continue", "declare", "typeset", "local", "."));
+		known.addAll(List.of("break", "continue", "declare", "typeset", "local", ".", "["));
 		if( names.isEmpty()) {
 			for(String n : known) {
 				if( n.startsWith("__") || special && !SPECIAL.contains(n)) {
 					continue;
 				}
-				boolean off = ctx.console.disabledBuiltins.contains(n);
+				boolean off = ctx.console.disabledBuiltins.contains(n.equals("[") ? Console.BRACKET_TEST : n);
 				if( all || off == disable ) {
 					ctx.stdout.println("enable "+(off ? "-n " : "")+n);
 				}
@@ -79,9 +79,9 @@ public class Enable extends ShellCommand{
 				ctx.error("enable: "+n+": not dynamically loaded");
 				ret = 1;
 			} else if( disable ) {
-				ctx.console.disabledBuiltins.add(n);
+				ctx.console.disabledBuiltins.add(n.equals("[") ? Console.BRACKET_TEST : n);
 			} else {
-				ctx.console.disabledBuiltins.remove(n);
+				ctx.console.disabledBuiltins.remove(n.equals("[") ? Console.BRACKET_TEST : n);
 			}
 		}
 		return ret;

@@ -70,6 +70,18 @@ public abstract class ShellCommand {
 		}
 	}
 
+	/**
+	 * An option fsh's own command (ls, cp ...) does not have: the system's program of that name
+	 * runs instead, as scripts written for it expect (ls -di).
+	 */
+	public static final class UnsupportedOption extends IOException {
+		private static final long serialVersionUID = 1L;
+
+		public UnsupportedOption(String message) {
+			super(message);
+		}
+	}
+
 	public class ShellArgument {
 		public List<Object> options = new ArrayList<>();
 		public List<String> paths = new ArrayList<>();
@@ -100,7 +112,7 @@ public abstract class ShellCommand {
 								Object a = m.invoke(null, ""+c);
 								ret.options.add(a);
 							} catch (Exception e) {
-								throw new IOException("Unknown argument "+c);
+								throw new UnsupportedOption("Unknown argument "+c);
 							}
 						}
 					} else {

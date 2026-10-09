@@ -62,7 +62,13 @@ public final class Parser {
 	 * a here-document's body) as a word.
 	 */
 	public static Word fragment(String text, Fragment mode) {
+		return fragment(text, mode, 1);
+	}
+
+	/** fragment(text, mode) for text that is on line firstLine (compgen -W's list: its $( ) is there) */
+	public static Word fragment(String text, Fragment mode, int firstLine) {
 		Parser p = new Parser(text);
+		p.firstLine = Math.max(1, firstLine);
 		p.commandStart = false;
 		p.aliasing = false;
 		Word w;
@@ -76,7 +82,7 @@ public final class Parser {
 			w.end = text.length();
 			w.raw = text;
 		}
-		w.line = 1;
+		w.line = p.firstLine;
 		return w;
 	}
 

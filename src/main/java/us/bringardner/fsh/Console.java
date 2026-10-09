@@ -109,11 +109,18 @@ public class Console extends SignalEnabledThread {
 	/** the umask (null until umask asks the system for it) */
 	public volatile Integer umask;
 
+	/** the name [ is registered under */
+	public static final String BRACKET_TEST = "__bracket_test";
+
 	/** builtins turned off with enable -n: the name runs a program (or nothing) instead */
 	public final java.util.Set<String> disabledBuiltins = ConcurrentHashMap.newKeySet();
 
 	/** the builtin named name, or null (none, or enable -n turned it off) */
 	public Constructor<? extends ShellCommand> builtin(String name) {
+		if( name.equals("[")) {
+			// ([ is test's other name)
+			name = BRACKET_TEST;
+		}
 		return disabledBuiltins.contains(name) ? null : commands.get(name);
 	}
 
@@ -3607,6 +3614,7 @@ delimiter
 		changeDirectory(s.cwd);
 		synchronized (this) {
 			// close what the subshell opened (exec 3>file) and put back what it closed or replaced
+			Map<Integer,FileDiscriptor> files = getFiles();
 			for(Integer id : new ArrayList<>(files.keySet())) {
 				if( id > 2 && files.get(id) != s.files.get(id)) {
 					closeFileDistcriptor(id);
@@ -3634,6 +3642,10 @@ delimiter
 		boolean ownExitTrap;
 		/** the stage's own signal traps (trap in a job or a pipe stage does not change the shell's) */
 		Map<Integer,List<ConsoleSignalHandler>> osTraps;
+		/** the stage's own descriptors (exec 3>&- in a pipe stage does not close the shell's 3) */
+		Map<Integer,FileDiscriptor> files;
+		/** the descriptors it was started with: closing one there leaves the stream open for the shell */
+		java.util.Set<FileDiscriptor> inheritedFds;
 	}
 
 	private final InheritableThreadLocal<StageState> stage = new InheritableThreadLocal<>();
@@ -3647,6 +3659,12 @@ delimiter
 		s.options = new java.util.concurrent.CopyOnWriteArrayList<>(optionList());
 		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
 		s.osTraps = new ConcurrentSkipListMap<>(osTraps());
+		Map<Integer,FileDiscriptor> fds = getFiles();
+		synchronized (fds) {
+			s.files = new TreeMap<>(fds);
+		}
+		s.inheritedFds = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+		s.inheritedFds.addAll(s.files.values());
 		stage.set(s);
 	}
 
@@ -4332,15 +4350,15 @@ delimiter
 
 	public void setFileDistcriptor(FileDiscriptor fd) {
 		closeFileDistcriptor(fd.id);
-		files.put(fd.id,fd);
+		getFiles().put(fd.id,fd);
 	}
 
 	public FileDiscriptor closeFileDistcriptor(int id) {
-		@SuppressWarnings("unused")
-		Map<Integer, FileDiscriptor> tmp = getFiles();
-		FileDiscriptor ret = files.remove(id);
+		FileDiscriptor ret = getFiles().remove(id);
+		StageState st = stage.get();
 		if( ret != null) {
-			if( ret.source == FileDiscriptor.SHARED ) {
+			if( ret.source == FileDiscriptor.SHARED || st != null && st.inheritedFds != null && st.inheritedFds.contains(ret)) {
+				// (a copy, or the shell's own in a stage: the stream stays open)
 				if( ret.out != null ) {
 					ret.out.flush();
 				}
@@ -4373,8 +4391,7 @@ delimiter
 	public final Map<Integer,FileDiscriptor> keptFds = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public FileDiscriptor removeFileDistcriptor(int id) {
-		getFiles();
-		return files.remove(id);
+		return getFiles().remove(id);
 	}
 
 	/**
@@ -4411,6 +4428,11 @@ delimiter
 	}
 
 	public Map<Integer,FileDiscriptor> getFiles() {
+		StageState st = stage.get();
+		if( st != null && st.files != null ) {
+			// a pipe stage's or job's own
+			return st.files;
+		}
 		if( files == null) {
 			synchronized (this) {
 				if( files == null) {

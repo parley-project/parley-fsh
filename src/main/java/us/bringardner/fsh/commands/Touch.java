@@ -359,7 +359,7 @@ public class Touch extends ShellCommand{
 									idx = action.process(ret, ctx, idx);
 								}
 							} catch (Exception e) {
-								throw new IOException("Unknown argument "+c);
+								throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("Unknown argument "+c);
 							}
 						}
 					} else {
@@ -413,7 +413,7 @@ public class Touch extends ShellCommand{
 									ret.parameters.put(arg, p);
 								} 
 							} catch (Exception e) {
-								throw new IOException("Unknown argument "+c);
+								throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("Unknown argument "+c);
 							}
 						}
 					} else {

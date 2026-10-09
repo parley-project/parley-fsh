@@ -124,7 +124,7 @@ public final class Executor {
 
 	/** text with its parameters, commands and arithmetic expanded (as in "...") */
 	public static String expandWord(ShellContext sc, String text) {
-		return expanderFor(sc).string(Parser.fragment(text, Parser.Fragment.QUOTED));
+		return expanderFor(sc).string(Parser.fragment(text, Parser.Fragment.QUOTED, sc.currentLine()));
 	}
 
 	/** a script whose text starts on line firstLine of the input (commands read one at a time) */
@@ -268,7 +268,8 @@ public final class Executor {
 			String [] lines = code.split("\n", -1);
 			int i = e.line-firstLine;
 			if( i >= 0 && i < lines.length ) {
-				sc.stderr.println(prefix+"`"+lines[i]+"'");
+				// (without NUL bytes, as bash shows the line)
+				sc.stderr.println(prefix+"`"+lines[i].replace("\0", "")+"'");
 			}
 		}
 	}
@@ -2588,6 +2589,13 @@ public final class Executor {
 			int ret;
 			try {
 				ret = cmd.process(sc);
+			} catch (ShellCommand.UnsupportedOption e) {
+				// an option fsh's own ls, cp ... does not have: the system's program, if there is one
+				if( BASH_BUILTINS.contains(name) || Programs.hashed(name, sc) == null ) {
+					throw e;
+				}
+				sc.builtin = outer;
+				return Programs.run(name, strings(args), sc);
 			} finally {
 				sc.builtin = outer;
 			}
