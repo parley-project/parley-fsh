@@ -83,6 +83,8 @@ public class TestJobControl {
 		Console.exitJvm = false;
 		console = new Console();
 		console.isInteractive = true;
+		// (job control on, as on a terminal: the notices before a prompt need it, as in bash)
+		console.setOption(Console.Option.Monitor, true);
 		console.setStdOut(out);
 		console.setStdErr(out);
 		kb = new Keyboard(out);

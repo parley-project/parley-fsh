@@ -2078,9 +2078,14 @@ delimiter
 				stdOut.println(adminMessage);
 				adminMessage = null;
 			}
-			// as bash does before a prompt: [1]+  Done                    sleep 5
-			for(String notice : jobManager.notices()) {
-				stdOut.println(notice);
+			// as bash does before a prompt, on standard error: [1]+  Done                    sleep 5
+			// (without job control the jobs that are done leave quietly; fsh's window is a terminal)
+			List<String> notices = jobManager.notices();
+			if( isOptionEnabled(Option.Monitor) || kb instanceof ConsoleFrame ) {
+				for(String notice : notices) {
+					stdErr.println(notice);
+				}
+				stdErr.flush();
 			}
 			stdOut.flush();
 			runPromptCommand();
