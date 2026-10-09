@@ -118,7 +118,8 @@ public class Console extends SignalEnabledThread {
 	}
 
 	/** $_: the last argument of the last simple command */
-	public volatile String lastArgument = "";
+	/** $_ (at the start, the shell's path from the environment's _, as bash's) */
+	public volatile String lastArgument = System.getenv("_") == null ? "" : System.getenv("_");
 
 	public static class FileDiscriptor {
 
@@ -3376,6 +3377,7 @@ delimiter
 		private final List<String> dirStack;
 		private final Integer umask;
 		private final int openFilesLimit;
+		private final String lastArgument;
 		private final Map<String,Object []> hashTable;
 		/** attributes: a subshell's readonly, -i, -l/-u and readonly functions are its own */
 		private final java.util.Set<String> readonly, integer, readonlyFunctions, declaredUnset, pendingExports;
@@ -3397,6 +3399,7 @@ delimiter
 			dirStack = new ArrayList<>(c.dirStack);
 			umask = c.umask;
 			openFilesLimit = c.openFilesLimit;
+			lastArgument = c.lastArgument;
 			hashTable = new java.util.LinkedHashMap<>(c.hashTable);
 			// arrays by value: a subshell's a[1]=x or m[k]=v changes the arrays it shares with
 			// the shell, and restore puts these copies back
@@ -3443,6 +3446,8 @@ delimiter
 		dirStack.addAll(s.dirStack);
 		umask = s.umask;
 		openFilesLimit = s.openFilesLimit;
+		// ($_ of a subshell is its own)
+		lastArgument = s.lastArgument;
 		hashTable.clear();
 		// (in reverse: each goes back to the head of its bucket, so the order is bash's again)
 		List<Map.Entry<String,Object[]>> back = new ArrayList<>(s.hashTable.entrySet());

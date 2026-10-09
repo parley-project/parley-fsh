@@ -1976,7 +1976,9 @@ public final class Executor {
 	 * variables; the status is the last $( )'s, or 0.
 	 */
 	private int assignments(Ast.SimpleCommand c, ShellContext sc, Expander ex, long substitutions) throws IOException {
-		sc.console.lastArgument = "";
+		if( !sc.isIsolated()) {
+			sc.console.lastArgument = "";
+		}
 		Redirects.Saved streams = Redirects.Saved.of(sc);
 		List<Closeable> opened = null;
 		try {
@@ -2117,8 +2119,11 @@ public final class Executor {
 			// (a function's commands moved it)
 			sc.line = c.line;
 			sc.console.setLastExitCode(ret);
-			Object last = args.isEmpty() ? name : args.get(args.size()-1);
-			sc.console.lastArgument = last instanceof Ast.Assignment a ? a.name : String.valueOf(last);
+			if( !sc.isIsolated()) {
+				// ($_: a pipe stage's or job's is its own)
+				Object last = args.isEmpty() ? name : args.get(args.size()-1);
+				sc.console.lastArgument = last instanceof Ast.Assignment a ? a.name : String.valueOf(last);
+			}
 		}
 		return ret;
 	}
