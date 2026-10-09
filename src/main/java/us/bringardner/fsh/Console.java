@@ -1383,6 +1383,12 @@ delimiter
 		}
 	}
 
+	/** set -v: the lines as they were read, on standard error (as bash shows them) */
+	private static void verbose(java.io.PrintStream err, String code) {
+		err.print(code.endsWith("\n") ? code : code+"\n");
+		err.flush();
+	}
+
 	/** bash's check_binary_file: a NUL in the first line (of the first 80 bytes) */
 	static boolean isBinary(byte [] bytes) {
 		for (int i = 0; i < Math.min(80, bytes.length); i++) {
@@ -2106,7 +2112,7 @@ delimiter
 
 
 					if( isOptionEnabled(Option.PrintLinesAsRead)) {
-						stdOut.println(getPrompt(Prompt.EchoCommand)+code);
+						verbose(stdErr, code);
 					}
 
 					ShellContext sc = new ShellContext(this);
@@ -4180,7 +4186,7 @@ delimiter
 		try {
 
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
-				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
+				verbose(sc.stderr, code);
 			}
 
 			code = code.stripLeading();
@@ -4362,7 +4368,7 @@ delimiter
 		try {
 
 			if( isOptionEnabled(Option.PrintLinesAsRead)) {
-				sc.stdout.println(getPrompt(Prompt.EchoCommand)+code);
+				verbose(sc.stderr, code);
 			}
 
 			code = code.stripLeading();

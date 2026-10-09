@@ -2026,10 +2026,16 @@ public final class Executor {
 		List<Closeable> opened = null;
 		Integer status = null;
 		int ret = 0;
+		boolean remembering = false;
 		try {
 			if( tracing(sc)) {
 				// on the shell's standard error, not the command's (2>&1 does not take it)
-				trace(name, args, sc);
+				if( args.stream().anyMatch(a -> a instanceof Ast.Assignment)) {
+					// (what the words expand to is shown, and used: they are expanded once)
+					ex.remember(true);
+					remembering = true;
+				}
+				trace(name, args, sc, ex);
 			}
 			Redirects.COMMAND.set(name);
 			try {
@@ -2062,6 +2068,9 @@ public final class Executor {
 				sc.specialBuiltinFailed(1);
 			}
 		} finally {
+			if( remembering ) {
+				ex.remember(false);
+			}
 			if( !keepRedirects ) {
 				streams.restore(sc);
 				Redirects.close(opened);
@@ -2151,12 +2160,53 @@ public final class Executor {
 	}
 
 	/** set -x: the command as it runs */
-	private void trace(String name, List<Object> args, ShellContext sc) {
+	private void trace(String name, List<Object> args, ShellContext sc, Expander ex) {
 		StringBuilder line = new StringBuilder(quote(name));
+		// as bash shows a declaration builtin: its words expanded (name=(...) first, on a line of
+		// its own, then the name), and export and readonly show their assignments after it
+		List<String> after = new ArrayList<>();
+		boolean assoc = args.stream().anyMatch(a -> a instanceof String s && s.startsWith("-") && s.indexOf('A') > 0);
 		for(Object a : args) {
-			line.append(' ').append(a instanceof Ast.Assignment as ? text(as) : quote(String.valueOf(a)));
+			if( !(a instanceof Ast.Assignment as)) {
+				line.append(' ').append(quote(String.valueOf(a)));
+				continue;
+			}
+			String head = as.name+(as.index != null ? "["+as.index+"]" : "");
+			String op = as.append ? "+=" : "=";
+			if( as.array != null ) {
+				boolean map = assoc || sc.getVariable(as.name) instanceof Map<?,?>;
+				StringBuilder items = new StringBuilder();
+				for(Word w : as.array) {
+					Word [] kv = keyValue(w);
+					if( kv != null ) {
+						String k = map ? ex.assignment(kv[0]) : kv[0].raw == null ? "" : kv[0].raw;
+						items.append(items.length() > 0 ? " " : "").append("[").append(singleQuoted(k)).append("]=")
+								.append(singleQuoted(kv[1] == null ? "" : ex.assignment(kv[1])));
+					} else {
+						for(String e : map ? List.of(ex.assignment(w)) : ex.expand(w)) {
+							items.append(items.length() > 0 ? " " : "").append(singleQuoted(e));
+						}
+					}
+				}
+				trace(sc, sc.stderr, head+op+"("+items+")");
+				line.append(' ').append(quote(as.name));
+				continue;
+			}
+			String v = as.value == null ? "" : ex.assignment(as.value);
+			line.append(' ').append(quote(head+op+v));
+			if( name.equals("export") || name.equals("readonly")) {
+				after.add(head+op+assigned(v));
+			}
 		}
 		trace(sc, sc.stderr, line.toString());
+		for(String s : after) {
+			trace(sc, sc.stderr, s);
+		}
+	}
+
+	/** 'text', as set -x shows an array's elements */
+	private static String singleQuoted(String s) {
+		return "'"+s.replace("'", "'\\''")+"'";
 	}
 
 	/**

@@ -87,7 +87,32 @@ public final class Expander {
 	}
 
 	/** a command word: braces, expansions, splitting, filename expansion and quote removal */
+	/**
+	 * set -x of a declaration builtin (declare x=$(cmd)): what its words expanded to when they
+	 * were shown, so the builtin does not expand them again (null: not kept)
+	 */
+	private java.util.IdentityHashMap<Word, List<String>> expanded;
+	private java.util.IdentityHashMap<Word, String> assigned;
+
+	/** keep (true) what words expand to until false, so each is expanded once */
+	public void remember(boolean on) {
+		expanded = on ? new java.util.IdentityHashMap<>() : null;
+		assigned = on ? new java.util.IdentityHashMap<>() : null;
+	}
+
 	public List<String> expand(Word w) {
+		if( expanded != null ) {
+			List<String> known = expanded.get(w);
+			if( known == null ) {
+				known = expand0(w);
+				expanded.put(w, known);
+			}
+			return new ArrayList<>(known);
+		}
+		return expand0(w);
+	}
+
+	private List<String> expand0(Word w) {
 		List<String> ret = new ArrayList<>();
 		List<Word> words = option(Console.Option.DoBraceExpantion) ? Braces.expand(w) : List.of(w);
 		for(Word b : words) {
@@ -110,6 +135,18 @@ public final class Expander {
 
 	/** the value of an assignment: as string, and ~ after a : is expanded too (PATH=~/bin:~/x) */
 	public String assignment(Word w) {
+		if( assigned != null ) {
+			String known = assigned.get(w);
+			if( known == null ) {
+				known = assignment0(w);
+				assigned.put(w, known);
+			}
+			return known;
+		}
+		return assignment0(w);
+	}
+
+	private String assignment0(Word w) {
 		List<Piece> pieces = new ArrayList<>();
 		word(w, pieces, TILDE_ASSIGNMENT);
 		return join(pieces);
