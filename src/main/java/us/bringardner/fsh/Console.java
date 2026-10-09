@@ -2087,6 +2087,9 @@ delimiter
 		}
 	}
 
+	/** ends of input in a row that IGNOREEOF has passed over */
+	private int eofsIgnored;
+
 	/** the jobs in the foreground: the one typed at the prompt, and what fg brought back (last) */
 	private final java.util.Deque<IJob> foregroundJobs = new java.util.concurrent.ConcurrentLinkedDeque<>();
 
@@ -2282,6 +2285,24 @@ delimiter
 			try {
 				code = readCommand(kb);
 				boolean endOfInput = code == null;
+				if( !endOfInput ) {
+					eofsIgnored = 0;
+				} else {
+					Object ignore = new ShellContext(this).getVariable("IGNOREEOF");
+					if( ignore != null ) {
+						// IGNOREEOF (set -o ignoreeof): that many ends of input in a row are not the end
+						int most = 10;
+						try {
+							most = Integer.parseInt(ignore.toString().trim());
+						} catch (NumberFormatException e) {
+						}
+						if( eofsIgnored++ < most ) {
+							stdErr.println("Use \""+(isLogin ? "logout" : "exit")+"\" to leave the shell.");
+							stdErr.flush();
+							continue;
+						}
+					}
+				}
 				if( endOfInput && noExecAtStart && isOptionEnabled(Option.NoExec)) {
 					// (-in: exit is not run, but the shell leaves at the end, as bash's)
 					stdErr.println("exit");
