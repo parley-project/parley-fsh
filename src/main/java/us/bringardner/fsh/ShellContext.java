@@ -1887,12 +1887,19 @@ $
 		if( console != null && console.isInteractive ) {
 			return "fsh: ";
 		}
-		// (bash's get_name_for_error: ${BASH_SOURCE[0]}, else $0)
+		return errorName()+": line "+currentLine()+": ";
+	}
+
+	/** the name an error message starts with (bash's get_name_for_error): ${BASH_SOURCE[0]}, else $0 */
+	public String errorName() {
+		if( console != null && console.isInteractive ) {
+			return "fsh";
+		}
 		Object zero = !callFrames.isEmpty() ? callFrames.get(callFrames.size()-1)[1] : console.scriptFile;
 		if( zero == null || zero.toString().isEmpty()) {
 			zero = getVariable("$0");
 		}
-		return (zero == null || zero.toString().isEmpty() ? "fsh" : zero)+": line "+currentLine()+": ";
+		return zero == null || zero.toString().isEmpty() ? "fsh" : zero.toString();
 	}
 
 	/** an error message, on standard error, after errorPrefix ("cd: x: No such file or directory") */

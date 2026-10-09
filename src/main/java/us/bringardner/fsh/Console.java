@@ -1060,10 +1060,30 @@ delimiter
 			}
 			return 0;
 		}
+		// SHELLOPTS and BASHOPTS in the environment: the options they name are on, as in bash
+		Object inherited = environmentVariables.get("SHELLOPTS");
+		for(String n : inherited == null ? new String[0] : inherited.toString().split(":")) {
+			Option option = n.isEmpty() ? null : Option.find(n);
+			if( option != null && option != Option.Unsupported && option != Option.Option && n.length() > 1 ) {
+				setOption(option, true);
+			}
+		}
+		inherited = environmentVariables.get("BASHOPTS");
+		for(String n : inherited == null ? new String[0] : inherited.toString().split(":")) {
+			if( shellOptions.containsKey(n)) {
+				executeQuietly("shopt -s "+n);
+			}
+		}
 		for(String [] o : inv.options) {
 			boolean on = o[1].equals("-");
 			if( o[0].startsWith("shopt ")) {
-				executeQuietly("shopt "+(on ? "-s " : "-u ")+o[0].substring(6));
+				String n = o[0].substring(6);
+				if( !shellOptions.containsKey(n)) {
+					// as bash says it, and the shell does not start
+					stdErr.println("fsh: line 0: "+n+": invalid shell option name");
+					return 2;
+				}
+				executeQuietly("shopt "+(on ? "-s " : "-u ")+n);
 				continue;
 			}
 			Option option = Option.find(o[0]);
@@ -1100,6 +1120,11 @@ delimiter
 			params.add("fsh");
 			params.addAll(inv.args);
 		}
+		Object argv0 = environmentVariables.get("BASH_ARGV0");
+		if( argv0 != null ) {
+			// (BASH_ARGV0 in the environment: it is $0, as assigning it is)
+			params.set(0, argv0.toString());
+		}
 		setPositionalParameters(true, params);
 
 		// interactive: -i, or commands from standard input that is the keyboard
@@ -1127,6 +1152,14 @@ delimiter
 			}
 		}
 		runStartupFiles(inv);
+		if( inv.restricted ) {
+			// (-r: restricted once the startup files have run, as in bash)
+			setRestricted();
+		}
+		if( inv.prettyPrint && !isInteractive ) {
+			// --pretty-print: the commands are printed as bash prints them, not run
+			prettyPrint = true;
+		}
 
 		if( inv.command != null ) {
 			inCommandString = true;
@@ -1312,18 +1345,36 @@ delimiter
 				return 127;
 			}
 			if( file.isDirectory()) {
-				stdErr.println("fsh: "+name+": Is a directory");
+				// (as bash: the script's name is $0 already)
+				stdErr.println(name+": "+name+": Is a directory");
 				return 126;
 			}
-			String code;
+			byte [] bytes;
 			try (InputStream in = file.getInputStream()) {
-				code = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+				bytes = in.readAllBytes();
 			}
-			return runCommands(code);
+			if( isBinary(bytes)) {
+				stdErr.println(name+": "+name+": cannot execute binary file");
+				return 126;
+			}
+			return runCommands(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
 		} catch (IOException e) {
 			stdErr.println("fsh: "+name+": "+e.getMessage());
 			return 126;
 		}
+	}
+
+	/** bash's check_binary_file: a NUL in the first line (of the first 80 bytes) */
+	static boolean isBinary(byte [] bytes) {
+		for (int i = 0; i < Math.min(80, bytes.length); i++) {
+			if( bytes[i] == '\n' ) {
+				return false;
+			}
+			if( bytes[i] == 0 ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -1386,11 +1437,13 @@ delimiter
 						int status = runChunk(rest, first);
 						lastExitCode = status < 0 ? 2 : status;
 					}
+					prettyEmpty();
 					break;
 				}
 				line++;
 				if( code.length() == 0 && l.isBlank()) {
 					first = line+1;
+					prettyEmpty();
 					continue;
 				}
 				if( !isInteractive && isOptionEnabled(Option.HistExpand) && isOptionEnabled(Option.History)
@@ -1466,9 +1519,38 @@ delimiter
 	/** the context the commands of runCommands run in */
 	private ShellContext commandsContext;
 
+	/** --pretty-print: print the commands, not run them */
+	private boolean prettyPrint;
+	/** --pretty-print: the last thing printed was an empty line (for nothing read) */
+	private boolean prettyNewline;
+
+	/** --pretty-print: nothing was read (an empty line, a comment, the end): one empty line */
+	private void prettyEmpty() {
+		if( prettyPrint && !prettyNewline ) {
+			stdOut.println();
+			prettyNewline = true;
+		}
+	}
+
 	private int runChunk(String code, int firstLine) {
 		if( commandsContext == null ) {
 			commandsContext = scriptContext();
+		}
+		if( prettyPrint ) {
+			try {
+				String text = us.bringardner.fsh.exec.Executor.prettyText(code, firstLine);
+				if( text == null ) {
+					prettyEmpty();
+				} else {
+					stdOut.println(text);
+					stdOut.flush();
+					prettyNewline = false;
+				}
+				return 0;
+			} catch (us.bringardner.fsh.syntax.SyntaxError e) {
+				executeScript0(code, firstLine, commandsContext);
+				return -1;
+			}
 		}
 		if( onlyComments(code)) {
 			// (comment lines run nothing: $? stays, as in bash; they are kept in the history)
@@ -1572,6 +1654,11 @@ delimiter
 		Map<String,String> env = new java.util.LinkedHashMap<>();
 		for(Map.Entry<String,Object> e : ctx.getEnvironmentVariables().entrySet()) {
 			Object v = ctx.exportedValue(e.getKey(), e.getValue());
+			if( v != null && (e.getKey().equals("SHELLOPTS") || e.getKey().equals("BASHOPTS"))) {
+				// (exported, they are the options as they are now: set -o noglob after export SHELLOPTS)
+				Object now = ctx.getVariable(e.getKey());
+				v = now != null ? now : v;
+			}
 			if( v != null ) {
 				env.put(e.getKey(), ""+v);
 			}

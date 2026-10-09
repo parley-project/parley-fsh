@@ -24,6 +24,8 @@ final class CommandPrinter {
 	private int printingConnection;
 	private int insideFunctionDef;
 	private final boolean printingComsub;
+	/** printing for --pretty-print */
+	private boolean pretty;
 
 	private CommandPrinter(Executor executor, boolean comsub) {
 		this.executor = executor;
@@ -49,6 +51,14 @@ final class CommandPrinter {
 		p.amount = 4;
 		p.insideFunctionDef--;
 		p.functionEnd(body);
+		return p.out.toString();
+	}
+
+	/** a command read from a script, as bash --pretty-print prints it */
+	static String command(Executor executor, Ast.Sequence body) {
+		CommandPrinter p = new CommandPrinter(executor, false);
+		p.pretty = true;
+		p.make(p.tree(body));
 		return p.out.toString();
 	}
 
@@ -298,7 +308,8 @@ final class CommandPrinter {
 			} else if( printingComsub && c.equals("\n") && !wasNewline ) {
 				out.append('\n');
 			} else {
-				if( c.equals(";")) {
+				if( c.equals(";") || !printingComsub ) {
+					// (bash's parser makes a newline between commands a ;, except in $( ))
 					out.append(' ');
 				}
 				if( n.second != null ) {
@@ -584,7 +595,8 @@ final class CommandPrinter {
 
 	/** function name () { ... } inside a function: as bash prints it, with the keyword */
 	private void functionDef(Ast.FunctionDef f) {
-		out.append("function ").append(f.name).append(" () \n");
+		// (--pretty-print prints as posix mode does: no keyword before a name that is one)
+		out.append(pretty && Executor.isName(f.name) ? "" : "function ").append(f.name).append(" () \n");
 		indent(indentation);
 		out.append("{ \n");
 		insideFunctionDef++;

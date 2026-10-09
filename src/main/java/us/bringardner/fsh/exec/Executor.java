@@ -108,6 +108,20 @@ public final class Executor {
 		return script(sc, code, 1);
 	}
 
+	/** --pretty-print: the commands of code as bash prints them (null if it has none: a comment) */
+	public static String prettyText(String code, int firstLine) throws SyntaxError {
+		Parser.Reader reader = new Parser.Reader(code, firstLine);
+		StringBuilder out = new StringBuilder();
+		Ast.Sequence seq;
+		while( (seq = reader.next()) != null ) {
+			if( seq.items.isEmpty()) {
+				continue;
+			}
+			out.append(out.length() > 0 ? "\n" : "").append(CommandPrinter.command(new Executor(seq.source), seq));
+		}
+		return out.length() == 0 ? null : out.toString();
+	}
+
 	/** text with its parameters, commands and arithmetic expanded (as in "...") */
 	public static String expandWord(ShellContext sc, String text) {
 		return expanderFor(sc).string(Parser.fragment(text, Parser.Fragment.QUOTED));

@@ -56,6 +56,10 @@ public final class Invocation {
 	/** -l, --login */
 	public boolean login;
 	public boolean norc;
+	/** --pretty-print: the script is printed, not run */
+	public boolean prettyPrint;
+	/** -r, --restricted */
+	public boolean restricted;
 	public boolean noprofile;
 	/** --rcfile, --init-file */
 	public String rcfile;
@@ -92,11 +96,12 @@ public final class Invocation {
 					}
 					ret.rcfile = words[++i];
 				}
+				case "--pretty-print" -> ret.prettyPrint = true;
+				case "--restricted" -> ret.restricted = true;
+				case "--posix" -> ret.options.add(new String[] {"posix", "-"});
+				case "--verbose" -> ret.options.add(new String[] {"v", "-"});
 				// bash's that change nothing here
-				case "--noediting", "--posix", "--restricted", "--verbose", "--debugger", "--dump-strings", "--pretty-print" -> {
-					if( w.equals("--verbose")) {
-						ret.options.add(new String[] {"v", "-"});
-					}
+				case "--noediting", "--debugger", "--dump-strings" -> {
 				}
 				default -> throw new Bad(w+": invalid option");
 				}
@@ -114,8 +119,9 @@ public final class Invocation {
 					case 'i' -> ret.interactive = true;
 					case 'l' -> ret.login = true;
 					case 's' -> ret.stdin = true;
+					case 'r' -> ret.restricted = true;
 					default -> {
-						// -r (restricted), -D: not in fsh
+						// -D: not in fsh
 					}
 					}
 				} else if( c == 'o' || c == 'O' ) {

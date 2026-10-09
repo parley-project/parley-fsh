@@ -74,6 +74,12 @@ public final class Programs {
 				}
 				return sc.executeSubShell(exec, all);
 			}
+			String interpreter = missingInterpreter(exec, sc);
+			if( interpreter != null ) {
+				// (as bash says it: the system's error, after the shell's name)
+				sc.stderr.println(sc.errorName()+": "+name+": "+interpreter+": bad interpreter: No such file or directory");
+				return 126;
+			}
 			List<String> cmd = new ArrayList<>();
 			cmd.add(exec.getAbsolutePath());
 			cmd.addAll(args);
@@ -94,6 +100,35 @@ public final class Programs {
 			cmd.add(0, shell != null ? shell.getAbsolutePath() : "cmd");
 		}
 		return execute(cmd, sc);
+	}
+
+	/** the #! interpreter a script names, if there is no such file (else null) */
+	private static String missingInterpreter(FileSource exec, ShellContext sc) {
+		byte [] head = new byte[256];
+		int n = 0;
+		try (java.io.InputStream in = exec.getInputStream()) {
+			int r;
+			while( n < head.length && (r = in.read(head, n, head.length-n)) > 0 ) {
+				n += r;
+			}
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+		if( n < 3 || head[0] != '#' || head[1] != '!' ) {
+			return null;
+		}
+		String line = new String(head, 2, n-2, java.nio.charset.StandardCharsets.UTF_8);
+		int nl = line.indexOf('\n');
+		line = (nl >= 0 ? line.substring(0, nl) : line).strip();
+		if( line.isEmpty()) {
+			return null;
+		}
+		String interpreter = line.split("[ \t]+")[0];
+		try {
+			return sc.getFileSource(interpreter).exists() ? null : interpreter;
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
 	}
 
 	/** a program's (not text): ELF, Mach-O, a NUL in its first bytes */
