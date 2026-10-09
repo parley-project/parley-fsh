@@ -58,6 +58,9 @@ final class AstFunction implements ShellFunction {
 		String builtin = sc.builtin;
 		sc.builtin = null;
 		sc.enterFunction(values, this);
+		int context = sc.contextLine;
+		// (bash's line_number in it: the line its body starts on)
+		sc.contextLine = def.body.line;
 		// break and continue do not reach the caller's loops; the DEBUG trap does not run in
 		// it (unless set -T)
 		sc.loopDepth = 0;
@@ -75,6 +78,7 @@ final class AstFunction implements ShellFunction {
 		} catch (ReturnException e) {
 			ret = e.exitCode;
 		} finally {
+			sc.contextLine = context;
 			sc.loopDepth = loops;
 			sc.builtin = builtin;
 			sc.debugBlocked--;

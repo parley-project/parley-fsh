@@ -1472,6 +1472,7 @@ $
 	public ShellContext subShell() {
 		ShellContext ret = new ShellContext(console);
 		ret.subshellLevel = subshellLevel+1;
+		ret.contextLine = contextLine;
 		ret.subshell = new Object();
 		ret.inCommandSubstitution = inCommandSubstitution;
 		ret.jobsCleared = jobsCleared;
@@ -1562,6 +1563,14 @@ $
 
 	/** $BASH_SUBSHELL: how many subshells this context is in */
 	public int subshellLevel;
+	/**
+	 * bash's line_number between simple commands (0: the line read): a function's body's first
+	 * line, a ( )'s last, a for's, select's or case's own; what a compound command's redirect
+	 * error says
+	 */
+	public int contextLine;
+	/** the line the top-level command running ends on (bash's line_number there) */
+	public int commandEndLine;
 	/** a pipe stage's simple command: its subshell counts once its words are expanded */
 	public boolean subshellPending;
 	/** which subshell this is (null: the shell itself): the jobs it starts are its children */

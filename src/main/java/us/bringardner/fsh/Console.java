@@ -2089,7 +2089,8 @@ delimiter
 	 * read the keyboard; the rest is kept for whoever reads next.
 	 */
 	private void watchKeyboard(KeyboardReader kb) {
-		if( !(kb instanceof NativeKeyboard) || !NativeKeyboard.isAvailible()) {
+		if( !(kb instanceof NativeKeyboard) || !NativeKeyboard.isAvailible() || !NativeKeyboard.inputIsTerminal()) {
+			// (a pipe or file has no keys to watch for: what is in it is the commands')
 			return;
 		}
 		NativeKeyboard.signalKeys(true);

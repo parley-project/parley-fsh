@@ -168,7 +168,17 @@ public final class Executor {
 					sc.console.rememberCommand(seq.historyText);
 				}
 			}
-			ret = items(seq, new Executor(seq.source), sc, ret);
+			// (bash's line_number at the top: the line the command read ends on)
+			int endLine = sc.commandEndLine;
+			if( seq.source != null && seq.end > seq.start && seq.end <= seq.source.length()) {
+				String text = seq.source.substring(seq.start, seq.end).stripTrailing();
+				sc.commandEndLine = seq.line+(int) text.chars().filter(ch -> ch == '\n').count();
+			}
+			try {
+				ret = items(seq, new Executor(seq.source), sc, ret);
+			} finally {
+				sc.commandEndLine = endLine;
+			}
 		}
 	}
 
@@ -919,7 +929,13 @@ public final class Executor {
 			Redirects.Saved saved = Redirects.Saved.of(sc);
 			List<Closeable> opened;
 			Ast.Redirect first = c.redirects.get(0);
-			if( first.line > 0 ) {
+			if( sc.contextLine > 0 ) {
+				// (in a function, a ( ), a for ...: bash's line_number there)
+				sc.line = sc.contextLine;
+			} else if( sc.commandEndLine > 0 ) {
+				// (at the top: where the command read ends)
+				sc.line = sc.commandEndLine;
+			} else if( first.line > 0 ) {
 				// (a redirect error is the redirect's line's, as bash's)
 				sc.line = first.line;
 			}
@@ -957,7 +973,7 @@ public final class Executor {
 			return list(g.body, sc);
 		}
 		case Ast.Subshell s -> {
-			return subshell(s.body, sc);
+			return subshell(s, sc);
 		}
 		case Ast.If f -> {
 			return ifCommand(f, sc);
@@ -966,16 +982,44 @@ public final class Executor {
 			return loop(l, sc);
 		}
 		case Ast.For f -> {
-			return forCommand(f, sc);
+			// (bash's line_number in it is its own line)
+			int context = sc.contextLine;
+			sc.contextLine = f.line;
+			try {
+				return forCommand(f, sc);
+			} finally {
+				sc.contextLine = context;
+			}
 		}
 		case Ast.ArithFor f -> {
-			return arithFor(f, sc);
+			// (bash's line_number in it is its own line)
+			int context = sc.contextLine;
+			sc.contextLine = f.line;
+			try {
+				return arithFor(f, sc);
+			} finally {
+				sc.contextLine = context;
+			}
 		}
 		case Ast.Select s -> {
-			return select(s, sc);
+			// (bash's line_number in it is its own line)
+			int context = sc.contextLine;
+			sc.contextLine = s.line;
+			try {
+				return select(s, sc);
+			} finally {
+				sc.contextLine = context;
+			}
 		}
 		case Ast.Case k -> {
-			return caseCommand(k, sc);
+			// (bash's line_number in it is its own line)
+			int context = sc.contextLine;
+			sc.contextLine = k.line;
+			try {
+				return caseCommand(k, sc);
+			} finally {
+				sc.contextLine = context;
+			}
 		}
 		case Ast.Arith a -> {
 			return arith(a, sc);
@@ -991,8 +1035,11 @@ public final class Executor {
 	}
 
 	/** ( list ): a subshell, so its changes (x=1, cd, exit, set --, exec 3>f ...) stay inside */
-	private int subshell(Ast.Sequence body, ShellContext sc) throws IOException {
+	private int subshell(Ast.Subshell s, ShellContext sc) throws IOException {
+		Ast.Sequence body = s.body;
 		ShellContext sub = sc.subShell();
+		// (bash's line_number in it: the line it ends on)
+		sub.contextLine = s.line+(int) text(s.start, s.end).chars().filter(ch -> ch == '\n').count();
 		// (bash's subshell has none of the shell's jobs)
 		sub.jobsCleared = true;
 		if( sc.isIsolated()) {
