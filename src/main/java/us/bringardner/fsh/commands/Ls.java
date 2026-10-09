@@ -159,7 +159,7 @@ public class Ls extends ShellCommand {
 			for(FileSource file : found) {
 				operands++;
 				String label = isGlob(arg) ? globLabel(ctx, arg, file) : arg;
-				if( !file.exists()) {
+				if( !present(file)) {
 					ctx.stderr.println("ls: "+label+": no such file or directory");
 					ret = 1;
 				} else {
@@ -417,6 +417,12 @@ public class Ls extends ShellCommand {
 	//      
 	//prmStr linkStr   usrStr  crpStr    sizeStr  |dateStr     | nameStr
 	//-rw-rw-r--    1     ec2-user ec2-user    2186     Feb  2 08:41 build.txt
+	/** file is there: it exists, or it is a symbolic link (one whose target does not exist is listed too, as ls does) */
+	private static boolean present(FileSource file) throws IOException {
+		return file.exists() || file instanceof us.bringardner.parley.files.fileproxy.FileProxy p
+				&& java.nio.file.Files.isSymbolicLink(p.getTarget().toPath());
+	}
+
 	private  void print(ShellContext ctx, List<String> out,List<LsArgument> args, FileSource file) throws IOException {
 		print(ctx, out, args, file, null);
 	}
@@ -425,9 +431,8 @@ public class Ls extends ShellCommand {
 	 * @param label the name to show (a path as the user gave it), or null for the file's name
 	 */
 	private  void print(ShellContext ctx, List<String> out,List<LsArgument> args, FileSource file, String label) throws IOException {
-		if( !file.exists()) {
+		if( !present(file)) {
 			throw new IOException("ls: "+file+": no such file or directory");
-			
 		}
 		if( args.contains(LsArgument.L)) {
 			FileSource link = file.getLinkedTo();
@@ -439,8 +444,19 @@ public class Ls extends ShellCommand {
 		if(label == null && isHidden(file) && !args.contains(LsArgument.a)) {
 			return;
 		}
+		java.nio.file.Path link = file instanceof us.bringardner.parley.files.fileproxy.FileProxy p
+				&& java.nio.file.Files.isSymbolicLink(p.getTarget().toPath()) ? p.getTarget().toPath() : null;
 		if(!args.contains(LsArgument.l) && !args.contains(LsArgument.g)) {
 			out.add(label != null ? label : file.getName());
+		} else if( link != null ) {
+			// a symbolic link as itself: l, its own attributes, and what it points at (as ls shows it)
+			java.nio.file.attribute.PosixFileAttributes a = java.nio.file.Files.readAttributes(link,
+					java.nio.file.attribute.PosixFileAttributes.class, java.nio.file.LinkOption.NOFOLLOW_LINKS);
+			String nameStr = (label == null ? formatName(args, file) : args.contains(LsArgument.Q) ? "\""+label+"\"" : label)
+					+" -> "+java.nio.file.Files.readSymbolicLink(link);
+			out.add(String.format("%s %s %s  %s %s  %s %s", "l"+java.nio.file.attribute.PosixFilePermissions.toString(a.permissions()), "1",
+					args.contains(LsArgument.g) ? "" : a.owner().getName(), args.contains(LsArgument.G) ? "" : a.group().getName(),
+					String.valueOf(a.size()), DATE_FORMAT.format(new Date(a.lastModifiedTime().toMillis())), nameStr));
 		} else {
 			String permStr = (file.isDirectory()?"d":"-")+formatPermission(file);
 			String linkStr = formatLink(args,file);

@@ -843,6 +843,20 @@ $
 		return unSetVariable(name, true);
 	}
 
+	/** name is a local of a function running, unset there (local x; unset x): it shows as unset, not as the global */
+	public boolean isUnsetLocal(String name) {
+		FunctionInvocation scope = localScope(name);
+		return scope != null && scope.local.get(name) == UNSET_LOCAL;
+	}
+
+	/** name is put back as a local that is unset (see isUnsetLocal) */
+	public void markUnsetLocal(String name) {
+		FunctionInvocation scope = localScope(name);
+		if( scope != null ) {
+			scope.local.put(name, UNSET_LOCAL);
+		}
+	}
+
 	/** @param follow false for unset -n: a nameref itself, not the variable it names */
 	public boolean unSetVariable(String name, boolean follow) {
 		if( follow ) {

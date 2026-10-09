@@ -68,6 +68,8 @@ public final class Ast {
 	public static final class SimpleCommand extends Command {
 		public final List<Assignment> assignments = new ArrayList<>();
 		public final List<Word> words = new ArrayList<>();
+		/** its text as $BASH_COMMAND shows it, once worked out (it is run again and again in a loop) */
+		public String commandText;
 	}
 
 	/** { list; } */

@@ -2083,7 +2083,7 @@ public final class Executor {
 					}
 					// (put back where it was: a local the command makes of it, as local x does, keeps
 					// the value)
-					saved.add(new Object[] {target, sc.hasLocal(target) ? sc.getVariable(target) : sc.console.getVariable(target), sc.getEvironmentVariable(target), !sc.hasLocal(target)});
+					saved.add(new Object[] {target, sc.hasLocal(target) ? sc.getVariable(target) : sc.console.getVariable(target), sc.getEvironmentVariable(target), !sc.hasLocal(target), sc.isUnsetLocal(target)});
 					sc.setVariable(target, v);
 					sc.setEnvironmentVariable(target, v);
 				}
@@ -2119,14 +2119,25 @@ public final class Executor {
 			}
 			sc.setVariable((String) s[0], s[1]);
 			sc.setEnvironmentVariable((String) s[0], s[2]);
+			if( s.length > 4 && Boolean.TRUE.equals(s[4])) {
+				// (a local that was unset stays so: not the global)
+				sc.markUnsetLocal((String) s[0]);
+			}
 		}
 	}
 
 	/** the command as bash shows it in $BASH_COMMAND: as written, a space after a file redirect */
 	private String commandText(Ast.SimpleCommand c) {
-		String t = text(c).trim();
-		return t.replaceAll("(?<![<>&|])(\\d*)(>>|>\\||&>>|&>|>|<)(?![&>(])\\s*", "$1$2 ");
+		String ret = c.commandText;
+		if( ret == null ) {
+			String t = text(c).trim();
+			ret = t.indexOf('<') < 0 && t.indexOf('>') < 0 ? t : REDIRECT_SPACING.matcher(t).replaceAll("$1$2 ");
+			c.commandText = ret;
+		}
+		return ret;
 	}
+
+	private static final Pattern REDIRECT_SPACING = Pattern.compile("(?<![<>&|])(\\d*)(>>|>\\||&>>|&>|>|<)(?![&>(])\\s*");
 
 	/**
 	 * Assignments with no command (x=1 y=$x, and the redirects of > file): they set the shell's

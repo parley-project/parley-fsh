@@ -249,9 +249,9 @@ final class Redirects {
 				in = file.getInputStream();
 				if( file.isFile()) {
 					in = new ReadBack(in);
-				} else if( fd != null && fd > 2 && file instanceof FileProxy ) {
-					// a named pipe or a device as 3 or more (exec 5< <(cmd)): shared with programs
-					// (on 0 a program reads it itself, and takes all it reads, as in bash)
+				} else if( file instanceof FileProxy ) {
+					// a named pipe or a device: shared with programs, as the file is in bash (one that
+					// does not read it takes nothing: BASHPID=$(sh -c 'echo $PPID') in a loop reading it)
 					in = new PipeInput(in);
 				}
 			}

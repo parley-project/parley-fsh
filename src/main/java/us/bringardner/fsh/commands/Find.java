@@ -289,10 +289,12 @@ public class Find extends ShellCommand{
 			}
 			case "-type": {
 				String t = ""+args[++idx].getValue(ctx);
+				// (with -L a link is what it points at; -type l then finds only those that point nowhere)
+				boolean follow = fctx.followLinks;
 				test = (f, path, d) -> switch (t) {
-				case "f" -> f.isFile() && f.getLinkedTo() == null;
-				case "d" -> f.isDirectory() && (d == 0 || f.getLinkedTo() == null);
-				case "l" -> f.getLinkedTo() != null;
+				case "f" -> f.isFile() && (follow || f.getLinkedTo() == null);
+				case "d" -> f.isDirectory() && (follow || d == 0 || f.getLinkedTo() == null);
+				case "l" -> f.getLinkedTo() != null && (!follow || !f.exists());
 				default -> false;
 				};
 				break;

@@ -53,6 +53,11 @@ public class Ln extends ShellCommand{
 		}
 
 		List<String> paths = sa.paths;
+		if( options.contains(Arguments.s) && paths.size() >= 2 && ctx.getFileSource(".") instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
+			// a local symbolic link holds the text given, as the system's ln makes it (ln -s bar
+			// dir/foo points at dir/bar), and its target need not exist
+			return localSymbolicLinks(ctx, options, paths);
+		}
 		List<FileSource> files = new ArrayList<>();
 
 		for(String path : paths) {
@@ -78,6 +83,52 @@ public class Ln extends ShellCommand{
 			ret = linkFiles(ctx, options, files.getFirst(), lastFile);
 		}
 
+		return ret;
+	}
+
+	/** ln -s text ... link_or_dir on the local file system (see process) */
+	private int localSymbolicLinks(ShellContext ctx, List<Arguments> options, List<String> paths) throws IOException {
+		java.nio.file.Path cwd = ((us.bringardner.parley.files.fileproxy.FileProxy) ctx.getFileSource(".")).getTarget().toPath();
+		String last = paths.get(paths.size()-1);
+		java.nio.file.Path lastPath = cwd.resolve(last);
+		boolean intoDir = !options.contains(Arguments.n) && !options.contains(Arguments.h) ? java.nio.file.Files.isDirectory(lastPath)
+				: java.nio.file.Files.isDirectory(lastPath, java.nio.file.LinkOption.NOFOLLOW_LINKS);
+		if( paths.size() > 2 && !intoDir ) {
+			// (said as the system's ln says it: it is a program in bash)
+			ctx.stderr.println("ln: "+last+": "+(java.nio.file.Files.exists(lastPath) ? "Not a directory" : "No such file or directory"));
+			return 1;
+		}
+		int ret = 0;
+		for(String text : paths.subList(0, paths.size()-1)) {
+			String name = text.replaceAll("/+$", "");
+			name = name.substring(name.lastIndexOf('/')+1);
+			java.nio.file.Path link = intoDir ? lastPath.resolve(name) : lastPath;
+			String shown = intoDir ? (last.endsWith("/") ? last : last+"/")+name : last;
+			if( java.nio.file.Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+				if( options.contains(Arguments.i)) {
+					String str = promptAndGetReponse(ctx.stderr, ctx.stdin, "replace "+shown+"?");
+					if( !str.trim().toLowerCase().startsWith("y")) {
+						continue;
+					}
+				} else if( !options.contains(Arguments.f)) {
+					ctx.stderr.println("ln: "+shown+": File exists");
+					ret = 1;
+					continue;
+				}
+				java.nio.file.Files.delete(link);
+			}
+			try {
+				java.nio.file.Files.createSymbolicLink(link, java.nio.file.Paths.get(text));
+			} catch (IOException e) {
+				ctx.stderr.println("ln: "+shown+": "+(e instanceof java.nio.file.NoSuchFileException ? "No such file or directory"
+						: e instanceof java.nio.file.AccessDeniedException ? "Permission denied" : e.getMessage()));
+				ret = 1;
+				continue;
+			}
+			if( options.contains(Arguments.v)) {
+				ctx.stdout.println(shown+" -> "+text);
+			}
+		}
 		return ret;
 	}
 

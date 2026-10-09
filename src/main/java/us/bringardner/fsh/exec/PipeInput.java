@@ -122,7 +122,10 @@ final class PipeInput extends InputStream implements SharedInput {
 			return -1;
 		}
 		b[off] = (byte) first;
-		return 1;
+		// (and what is there already: a program fed from it reads as much at once as from the pipe)
+		int more = Math.min(len-1, source.available());
+		int got = more > 0 ? source.read(b, off+1, more) : 0;
+		return 1+Math.max(0, got);
 	}
 
 	@Override

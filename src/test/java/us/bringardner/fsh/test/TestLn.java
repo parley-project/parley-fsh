@@ -65,9 +65,8 @@ public class TestLn extends AbstractConsoleTest{
 		String hardLinkPath = "target/HardLinkToAbcFileA.js";
 		
 		File file = new File(hardLinkPath).getCanonicalFile();
-		if( file.exists()) {
-			assertTrue(file.delete(),"Can't delete existing file");
-		}
+		// (a link left from before is removed too, even one that points at nothing)
+		java.nio.file.Files.deleteIfExists(file.toPath());
 		
 		String source = "AbcFileA.js";
 		String target = "../"+hardLinkPath;
@@ -92,9 +91,8 @@ public class TestLn extends AbstractConsoleTest{
 		String linkPath = "target/SymLinkToAbcFileA.js";
 		
 		File file = new File(linkPath).getCanonicalFile();
-		if( file.exists()) {
-			assertTrue(file.delete(),"Can't delete existing file");
-		}
+		// (a link left from before is removed too, even one that points at nothing)
+		java.nio.file.Files.deleteIfExists(file.toPath());
 		
 		String source = "AbcFileA.js";
 		String target = "../"+linkPath;
@@ -103,7 +101,9 @@ public class TestLn extends AbstractConsoleTest{
 		
 		assertEquals(0, res.exitCode,"ln exit code");
 		
-		assertTrue(file.exists(),"File does not exist after ln");
+		// (as the system's ln makes it: the link holds the text given, relative to where the link is)
+		assertTrue(java.nio.file.Files.isSymbolicLink(file.toPath()),"Link does not exist after ln");
+		assertEquals(source, java.nio.file.Files.readSymbolicLink(file.toPath()).toString(),"link text");
 		
 		cmd = "rm "+target;
 		res = executeCommand(cmd, "");
@@ -124,9 +124,8 @@ public class TestLn extends AbstractConsoleTest{
 		String linkPath = "target/SymLinkTo_P_.js";
 		
 		File file = new File(linkPath).getCanonicalFile();
-		if( file.exists()) {
-			assertTrue(file.delete(),"Can't delete existing file");
-		}
+		// (a link left from before is removed too, even one that points at nothing)
+		java.nio.file.Files.deleteIfExists(file.toPath());
 		
 		
 		String source = "SymLink2AbcFileA2.js";
@@ -154,9 +153,8 @@ public class TestLn extends AbstractConsoleTest{
 		String linkPath = "target/AbcFileC.txt";
 		
 		File file = new File(linkPath);
-		if( file.exists()) {
-			assertTrue(file.delete(),"Can't delete existing file");
-		}
+		// (a link left from before is removed too, even one that points at nothing)
+		java.nio.file.Files.deleteIfExists(file.toPath());
 		
 		String source = "AbcFileC.txt";
 		String target = "../"+linkPath;
@@ -198,9 +196,8 @@ public class TestLn extends AbstractConsoleTest{
 		String linkPath = "target/SymLinkTo_P_.js";
 		
 		File file = new File(linkPath).getCanonicalFile();
-		if( file.exists()) {
-			assertTrue(file.delete(),"Can't delete existing file");
-		}
+		// (a link left from before is removed too, even one that points at nothing)
+		java.nio.file.Files.deleteIfExists(file.toPath());
 		
 		String source = "SymLink2AbcFileA2.js";
 		String target = "../"+linkPath;
@@ -262,7 +259,8 @@ public class TestLn extends AbstractConsoleTest{
 		}
 		
 		String source = "AbcFile*";
-		String cmd = "ln -sv "+source+" "+dir.getAbsolutePath();
+		// (absolute sources: a link holds the text given, as the system's ln makes it)
+		String cmd = "ln -sv "+testFilesDir.getCanonicalPath()+"/"+source+" "+dir.getAbsolutePath();
 
 		ExecuteResult exit = executeCommand(cmd, "");
 		assertEquals(0, exit.exitCode,"ln exit code");

@@ -64,6 +64,11 @@ public final class Programs {
 				sc.error(exec.getAbsolutePath()+": No such file or directory");
 				return 127;
 			}
+			if( exec.isDirectory()) {
+				// (as bash says it: found, but it cannot run)
+				sc.error(name+": Is a directory");
+				return 126;
+			}
 			if( !exec.canExecute()) {
 				// (where it was found, as bash says it)
 				throw new NotExecutable(onPath ? exec.getAbsolutePath() : name);
