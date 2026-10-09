@@ -595,7 +595,7 @@ public final class Programs {
 							// a program the line runs itself: it is a job of its own, as in bash
 							job = detach(job, p, how, stop, terminalUser);
 						} else {
-							job.stopJob(how);
+							job.programStopped(p, how);
 						}
 					}
 				}

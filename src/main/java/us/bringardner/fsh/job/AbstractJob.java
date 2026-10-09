@@ -25,6 +25,8 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 
 	/** the programs the job's commands run now: stopped, continued and signalled with it */
 	private final Set<Process> processes = ConcurrentHashMap.newKeySet();
+	/** its programs that were stopped (since it last ran on) */
+	private final Set<Process> stopped = ConcurrentHashMap.newKeySet();
 	/** its programs that read the terminal themselves */
 	private final Set<Object> terminalUsers = ConcurrentHashMap.newKeySet();
 	/** the signal that ended the job (kill, Ctrl-C), or null */
@@ -139,7 +141,37 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 	}
 
 	@Override
+	public void programStopped(Process p, String how) {
+		stopped.add(p);
+		if( allStopped(stopped)) {
+			stopJob(how);
+		}
+	}
+
+	/** all it runs is stopped: stopped are its programs that are */
+	protected boolean allStopped(Set<Process> stopped) {
+		for(Process p : processes) {
+			if( !stopped.contains(p) && p.isAlive()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** its programs (running or stopped) */
+	protected int programCount() {
+		int ret = 0;
+		for(Process p : processes) {
+			if( p.isAlive()) {
+				ret++;
+			}
+		}
+		return ret;
+	}
+
+	@Override
 	public void removeProcess(Process p) {
+		stopped.remove(p);
 		processes.remove(p);
 		if( processes.isEmpty()) {
 			// the group is gone with its last program
@@ -288,6 +320,7 @@ public abstract class AbstractJob extends SignalEnabledThread implements IJob {
 		switch (state) {
 		case Notified:break;
 		case Running:
+			stopped.clear();
 			if( lastState == JobState.Suspended ) {
 				ProcessSignals.send(processes, "CONT");
 			}

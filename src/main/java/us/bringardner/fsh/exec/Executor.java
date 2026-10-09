@@ -615,10 +615,35 @@ public final class Executor {
 		InputStream callerIn = sc.stdin;
 		boolean lastInShell = !sc.console.isInteractive && !sc.isIsolated() && Glob.option(sc, "lastpipe");
 		List<Pipe> pipes = new ArrayList<>();
+		// at the prompt, as in bash, the pipeline is a job of its own: stopped, it leaves the line
+		ShellContext jobCtx = sc.console.isInteractive && sc.job instanceof us.bringardner.fsh.job.ForgroundJob
+				&& sc.subshell == null && !sc.isIsolated() && !lastInShell ? new ShellContext(sc.console) : null;
+		us.bringardner.fsh.job.PipelineJob own = jobCtx == null ? null : new us.bringardner.fsh.job.PipelineJob(jobCtx, text(p).trim(), () -> {
+			for(CommandThread t : threads) {
+				while( t.isAlive()) {
+					forwardControl(jobCtx, threads);
+					try {
+						t.join(50);
+					} catch (InterruptedException e) {
+					}
+				}
+			}
+			for(Pipe pipe : pipes) {
+				try {
+					pipe.in.close();
+				} catch (IOException e) {
+				}
+			}
+			return threads[n-1].exitCode;
+		});
+		boolean detached = false;
 		try {
 			for (int i = 0; i < n; i++) {
 				Ast.Command c = p.commands.get(i);
 				ShellContext ctx = lastInShell && i == n-1 ? sc : sc.isolatedSubShell();
+				if( own != null ) {
+					ctx.job = own;
+				}
 				if( ctx != sc && !(c instanceof Ast.SimpleCommand)) {
 					// ({ jobs; } | cat: a subshell with none of the shell's jobs)
 					ctx.jobsCleared = true;
@@ -666,9 +691,45 @@ public final class Executor {
 			// a stage closes its stdout when done; the last one's is the caller's
 			CommandThread last = threads[n-1];
 			last.ctx.stdout = new KeptOpen(last.ctx.stdout);
+			if( own != null ) {
+				own.liveStages(() -> {
+					int live = 0;
+					for(CommandThread t : threads) {
+						live += t.isAlive() ? 1 : 0;
+					}
+					return live;
+				});
+				own.setState(us.bringardner.fsh.job.JobState.Running);
+				sc.console.foreground(own, true);
+			}
 			for(CommandThread t : threads) {
 				if( !lastInShell || t != last ) {
 					t.start();
+				}
+			}
+			if( own != null ) {
+				own.start();
+				try {
+					while( own.getState() != us.bringardner.fsh.job.JobState.Termnated && own.getState() != us.bringardner.fsh.job.JobState.Notified ) {
+						if( own.getState() == us.bringardner.fsh.job.JobState.Suspended ) {
+							detached = true;
+							return detach(sc, own);
+						}
+						if( sc.getException() != null && jobCtx.getException() == null ) {
+							jobCtx.setExecption(sc.getException());
+						}
+						try {
+							own.join(50);
+						} catch (InterruptedException e) {
+						}
+					}
+				} finally {
+					sc.console.foreground(own, false);
+				}
+				Integer by = own.getTerminatedBy();
+				if( by != null && sc.job != null ) {
+					// (Ctrl-C ended it: the rest of the line does not run either, as in bash)
+					sc.job.signalJob(by);
 				}
 			}
 			if( lastInShell ) {
@@ -723,10 +784,33 @@ public final class Executor {
 			sc.stdout = callerOut;
 			sc.stderr = callerErr;
 			sc.stdin = callerIn;
-			for(Pipe pipe : pipes) {
-				pipe.in.close();
+			if( !detached ) {
+				for(Pipe pipe : pipes) {
+					pipe.in.close();
+				}
 			}
 		}
+	}
+
+	/**
+	 * The pipeline's job (own) was stopped: it goes into the job table, said at once, and the line
+	 * goes on with 128 + the signal, as in bash.
+	 */
+	private static int detach(ShellContext sc, us.bringardner.fsh.job.PipelineJob own) {
+		for(Object user : own.getTerminalUsers()) {
+			us.bringardner.fsh.NativeKeyboard.reclaimTerminal(user);
+		}
+		us.bringardner.fsh.job.JobManager jm = sc.console.jobManager;
+		jm.addJob(own);
+		if( own.getProcessGroup() != 0 ) {
+			own.setPid((int) own.getProcessGroup());
+		}
+		jm.startedWithJobControl(own);
+		us.bringardner.fsh.Console.System_err.println(jm.describe(own, false));
+		us.bringardner.fsh.Console.System_err.flush();
+		own.setStopNoticeDue(false);
+		int sig = us.bringardner.fsh.job.ProcessSignals.number(own.getStoppedHow());
+		return 128+(sig < 0 ? 20 : sig);
 	}
 
 	/**

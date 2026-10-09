@@ -2261,6 +2261,15 @@ delimiter
 		}
 	}
 
+	/** job is in the foreground (on) or not: Ctrl-C and Ctrl-Z are for it, its programs have the terminal */
+	public void foreground(IJob job, boolean on) {
+		if( on ) {
+			foregroundJobs.addLast(job);
+		} else {
+			foregroundJobs.remove(job);
+		}
+	}
+
 	/** what runs in ctx may read the keyboard: its job is in the foreground and not stopped */
 	public boolean readsKeyboard(ShellContext ctx) {
 		IJob job = ctx.job;

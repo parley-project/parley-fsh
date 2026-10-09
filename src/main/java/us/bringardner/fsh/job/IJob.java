@@ -52,6 +52,14 @@ public interface IJob {
 	/** stop the job (Ctrl-Z, kill -STOP); how: the signal that stopped it (TSTP, STOP, TTIN, TTOU) */
 	void stopJob(String how);
 
+	/**
+	 * Its program p was stopped (how: by which signal): the job stops once all it runs is
+	 * stopped, as in bash (a | b with only a stopped still runs).
+	 */
+	default void programStopped(Process p, String how) {
+		stopJob(how);
+	}
+
 	/** a stopped job runs again (fg, bg, kill -CONT) */
 	void continueJob();
 
