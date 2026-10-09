@@ -3123,7 +3123,7 @@ public final class Executor {
 				sc.stdout = out;
 				sc.console.substitutionDone(status);
 			}
-			return bao.toString();
+			return withoutNulls(bao.toString(), sc);
 		}
 
 		/** the commands of ${ list; }: return ends them */
@@ -3264,6 +3264,15 @@ public final class Executor {
 			ctx.stdout.flush();
 			primary.console.substitutionDone(status);
 		}
-		return bao.toString();
+		return withoutNulls(bao.toString(), primary);
+	}
+
+	/** what a $( ) gave, its NUL bytes left out with bash's warning */
+	static String withoutNulls(String text, ShellContext sc) {
+		if( text.indexOf('\0') < 0 ) {
+			return text;
+		}
+		sc.error("warning: command substitution: ignored null byte in input");
+		return text.replace("\0", "");
 	}
 }
