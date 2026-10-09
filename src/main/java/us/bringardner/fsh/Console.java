@@ -2872,26 +2872,41 @@ delimiter
 				return 0;
 			}
 			char comment = historyComment();
-			String [] lines;
+			String text;
 			try(InputStream in = file.getInputStream()) {
-				lines = new String(in.readAllBytes()).split("\n");
+				text = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
 			}
-			long time = System.currentTimeMillis();
+			// as bash's read_history: with time stamps (and HISTTIMEFORMAT set) the lines after
+			// one are one command, blank lines in it kept (not those right after the stamp);
+			// without, a blank line is no command
+			boolean multiline = text.length() > 1 && text.charAt(0) == comment && Character.isDigit(text.charAt(1))
+					&& shellOrEnvironment("HISTTIMEFORMAT") != null;
+			String [] lines = text.split("\n", -1);
+			int n = text.endsWith("\n") ? lines.length-1 : lines.length;
+			boolean skipBlanks = !multiline;
+			Long stamp = null;
+			boolean afterStamp = false;
 			int count = 0;
-			for (int i = 0; i < lines.length; i++) {
-				String line = lines[i];
+			for (int i = 0; i < n; i++) {
+				String line = lines[i].endsWith("\r") ? lines[i].substring(0, lines[i].length()-1) : lines[i];
 				if( line.length() > 1 && line.charAt(0) == comment && Character.isDigit(line.charAt(1))) {
-					Long stamp = parseHistoryTime(line.substring(1));
-					if( stamp != null ) {
-						time = stamp;
-						continue;
-					}
-				}
-				count++;
-				if( count <= skip || line.isEmpty()) {
+					stamp = parseHistoryTime(line.substring(1));
+					afterStamp = true;
+					skipBlanks = true;
 					continue;
 				}
-				history.add(new HistoryEntry(time, true, line));
+				count++;
+				if( count <= skip || line.isEmpty() && skipBlanks ) {
+					continue;
+				}
+				skipBlanks = !multiline;
+				if( multiline && !afterStamp && !history.isEmpty()) {
+					HistoryEntry last = history.get(history.size()-1);
+					last.command = last.command+"\n"+line;
+				} else {
+					history.add(new HistoryEntry(afterStamp && stamp != null ? stamp : System.currentTimeMillis(), true, line));
+				}
+				afterStamp = false;
 			}
 			truncateHistory();
 			return count;
