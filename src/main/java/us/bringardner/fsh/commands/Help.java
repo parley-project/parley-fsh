@@ -104,6 +104,16 @@ public class Help extends ShellCommand{
 			return 0;
 		}
 		int ret = 0;
+		String first = ""+args[idx].getValue(ctx);
+		if( first.matches(".*[*?\\[].*")) {
+			// (a pattern: what it is, first, as bash's)
+			List<String> words = new ArrayList<>();
+			for (int i = idx; i < args.length; i++) {
+				words.add(""+args[i].getValue(ctx));
+			}
+			ctx.stdout.print((words.size() > 1 ? "Shell commands matching keywords `" : "Shell commands matching keyword `")
+					+String.join(", ", words)+"'\n\n");
+		}
 		for(; idx < args.length; idx++) {
 			String pattern = ""+args[idx].getValue(ctx);
 			GlobPattern glob = GlobPattern.compile(pattern);
