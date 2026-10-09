@@ -161,6 +161,13 @@ final class Redirects {
 		}
 		boolean closing = r.target != null && "-".equals(r.target.raw);
 		int fd = variableFd(sc, r);
+		int limit = sc.console.openFilesLimit;
+		if( !closing && limit >= 0 && fd >= limit ) {
+			// (ulimit -n: no descriptor that high, as bash says it)
+			String zero = String.valueOf(sc.getVariable("$0"));
+			sc.stderr.println((sc.console.isInteractive ? "fsh" : zero)+": redirection error: cannot duplicate fd: Invalid argument");
+			throw new IOException(target(r, ex)+": Invalid argument");
+		}
 		redirectTo(r, sc, ex, opened, fd);
 		if( !closing ) {
 			// {name}>file: the descriptor is opened, then its number is put in name (one that cannot

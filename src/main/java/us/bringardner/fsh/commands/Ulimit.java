@@ -71,6 +71,13 @@ public class Ulimit extends ShellCommand{
 			sh.add("-"+hs+rest);
 		}
 		sh.addAll(limits);
-		return ProcessSettings.run(ctx, name, sh.toArray(new String[0]), sets);
+		int status = ProcessSettings.run(ctx, name, sh.toArray(new String[0]), sets);
+		if( status == 0 && sets && rest.indexOf("n") >= 0 ) {
+			// (the shell's own descriptors keep to it too: exec {v}</dev/null)
+			Object[] r = ProcessSettings.sh(ctx, "ulimit -Sn");
+			String v = ((String) r[1]).trim();
+			ctx.console.openFilesLimit = v.matches("[0-9]+") ? Integer.parseInt(v) : -1;
+		}
+		return status;
 	}
 }

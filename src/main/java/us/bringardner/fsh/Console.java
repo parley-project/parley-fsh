@@ -97,6 +97,8 @@ public class Console extends SignalEnabledThread {
 
 	/** umask and ulimit settings, as the commands that made them (see commands.ProcessSettings) */
 	public final List<String> processSettings = new CopyOnWriteArrayList<>();
+	/** ulimit -n's soft limit once set (-1: not set): the shell's own descriptors are below it */
+	public volatile int openFilesLimit = -1;
 
 	/** functions with the trace attribute (declare -ft): the DEBUG and RETURN traps run in them */
 	public final java.util.Set<String> tracedFunctions = ConcurrentHashMap.newKeySet();
@@ -3106,6 +3108,7 @@ delimiter
 		private final List<String> processSettings;
 		private final List<String> dirStack;
 		private final Integer umask;
+		private final int openFilesLimit;
 		private final Map<String,Object []> hashTable;
 		/** attributes: a subshell's readonly, -i, -l/-u and readonly functions are its own */
 		private final java.util.Set<String> readonly, integer, readonlyFunctions, declaredUnset, pendingExports;
@@ -3126,6 +3129,7 @@ delimiter
 			processSettings = new ArrayList<>(c.processSettings);
 			dirStack = new ArrayList<>(c.dirStack);
 			umask = c.umask;
+			openFilesLimit = c.openFilesLimit;
 			hashTable = new java.util.LinkedHashMap<>(c.hashTable);
 			// arrays by value: a subshell's a[1]=x or m[k]=v changes the arrays it shares with
 			// the shell, and restore puts these copies back
@@ -3171,6 +3175,7 @@ delimiter
 		dirStack.clear();
 		dirStack.addAll(s.dirStack);
 		umask = s.umask;
+		openFilesLimit = s.openFilesLimit;
 		hashTable.clear();
 		// (in reverse: each goes back to the head of its bucket, so the order is bash's again)
 		List<Map.Entry<String,Object[]>> back = new ArrayList<>(s.hashTable.entrySet());
