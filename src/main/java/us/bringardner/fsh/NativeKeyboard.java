@@ -190,6 +190,12 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	public static native String strerror0(int err);
 
+	/** this process's argv[0] (as it was started, not its path), or null */
+	public static native String argv0();
+
+	/** the kernel's release (uname -r), or null */
+	public static native String osRelease0();
+
 	/** a connected pair of sockets, both close-on-exec; null on failure */
 	public static native int [] socketPair0();
 
@@ -648,6 +654,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	}
 
 
+	/** fsh runs as a native image (GraalVM), not in a JVM */
+	public static final boolean NATIVE_IMAGE = "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"));
+
 	static {
 		try {
 			System.loadLibrary("nativekeyboard");
@@ -655,7 +664,19 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		} catch (Throwable e) {
 			availible = false;
 		}
-
+		if( !availible && NATIVE_IMAGE ) {
+			// (no launcher gives a native image its library path: the library and fshexec are next to it)
+			String exe = ProcessHandle.current().info().command().orElse(null);
+			java.io.File dir = exe == null ? null : new java.io.File(exe).getParentFile();
+			if( dir != null && new java.io.File(dir, System.mapLibraryName("nativekeyboard")).isFile()) {
+				try {
+					System.load(new java.io.File(dir, System.mapLibraryName("nativekeyboard")).getPath());
+					availible = true;
+					System.setProperty("java.library.path", dir.getPath());
+				} catch (Throwable e) {
+				}
+			}
+		}
 	}
 
 	public static final char [] CLEAR_LINE = {27,'[','2','K',27,'[','0','G'};

@@ -77,6 +77,15 @@ final class AstFunction implements ShellFunction {
 			ret = executor.command(def.body, sc);
 		} catch (ReturnException e) {
 			ret = e.exitCode;
+		} catch (StackOverflowError e) {
+			// recursion deeper than the stack: once back where there is room to say so, as
+			// FUNCNEST's limit is said (bash itself crashes)
+			if( sc.functionDepth() > 32 ) {
+				throw e;
+			}
+			sc.error(getName()+": maximum function nesting level exceeded");
+			sc.console.setLastExitCode(1);
+			throw new Executor.AbandonLine(sc.currentLine());
 		} finally {
 			sc.contextLine = context;
 			sc.loopDepth = loops;

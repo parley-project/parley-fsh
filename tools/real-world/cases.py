@@ -5,7 +5,7 @@ import os, re, shutil, subprocess, sys, time
 SP = os.environ.get("FSH_WORK", "/Volumes/Data/claude-work/fsh-session")
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASH = "/usr/local/bin/bash"
-FSH = SP + "/bt/fsh"
+FSH = os.environ.get("FSH", SP + "/bt/fsh")
 GITCORE = "/Library/Developer/CommandLineTools/usr/libexec/git-core"
 WORK = SP + "/rw/work"
 

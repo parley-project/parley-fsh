@@ -621,3 +621,40 @@ JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyTo0(JNIEnv *, j
 	pthread_sigmask(SIG_SETMASK, &old, NULL);
 	close(tty);
 }
+
+/* the kernel's release (uname -r), or null */
+#include <sys/utsname.h>
+JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_osRelease0(JNIEnv *env, jclass) {
+	struct utsname u;
+	if( uname(&u) != 0 ) {
+		return NULL;
+	}
+	return env->NewStringUTF(u.release);
+}
+
+/* this process's argv[0] as it was started (KERN_PROCARGS2: the exec path, then argv), or null */
+#include <sys/sysctl.h>
+JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_argv0(JNIEnv *env, jclass) {
+	int mib[3] = { CTL_KERN, KERN_PROCARGS2, getpid() };
+	size_t size = 0;
+	if( sysctl(mib, 3, NULL, &size, NULL, 0) != 0 || size < sizeof(int) ) {
+		return NULL;
+	}
+	char *buf = (char *) malloc(size);
+	if( buf == NULL || sysctl(mib, 3, buf, &size, NULL, 0) != 0 ) {
+		free(buf);
+		return NULL;
+	}
+	char *p = buf + sizeof(int);
+	char *end = buf + size;
+	// the exec path, then NULs up to argv[0]
+	while( p < end && *p != '\0' ) {
+		p++;
+	}
+	while( p < end && *p == '\0' ) {
+		p++;
+	}
+	jstring ret = p < end ? env->NewStringUTF(p) : NULL;
+	free(buf);
+	return ret;
+}

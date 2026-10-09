@@ -929,6 +929,21 @@ delimiter
 	}
 
 	public static void main(String args[]) throws IOException {
+		// temporary files (here-documents, fifos) in $TMPDIR, as bash's
+		String tmpdir = System.getenv("TMPDIR");
+		if( tmpdir != null && !tmpdir.isEmpty() && new java.io.File(tmpdir).isDirectory()) {
+			System.setProperty("java.io.tmpdir", tmpdir);
+		}
+		if( NativeKeyboard.NATIVE_IMAGE && System.getProperty("fsh.argv0") == null && NativeKeyboard.isAvailible()) {
+			// (as a launcher gives it to the JVM: how the shell was called, such as sh)
+			try {
+				String a0 = NativeKeyboard.argv0();
+				if( a0 != null ) {
+					System.setProperty("fsh.argv0", a0);
+				}
+			} catch (UnsatisfiedLinkError e) {
+			}
+		}
 		if( System.getProperty("java.awt.headless") == null && noWindow(args)) {
 			// (asking whether there is a display loads AWT, which takes longer than the rest of the
 			// start: with a script, -c or a terminal there is never a window, so it is not asked)
@@ -1999,15 +2014,24 @@ delimiter
 			String ostype;
 			String vendor;
 			if( os.startsWith("mac") || os.contains("darwin")) {
-				String release = System.getProperty("os.version", "");
+				String release = null;
 				try {
-					Process p = new ProcessBuilder("uname", "-r").redirectErrorStream(true).start();
-					String r = new String(p.getInputStream().readAllBytes()).trim();
-					if( p.waitFor() == 0 && !r.isEmpty()) {
-						release = r;
+					// (uname(3) from the library: no uname program to start)
+					release = NativeKeyboard.isAvailible() ? NativeKeyboard.osRelease0() : null;
+				} catch (UnsatisfiedLinkError e) {
+					// (a library from before it had it)
+				}
+				if( release == null || release.isEmpty()) {
+					release = System.getProperty("os.version", "");
+					try {
+						Process p = new ProcessBuilder("uname", "-r").redirectErrorStream(true).start();
+						String r = new String(p.getInputStream().readAllBytes()).trim();
+						if( p.waitFor() == 0 && !r.isEmpty()) {
+							release = r;
+						}
+					} catch (Exception e) {
+						// (the product version, then)
 					}
-				} catch (Exception e) {
-					// (the product version, then)
 				}
 				ostype = "darwin"+release;
 				vendor = "apple";
