@@ -111,19 +111,9 @@ public class Bind extends ShellCommand{
 			if( !file.isAbsolute()) {
 				file = new java.io.File(ctx.console.getCurrentDirectory().getAbsolutePath(), arg);
 			}
-			List<String> lines;
-			try {
-				lines = java.nio.file.Files.readAllLines(file.toPath());
-			} catch (IOException e) {
+			if( !readFile(file)) {
 				ctx.error("bind: "+arg+": cannot read: No such file or directory");
 				return 1;
-			}
-			for(String line : lines) {
-				String l = line.strip();
-				// (comments, and $if/$else/$endif/$include: the bindings in them are read too)
-				if( !l.isEmpty() && !l.startsWith("#") && !l.startsWith("$")) {
-					bindLine(l);
-				}
 			}
 			return 0;
 		}
@@ -169,6 +159,53 @@ public class Bind extends ShellCommand{
 		default:
 			return 0;
 		}
+	}
+
+	/**
+	 * An inputrc file's bindings (bind -f, ~/.inputrc): $if mode=emacs, term=, and Bash (fsh does
+	 * as bash) are true, mode=vi and other applications are not; $include reads another file.
+	 * @return false if it cannot be read
+	 */
+	public static boolean readFile(java.io.File file) {
+		List<String> lines;
+		try {
+			lines = java.nio.file.Files.readAllLines(file.toPath());
+		} catch (IOException | RuntimeException e) {
+			return false;
+		}
+		java.util.Deque<Boolean> skipping = new java.util.ArrayDeque<>();
+		for(String line : lines) {
+			String l = line.strip();
+			if( l.isEmpty() || l.startsWith("#")) {
+				continue;
+			}
+			boolean skip = skipping.contains(true);
+			if( l.startsWith("$if")) {
+				String test = l.substring(3).strip();
+				boolean on = test.startsWith("mode=") ? test.substring(5).strip().equals("emacs")
+						: test.startsWith("term=") || test.equalsIgnoreCase("bash");
+				skipping.push(!on);
+			} else if( l.startsWith("$else")) {
+				if( !skipping.isEmpty()) {
+					skipping.push(!skipping.pop());
+				}
+			} else if( l.startsWith("$endif")) {
+				if( !skipping.isEmpty()) {
+					skipping.pop();
+				}
+			} else if( l.startsWith("$include")) {
+				if( !skip ) {
+					String name = l.substring(8).strip();
+					if( name.startsWith("~/")) {
+						name = System.getProperty("user.home")+name.substring(1);
+					}
+					readFile(new java.io.File(name));
+				}
+			} else if( !skip ) {
+				bindLine(l);
+			}
+		}
+		return true;
 	}
 
 	/** the keys a function is on, as bind writes them ("\C-a") */

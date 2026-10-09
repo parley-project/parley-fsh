@@ -2044,6 +2044,16 @@ delimiter
 		stdIn =  kb.getStdIn();
 
 		readHistory();
+		if( kb instanceof NativeKeyboard ) {
+			// the line editor's keys, as readline's: $INPUTRC, else ~/.inputrc, else /etc/inputrc
+			Object inputrc = shellOrEnvironment("INPUTRC");
+			java.io.File file = inputrc != null && !inputrc.toString().isEmpty() ? new java.io.File(inputrc.toString())
+					: new java.io.File(expandHome("~/.inputrc"));
+			if( !file.exists() && inputrc == null ) {
+				file = new java.io.File("/etc/inputrc");
+			}
+			us.bringardner.fsh.commands.Bind.readFile(file);
+		}
 		started = running = true;
 		watchKeyboard(kb);
 
