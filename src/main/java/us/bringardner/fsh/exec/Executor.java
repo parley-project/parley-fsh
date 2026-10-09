@@ -2991,6 +2991,25 @@ public final class Executor {
 	private Object array(Ast.Assignment a, ShellContext sc, Expander ex, Object old, boolean assoc) {
 		if( assoc ) {
 			Map<String,Object> map = new TreeMap<>();
+			if( a.append && old instanceof TreeMap<?,?> m && sc.changesArrayInPlace(a.name)
+					&& !a.array.isEmpty() && a.array.stream().allMatch(w -> keyValue(w) != null)) {
+				// m+=([k]=v ...): into the array itself (not a copy each time); the words are expanded
+				// first, as bash's are, then assigned in order
+				@SuppressWarnings("unchecked")
+				Map<String,Object> into = (Map<String,Object>) m;
+				boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
+				List<Object[]> pairs = new ArrayList<>();
+				for(Word w : a.array) {
+					boolean [] plus = new boolean[1];
+					Word [] kv = keyValue(w, plus);
+					pairs.add(new Object[] {ex.string(kv[0]), ex.assignment(kv[1]), plus[0]});
+				}
+				for(Object [] kv : pairs) {
+					String k = (String) kv[0];
+					into.put(k, sc.cased(a.name, elementValue(into.get(k), (String) kv[1], (Boolean) kv[2], integer, sc)));
+				}
+				return into;
+			}
 			if( a.append && old instanceof Map<?,?> m ) {
 				for(Map.Entry<?,?> e : m.entrySet()) {
 					map.put(String.valueOf(e.getKey()), e.getValue());
