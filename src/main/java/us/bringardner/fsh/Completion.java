@@ -67,8 +67,28 @@ public class Completion implements LineEditor.Completer {
 		}
 	}
 
-	private static final String [] KEYWORDS = {"!", "[[", "]]", "case", "do", "done", "elif", "else", "esac",
-			"fi", "for", "function", "if", "in", "select", "then", "time", "until", "while", "{", "}"};
+	/** in bash's order (its word_token_alist) */
+	private static final String [] KEYWORDS = {"if", "then", "else", "elif", "fi", "case", "esac", "for", "select", "while",
+			"until", "do", "done", "in", "function", "time", "{", "}", "!", "[[", "]]", "coproc"};
+
+	/** bash's help topics (the names in its builtin table) */
+	private static final String [] HELP_TOPICS = {"!", "%", "(( ... ))", ".", ":", "[", "[[ ... ]]", "alias", "bg", "bind",
+			"break", "builtin", "caller", "case", "cd", "command", "compgen", "complete", "compopt", "continue", "coproc",
+			"declare", "dirs", "disown", "echo", "enable", "eval", "exec", "exit", "export", "false", "fc", "fg", "for", "for ((",
+			"function", "getopts", "hash", "help", "history", "if", "jobs", "kill", "let", "local", "logout", "mapfile", "popd",
+			"printf", "pushd", "pwd", "read", "readarray", "readonly", "return", "select", "set", "shift", "shopt", "source",
+			"suspend", "test", "time", "times", "trap", "true", "type", "typeset", "ulimit", "umask", "unalias", "unset", "until",
+			"variables", "wait", "while", "{ ... }"};
+
+	/** the builtins' names ([ for the test one, and those the executor runs itself) */
+	static java.util.SortedSet<String> builtinNames() {
+		java.util.SortedSet<String> ret = new TreeSet<>();
+		for(String n : Console.commands.keySet()) {
+			ret.add(n.equals("__bracket_test") ? "[" : n);
+		}
+		ret.addAll(List.of("break", "continue", "eval", "declare", "typeset", "local", "readonly", "export", "exec"));
+		return ret;
+	}
 
 	/** after these a command starts */
 	private static final Set<String> COMMAND_KEYWORDS = Set.of("if", "then", "else", "elif", "do", "while", "until",
@@ -479,7 +499,8 @@ public class Completion implements LineEditor.Completer {
 			Set<String> found = new LinkedHashSet<>();
 			Console console = sc.console;
 			for(String action : actions) {
-				Set<String> names = new TreeSet<>();
+				// (in bash's order: its tables are sorted, its keywords are not)
+				Set<String> names = action.equals("keyword") ? new LinkedHashSet<>() : new TreeSet<>();
 				switch (action) {
 				case "alias": names.addAll(console.getAliases().keySet()); break;
 				case "arrayvar":
@@ -490,8 +511,14 @@ public class Completion implements LineEditor.Completer {
 					}
 					break;
 				case "builtin":
-				case "enabled": names.addAll(Console.commands.keySet()); break;
-				case "disabled": break;
+				case "enabled":
+				case "disabled":
+					for(String b : builtinNames()) {
+						if( action.equals("builtin") || console.disabledBuiltins.contains(b) == action.equals("disabled")) {
+							names.add(b);
+						}
+					}
+					break;
 				case "command": names.addAll(new Completion(console).commandNames(sc, word)); break;
 				case "directory":
 				case "file":
@@ -502,7 +529,8 @@ public class Completion implements LineEditor.Completer {
 				case "keyword": names.addAll(List.of(KEYWORDS)); break;
 				case "variable": names.addAll(variableNames(sc)); break;
 				case "user": names.addAll(users()); break;
-				case "group": case "hostname": case "service": case "helptopic": case "binding": break;
+				case "helptopic": names.addAll(List.of(HELP_TOPICS)); break;
+				case "group": case "hostname": case "service": case "binding": break;
 				case "job":
 				case "running":
 				case "stopped":
@@ -660,17 +688,26 @@ public class Completion implements LineEditor.Completer {
 		/** as complete -p prints it */
 		public String toCommand(String name) {
 			StringBuilder ret = new StringBuilder("complete");
-			for(String o : options) {
-				ret.append(" -o ").append(o);
+			// (in bash's order: its options, its one-letter actions, then -A ones)
+			for(String o : List.of("bashdefault", "default", "dirnames", "filenames", "fullquote", "noquote", "nosort", "nospace", "plusdirs")) {
+				if( options.contains(o)) {
+					ret.append(" -o ").append(o);
+				}
 			}
-			for(String a : actions) {
-				String letter = switch (a) {
-				case "alias" -> "-a"; case "builtin" -> "-b"; case "command" -> "-c"; case "directory" -> "-d";
-				case "export" -> "-e"; case "file" -> "-f"; case "group" -> "-g"; case "job" -> "-j";
-				case "keyword" -> "-k"; case "service" -> "-s"; case "user" -> "-u"; case "variable" -> "-v";
-				default -> "-A "+a;
-				};
-				ret.append(' ').append(letter);
+			String [][] acts = {{"alias", "a"}, {"arrayvar", null}, {"binding", null}, {"builtin", "b"}, {"command", "c"},
+					{"directory", "d"}, {"disabled", null}, {"enabled", null}, {"export", "e"}, {"file", "f"}, {"function", null},
+					{"helptopic", null}, {"hostname", null}, {"group", "g"}, {"job", "j"}, {"keyword", "k"}, {"running", null},
+					{"service", "s"}, {"setopt", null}, {"shopt", null}, {"signal", null}, {"stopped", null}, {"user", "u"},
+					{"variable", "v"}};
+			for(String [] a : acts) {
+				if( a[1] != null && actions.contains(a[0])) {
+					ret.append(" -").append(a[1]);
+				}
+			}
+			for(String [] a : acts) {
+				if( a[1] == null && actions.contains(a[0])) {
+					ret.append(" -A ").append(a[0]);
+				}
 			}
 			if( wordList != null ) {
 				ret.append(" -W ").append(q(wordList));
@@ -684,11 +721,11 @@ public class Completion implements LineEditor.Completer {
 			if( filter != null ) {
 				ret.append(" -X ").append(q(filter));
 			}
-			if( function != null ) {
-				ret.append(" -F ").append(function);
-			}
 			if( command != null ) {
 				ret.append(" -C ").append(q(command));
+			}
+			if( function != null ) {
+				ret.append(" -F ").append(function);
 			}
 			return ret.append(' ').append(name).toString();
 		}

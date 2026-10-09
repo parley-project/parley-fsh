@@ -32,7 +32,11 @@ public class Compgen extends ShellCommand{
 		try {
 			p = Complete.parse(name, words);
 		} catch (IllegalArgumentException e) {
-			ctx.error(e.getMessage());
+			Complete.say(ctx, e.getMessage());
+			return 2;
+		}
+		if( p.varName != null && !us.bringardner.fsh.exec.Executor.isName(p.varName)) {
+			ctx.error(name+": `"+p.varName+"': not a valid identifier");
 			return 2;
 		}
 		String word = p.names.isEmpty() ? "" : p.names.get(0);
@@ -51,6 +55,14 @@ public class Compgen extends ShellCommand{
 			Completion.Spec dirs = new Completion.Spec();
 			dirs.actions.add("directory");
 			found = dirs.generate(ctx, word, "", "", List.of(), "", 0);
+		}
+		if( p.varName != null ) {
+			// -V name: an array of them
+			us.bringardner.fsh.FshList list = new us.bringardner.fsh.FshList();
+			list.addAll(found);
+			ctx.unSetVariable(p.varName);
+			ctx.setVariable(p.varName, list);
+			return found.isEmpty() ? 1 : 0;
 		}
 		for(String f : found) {
 			ctx.stdout.println(f);

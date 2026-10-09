@@ -458,6 +458,7 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.Complete());
 		registerCommand(new us.bringardner.fsh.commands.Times());
 		registerCommand(new us.bringardner.fsh.commands.Suspend());
+		registerCommand(new us.bringardner.fsh.commands.Compopt());
 		registerCommand(new us.bringardner.fsh.commands.Enable());
 		registerCommand(new us.bringardner.fsh.commands.Umask());
 		registerCommand(new us.bringardner.fsh.commands.Ulimit());
@@ -3356,7 +3357,8 @@ delimiter
 	}
 
 	/** complete's specs, by command (-D, -E, -I for the default, an empty line, a command's name) */
-	private final Map<String, Completion.Spec> completions = new java.util.TreeMap<>();
+	/** (complete -p lists them in bash's order: its table has 512 buckets) */
+	private final Map<String, Completion.Spec> completions = new BashHashTable<>(512);
 
 	public Map<String, Completion.Spec> getCompletions() {
 		return completions;
