@@ -104,7 +104,7 @@ public class Wait extends ShellCommand{
 		List<String> list = words.subList(i, words.size());
 		JobManager jm = ctx.console.jobManager;
 		if( varName != null ) {
-			if( !us.bringardner.fsh.exec.Executor.isName(varName) && !ShellContext.validReferenceName(varName)) {
+			if( !us.bringardner.fsh.exec.Executor.isName(varName) && !varName.matches("[A-Za-z_][A-Za-z0-9_]*\\[.*\\]")) {
 				ctx.error("wait: `"+varName+"': not a valid identifier");
 				return 1;
 			}

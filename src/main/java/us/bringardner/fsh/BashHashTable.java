@@ -2,7 +2,6 @@ package us.bringardner.fsh;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -135,26 +134,44 @@ public class BashHashTable<V> extends AbstractMap<String,V> {
 		return size;
 	}
 
+	/** a live view (each iteration walks the table as it is then) */
 	@Override
 	public Set<Map.Entry<String,V>> entrySet() {
-		Set<Map.Entry<String,V>> ret = new LinkedHashSet<>();
-		for(Item<V> head : buckets) {
-			for(Item<V> it = head; it != null; it = it.next) {
-				ret.add(new SimpleEntry<>(it.key, it.value));
-			}
-		}
-		return ret;
-	}
+		return new java.util.AbstractSet<Map.Entry<String,V>>() {
+			@Override
+			public java.util.Iterator<Map.Entry<String,V>> iterator() {
+				List<Map.Entry<String,V>> now = new ArrayList<>();
+				for(Item<V> head : buckets) {
+					for(Item<V> it = head; it != null; it = it.next) {
+						now.add(new SimpleEntry<>(it.key, it.value));
+					}
+				}
+				java.util.Iterator<Map.Entry<String,V>> walk = now.iterator();
+				return new java.util.Iterator<Map.Entry<String,V>>() {
+					private Map.Entry<String,V> last;
 
-	@Override
-	public Set<String> keySet() {
-		Set<String> ret = new LinkedHashSet<>();
-		for(Item<V> head : buckets) {
-			for(Item<V> it = head; it != null; it = it.next) {
-				ret.add(it.key);
+					@Override
+					public boolean hasNext() {
+						return walk.hasNext();
+					}
+
+					@Override
+					public Map.Entry<String,V> next() {
+						return last = walk.next();
+					}
+
+					@Override
+					public void remove() {
+						BashHashTable.this.remove(last.getKey());
+					}
+				};
 			}
-		}
-		return ret;
+
+			@Override
+			public int size() {
+				return size;
+			}
+		};
 	}
 
 	public List<V> valuesInOrder() {

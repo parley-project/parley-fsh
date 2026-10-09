@@ -1072,8 +1072,8 @@ $
 			return new TreeMap<String,Object>(console.getAliases());
 		}
 		if( name.equals("BASH_CMDS") && !console.unsetSpecials.contains(name)) {
-			// hash's table of programs, as an associative array
-			Map<String,Object> ret = new TreeMap<>();
+			// hash's table of programs, as an associative array (in the table's order, as bash's)
+			Map<String,Object> ret = new java.util.LinkedHashMap<>();
 			for(Map.Entry<String,Object[]> e : console.hashTable.entrySet()) {
 				ret.put(e.getKey(), e.getValue()[0]);
 			}
