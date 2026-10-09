@@ -370,6 +370,18 @@ public final class Programs {
 			ProgramDescriptors fds = null;
 			java.io.File report = null;
 			us.bringardner.fsh.job.IJob job = ctx.job;
+			// set -m in a script: a program the shell runs itself is a job (a process group with
+			// the terminal), as in bash; it leaves for the job table if it is stopped
+			us.bringardner.fsh.job.IJob scriptJob = null;
+			if( job == null && !ctx.console.isInteractive && ctx.console.jobControl() && ctx.subshell == null
+					&& !ctx.isIsolated() && NativeProcess.usable()) {
+				Object text = ctx.getVariable("BASH_COMMAND");
+				scriptJob = new us.bringardner.fsh.job.ProgramJob(new ShellContext(ctx.console), text == null ? String.join(" ", cmd) : text.toString());
+				scriptJob.setState(us.bringardner.fsh.job.JobState.Running);
+				job = scriptJob;
+			}
+			// a script's job had the terminal: the shell takes it back
+			boolean reclaimTty = false;
 
 			try {
 				String name = cmd.get(0);
@@ -398,7 +410,8 @@ public final class Programs {
 				boolean absolute = new java.io.File(cmd.get(0)).isAbsolute();
 				// (set -m in a script too: a job's programs are in its process group, as bash's)
 				boolean grouped = job != null && absolute && (ctx.console.isInteractive ? NativeKeyboard.groupHelper() != null
-						: ctx.console.jobControl() && job.getProcessGroup() != 0 && NativeKeyboard.helper() != null);
+						: ctx.console.jobControl() && (job.getProcessGroup() != 0 || (scriptJob != null && job == scriptJob)
+								|| job instanceof us.bringardner.fsh.job.PipelineJob) && NativeKeyboard.helper() != null);
 				// a local file as input: the program reads it itself, from where the shell is, and the
 				// shell goes on from where the program left it (head -n 1 seeks back after its line)
 				onFile = !inheritIn && absolute && ctx.stdin instanceof ReadBack rb && rb.file() != null
@@ -407,7 +420,10 @@ public final class Programs {
 				boolean spawnGrouped = grouped && NativeProcess.usable();
 				// the group gets the terminal: a foreground job's (in a script, grouped ones are
 				// started with &, and bash's do not get it)
-				boolean takesTerminal = foreground && ctx.console.isInteractive;
+				boolean takesTerminal = foreground && (ctx.console.isInteractive || (scriptJob != null && job == scriptJob)
+						|| job instanceof us.bringardner.fsh.job.PipelineJob);
+				// (a pipeline's, once it is done: see Executor.pipe)
+				reclaimTty = takesTerminal && (scriptJob != null && job == scriptJob);
 				if( grouped && !spawnGrouped || onFile != null ) {
 					List<String> run = new java.util.ArrayList<>();
 					run.add(NativeKeyboard.helper());
@@ -585,13 +601,13 @@ public final class Programs {
 					if( stop != 0 && job.getState() == us.bringardner.fsh.job.JobState.Running ) {
 						// Ctrl-Z (or reading the terminal in the background): the job stops, as in bash
 						String how = String.valueOf(us.bringardner.fsh.job.ProcessSignals.name(stop));
-						if( terminalUser != null ) {
+						if( terminalUser != null && ctx.console.isInteractive ) {
 							// after the terminal's ^Z
 							Console.System_out.println();
 							Console.System_out.flush();
 						}
-						if( ownJob == null && job instanceof us.bringardner.fsh.job.ForgroundJob && ctx.console.isInteractive
-								&& ctx.subshell == null && !ctx.isIsolated()) {
+						if( ownJob == null && (job instanceof us.bringardner.fsh.job.ForgroundJob && ctx.console.isInteractive
+								|| (scriptJob != null && job == scriptJob)) && ctx.subshell == null && !ctx.isIsolated()) {
 							// a program the line runs itself: it is a job of its own, as in bash
 							job = detach(job, p, how, stop, terminalUser);
 						} else {
@@ -635,6 +651,9 @@ public final class Programs {
 				exitCode = 1;
 				error = e;
 			} finally {
+				if( reclaimTty ) {
+					NativeKeyboard.ttyTo0(0);
+				}
 				if( report != null ) {
 					report.delete();
 				}
@@ -693,9 +712,11 @@ public final class Programs {
 			own.setState(us.bringardner.fsh.job.JobState.Running);
 			own.start();
 			own.stopJob(how);
-			// (said at once, as bash says it)
-			Console.System_err.println(jm.describe(own, false));
-			Console.System_err.flush();
+			if( ctx.console.isInteractive ) {
+				// (said at once, as bash says it; a script's jobs says it)
+				Console.System_err.println(jm.describe(own, false));
+				Console.System_err.flush();
+			}
 			own.setStopNoticeDue(false);
 			ownJob = own;
 			// what ends it from now on is its job's

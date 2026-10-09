@@ -616,7 +616,9 @@ public final class Executor {
 		boolean lastInShell = !sc.console.isInteractive && !sc.isIsolated() && Glob.option(sc, "lastpipe");
 		List<Pipe> pipes = new ArrayList<>();
 		// at the prompt, as in bash, the pipeline is a job of its own: stopped, it leaves the line
-		ShellContext jobCtx = sc.console.isInteractive && sc.job instanceof us.bringardner.fsh.job.ForgroundJob
+		// (and with set -m in a script, as there)
+		ShellContext jobCtx = (sc.console.isInteractive ? sc.job instanceof us.bringardner.fsh.job.ForgroundJob
+				: sc.console.jobControl() && sc.job == null && NativeProcess.usable())
 				&& sc.subshell == null && !sc.isIsolated() && !lastInShell ? new ShellContext(sc.console) : null;
 		us.bringardner.fsh.job.PipelineJob own = jobCtx == null ? null : new us.bringardner.fsh.job.PipelineJob(jobCtx, text(p).trim(), () -> {
 			for(CommandThread t : threads) {
@@ -725,6 +727,10 @@ public final class Executor {
 					}
 				} finally {
 					sc.console.foreground(own, false);
+					if( !sc.console.isInteractive ) {
+						// (its programs had the terminal: the script's shell takes it back)
+						us.bringardner.fsh.NativeKeyboard.ttyTo0(0);
+					}
 				}
 				Integer by = own.getTerminatedBy();
 				if( by != null && sc.job != null ) {
@@ -806,8 +812,11 @@ public final class Executor {
 			own.setPid((int) own.getProcessGroup());
 		}
 		jm.startedWithJobControl(own);
-		us.bringardner.fsh.Console.System_err.println(jm.describe(own, false));
-		us.bringardner.fsh.Console.System_err.flush();
+		if( sc.console.isInteractive ) {
+			// (a script's jobs says it)
+			us.bringardner.fsh.Console.System_err.println(jm.describe(own, false));
+			us.bringardner.fsh.Console.System_err.flush();
+		}
 		own.setStopNoticeDue(false);
 		int sig = us.bringardner.fsh.job.ProcessSignals.number(own.getStoppedHow());
 		return 128+(sig < 0 ? 20 : sig);

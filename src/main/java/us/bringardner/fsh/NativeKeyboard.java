@@ -168,7 +168,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 */
 	public static native int spawn0(byte [] path, byte [][] argv, byte [][] envp, byte [] dir, int [] fds, int pgroup, boolean suspended);
 
-	/** the terminal (/dev/tty) is process group group's */
+	/** the terminal (/dev/tty) is process group group's (0: the shell's) */
 	public static native void ttyTo0(int group);
 
 	/** {read, write}, both close-on-exec; null on failure */

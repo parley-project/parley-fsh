@@ -604,8 +604,11 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_sendWithDescriptor
 	return -err;
 }
 
-/* the terminal (/dev/tty) is process group group's, as fshexec -g gives it (fg) */
+/* the terminal (/dev/tty) is process group group's (0: the shell's), as fshexec -g gives it (fg) */
 JNIEXPORT void JNICALL Java_us_bringardner_fsh_NativeKeyboard_ttyTo0(JNIEnv *, jclass, jint group) {
+	if( group == 0 ) {
+		group = getpgrp();
+	}
 	int tty = open("/dev/tty", O_RDWR | O_CLOEXEC);
 	if( tty < 0 ) {
 		return;
