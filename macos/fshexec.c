@@ -21,6 +21,8 @@
  *     output as a byte, for fsh to give the subshell; a status read from standard input (a line)
  *     ends it with that status, as does the end of its input (0). With -g it leads a process
  *     group of its own (a job's, with job control: the job's programs join it, $! is the group).
+ *     If its input is a socket (both its input and output), it also starts the subshell's
+ *     programs, so that they are its children as in bash: see standIn.
  * -u, -G: the system's user (or group) names, one a line, in its order (getpwent, getgrent: what
  *     bash's compgen -u and -g list; Java cannot read them).
  * -I: the program ignores these signals (by number), as the shell does (trap '' INT): Java
@@ -29,8 +31,12 @@
  * -f: the program's descriptor N (above 2: Java gives a program only 0, 1 and 2) is ARG opened
  *     for reading (r) or writing (w), or a copy of descriptor ARG (d), as N is open in the shell.
  */
+#include <arpa/inet.h>
 #include <errno.h>
 #include <grp.h>
+#include <spawn.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 #include <pwd.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -98,24 +104,247 @@ static void descriptor(int n, const char *how, const char *arg) {
 	}
 }
 
+static int writeFully(int fd, const void *buf, size_t n) {
+	const char *p = (const char *) buf;
+	while( n > 0 ) {
+		ssize_t w = write(fd, p, n);
+		if( w < 0 && errno == EINTR ) {
+			continue;
+		}
+		if( w <= 0 ) {
+			return -1;
+		}
+		p += w;
+		n -= (size_t) w;
+	}
+	return 0;
+}
+
+static int readFully(int fd, void *buf, size_t n) {
+	char *p = (char *) buf;
+	while( n > 0 ) {
+		ssize_t r = read(fd, p, n);
+		if( r < 0 && errno == EINTR ) {
+			continue;
+		}
+		if( r <= 0 ) {
+			return -1;
+		}
+		p += r;
+		n -= (size_t) r;
+	}
+	return 0;
+}
+
+/* the stand-in talks to fsh on a socket (its descriptors 0 and 1): see standIn */
+static int onSocket = 0;
+
+/*
+ * A message to fsh on the socket: kind, then a and b (4 bytes each, network order). 'G' got a
+ * signal (a); 'P' started a program (a: its process id, or -errno); 'X' a program ended (a:
+ * its process id, b: its wait status).
+ */
+static void tell(char kind, int a, int b) {
+	unsigned char m[9];
+	uint32_t na = htonl((uint32_t) a), nb = htonl((uint32_t) b);
+	m[0] = (unsigned char) kind;
+	memcpy(m+1, &na, 4);
+	memcpy(m+5, &nb, 4);
+	writeFully(1, m, sizeof m);
+}
+
 static void forward(int sig) {
-	unsigned char b = (unsigned char) sig;
 	int saved = errno;
-	(void) write(1, &b, 1);
+	if( onSocket ) {
+		tell('G', sig, 0);
+	} else {
+		unsigned char b = (unsigned char) sig;
+		(void) write(1, &b, 1);
+	}
 	errno = saved;
+}
+
+/* the stand-in's programs that ended: told to fsh */
+static void childEnded(int sig) {
+	(void) sig;
+	int saved = errno;
+	int status;
+	pid_t pid;
+	while( (pid = waitpid(-1, &status, WNOHANG)) > 0 ) {
+		tell('X', (int) pid, status);
+	}
+	errno = saved;
+}
+
+/* the field at *p (ending in NUL), and *p past it; "" past the end */
+static char *field(char **p, char *end) {
+	if( *p >= end ) {
+		return (char *) "";
+	}
+	char *ret = *p;
+	*p += strlen(ret) + 1;
+	return ret;
+}
+
+/*
+ * Start a program as fsh asks (see standIn): fields ending in NUL: path, directory ("": this
+ * one), process group (-1: this one's), the number of descriptors, the program's number for each,
+ * argc, argv..., envc, envp...; fds are the descriptors that came with it, in that order. Started
+ * as NativeKeyboard.spawn0 starts one, and told to fsh ('P').
+ */
+static void spawnFor(char *p, char *end, int *fds, int nfds) {
+	char *path = field(&p, end);
+	char *dir = field(&p, end);
+	int pgroup = atoi(field(&p, end));
+	int ntargets = atoi(field(&p, end));
+	int targets[16];
+	for(int k = 0; k < ntargets; k++) {
+		int t = atoi(field(&p, end));
+		if( k < 16 ) {
+			targets[k] = t;
+		}
+	}
+	int argc = atoi(field(&p, end));
+	char **args = (char **) calloc((size_t) argc + 1, sizeof(char *));
+	for(int k = 0; k < argc; k++) {
+		args[k] = field(&p, end);
+	}
+	int envc = atoi(field(&p, end));
+	char **envp = (char **) calloc((size_t) envc + 1, sizeof(char *));
+	for(int k = 0; k < envc; k++) {
+		envp[k] = field(&p, end);
+	}
+
+	posix_spawn_file_actions_t fa;
+	posix_spawn_file_actions_init(&fa);
+	posix_spawnattr_t at;
+	posix_spawnattr_init(&at);
+	// (the signals this catches are as by default in the program; it ignores none)
+	short flags = POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGMASK;
+	sigset_t none;
+	sigemptyset(&none);
+	posix_spawnattr_setsigmask(&at, &none);
+	if( pgroup >= 0 ) {
+		flags |= POSIX_SPAWN_SETPGROUP;
+		posix_spawnattr_setpgroup(&at, (pid_t) pgroup);
+	}
+	posix_spawnattr_setflags(&at, flags);
+	// (each copied above all the targets first, so that one does not overwrite another's source)
+	int temps[16];
+	for(int k = 0; k < nfds && k < ntargets; k++) {
+		temps[k] = fcntl(fds[k], F_DUPFD_CLOEXEC, 16);
+		posix_spawn_file_actions_adddup2(&fa, temps[k], targets[k]);
+	}
+	if( *dir != '\0' ) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+		posix_spawn_file_actions_addchdir_np(&fa, dir);
+#pragma clang diagnostic pop
+	}
+	pid_t pid = -1;
+	int err = posix_spawn(&pid, path, &fa, &at, args, envp);
+	posix_spawn_file_actions_destroy(&fa);
+	posix_spawnattr_destroy(&at);
+	for(int k = 0; k < nfds && k < ntargets; k++) {
+		close(temps[k]);
+	}
+	free(args);
+	free(envp);
+	tell('P', err == 0 ? (int) pid : -err, 0);
+}
+
+/*
+ * A request from fsh on the socket: a length (4 bytes, network order), then that many bytes: 'S'
+ * and a program to start (see spawnFor), with its descriptors (SCM_RIGHTS); or 'E' and the status
+ * that ends the stand-in. The status, or -1 to go on.
+ */
+static int serve(void) {
+	uint32_t len = 0;
+	struct iovec iov = { &len, sizeof len };
+	char control[CMSG_SPACE(16 * sizeof(int))];
+	struct msghdr msg;
+	memset(&msg, 0, sizeof msg);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = control;
+	msg.msg_controllen = sizeof control;
+	ssize_t got;
+	while( (got = recvmsg(0, &msg, 0)) < 0 && errno == EINTR ) {
+	}
+	if( got <= 0 ) {
+		// the end: 0, as before
+		return 0;
+	}
+	int fds[16];
+	int nfds = 0;
+	for(struct cmsghdr *c = CMSG_FIRSTHDR(&msg); c != NULL; c = CMSG_NXTHDR(&msg, c)) {
+		if( c->cmsg_level == SOL_SOCKET && c->cmsg_type == SCM_RIGHTS ) {
+			int n = (int) ((c->cmsg_len - CMSG_LEN(0)) / sizeof(int));
+			for(int k = 0; k < n; k++) {
+				int fd;
+				memcpy(&fd, CMSG_DATA(c) + k * sizeof(int), sizeof(int));
+				if( nfds < 16 ) {
+					fds[nfds++] = fd;
+				} else {
+					close(fd);
+				}
+			}
+		}
+	}
+	int ret = -1;
+	if( got < (ssize_t) sizeof len && readFully(0, (char *) &len + got, sizeof len - (size_t) got) != 0 ) {
+		ret = 0;
+	} else {
+		len = ntohl(len);
+		char *data = (char *) malloc((size_t) len + 1);
+		if( data == NULL || len == 0 || readFully(0, data, len) != 0 ) {
+			ret = 0;
+		} else {
+			data[len] = '\0';
+			if( data[0] == 'E' ) {
+				ret = atoi(data+1) & 0xff;
+			} else if( data[0] == 'S' ) {
+				// (its end is told after its start)
+				sigset_t all, old;
+				sigfillset(&all);
+				sigprocmask(SIG_BLOCK, &all, &old);
+				spawnFor(data+1, data+len, fds, nfds);
+				sigprocmask(SIG_SETMASK, &old, NULL);
+			}
+		}
+		free(data);
+	}
+	for(int k = 0; k < nfds; k++) {
+		close(fds[k]);
+	}
+	return ret;
 }
 
 /* -s: see the top */
 static int standIn(void) {
+	struct stat st;
+	onSocket = fstat(0, &st) == 0 && S_ISSOCK(st.st_mode);
 	struct sigaction sa;
 	memset(&sa, 0, sizeof sa);
 	sa.sa_handler = forward;
-	sigemptyset(&sa.sa_mask);
+	// (a message at a time)
+	sigfillset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	for(int sig = 1; sig < NSIG; sig++) {
 		if( sig != SIGKILL && sig != SIGSTOP && sig != SIGCHLD ) {
 			sigaction(sig, &sa, NULL);
 		}
+	}
+	if( onSocket ) {
+		fcntl(0, F_SETFD, FD_CLOEXEC);
+		fcntl(1, F_SETFD, FD_CLOEXEC);
+		sa.sa_handler = childEnded;
+		sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+		sigaction(SIGCHLD, &sa, NULL);
+		int ret;
+		while( (ret = serve()) < 0 ) {
+		}
+		return ret;
 	}
 	char line[32];
 	int n = 0;

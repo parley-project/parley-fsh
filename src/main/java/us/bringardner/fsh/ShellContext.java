@@ -1517,6 +1517,7 @@ $
 		ret.inheritedTraps = traps;
 		ret.contextLine = contextLine;
 		ret.subshell = new Object();
+		ret.madeIn = this;
 		ret.inCommandSubstitution = inCommandSubstitution;
 		ret.jobsCleared = jobsCleared;
 		ret.line = line;
@@ -1631,6 +1632,8 @@ $
 	public Map<Integer,List<Console.ConsoleSignalHandler>> stageTraps;
 	/** the traps there were when this subshell started: they are not its own (a signal does what it does by default) */
 	private java.util.Set<Console.ConsoleSignalHandler> inheritedTraps = java.util.Collections.emptySet();
+	/** the context this subshell was made in, or null */
+	private ShellContext madeIn;
 	/** the process that stands in for this subshell ($BASHPID), once there is one */
 	private volatile StandIn standIn;
 	/** its stand-in leads a process group (a job's with job control: its programs join it) */
@@ -1691,6 +1694,22 @@ $
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * The stand-in that starts this subshell's programs: its own if it has one (none is made),
+	 * else that of the subshell it is in (the process that would be its parent in bash); null
+	 * if none.
+	 */
+	public StandIn programsStandIn() {
+		for(ShellContext c = this; c != null; c = c.madeIn) {
+			ShellContext owner = c.processOwner();
+			StandIn s = owner.subshell == null ? null : owner.standIn;
+			if( s != null && s.startsPrograms()) {
+				return s;
+			}
+		}
+		return null;
 	}
 
 	/** this subshell ended with status: its stand-in does too */

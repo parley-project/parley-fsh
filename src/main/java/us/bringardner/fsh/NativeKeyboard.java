@@ -187,6 +187,12 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	public static native String strerror0(int err);
 
+	/** a connected pair of sockets, both close-on-exec; null on failure */
+	public static native int [] socketPair0();
+
+	/** send payload (after its length, 4 bytes in network order) with descriptors fds: 0 or -errno */
+	public static native int sendWithDescriptors0(int sock, byte [] payload, int [] fds);
+
 	/** {the fsh.exec property it was found with, the helper ("" if none)} */
 	private static volatile String [] helper;
 	private static volatile Boolean groups;

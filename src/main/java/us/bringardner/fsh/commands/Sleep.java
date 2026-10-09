@@ -82,6 +82,11 @@ public class Sleep extends ShellCommand{
 				//System.out.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
 				ctx.stdout.println("ival= "+ival+" multiplyer="+multiplyer+" timeToSleep="+timeToSleep);
 			}
+			if( timeToSleep > 0 ) {
+				// in a subshell, bash's sleep is a process of the subshell's process: so is this
+				// (ps lists it, and killing it ends the sleep)
+				ctx.standIn();
+			}
 			while( timeToSleep > 0 ) {
 				if( ctx.getException()!=null) {
 					throw  ctx.getException();

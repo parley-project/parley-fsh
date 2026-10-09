@@ -529,3 +529,74 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_kill0(JNIEnv *, jc
 JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_strerror0(JNIEnv *env, jclass, jint err) {
 	return env->NewStringUTF(strerror(err));
 }
+
+/* ------------------------------------------------------------------ a subshell's stand-in starts its programs
+ * (fshexec -s with a socket as descriptor 3: see StandIn.java)
+ */
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+/* a connected pair of sockets, both close-on-exec; null on failure */
+JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_socketPair0(JNIEnv *env, jclass) {
+	int p[2];
+	if( socketpair(AF_UNIX, SOCK_STREAM, 0, p) != 0 ) {
+		return NULL;
+	}
+	fcntl(p[0], F_SETFD, FD_CLOEXEC);
+	fcntl(p[1], F_SETFD, FD_CLOEXEC);
+	int on = 1;
+	setsockopt(p[0], SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof on);
+	jintArray ret = env->NewIntArray(2);
+	jint v[2] = { p[0], p[1] };
+	env->SetIntArrayRegion(ret, 0, 2, v);
+	return ret;
+}
+
+/* send payload (after its length, 4 bytes in network order) with descriptors fds: 0 or -errno */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_sendWithDescriptors0(JNIEnv *env, jclass, jint sock, jbyteArray jpayload, jintArray jfds) {
+	jsize n = env->GetArrayLength(jpayload);
+	jsize nfds = jfds == NULL ? 0 : env->GetArrayLength(jfds);
+	if( nfds > 16 ) {
+		return -EINVAL;
+	}
+	char *buf = (char *) malloc((size_t) n + 4);
+	uint32_t len = htonl((uint32_t) n);
+	memcpy(buf, &len, 4);
+	env->GetByteArrayRegion(jpayload, 0, n, (jbyte *) buf+4);
+	char control[CMSG_SPACE(16 * sizeof(int))];
+	memset(control, 0, sizeof control);
+	struct iovec iov = { buf, (size_t) n + 4 };
+	struct msghdr msg;
+	memset(&msg, 0, sizeof msg);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	if( nfds > 0 ) {
+		jint fds[16];
+		env->GetIntArrayRegion(jfds, 0, nfds, fds);
+		msg.msg_control = control;
+		msg.msg_controllen = CMSG_SPACE(nfds * sizeof(int));
+		struct cmsghdr *c = CMSG_FIRSTHDR(&msg);
+		c->cmsg_level = SOL_SOCKET;
+		c->cmsg_type = SCM_RIGHTS;
+		c->cmsg_len = CMSG_LEN(nfds * sizeof(int));
+		for(jsize i = 0; i < nfds; i++) {
+			int fd = fds[i];
+			memcpy(CMSG_DATA(c) + i * sizeof(int), &fd, sizeof(int));
+		}
+	}
+	size_t off = 0;
+	int err = 0;
+	while( off < (size_t) n + 4 ) {
+		ssize_t w = off == 0 ? sendmsg(sock, &msg, 0) : send(sock, buf+off, (size_t) n + 4 - off, 0);
+		if( w < 0 && errno == EINTR ) {
+			continue;
+		}
+		if( w <= 0 ) {
+			err = w < 0 ? errno : EPIPE;
+			break;
+		}
+		off += (size_t) w;
+	}
+	free(buf);
+	return -err;
+}

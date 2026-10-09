@@ -215,6 +215,22 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_strerror0
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    socketPair0
+ * Signature: ()[I
+ */
+JNIEXPORT jintArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_socketPair0
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    sendWithDescriptors0
+ * Signature: (I[B[I)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_sendWithDescriptors0
+  (JNIEnv *, jclass, jint, jbyteArray, jintArray);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    columns0
  * Signature: ()I
  */

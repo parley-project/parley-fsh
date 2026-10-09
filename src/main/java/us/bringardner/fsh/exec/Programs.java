@@ -508,7 +508,9 @@ public final class Programs {
 						NativeKeyboard.processGroup(p.pid(), group);
 					}
 				} else {
-					p = NativeProcess.start(builder);
+					// in a subshell with a process of its own: its child, as in bash
+					us.bringardner.fsh.StandIn standIn = ctx.programsStandIn();
+					p = standIn != null ? NativeProcess.start(builder, standIn) : NativeProcess.start(builder);
 				}
 				// stopped (Ctrl-Z), continued and signalled with its job
 				if( job != null ) {

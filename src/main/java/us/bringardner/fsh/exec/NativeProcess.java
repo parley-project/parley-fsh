@@ -47,8 +47,36 @@ public final class NativeProcess extends Process {
 
 	/** builder's program started: by the library if it can, else by the builder */
 	public static Process start(ProcessBuilder builder) throws IOException {
-		return usable() ? new NativeProcess(builder) : builder.start();
+		return usable() ? new NativeProcess(builder, DIRECT, null) : builder.start();
 	}
+
+	/** start, by spawner (a subshell's stand-in, whose child it is) */
+	public static Process start(ProcessBuilder builder, Spawner spawner) throws IOException {
+		return usable() ? new NativeProcess(builder, spawner, null) : builder.start();
+	}
+
+	/** start (by the library), with the shell's descriptor extra[i+1] as its extra[i] too */
+	public static Process start(ProcessBuilder builder, int [] extra) throws IOException {
+		return new NativeProcess(builder, DIRECT, extra);
+	}
+
+	/** what starts a program, and tells it when it ends (see exited) */
+	public interface Spawner {
+		/**
+		 * Start path (see NativeKeyboard.spawn0) for process.
+		 * @return its process id, or -errno
+		 */
+		int spawn(byte [] path, byte [][] argv, byte [][] envp, byte [] dir, int [] fds, NativeProcess process);
+	}
+
+	/** the shell starts it and waits for it itself */
+	public static final Spawner DIRECT = (path, argv, envp, dir, fds, process) -> {
+		int pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, -1);
+		if( pid > 0 ) {
+			Thread.ofPlatform().daemon().name("fsh wait "+pid).stackSize(64*1024).start(() -> process.exited(NativeKeyboard.waitExit0(pid)));
+		}
+		return pid;
+	};
 
 	private final int pid;
 	private final OutputStream stdin;
@@ -58,7 +86,7 @@ public final class NativeProcess extends Process {
 	/** its exit value once it has ended */
 	private volatile int exitValue;
 
-	private NativeProcess(ProcessBuilder builder) throws IOException {
+	private NativeProcess(ProcessBuilder builder, Spawner spawner, int [] extra) throws IOException {
 		List<String> command = builder.command();
 		if( command.isEmpty()) {
 			throw new IndexOutOfBoundsException();
@@ -71,7 +99,10 @@ public final class NativeProcess extends Process {
 		// shell's to close once it has started; parent: the shell's ends of its pipes
 		List<Integer> close = new ArrayList<>();
 		int [] parent = {-1, -1, -1};
-		int [] fds = new int[6];
+		int [] fds = new int[6+(extra == null ? 0 : extra.length)];
+		if( extra != null ) {
+			System.arraycopy(extra, 0, fds, 6, extra.length);
+		}
 		try {
 			Redirect in = builder.redirectInput();
 			fds[0] = 0;
@@ -92,7 +123,7 @@ public final class NativeProcess extends Process {
 			for(Map.Entry<String,String> e : environment.entrySet()) {
 				envp[i++] = bytes(e.getKey()+"="+e.getValue());
 			}
-			int ret = path == null ? -2 : NativeKeyboard.spawn0(bytes(path), argv, envp, dir == null ? null : bytes(dir.getPath()), fds, -1);
+			int ret = path == null ? -2 : spawner.spawn(bytes(path), argv, envp, dir == null ? null : bytes(dir.getPath()), fds, this);
 			if( ret < 0 ) {
 				// (as the ProcessBuilder says it: error=2 is "command not found")
 				throw new IOException("Cannot run program \""+program+"\""+(dir == null ? "" : " (in directory \""+dir+"\")")
@@ -114,14 +145,14 @@ public final class NativeProcess extends Process {
 		stdin = parent[0] < 0 ? OutputStream.nullOutputStream() : new FileOutputStream(NativeKeyboard.fd0(parent[0]));
 		stdout = parent[1] < 0 ? InputStream.nullInputStream() : new FileInputStream(NativeKeyboard.fd0(parent[1]));
 		stderr = parent[2] < 0 ? InputStream.nullInputStream() : new FileInputStream(NativeKeyboard.fd0(parent[2]));
+	}
 
-		Thread.ofPlatform().daemon().name("fsh wait "+pid).stackSize(64*1024).start(() -> {
-			int status = NativeKeyboard.waitExit0(pid);
-			int signal = status & 0x7f;
-			// (as Java's: 128 + the signal that ended it)
-			exitValue = status < 0 ? 127 : signal == 0 ? (status >> 8) & 0xff : 0x80+signal;
-			exit.complete(this);
-		});
+	/** it ended with wait status status (-1: not known) */
+	public void exited(int status) {
+		int signal = status & 0x7f;
+		// (as Java's: 128 + the signal that ended it)
+		exitValue = status < 0 ? 127 : signal == 0 ? (status >> 8) & 0xff : 0x80+signal;
+		exit.complete(this);
 	}
 
 	/**
