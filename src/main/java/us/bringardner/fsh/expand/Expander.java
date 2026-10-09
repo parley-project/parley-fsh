@@ -1166,8 +1166,10 @@ public final class Expander {
 			Object v = sc.getVariable(n);
 			ret = Val.of(str(ShellContext.firstElement(v)));
 		} else if( e.subscript == null && isName(n) && refToElement(n) != null ) {
-			// a nameref to an element (declare -n r='x[2]'): that element
-			return base(refToElement(n), unbound);
+			// a nameref to an element (declare -n r='x[2]'): that element (set -u says r)
+			ParamExpr element = refToElement(n);
+			element.via = n;
+			return base(element, unbound);
 		} else {
 			Object v = sc.getVariable(n);
 			if( e.subscript == null ) {

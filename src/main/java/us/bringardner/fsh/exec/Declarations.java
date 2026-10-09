@@ -280,7 +280,7 @@ public final class Declarations {
 				status = 1;
 				continue;
 			}
-			if( text == null && assignment == null && o.indexOf('n') < 0 && !remove && !isLocal
+			if( text == null && assignment == null && o.indexOf('n') < 0 && !remove && !isLocal && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0)
 					&& !(local && !sc.hasLocal(name)) && sc.rawVariable(name) instanceof ShellContext.NameRef
 					&& sc.resolveName(name).indexOf('[') > 0 ) {
 				// declare -A r of a nameref to an element (r=a[1]): nothing, as bash's
@@ -329,7 +329,10 @@ public final class Declarations {
 			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef empty && empty.target().isEmpty()
 					&& !(local && sc.isInFunction() && !sc.isOwnLocal(name))) {
 				if( o.indexOf('a') >= 0 || o.indexOf('A') >= 0 ) {
-					// declare -a of a nameref with no value: an array
+					// declare -a of a nameref with no value: an array (with an element: said)
+					if( assignment != null && assignment.index != null ) {
+						sc.error("warning: "+name+": removing nameref attribute");
+					}
 					sc.unSetVariable(name, false);
 				} else if( assignment != null && assignment.index == null && assignment.array == null || text != null ) {
 					// declare r=v of a nameref with no value: v is what it names (one that is no name:
@@ -575,9 +578,13 @@ public final class Declarations {
 					}
 				}
 				if( ref.target().isEmpty()) {
-					// (naming nothing: declared, with no value)
+					// (naming nothing: declared, with no value; exported it stays so)
+					boolean exported = sc.getEvironmentVariable(name) != null || sc.console.pendingExports.contains(name);
 					sc.unSetVariable(name, false);
 					sc.console.declaredUnset.add(name);
+					if( exported ) {
+						sc.console.pendingExports.add(name);
+					}
 				} else if( local ) {
 					sc.setLocalVariable(name, ref.target());
 				} else {

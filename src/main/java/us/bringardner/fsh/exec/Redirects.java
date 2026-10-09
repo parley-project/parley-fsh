@@ -86,6 +86,9 @@ final class Redirects {
 		}
 	}
 
+	/** the name of the command whose redirects are being applied (errors about {name} say it) */
+	static final ThreadLocal<String> COMMAND = new ThreadLocal<>();
+
 	/** the redirects being applied are exec's, which stay (others are put back: the shell's streams are not closed) */
 	private static final ThreadLocal<Boolean> PERMANENT = ThreadLocal.withInitial(() -> false);
 
@@ -319,7 +322,8 @@ final class Redirects {
 		int bracket = name.indexOf('[');
 		if( bracket < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef nr && nr.target().isEmpty()) {
 			// a nameref with no value: a number is no name for it (said, and the redirect fails)
-			sc.error("`"+fd+"': not a valid identifier");
+			String cmd = COMMAND.get();
+			sc.error((cmd != null ? cmd+": " : "")+"`"+fd+"': not a valid identifier");
 			throw new RuntimeException(name+": cannot assign fd to variable");
 		}
 		if( bracket < 0 ) {

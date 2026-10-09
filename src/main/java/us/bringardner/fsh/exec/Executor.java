@@ -703,6 +703,8 @@ public final class Executor {
 			error(sc, "`"+k.name+"': not a valid identifier");
 			return 1;
 		}
+		// (a nameref's name is what it names, as bash's: NAME and NAME_PID are that one's)
+		String cname = sc.rawVariable(k.name) instanceof ShellContext.NameRef r && !r.target().isEmpty() && isName(r.target()) ? r.target() : k.name;
 		Pipe toCoproc = new Pipe();
 		Pipe fromCoproc = new Pipe();
 		int readFd = freeDescriptor(sc, 63, -1);
@@ -712,8 +714,8 @@ public final class Executor {
 		// (they stay after the command they are in)
 		sc.console.keptFds.put(readFd, sc.console.getFileDistcriptor(readFd));
 		sc.console.keptFds.put(writeFd, sc.console.getFileDistcriptor(writeFd));
-		sc.console.coprocFds.put(readFd, new String[] {k.name, "0"});
-		sc.console.coprocFds.put(writeFd, new String[] {k.name, "1"});
+		sc.console.coprocFds.put(readFd, new String[] {cname, "0"});
+		sc.console.coprocFds.put(writeFd, new String[] {cname, "1"});
 		Console.FileDiscriptor readDescriptor = sc.console.getFileDistcriptor(readFd);
 		Console.FileDiscriptor writeDescriptor = sc.console.getFileDistcriptor(writeFd);
 		ShellContext ctx = sc.subShell();
@@ -738,14 +740,14 @@ public final class Executor {
 		fds.add(String.valueOf(readFd));
 		fds.add(String.valueOf(writeFd));
 		// (a readonly name is said, and keeps its value; then NAME_PID is not set)
-		if( sc.console.isReadonly(sc.readonlyName(k.name))) {
-			error(sc, sc.readonlyName(k.name)+": readonly variable");
-		} else if( sc.console.isReadonly(sc.readonlyName(k.name+"_PID"))) {
-			sc.setVariable(k.name, fds);
-			error(sc, sc.readonlyName(k.name+"_PID")+": readonly variable");
+		if( sc.console.isReadonly(sc.readonlyName(cname))) {
+			error(sc, sc.readonlyName(cname)+": readonly variable");
+		} else if( sc.console.isReadonly(sc.readonlyName(cname+"_PID"))) {
+			sc.setVariable(cname, fds);
+			error(sc, sc.readonlyName(cname+"_PID")+": readonly variable");
 		} else {
-			sc.setVariable(k.name, fds);
-			sc.setVariable(k.name+"_PID", String.valueOf(job.pid));
+			sc.setVariable(cname, fds);
+			sc.setVariable(cname+"_PID", String.valueOf(job.pid));
 		}
 		// when it is done and reaped, NAME and NAME_PID are unset (a readonly NAME is said)
 		sc.console.jobManager.whenRemoved(job, () -> {
@@ -758,14 +760,15 @@ public final class Executor {
 					sc.console.closeFileDistcriptor(fd);
 				}
 			}
-			String n = sc.readonlyName(k.name);
-			if( sc.console.isReadonly(n)) {
-				error(sc, n+": cannot unset: readonly variable");
+			// (as bash's unbind_variable_noref: the names themselves, not what a nameref names)
+			if( sc.console.isReadonly(cname)) {
+				error(sc, cname+": cannot unset: readonly variable");
 			} else {
-				sc.unSetVariable(k.name, true);
+				sc.unSetVariable(cname, false);
 			}
-			sc.console.clearReadonly(k.name+"_PID");
-			sc.unSetVariable(k.name+"_PID", true);
+			sc.console.clearReadonly(cname+"_PID");
+			sc.unSetVariable(cname+"_PID", false);
+			sc.console.declaredUnset.remove(cname+"_PID");
 		});
 		return 0;
 	}
@@ -1941,7 +1944,12 @@ public final class Executor {
 				// on the shell's standard error, not the command's (2>&1 does not take it)
 				trace(name, args, sc);
 			}
-			opened = Redirects.apply(c.redirects, sc, ex, keepRedirects);
+			Redirects.COMMAND.set(name);
+			try {
+				opened = Redirects.apply(c.redirects, sc, ex, keepRedirects);
+			} finally {
+				Redirects.COMMAND.remove();
+			}
 			ret = dispatch(name, args, sc, ex);
 		} catch (ReturnException e) {
 			status = e.exitCode;
