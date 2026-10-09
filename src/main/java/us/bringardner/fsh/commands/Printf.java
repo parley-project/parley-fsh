@@ -456,6 +456,12 @@ public class Printf extends ShellCommand{
 			case 'd': ret.append(String.format("%02d", t.getDayOfMonth())); break;
 			case 'e': ret.append(String.format("%2d", t.getDayOfMonth())); break;
 			case 'j': ret.append(String.format("%03d", t.getDayOfYear())); break;
+			// weeks: of the year starting on Sunday (%U) or Monday (%W), ISO 8601's (%V, %G, %g)
+			case 'U': ret.append(String.format("%02d", (t.getDayOfYear()-1+7-t.getDayOfWeek().getValue()%7)/7)); break;
+			case 'W': ret.append(String.format("%02d", (t.getDayOfYear()-1+7-(t.getDayOfWeek().getValue()+6)%7)/7)); break;
+			case 'V': ret.append(String.format("%02d", t.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR))); break;
+			case 'G': ret.append(t.get(java.time.temporal.IsoFields.WEEK_BASED_YEAR)); break;
+			case 'g': ret.append(String.format("%02d", t.get(java.time.temporal.IsoFields.WEEK_BASED_YEAR)%100)); break;
 			case 'H': ret.append(String.format("%02d", t.getHour())); break;
 			case 'k': ret.append(String.format("%2d", t.getHour())); break;
 			case 'I': ret.append(String.format("%02d", (t.getHour()+11)%12+1)); break;
