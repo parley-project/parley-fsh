@@ -317,7 +317,9 @@ public class Completion implements LineEditor.Completer {
 			Map<String, Boolean> isDir = new java.util.HashMap<>();
 			for(FileSource k : kids) {
 				String name = k.getName();
-				if( !name.startsWith(namePart) || name.startsWith(".") && !namePart.startsWith(".")) {
+				// (hidden files too, with readline's match-hidden-files on, as it is at the start)
+				if( !starts(name, namePart) || name.startsWith(".") && !namePart.startsWith(".")
+						&& !"on".equalsIgnoreCase(LineEditor.VARIABLES.getOrDefault("match-hidden-files", "on"))) {
 					continue;
 				}
 				boolean directory = k.isDirectory();
@@ -416,9 +418,15 @@ public class Completion implements LineEditor.Completer {
 		return ret;
 	}
 
+	/** name starts with prefix (in any case, with readline's completion-ignore-case on) */
+	static boolean starts(String name, String prefix) {
+		boolean ignore = "on".equalsIgnoreCase(LineEditor.VARIABLES.getOrDefault("completion-ignore-case", "off"));
+		return name.regionMatches(ignore, 0, prefix, 0, prefix.length());
+	}
+
 	private static void add(Set<String> to, Collection<String> names, String word) {
 		for(String n : names) {
-			if( n.startsWith(word)) {
+			if( starts(n, word)) {
 				to.add(n);
 			}
 		}
@@ -435,7 +443,7 @@ public class Completion implements LineEditor.Completer {
 			File[] kids = new File(dir.isEmpty() ? "." : dir).listFiles();
 			if( kids != null ) {
 				for(File f : kids) {
-					if( f.getName().startsWith(word) && f.isFile() && f.canExecute()) {
+					if( starts(f.getName(), word) && f.isFile() && f.canExecute()) {
 						ret.add(f.getName());
 					}
 				}
