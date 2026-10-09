@@ -79,10 +79,21 @@ public class Set extends ShellCommand{
 					// -o name is read below, one letter at a time (this turned on the option named o)
 					o1 = Option.Unsupported;
 				}
+				if( o1 == Option.RistrictectShell && !set ) {
+					// (a restricted shell stays so)
+					ctx.error("set: +r: invalid option");
+					ctx.stderr.println("set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]");
+					return 2;
+				}
 				if( o1 != Option.Unsupported) {
 					ctx.console.setOption(o1, set);	
 				} else {
 					for(char c : val.substring(1).toCharArray()) {
+						if( c == 'r' && set ) {
+							// a restricted shell (for good)
+							ctx.console.setRestricted();
+							continue;
+						}
 						Option o = Option.find(""+c);
 
 						if( o == Option.Unsupported) {

@@ -105,6 +105,17 @@ public class Hash extends ShellCommand {
 		for(; idx < args.length; idx++) {
 			String n = ""+args[idx].getValue(ctx);
 			if( pathname != null ) {
+				if( ctx.console.restricted && pathname.contains("/")) {
+					// (a restricted shell: no path with a /)
+					ctx.error("hash: "+pathname+": restricted");
+					return 1;
+				}
+				if( ctx.console.restricted && us.bringardner.fsh.exec.Programs.which(pathname, ctx) == null ) {
+					// (one it does not find in PATH)
+					ctx.error("hash: "+pathname+": not found");
+					ret = 1;
+					continue;
+				}
 				if( ctx.getFileSource(pathname).isDirectory()) {
 					ctx.error("hash: "+pathname+": Is a directory");
 					ret = 1;

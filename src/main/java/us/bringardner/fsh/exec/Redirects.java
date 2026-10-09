@@ -183,6 +183,11 @@ final class Redirects {
 	}
 
 	private static void redirectTo(Ast.Redirect r, ShellContext sc, Expander ex, List<Closeable> opened, Integer fd) throws IOException {
+		if( sc.console.restricted && r.hereDoc == null && (r.op.equals(">") || r.op.equals(">|") || r.op.equals(">>") || r.op.equals("&>")
+				|| r.op.equals("&>>") || r.op.equals("<>") || r.op.equals(">&") && fd == null && !isDescriptor(target(r, ex)))) {
+			// (a restricted shell: no output to files)
+			throw new IOException(target(r, ex)+": restricted: cannot redirect output");
+		}
 		if( r.hereDoc != null ) {
 			String body = r.hereDoc.body == null ? "" : r.hereDoc.body;
 			if( !r.hereDoc.quoted ) {

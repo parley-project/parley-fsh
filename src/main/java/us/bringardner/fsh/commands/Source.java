@@ -34,6 +34,20 @@ public class Source extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx)  {
+		if( ctx.console.restricted ) {
+			// (a file name with a / in it: restricted)
+			for(us.bringardner.fsh.Argument a : args) {
+				String w = ""+a.getValue(ctx);
+				if( w.startsWith("-") && !w.equals("-") ) {
+					continue;
+				}
+				if( w.contains("/")) {
+					ctx.error(getName()+": "+w+": restricted");
+					return 1;
+				}
+				break;
+			}
+		}
 		int first = 0;
 		// -p path: where a name with no / is looked for (in place of PATH)
 		String searchPath = null;

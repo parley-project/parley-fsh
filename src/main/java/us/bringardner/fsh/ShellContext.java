@@ -457,6 +457,22 @@ $
 			error("`"+index+"': invalid alias name");
 			return;
 		}
+		if( name.equals("BASH_CMDS") && console.restricted && !console.unsetSpecials.contains(name) && String.valueOf(value).contains("/")) {
+			// (a restricted shell: no path with a /)
+			error(value+": restricted");
+			return;
+		}
+		if( name.equals("BASH_CMDS") && console.restricted && !console.unsetSpecials.contains(name)) {
+			FileSource found = null;
+			try {
+				found = us.bringardner.fsh.exec.Programs.which(String.valueOf(value), this);
+			} catch (IOException e) {
+			}
+			if( found == null ) {
+				error(value+": not found");
+				return;
+			}
+		}
 		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && !console.unsetSpecials.contains(name)) {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> m = (Map<String, Object>) getVariable(name);

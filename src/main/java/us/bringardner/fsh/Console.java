@@ -1092,12 +1092,28 @@ delimiter
 	}
 
 	/** the option letters of $-, in bash's order (h is always on; i and m in an interactive shell) */
+	/**
+	 * set -r (or rbash's -r): a restricted shell, as bash's: no cd, no / in command names, no
+	 * output redirects, PATH SHELL ENV BASH_ENV HISTFILE readonly; it cannot be undone.
+	 */
+	public boolean restricted;
+
+	public void setRestricted() {
+		if( !restricted ) {
+			restricted = true;
+			for(String n : List.of("PATH", "SHELL", "ENV", "BASH_ENV", "HISTFILE")) {
+				setReadonly(n);
+			}
+		}
+	}
+
 	public String optionFlags() {
 		StringBuilder ret = new StringBuilder();
 		List<Option> on = getOptions();
 		for(char c : "abefhikmnprtuvxBCEHPT".toCharArray()) {
 			boolean set = switch (c) {
 			case 'i' -> isInteractive;
+			case 'r' -> restricted;
 			default -> {
 				Option o = Option.find(String.valueOf(c));
 				yield o != Option.Unsupported && on.contains(o);
@@ -3188,6 +3204,13 @@ delimiter
 
 
 	public void setOption(Option o,boolean enable) {
+		if( o == Option.RistrictectShell ) {
+			// set -r: restricted for good (set +r is refused by set)
+			if( enable ) {
+				setRestricted();
+			}
+			return;
+		}
 		if( o == Option.Posix && enable ) {
 			// as bash: posix mode turns on expand_aliases
 			getShellOptions().put("expand_aliases", true);

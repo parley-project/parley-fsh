@@ -2220,6 +2220,11 @@ public final class Executor {
 				// exec >file: the redirects stay
 				return 0;
 			}
+			if( sc.console.restricted ) {
+				// (a restricted shell is not replaced)
+				error(sc, "exec: restricted");
+				return 1;
+			}
 			break;
 		default:
 		}
@@ -2287,6 +2292,11 @@ public final class Executor {
 				ret = 1;
 			}
 			return ret;
+		}
+		if( sc.console.restricted && name.contains("/")) {
+			// (a restricted shell: no / in a command's name)
+			error(sc, name+": restricted: cannot specify `/' in command names");
+			return 1;
 		}
 		return Programs.run(name, strings(args), sc);
 	}

@@ -36,6 +36,11 @@ public class CommandCmd extends ShellCommand{
 				idx++;
 				break;
 			} else if( a.matches("-[pvV]+")) {
+				if( a.contains("p") && ctx.console.restricted ) {
+					// (a restricted shell: no -p)
+					ctx.error("command: -p: restricted");
+					return 1;
+				}
 				// (-pv, -Vp ...)
 				if( a.contains("V")) {
 					mode = "-V";

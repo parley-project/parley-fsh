@@ -22,6 +22,10 @@ public class Cd extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
+		if( ctx.console.restricted ) {
+			ctx.error(getName()+": restricted");
+			return 1;
+		}
 		int ret = 0;
 		boolean follow = false;
 		List<String> sargs = new ArrayList<>();
