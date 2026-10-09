@@ -667,17 +667,21 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		} catch (Throwable e) {
 			availible = false;
 		}
-		if( !availible && NATIVE_IMAGE ) {
+		if( NATIVE_IMAGE ) {
 			// (no launcher gives a native image its library path: the library and fshexec are next to it)
 			String exe = ProcessHandle.current().info().command().orElse(null);
 			java.io.File dir = exe == null ? null : new java.io.File(exe).getParentFile();
-			if( dir != null && new java.io.File(dir, System.mapLibraryName("nativekeyboard")).isFile()) {
-				try {
-					System.load(new java.io.File(dir, System.mapLibraryName("nativekeyboard")).getPath());
-					availible = true;
-					System.setProperty("java.library.path", dir.getPath());
-				} catch (Throwable e) {
+			if( dir != null ) {
+				if( !availible && new java.io.File(dir, System.mapLibraryName("nativekeyboard")).isFile()) {
+					try {
+						System.load(new java.io.File(dir, System.mapLibraryName("nativekeyboard")).getPath());
+						availible = true;
+					} catch (Throwable e) {
+					}
 				}
+				// (where helper() finds fshexec)
+				String path = System.getProperty("java.library.path", "");
+				System.setProperty("java.library.path", path.isEmpty() ? dir.getPath() : dir.getPath()+java.io.File.pathSeparator+path);
 			}
 		}
 	}

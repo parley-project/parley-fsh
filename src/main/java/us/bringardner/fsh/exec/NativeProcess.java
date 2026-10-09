@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -243,8 +242,9 @@ public final class NativeProcess extends Process {
 		return null;
 	}
 
+	/** (as the shell has them: bytes that are not UTF-8 are as they were, see RawUtf8) */
 	private static byte [] bytes(String s) {
-		return s.getBytes(StandardCharsets.UTF_8);
+		return s.getBytes(us.bringardner.fsh.RawUtf8.CHARSET);
 	}
 
 	@Override
