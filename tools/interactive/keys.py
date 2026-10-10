@@ -1,7 +1,7 @@
 """keys.py [shell...]: type the same keys into bash and fsh at a terminal (a pty) and compare what
 the edited commands did. Each test types a line (with editing keys) whose command writes its result
 to the file o; o is compared. FSH_WORK: the scratch directory (bt/fsh, tmp/)."""
-import os, pty, re, select, shutil, sys, time
+import fcntl, os, pty, re, select, shutil, struct, sys, termios, time
 
 SP = os.environ.get("FSH_WORK", "/Volumes/Data/claude-work/fsh-session")
 SHELLS = sys.argv[1:] or ["/usr/local/bin/bash", SP + "/bt/fsh"]
@@ -63,6 +63,11 @@ TESTS = {
     "screen-many-completions": (["touch f{01..120}"], ["echo f", TAB, TAB, "n", C("c")]),
     "screen-ctrl-c": ([], ["echo partial", C("c")]),
     "screen-history-list": (["echo one", "echo two"], ["history 3", ENTER]),
+    "screen-ps1": (["PS1='[\\u:\\W]\\$ '"], ["echo hi", ENTER]),
+    "screen-ps2": ([], ["for i in 1; do", ENTER, "echo $i", ENTER, "done", ENTER]),
+    "screen-ps0": (["PS0='ps0\\n'"], ["echo hi", ENTER]),
+    "screen-prompt-command": (["PROMPT_COMMAND='echo pc'"], [ENTER, "echo hi", ENTER]),
+    "screen-pager": (["touch g{001..400}"], ["echo g", TAB, TAB, "y", " ", "q", C("c")]),
 }
 
 def screen_lines(text):
@@ -108,6 +113,8 @@ def run(shell, setup, keys, work, screen=False):
     if pid == 0:
         os.chdir(work)
         os.execve(shell, args, env)
+    # (24 lines of 80: completion lists and the pager as on a terminal of that size)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
     out = b""
     def pump(t):
         nonlocal out
@@ -135,7 +142,8 @@ def run(shell, setup, keys, work, screen=False):
         pass
     os.waitpid(pid, 0)
     if screen:
-        return "\n".join(l for l in screen_lines(out.decode("utf-8", "replace")) if l and not l.startswith("$ ") and l != "exit")
+        text = out.decode("utf-8", "replace").replace(os.path.basename(work), "W")
+        return "\n".join(l for l in screen_lines(text) if l and not l.startswith("$ ") and l != "exit")
     try:
         return open(os.path.join(work, "o")).read().replace(work, "W").replace(os.path.basename(work), "W")
     except OSError:
