@@ -47,4 +47,8 @@ if [ ! -f "$cache" ] && [ ! -f "$cache.none" ] || [ "$jar" -nt "$cache" ] && [ "
 fi
 [ -f "$cache" ] && aot="-XX:+IgnoreUnrecognizedVMOptions -XX:AOTCache=$cache -Xlog:aot=off -Xlog:cds=off"
 
+# (through fshexec -j: the signals the shell was started ignoring, which the JVM may take over)
+if [ -x "$LIB_DIR/fshexec" ]; then
+	exec "$LIB_DIR/fshexec" -j java $aot $opts -cp "$cp" us.bringardner.fsh.Console "$@"
+fi
 exec java $aot $opts -cp "$cp" us.bringardner.fsh.Console "$@"

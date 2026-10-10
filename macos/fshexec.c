@@ -1,6 +1,7 @@
 /*
  * fshexec -s [-g]
  * fshexec -u | -G
+ * fshexec -j program [args...]
  * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [-I SIG,...] [--] program [args...]
  *
  * Runs a program for fsh as bash would run it.
@@ -23,6 +24,9 @@
  *     group of its own (a job's, with job control: the job's programs join it, $! is the group).
  *     If its input is a socket (both its input and output), it also starts the subshell's
  *     programs, so that they are its children as in bash: see standIn.
+ * -j: run program (java, for fsh) with -Dfsh.ignoredAtStart=SIG,... first: the signals this was
+ *     started ignoring. The JVM takes some signals for itself (QUIT, USR2) before fsh can see that
+ *     its caller ignored them, which bash would keep ignored (trap -p shows them).
  * -u, -G: the system's user (or group) names, one a line, in its order (getpwent, getgrent: what
  *     bash's compgen -u and -g list; Java cannot read them).
  * -I: the program ignores these signals (by number), as the shell does (trap '' INT): Java
@@ -369,6 +373,26 @@ int main(int argc, char **argv) {
 			setpgid(0, 0);
 		}
 		return standIn();
+	}
+	if( argc >= 3 && strcmp(argv[1], "-j") == 0 ) {
+		char ignoring[512] = "-Dfsh.ignoredAtStart=";
+		for(int sig = 1; sig < NSIG; sig++) {
+			struct sigaction old;
+			if( sigaction(sig, NULL, &old) == 0 && old.sa_handler == SIG_IGN ) {
+				char n[8];
+				snprintf(n, sizeof n, "%s%d", ignoring[strlen(ignoring)-1] == '=' ? "" : ",", sig);
+				strncat(ignoring, n, sizeof ignoring - strlen(ignoring) - 1);
+			}
+		}
+		char **args = (char **) calloc((size_t) argc+1, sizeof(char *));
+		args[0] = argv[2];
+		args[1] = ignoring;
+		for(int k = 3; k < argc; k++) {
+			args[k-1] = argv[k];
+		}
+		execvp(argv[2], args);
+		fprintf(stderr, "fshexec: %s: %s\n", argv[2], strerror(errno));
+		return 127;
 	}
 	if( argc == 2 && strcmp(argv[1], "-u") == 0 ) {
 		struct passwd *pw;

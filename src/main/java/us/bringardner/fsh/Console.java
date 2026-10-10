@@ -637,6 +637,13 @@ delimiter
 	 */
 	private static void registerSignals() {
 		Map<Integer, String> signals = Trap.getLocalSignals();
+		// the signals the launcher saw ignored before the JVM took some for itself (fshexec -j)
+		java.util.Set<Integer> launcherIgnored = new java.util.HashSet<>();
+		for(String n : System.getProperty("fsh.ignoredAtStart", "").split(",")) {
+			if( n.matches("[0-9]{1,3}")) {
+				launcherIgnored.add(Integer.parseInt(n));
+			}
+		}
 		for(Integer  i : signals.keySet()) {
 			String name = signals.get(i);
 			Signal signal = new Signal(name);
@@ -647,8 +654,12 @@ delimiter
 						c.osSignal(s.getNumber(), name);
 					}
 				};
+				if( launcherIgnored.contains(signal.getNumber()) && !name.equals("PIPE") && !name.equals("CHLD")) {
+					// (ignored when the shell started, though the JVM may handle it now)
+					SignalState.IGNORED_AT_START.add(signal.getNumber());
+				}
 				sun.misc.SignalHandler old = Signal.handle(signal, handler);
-				if( old == sun.misc.SignalHandler.SIG_IGN && !name.equals("PIPE") && !name.equals("CHLD")) {
+				if( (old == sun.misc.SignalHandler.SIG_IGN || launcherIgnored.contains(signal.getNumber())) && !name.equals("PIPE") && !name.equals("CHLD")) {
 					// ignored when the shell started: it stays so, and cannot be trapped (bash's)
 					Signal.handle(signal, sun.misc.SignalHandler.SIG_IGN);
 					SignalState.IGNORED_AT_START.add(signal.getNumber());
@@ -3870,6 +3881,7 @@ delimiter
 	 */
 	public java.util.Set<Integer> ignoredSignals(ShellContext ctx) {
 		java.util.Set<Integer> ret = new java.util.TreeSet<>(SignalState.IGNORED_AT_START);
+		ret.addAll(ignoredAtStart);
 		for(Map.Entry<Integer,List<ConsoleSignalHandler>> e : trapsFor(ctx).entrySet()) {
 			List<ConsoleSignalHandler> h = e.getValue();
 			if( !h.isEmpty() && h.get(h.size()-1).action.isEmpty()) {
@@ -4384,7 +4396,7 @@ delimiter
 
 	/** trap action SIG: the action replaces the one before; null removes it */
 	public void setTrap(ShellContext ctx, Signal signal, String action) {
-		if( SignalState.IGNORED_AT_START.contains(signal.getNumber())) {
+		if( SignalState.IGNORED_AT_START.contains(signal.getNumber()) || ignoredAtStart.contains(signal.getNumber())) {
 			// (ignored when the shell started: it cannot be trapped or reset)
 			return;
 		}
@@ -4421,6 +4433,21 @@ delimiter
 		try {
 			Signal.handle(signal, ignore ? sun.misc.SignalHandler.SIG_IGN : handler);
 		} catch (Exception e) {
+		}
+	}
+
+	/**
+	 * The signals this shell started ignoring as a script run by another one (no #!: run in its
+	 * process, as bash runs it in a new one): those the other ignored (trap '' SIG), which bash's
+	 * would get ignored, so they cannot be trapped and trap -p shows them.
+	 */
+	private final java.util.Set<Integer> ignoredAtStart = ConcurrentHashMap.newKeySet();
+
+	/** this shell starts ignoring signals (see ignoredAtStart) */
+	public void inheritIgnored(java.util.Set<Integer> signals) {
+		ignoredAtStart.addAll(signals);
+		for(int n : signals) {
+			osSignalHandlers.computeIfAbsent(n, k -> new CopyOnWriteArrayList<>(List.of(new ConsoleSignalHandler(null, ""))));
 		}
 	}
 

@@ -2576,6 +2576,8 @@ $
 			}
 			sub.setPositionalParameters(true, tmp);
 			sub.setDebugContext(console.getDebugContext());
+			// (the signals this ignores: ignored when it starts, as a program's would be)
+			sub.inheritIgnored(console.ignoredSignals(this));
 			// the exported variables and functions, as a program would get them
 			for(Map.Entry<String,Object> e : getEnvironmentVariables().entrySet()) {
 				sub.setEnvironmentVariable(e.getKey(), e.getValue());
