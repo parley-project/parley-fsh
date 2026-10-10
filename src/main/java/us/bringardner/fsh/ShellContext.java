@@ -2167,7 +2167,9 @@ $
 	/** a scalar value as the variable's case attribute makes it */
 	/** a value assigned to name (or to one of its elements), as its -l -u -c attribute makes it */
 	public Object cased(String name, Object value) {
-		return withCase(resolveName(name).replaceAll("\\[.*", ""), value);
+		String n = resolveName(name);
+		int b = n.indexOf('[');
+		return withCase(b < 0 ? n : n.substring(0, b), value);
 	}
 
 	private Object withCase(String name, Object value) {

@@ -1120,7 +1120,7 @@ public final class Expander {
 			return true;
 		}
 		String op = e.op;
-		boolean conditional = op != null && op.matches(":?[-=?+]");
+		boolean conditional = op != null && CONDITIONAL_OPS.contains(op);
 		// (${x@a} and ${x@A} of an unset x are no error with set -u)
 		boolean attributes = false;
 		if( "@".equals(op) && e.arg != null && (e.arg.startsWith("a") || e.arg.startsWith("A"))) {
@@ -1260,6 +1260,9 @@ public final class Expander {
 	}
 
 	/** the value before the operator; unbound: set -u makes an unset one an error */
+	/** ${x-y} ${x:=y} ... : the operators that test whether x is set */
+	private static final java.util.Set<String> CONDITIONAL_OPS = java.util.Set.of("-", "=", "?", "+", ":-", ":=", ":?", ":+");
+
 	private Val base(ParamExpr e, boolean unbound) {
 		Val ret;
 		String n = e.name;

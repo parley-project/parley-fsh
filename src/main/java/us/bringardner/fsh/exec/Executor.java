@@ -1728,9 +1728,9 @@ public final class Executor {
 		}
 		case Ast.CondBinary b -> {
 			if( tracing(sc)) {
-				boolean arith = b.op().matches("-(eq|ne|lt|le|gt|ge)");
+				boolean arith = ARITHMETIC_TESTS.contains(b.op());
 				// (a pattern as it matches: its quoted characters escaped, a\*)
-				String right = arith ? ex.arithmeticOperand(b.right()) : b.op().matches("==?|!=") ? ex.pattern(b.right()) : ex.string(b.right());
+				String right = arith ? ex.arithmeticOperand(b.right()) : (b.op().equals("==") || b.op().equals("=") || b.op().equals("!=")) ? ex.pattern(b.right()) : ex.string(b.right());
 				traceTest(sc, not+traced(arith ? ex.arithmeticOperand(b.left()) : ex.string(b.left()))+" "+b.op()+" "+traced(right));
 			}
 			return binary(b, sc, ex);
@@ -1750,8 +1750,11 @@ public final class Executor {
 		}
 	}
 
+	/** [[ x -eq y ]] ...: the tests of numbers */
+	private static final java.util.Set<String> ARITHMETIC_TESTS = java.util.Set.of("-eq", "-ne", "-lt", "-le", "-gt", "-ge");
+
 	private boolean binary(Ast.CondBinary b, ShellContext sc, Expander ex) {
-		if( b.op().matches("-(eq|ne|lt|le|gt|ge)")) {
+		if( ARITHMETIC_TESTS.contains(b.op())) {
 			// arithmetic: a[subscript] in the operands as in (( ))
 			Number x = Arithmetic.evaluate(ex.arithmeticOperand(b.left()), sc);
 			Number y = Arithmetic.evaluate(ex.arithmeticOperand(b.right()), sc);

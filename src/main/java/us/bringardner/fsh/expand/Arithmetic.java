@@ -970,11 +970,26 @@ public class Arithmetic {
 		if( s.isBlank()) {
 			return ZERO;
 		}
-		if( s.matches("[1-9][0-9]{0,17}|0")) {
+		if( plainNumber(s)) {
 			// (the common case, without a parser)
 			return Long.parseLong(s);
 		}
 		// (as it is: an error shows its blanks)
 		return evaluate(s, ctx, depth+1);
+	}
+
+	/** s is 0 or a decimal number of up to 18 digits that does not start with 0 (no parse needed) */
+	private static boolean plainNumber(String s) {
+		int n = s.length();
+		if( n == 0 || n > 18 || s.charAt(0) == '0' && n > 1 ) {
+			return false;
+		}
+		for(int i = 0; i < n; i++) {
+			char c = s.charAt(i);
+			if( c < '0' || c > '9' ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }
