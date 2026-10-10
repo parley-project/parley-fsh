@@ -16,12 +16,7 @@ Key:
 
 ## Open
 
-- [ ] **array** (line 418): `echo "${letters["{2..6}"]}"`. bash brace-expands the `{2..6}` that sits
-  between the inner quotes (its brace scan treats `"${letters["` and `"]}"` as two quoted strings)
-  and prints `2 3 4 5 6`. fsh treats it as one subscript. This is an obscure lexical quirk; low
-  priority.
-- [ ] **exp** (exp8.sub): the error token for the key `x\001y\177z` is `"yz"` in fsh and `"z"` in
-  bash. This comes from bash's internal CTLESC quoting; low priority.
+(nothing open: the two remaining quirks are below, under "Bash internals")
 
 ## Keep (deliberate differences, no change)
 
@@ -37,6 +32,20 @@ Key:
 - **heredoc** (heredoc7.sub): fsh's line numbers after a multi-line `$( )`.
 - **parser, arith-for, history (`5.3`), new-exp (`\v`, `\s` prompts)**: these depend on the name
   `bash` or on `BASH_VERSION`, which fsh does not set.
+
+## Bash internals (not copied)
+
+Differences that come from bash's implementation leaking through, where copying bash would mean
+copying a bug. Decided 2026-10-10; reopen if wanted.
+
+- **exp** (exp8.sub): in an arithmetic subscript, bash treats `\001` (its internal CTLESC quote
+  byte) as quoting the next character, so `a=( [$'x\001yz']=foo )` has no error in bash (the
+  name is `xyz`), and for `x\001y\177z` the error token is `"z"`. fsh reads the bytes as they are,
+  so it reports an error (token `"yz"`). Found by probing `\001`, `\002` and `\177`: only
+  `\001` and `\177`, bash's two internal quote bytes, behave oddly; `\002` matches fsh.
+- **array** (line 418): `echo "${letters["{2..6}"]}"`. bash's brace expansion scans quotes
+  without knowing about `${ }`, so it sees `{2..6}` as unquoted between `"${letters["` and
+  `"]}"`, and prints `2 3 4 5 6`. fsh parses the nesting and treats it as one subscript.
 
 ## Bash quirk (fsh already matches bash's expected output)
 
