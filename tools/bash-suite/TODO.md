@@ -16,9 +16,6 @@ Key:
 
 ## Open
 
-- [ ] **read** (read7.sub): `read -t 0.00001 -e var` with stdin on /dev/null returns 1 (EOF);
-  bash returns >128 (the timeout fires before the read). It depends on timing, so it may not be
-  worth matching. Decide.
 - [ ] **array** (line 418): `echo "${letters["{2..6}"]}"`. bash brace-expands the `{2..6}` that sits
   between the inner quotes (its brace scan treats `"${letters["` and `"]}"` as two quoted strings)
   and prints `2 3 4 5 6`. fsh treats it as one subscript. This is an obscure lexical quirk; low
@@ -113,3 +110,9 @@ Key:
     came from `/bin/sh` (bash 3.2), which fsh uses to apply limits: fsh accepted every letter
     bash knows and passed it on, and the old sh rejected it in its own words. bash is built
     with only the limits the system has, so fsh now checks against the macOS set first.
+- [x] **read**: not a real difference. Run in the foreground, the read test matches bash (1 of
+  1). The "timeout 1: ok" line only differs when the suite runs as a background task.
+  - Notes: I first blamed `read -t 0.00001 -e` in read7.sub and planned to decide whether to
+    copy bash's timing. The full runs that showed the diff were background tasks, though, and
+    those get no terminal and SIGQUIT ignored (already known for trap). When comparing read
+    and trap, always rerun them in the foreground before treating a diff as real.
