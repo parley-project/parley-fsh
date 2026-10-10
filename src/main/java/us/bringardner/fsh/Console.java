@@ -1570,6 +1570,10 @@ delimiter
 			int line = 0;
 			int first = 1;
 			String ahead = null;
+			// code is not whole, and a line with one of these words may end it (null: any line)
+			java.util.Set<String> closers = null;
+			// the lines added since code was last parsed
+			int unchecked = 0;
 			while( !stopping ) {
 				String l = ahead != null ? ahead : next.get();
 				ahead = null;
@@ -1647,7 +1651,15 @@ delimiter
 				} else {
 					code.append('\n');
 				}
-				if( us.bringardner.fsh.syntax.Parser.isComplete(code.toString())) {
+				// (a long compound command (a function of a thousand lines) is not parsed again for
+				// each of its lines: only once a line may end it, and every 256 lines)
+				if( closers != null && !us.bringardner.fsh.syntax.Parser.mayClose(l, closers) && ++unchecked < 256 ) {
+					continue;
+				}
+				unchecked = 0;
+				us.bringardner.fsh.syntax.Parser.Completeness whole = us.bringardner.fsh.syntax.Parser.completeness(code.toString());
+				closers = whole.complete() ? null : whole.closers();
+				if( whole.complete()) {
 					int status = runChunk(code.toString(), first);
 					if( status < 0 ) {
 						// a syntax error ends the script

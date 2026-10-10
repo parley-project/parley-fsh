@@ -336,21 +336,69 @@ public final class Parser {
 		return p.hereDocumentOpen;
 	}
 
-	public static boolean isComplete(String code) {
+	/** the compound command the input ended in, when it was the outermost (if, case, {, ( ...) */
+	private String outerOpen;
+
+	/**
+	 * Whether code is whole; if not and it ends in a compound command (if, while, case, {, ( ...),
+	 * the words of which one must come for it to end (fi; done or }; esac ...), else null (it ends
+	 * in a quote, a here-document, after |: any line may end it). A shell reading a script a line
+	 * at a time need parse it again only once a line has one of them.
+	 */
+	public record Completeness(boolean complete, Set<String> closers) {
+	}
+
+	public static Completeness completeness(String code) {
 		int backslashes = 0;
 		for (int i = code.length()-1; i >= 0 && code.charAt(i) == '\\'; i--) {
 			backslashes++;
 		}
 		if( backslashes % 2 == 1 ) {
-			return false;
+			return new Completeness(false, null);
 		}
 		Parser p = new Parser(code);
 		try {
 			p.script();
 		} catch (SyntaxError e) {
-			return !e.endOfInput;
+			if( !e.endOfInput ) {
+				return new Completeness(true, null);
+			}
+			Set<String> closers = p.outerOpen == null ? null : switch (p.outerOpen) {
+			case "if" -> Set.of("fi");
+			case "while", "until", "for", "select" -> Set.of("done", "}");
+			case "case" -> Set.of("esac");
+			case "{" -> Set.of("}");
+			case "[[" -> Set.of("]]");
+			case "(" -> Set.of(")");
+			default -> null;
+			};
+			return new Completeness(false, closers);
 		}
-		return !p.hereDocumentOpen && p.pendingHereDocs.isEmpty();
+		return new Completeness(!p.hereDocumentOpen && p.pendingHereDocs.isEmpty(), null);
+	}
+
+	public static boolean isComplete(String code) {
+		return completeness(code).complete();
+	}
+
+	/** line may hold one of closers (see completeness): as a word of its own (an operator: anywhere) */
+	public static boolean mayClose(String line, Set<String> closers) {
+		for(String c : closers) {
+			int i = line.indexOf(c);
+			while( i >= 0 ) {
+				if( !Character.isLetterOrDigit(c.charAt(0)) && c.charAt(0) != '}' ) {
+					return true;
+				}
+				boolean before = i == 0 || " \t;&|()".indexOf(line.charAt(i-1)) >= 0;
+				int after = i+c.length();
+				boolean behind = after >= line.length() || " \t;&|()<>#".indexOf(line.charAt(after)) >= 0;
+				if( before && behind ) {
+					return true;
+				}
+				i = line.indexOf(c, i+1);
+			}
+		}
+		return false;
 	}
 
 	// ------------------------------------------------------------------ tokens
@@ -1657,6 +1705,12 @@ public final class Parser {
 				case "{": c = braceGroup(); break;
 				default: c = cond(); break;
 				}
+			} catch (SyntaxError e) {
+				if( e.endOfInput && open.size() == 1 ) {
+					// (what would end the command the input ended in: see closersIfIncomplete)
+					outerOpen = w;
+				}
+				throw e;
 			} finally {
 				open.remove(open.size()-1);
 			}
@@ -1664,6 +1718,11 @@ public final class Parser {
 			open.add(new int[] {t.start, lineOf(t.start)});
 			try {
 				c = parenCommand();
+			} catch (SyntaxError e) {
+				if( e.endOfInput && open.size() == 1 ) {
+					outerOpen = "(";
+				}
+				throw e;
 			} finally {
 				open.remove(open.size()-1);
 			}

@@ -44,6 +44,9 @@ CASES = {
   "brew-env": ("", HERE + "/brew-in.sh", ["--env"], BREW),
   "brew-config": ("", HERE + "/brew-in.sh", ["config"], BREW),
   "brew-commands": ("", HERE + "/brew-in.sh", ["commands"], BREW),
+  "cgal-cmakelists": ("printf 'int main(){return 0;}\\n' > t.cpp", "/usr/local/bin/cgal_create_CMakeLists", ["-s", "t"], {}),
+  "cgal-cmake-script": ("printf 'int main(){return 0;}\\n' > t.cpp", "/usr/local/bin/cgal_create_cmake_script", [], {}),
+  "genfio-help": ("", "/usr/local/bin/genfio", ["-h"], {}),
   "autoconf-version": ("", "/usr/local/bin/autoconf", ["--version"], {}),
   "gettextize-help": ("", "/usr/local/bin/gettextize", ["--help"], {}),
   "autopoint-version": ("", "/usr/local/bin/autopoint", ["--version"], {}),
@@ -90,7 +93,18 @@ def run(name, shell):
     except subprocess.TimeoutExpired as e:
         out, err, rc = e.stdout or b"", e.stderr or b"", "timeout"
     took = time.time() - t
-    files = sorted(os.path.relpath(os.path.join(p, f), d) for p, _, fs in os.walk(d) if "/.git" not in p + "/" for f in fs)
+    names = sorted(os.path.relpath(os.path.join(p, f), d) for p, _, fs in os.walk(d) if "/.git" not in p + "/" for f in fs)
+    # each file with what is in it (the work directory's name, which differs, as DIR)
+    files = []
+    for f in names:
+        try:
+            with open(os.path.join(d, f), "rb") as fh:
+                data = fh.read(200000)
+            # (binaries hold times, such as an archive's members': only text is compared)
+            text = "(binary)" if b"\0" in data else norm(data.decode("utf-8", "replace"), d, shell).replace(os.path.basename(d), "DIR")
+        except OSError:
+            text = "?"
+        files.append(f + "\n" + text)
     return (norm(out.decode('utf-8', 'replace'), d, shell), norm(err.decode('utf-8', 'replace'), d, shell), rc, files), took
 
 names = sys.argv[1:] or list(CASES)
