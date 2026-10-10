@@ -223,6 +223,14 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_strerror0
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    isatty0
+ * Signature: (I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isatty0
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    setOpenFilesLimit0
  * Signature: (J)I
  */

@@ -383,8 +383,9 @@ public class Test extends ShellCommand{
 			switch (fd) {
 			// (an interactive shell's commands read the terminal through its NativeKeyboard)
 			case 0: return ctx.stdin instanceof us.bringardner.fsh.NativeKeyboard || us.bringardner.fsh.Console.isKeyboard(ctx.stdin);
-			case 1: return ctx.stdout == us.bringardner.fsh.Console.System_out && us.bringardner.fsh.NativeKeyboard.terminal();
-			case 2: return ctx.stderr == us.bringardner.fsh.Console.System_err && us.bringardner.fsh.NativeKeyboard.terminal();
+			// (the shell's own output: its descriptor, whatever its input is)
+			case 1: return ctx.stdout == us.bringardner.fsh.Console.System_out && us.bringardner.fsh.NativeKeyboard.isatty(1);
+			case 2: return ctx.stderr == us.bringardner.fsh.Console.System_err && us.bringardner.fsh.NativeKeyboard.isatty(2);
 			default: return false;
 			}
 		}

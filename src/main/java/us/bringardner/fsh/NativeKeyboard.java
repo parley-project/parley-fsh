@@ -208,6 +208,22 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	public static native String strerror0(int err);
 
+	/** descriptor fd of this process is a terminal */
+	public static native boolean isatty0(int fd);
+
+	/** descriptor fd of this process is a terminal (false where that cannot be told) */
+	public static boolean isatty(int fd) {
+		if( !availible ) {
+			return false;
+		}
+		try {
+			return isatty0(fd);
+		} catch (UnsatisfiedLinkError e) {
+			// (a library from before it had it: as before, input and output together)
+			return terminal();
+		}
+	}
+
 	/** set the open-files soft limit (-1: unlimited): 0 or -errno */
 	public static native int setOpenFilesLimit0(long limit);
 

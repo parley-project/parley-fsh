@@ -735,3 +735,8 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_setOpenFilesLimit0
 	r.rlim_cur = limit < 0 ? RLIM_INFINITY : (rlim_t) limit;
 	return setrlimit(RLIMIT_NOFILE, &r) == 0 ? 0 : -errno;
 }
+
+/* descriptor fd (of this process) is a terminal */
+JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isatty0(JNIEnv *, jclass, jint fd) {
+	return isatty(fd) ? JNI_TRUE : JNI_FALSE;
+}
