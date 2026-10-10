@@ -167,6 +167,11 @@ public class Read extends ShellCommand{
 				return 1;
 			}
 		}
+		if( arrayName != null && ctx.getVariable(arrayName) instanceof java.util.Map<?,?> ) {
+			// read -a into an associative array (bash's find_or_make_array_variable)
+			ctx.error("read: "+arrayName+": not an indexed array");
+			return 1;
+		}
 		java.io.InputStream callerIn = ctx.stdin;
 		if( fromFd != 0 ) {
 			Console.FileDiscriptor fd = ctx.console.getFileDistcriptor(fromFd);

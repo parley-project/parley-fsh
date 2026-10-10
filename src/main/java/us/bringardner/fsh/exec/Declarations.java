@@ -710,18 +710,20 @@ public final class Declarations {
 			boolean toGlobal = o.indexOf('g') >= 0 && sc.isInFunction()
 					&& !((command.equals("readonly") || command.equals("export")) && sc.hasLocal(name));
 			Object old = local ? (sc.isOwnLocal(name) ? sc.getVariable(name) : null) : toGlobal ? sc.globalRaw(name) : sc.getVariable(name);
-			if( o.indexOf('a') >= 0 && o.indexOf('A') < 0 && !remove && old instanceof Map<?,?> ) {
-				// declare -a of an associative array
-				error(command, name+": cannot convert associative to indexed array");
-				status = 1;
-				continue;
-			}
-			if( o.indexOf('A') >= 0 && !remove && old instanceof FshList ) {
-				// declare -A of an indexed array (an assignment says so too)
-				if( sc.isInFunction() && (assignment != null || text != null)) {
-					sc.error(ShellContext.firstElement(sc.getVariable("FUNCNAME"))+": "+name+": cannot convert indexed to associative array");
+			String conversion = o.indexOf('a') >= 0 && o.indexOf('A') < 0 && !remove && old instanceof Map<?,?>
+					? "cannot convert associative to indexed array"
+					: o.indexOf('A') >= 0 && !remove && old instanceof FshList ? "cannot convert indexed to associative array" : null;
+			if( conversion != null ) {
+				// declare -a of an associative array, -A of an indexed one. With a value, as bash says
+				// it: in a function, by the function and then by declare; outside one, by neither
+				if( assignment == null && text == null ) {
+					error(command, name+": "+conversion);
+				} else if( sc.isInFunction()) {
+					sc.error(ShellContext.firstElement(sc.getVariable("FUNCNAME"))+": "+name+": "+conversion);
+					error(command, name+": "+conversion);
+				} else {
+					sc.error(name+": "+conversion);
 				}
-				error(command, name+": cannot convert indexed to associative array");
 				status = 1;
 				continue;
 			}

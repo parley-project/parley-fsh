@@ -15,10 +15,6 @@ Key:
 
 ## Open
 
-- [ ] **array** (array33.sub): some "cannot convert associative to indexed array" errors
-  (lines 27, 31, 46) are named differently. bash names the function (`f: A: ...`) or nothing
-  (`A: ...`); fsh always says `declare: A: ...`. Line 52's `read: A: not an indexed array` is
-  missing.
 - [ ] **builtins** (usage lines): fsh's `help -s` lines leave out options it does support:
   - `readarray`/`mapfile` support `-O`, `-u`, `-C` and `-c`.
   - `read`: check `-E`.
@@ -97,3 +93,10 @@ Key:
     written. `Expander.assign` now returns what was stored. It also didn't apply the case
     attribute to an element (the assignment code calls `sc.cased`; this path didn't). array.diff
     went from 253 to 221 lines.
+- [x] **array** (array33.sub): declare's "cannot convert associative to indexed array" (and the
+  reverse) is said as bash says it when a value is given: inside a function by the function
+  (`f: A: ...`) and then by `declare`; outside one only `A: ...`. `read -a` into an associative
+  array is now an error (`read: A: not an indexed array`, status 1).
+  - Notes: fsh already used bash's two-message rule for indexed-to-associative inside a
+    function, so I combined both directions into one check. bash's top-level message has no
+    `declare:` prefix, which is easy to miss in the diff. array.diff: 221 to 202 lines.
