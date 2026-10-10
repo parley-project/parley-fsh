@@ -2067,6 +2067,10 @@ delimiter
 			variables.put("OSTYPE", system[0]);
 			variables.put("HOSTTYPE", system[1]);
 			variables.put("MACHTYPE", system[2]);
+			if( !environmentVariables.containsKey("BASH_LOADABLES_PATH")) {
+				// bash's default (one from the environment stays, as in bash)
+				variables.put("BASH_LOADABLES_PATH", "/usr/local/lib/bash:/usr/lib/bash:/opt/local/lib/bash:/usr/pkg/lib/bash:/opt/pkg/lib/bash:.");
+			}
 			// SHLVL: one more than the environment's, exported (bash's adjust_shell_level)
 			long level = 0;
 			try {

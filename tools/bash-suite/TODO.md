@@ -32,10 +32,6 @@ Key:
 - **heredoc** (heredoc7.sub): fsh's line numbers after a multi-line `$( )`.
 - **parser, arith-for, history (`5.3`), new-exp (`\v`, `\s` prompts)**: these depend on the name
   `bash` or on `BASH_VERSION`, which fsh does not set.
-- **BASH_LOADABLES_PATH / `enable -f`** (seen in the real-world bash-completion case): fsh has no
-  loadable builtins. bash's are C libraries built against bash's own internals, so fsh can't
-  load them, and it sets no search path for them. bash-completion's `export` completion lists
-  one fewer variable for that reason.
 
 ## Bash internals (not copied)
 
@@ -129,3 +125,9 @@ copying a bug. Decided 2026-10-10; reopen if wanted.
     copy bash's timing. The full runs that showed the diff were background tasks, though, and
     those get no terminal and SIGQUIT ignored (already known for trap). When comparing read
     and trap, always rerun them in the foreground before treating a diff as real.
+- [x] **BASH_LOADABLES_PATH** (real-world bash-completion case): set to bash's default
+  (`/usr/local/lib/bash:/usr/lib/bash:/opt/local/lib/bash:/usr/pkg/lib/bash:/opt/pkg/lib/bash:.`)
+  unless the environment has one, which then stays, as in bash.
+  - Notes: at first I filed this under "keep" because fsh can't load bash's C loadable builtins.
+    The user pointed out that we shouldn't presume what scripts need from the variable, so it's
+    set as bash sets it. `enable -f` is still fsh's "invalid option" (open).
