@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,10 +32,38 @@ public class ShellContext {
 
 	public Console console;	
 	public Integer exitCode; 
-	private Stack<Map<Object,Object>> commandStack = new Stack<>();
+	private LocalStack<Map<Object,Object>> commandStack = new LocalStack<>();
+
+	/**
+	 * A stack as java.util.Stack's (bottom first), without its locking: a context's stacks are
+	 * its thread's, and Stack's synchronized peek, for each variable looked up, is costly in a
+	 * native image.
+	 */
+	static final class LocalStack<E> extends java.util.ArrayList<E> {
+		private static final long serialVersionUID = 1L;
+
+		E push(E e) {
+			add(e);
+			return e;
+		}
+
+		E pop() {
+			if( isEmpty()) {
+				throw new java.util.EmptyStackException();
+			}
+			return remove(size()-1);
+		}
+
+		E peek() {
+			if( isEmpty()) {
+				throw new java.util.EmptyStackException();
+			}
+			return get(size()-1);
+		}
+	}
 	private List<String> activeAlias = new ArrayList<>();
 	/** the commands the executor is running, innermost last (for a debugger) */
-	private final Stack<us.bringardner.fsh.syntax.Ast.Node> nodeStack = new Stack<>();
+	private final LocalStack<us.bringardner.fsh.syntax.Ast.Node> nodeStack = new LocalStack<>();
 	private AtomicBoolean pause = new AtomicBoolean();
 	private AtomicReference<RuntimeException> exeption = new AtomicReference<>();
 
@@ -2053,7 +2080,7 @@ $
 		}
 
 	}
-	Stack<FunctionInvocation> functionStack = new Stack<>();
+	LocalStack<FunctionInvocation> functionStack = new LocalStack<>();
 
 	public void enterFunction(Object[] args, ShellFunction function) throws IOException {
 		// FUNCNEST: how deep functions may call (bash's message, and the command line is given up)
