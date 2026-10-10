@@ -155,3 +155,15 @@ copying a bug. Decided 2026-10-10; reopen if wanted.
     process, so a foreign library's code can't run inside the JVM. A file that does load still
     can't be used (bash's builtins are C code for bash), and fsh says so. Only the `dlsym(0x...)`
     handle address differs, as it does between two bash runs.
+
+- [x] **stale FIFO names switched FIFOs off** (found while chasing bats 240/253 and the hang):
+  fsh names its FIFOs `fsh-<pid>-<n>.fifo` in $TMPDIR and removes them only at a normal exit, so
+  every killed fsh leaves some behind. When a later fsh got the same process id (macOS reuses
+  them quickly in a long bats run), `mkfifo` failed on the existing name, and fsh concluded it
+  had no named pipes at all. For the rest of its life it gave programs no descriptors above 2
+  (`cat /dev/fd/3`: "Bad file descriptor"), ran `<( )` into a temp file first, and didn't share
+  input with programs. Now a taken name is skipped; only a failing `mkfifo` turns FIFOs off.
+  - Notes: shown by pre-creating 300 stale names for the shell's own `$$` before it made any
+    FIFO. A first try made them after fsh had already made some, and passed because it reused
+    freed FIFOs. This likely explains bats 240 (a passing test's output, written through fd 3,
+    lost) and 253; to confirm with full bats runs.

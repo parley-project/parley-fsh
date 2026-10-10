@@ -188,18 +188,32 @@ final class ProcessSubstitutions {
 		if( Boolean.FALSE.equals(haveMkfifo) || FileSourceFactory.isWindows()) {
 			return null;
 		}
-		File fifo = new File(System.getProperty("java.io.tmpdir"), "fsh-"+ProcessHandle.current().pid()+"-"+count.incrementAndGet()+".fifo");
-		try {
-			Process p = new ProcessBuilder("mkfifo", fifo.getAbsolutePath()).redirectErrorStream(true).start();
-			p.getInputStream().readAllBytes();
-			if( p.waitFor() == 0 ) {
-				haveMkfifo = true;
-				fifo.deleteOnExit();
-				return fifo;
+		File dir = new File(System.getProperty("java.io.tmpdir"));
+		String prefix = "fsh-"+ProcessHandle.current().pid()+"-";
+		for(int tries = 0; tries < 1000; tries++) {
+			File fifo = new File(dir, prefix+count.incrementAndGet()+".fifo");
+			if( fifo.exists()) {
+				// one left by an earlier process with this process id (killed: no deleteOnExit)
+				continue;
 			}
-		} catch (IOException e) {
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
+			try {
+				Process p = new ProcessBuilder("mkfifo", fifo.getAbsolutePath()).redirectErrorStream(true).start();
+				p.getInputStream().readAllBytes();
+				if( p.waitFor() == 0 ) {
+					haveMkfifo = true;
+					fifo.deleteOnExit();
+					return fifo;
+				}
+			} catch (IOException e) {
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return null;
+			}
+			if( !fifo.exists()) {
+				// (mkfifo itself failed: no named pipes here)
+				break;
+			}
+			// (made by something else meanwhile: the next name)
 		}
 		haveMkfifo = false;
 		return null;
