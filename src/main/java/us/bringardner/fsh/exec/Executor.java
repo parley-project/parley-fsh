@@ -2913,7 +2913,9 @@ public final class Executor {
 			"export", "readonly", "return", "set", "shift", "times", "trap", "unset");
 
 	void assign(Ast.Assignment a, ShellContext sc, Expander ex, boolean local) {
-		if( !local && !a.append && sc.rawVariable(a.name) instanceof ShellContext.NameRef r && r.target().isEmpty()) {
+		// (looked up once: almost no variable is a nameref)
+		boolean ref = sc.rawVariable(a.name) instanceof ShellContext.NameRef;
+		if( ref && !local && !a.append && sc.rawVariable(a.name) instanceof ShellContext.NameRef r && r.target().isEmpty()) {
 			// a nameref with no value yet: the value is what it names (as written: not evaluated
 			// for -i), r[0]=v is an error
 			if( a.index != null ) {
@@ -2932,7 +2934,7 @@ public final class Executor {
 				return;
 			}
 		}
-		if( a.index == null && a.array == null ) {
+		if( ref && a.index == null && a.array == null ) {
 			// a nameref to an element (declare -n r='x[2]'; r=v): that element
 			String target = sc.resolveName(a.name);
 			int b = target.indexOf('[');

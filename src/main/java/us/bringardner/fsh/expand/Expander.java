@@ -1263,6 +1263,8 @@ public final class Expander {
 	private Val base(ParamExpr e, boolean unbound) {
 		Val ret;
 		String n = e.name;
+		// a nameref (looked up once: almost no variable is one, and then the checks for them do not apply)
+		boolean nref = !e.noTarget && e.subscript == null && isName(n) && sc.rawVariable(n) instanceof ShellContext.NameRef;
 		if( e.noTarget ) {
 			ret = Val.of(null);
 		} else if( e.prefix == 'n' ) {
@@ -1280,11 +1282,11 @@ public final class Expander {
 			}
 		} else if( "#?-$!".indexOf(n.charAt(0)) >= 0 ) {
 			ret = Val.of(str(sc.getVariable("$"+n)));
-		} else if( e.subscript == null && isName(n) && sc.circular(n)) {
+		} else if( nref && sc.circular(n)) {
 			// v -> w -> x -> v: said, and nothing
 			sc.error("warning: "+n+": circular name reference");
 			ret = Val.of(null);
-		} else if( e.subscript == null && isName(n) && sc.selfReference(n)) {
+		} else if( nref && sc.selfReference(n)) {
 			// a function's local -n v=v: said, and the global v
 			sc.error("warning: "+n+": circular name reference");
 			Object v = sc.getVariable(n);

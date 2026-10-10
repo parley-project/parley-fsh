@@ -418,7 +418,83 @@ delimiter
 	// (a hash map: it is looked up several times for each command; listings sort it themselves)
 	Map<String,Object> variables = new ConcurrentHashMap<>();
 	List<Object> positionalParameters = new ArrayList<>();
-	public List<Option> options = new ArrayList<>();
+	public List<Option> options = new OptionList();
+
+	/**
+	 * The set -o options on: a list, as before, that knows at once whether one is on (an EnumSet,
+	 * replaced when one is set: isOptionEnabled is asked for each command, set seldom).
+	 */
+	static final class OptionList extends java.util.AbstractList<Option> {
+		private volatile java.util.EnumSet<Option> on = java.util.EnumSet.noneOf(Option.class);
+		private volatile Option [] array = new Option[0];
+
+		OptionList() {
+		}
+
+		OptionList(java.util.Collection<Option> from) {
+			addAll(from);
+		}
+
+		private void set(java.util.EnumSet<Option> n) {
+			array = n.toArray(new Option[0]);
+			on = n;
+		}
+
+		@Override
+		public boolean contains(Object o) {
+			return o instanceof Option op && on.contains(op);
+		}
+
+		@Override
+		public Option get(int index) {
+			return array[index];
+		}
+
+		@Override
+		public int size() {
+			return array.length;
+		}
+
+		@Override
+		public java.util.Iterator<Option> iterator() {
+			return java.util.Arrays.asList(array).iterator();
+		}
+
+		@Override
+		public synchronized boolean add(Option o) {
+			if( on.contains(o)) {
+				return false;
+			}
+			java.util.EnumSet<Option> n = java.util.EnumSet.copyOf(on);
+			n.add(o);
+			set(n);
+			return true;
+		}
+
+		@Override
+		public synchronized boolean addAll(java.util.Collection<? extends Option> c) {
+			java.util.EnumSet<Option> n = java.util.EnumSet.copyOf(on);
+			boolean ret = n.addAll(c);
+			set(n);
+			return ret;
+		}
+
+		@Override
+		public synchronized boolean remove(Object o) {
+			if( !contains(o)) {
+				return false;
+			}
+			java.util.EnumSet<Option> n = java.util.EnumSet.copyOf(on);
+			n.remove(o);
+			set(n);
+			return true;
+		}
+
+		@Override
+		public synchronized void clear() {
+			set(java.util.EnumSet.noneOf(Option.class));
+		}
+	}
 	// (names differ by case, except on Windows: A and a are two variables)
 	private Map<String,Object> environmentVariables = System.getProperty("os.name", "").toLowerCase().startsWith("windows")
 			? new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER) : new ConcurrentSkipListMap<>();
@@ -3760,7 +3836,7 @@ delimiter
 	public void enterStage() throws IOException {
 		StageState s = new StageState();
 		s.cwd = getCurrentDirectory();
-		s.options = new java.util.concurrent.CopyOnWriteArrayList<>(optionList());
+		s.options = new OptionList(optionList());
 		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
 		s.osTraps = new ConcurrentSkipListMap<>(osTraps());
 		s.metaTraps = new ConcurrentSkipListMap<>(metaTraps());

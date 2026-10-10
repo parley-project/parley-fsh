@@ -608,12 +608,15 @@ $
 			}
 			return;
 		}
-		if( !(value instanceof NameRef) && circular(name)) {
+		// (looked up once: almost no variable is a nameref, and then none of these apply)
+		Object raw = rawVariable(name);
+		boolean ref = raw instanceof NameRef;
+		if( ref && !(value instanceof NameRef) && circular(name)) {
 			// v -> w -> x -> v: nothing is set (said, as bash's)
 			error("warning: "+name+": circular name reference");
 			return;
 		}
-		if( !(value instanceof NameRef) && selfReference(name) && ((NameRef) rawVariable(name)).target.equals(name)) {
+		if( ref && !(value instanceof NameRef) && selfReference(name) && ((NameRef) raw).target.equals(name)) {
 			// a function's local -n v=v: the global v (said, as bash's)
 			error("warning: "+name+": maximum nameref depth (8) exceeded");
 			if( console.isReadonly(name)) {
@@ -622,14 +625,14 @@ $
 			setGlobalVariable(name, withCase(name, value));
 			return;
 		}
-		if( (value instanceof List<?> || value instanceof Map<?,?>) && rawVariable(name) instanceof NameRef r && r.target.isEmpty()) {
+		if( (value instanceof List<?> || value instanceof Map<?,?>) && raw instanceof NameRef r && r.target.isEmpty()) {
 			// an array for a nameref with no value (mapfile ref): a plain array (bash's)
 			error("warning: "+name+": removing nameref attribute");
 			setPlain(name, value);
 			return;
 		}
 		if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
-				&& rawVariable(name) instanceof NameRef r && r.target.isEmpty()) {
+				&& raw instanceof NameRef r && r.target.isEmpty()) {
 			String v = String.valueOf(value);
 			// ref=name for a nameref with no value yet: what it names
 			if( !validReference(v)) {
@@ -645,7 +648,9 @@ $
 			return;
 		}
 		if( !(value instanceof NameRef)) {
-			name = resolveName(name);
+			if( ref ) {
+				name = resolveName(name);
+			}
 			int b = name.indexOf('[');
 			if( b > 0 && name.endsWith("]")) {
 				// through a nameref to an element (r=a[1]): that element; an array is no value for it
@@ -1045,6 +1050,10 @@ $
 		if( scope != null && scope.local.get(name) == UNSET_LOCAL ) {
 			return null;
 		}
+		if( !CHAINED_VARIABLES.contains(name)) {
+			// (most names: none of the ones worked out below)
+			return ordinaryVariable(name);
+		}
 		if( name.equals("FUNCNAME")) {
 			// the running functions, innermost first, then main
 			if( callFrames.isEmpty()) {
@@ -1166,6 +1175,14 @@ $
 			// the command running (in a trap: the one the trap ran for)
 			return currentCommand;
 		}
+		return ordinaryVariable(name);
+	}
+
+	/** the names getVariable0 works out itself (FUNCNAME, LINENO, RANDOM ...) */
+	private static final java.util.Set<String> CHAINED_VARIABLES = java.util.Set.of("BASHOPTS", "BASHPID", "BASH_ALIASES", "BASH_ARGC", "BASH_ARGV", "BASH_ARGV0", "BASH_CMDS", "BASH_COMMAND", "BASH_LINENO", "BASH_SOURCE", "BASH_SUBSHELL", "DIRSTACK", "FUNCNAME", "HISTCMD", "LINENO", "RANDOM", "SECONDS", "SHELLOPTS", "SRANDOM", "_");
+
+	/** a variable that is not worked out: a local's, a stage's copy, the shell's, the environment's */
+	private Object ordinaryVariable(String name) {
 		Object ret = getLocalVariable(name);
 		if( ret == null ) {
 			if( isolated != null && isolated.containsKey(name)) {
