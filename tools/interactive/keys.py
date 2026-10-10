@@ -54,6 +54,7 @@ TESTS = {
     "vi-dd": (["set -o vi"], ["garbage", "\x1b", "dd", "i", "echo vi >o", ENTER]),
     "vi-cw": (["set -o vi"], ["echo xyz", "\x1b", "b", "cw", "abc", "\x1b", "A", " >o", ENTER]),
     "alias-prompt": (["alias e1='echo aliased'"], ["e1 >o", ENTER]),
+    "test-t": ([], ["{ [ -t 0 ] && echo in; [ -t 1 ] && echo out; [ -t 0 ] </dev/null || echo redirected; } >o", ENTER]),
     "history-search-prefix": (["echo first >o", "true"], ["echo", "\x1bp", ENTER]),
     "meta-dot-twice": (["echo one", "echo two"], ["echo ", M("."), M("."), " >o", ENTER]),
     "ctrl-x-ctrl-r-comment": ([], ["echo abc >o", M("#")]),

@@ -381,7 +381,8 @@ public class Test extends ShellCommand{
 			String n = val.trim();
 			int fd = n.matches("[-+]?[0-9]{1,9}") ? Integer.parseInt(n.startsWith("+") ? n.substring(1) : n) : -1;
 			switch (fd) {
-			case 0: return us.bringardner.fsh.Console.isKeyboard(ctx.stdin);
+			// (an interactive shell's commands read the terminal through its NativeKeyboard)
+			case 0: return ctx.stdin instanceof us.bringardner.fsh.NativeKeyboard || us.bringardner.fsh.Console.isKeyboard(ctx.stdin);
 			case 1: return ctx.stdout == us.bringardner.fsh.Console.System_out && us.bringardner.fsh.NativeKeyboard.terminal();
 			case 2: return ctx.stderr == us.bringardner.fsh.Console.System_err && us.bringardner.fsh.NativeKeyboard.terminal();
 			default: return false;
