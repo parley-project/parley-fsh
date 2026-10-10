@@ -14,6 +14,10 @@ mkdir -p lib && echo one > lib/a && echo top > b && git add . && git commit -qm 
 echo two >> lib/a && git commit -qam two && echo three > b && git commit -qam three"""
 
 # name: (setup run with /bin/sh in the dir, script, args, extra env)
+# brew checks it runs under bash (BASH_VERSION, which fsh does not set): the identity variables
+# bats uses come from FSH_ENV (bash does not read it)
+BREW = {"HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1", "FSH_ENV": SP + "/rw/bash-identity.sh"}
+
 CASES = {
   "libtool-version": ("", "/usr/local/bin/glibtool", ["--version"], {}),
   "libtool-help": ("", "/usr/local/bin/glibtool", ["--help"], {}),
@@ -29,9 +33,17 @@ CASES = {
   "man-a-w": ("", "/usr/bin/man", ["-a", "-w", "printf"], {}),
   "whatis": ("", "/usr/bin/whatis", ["ls"], {}),
   "apropos": ("", "/usr/bin/apropos", ["chmod"], {}),
-  "brew-prefix": ("", "/usr/local/bin/brew", ["--prefix"], {"HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1"}),
-  "brew-version": ("", "/usr/local/bin/brew", ["--version"], {"HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1"}),
-  "brew-repository": ("", "/usr/local/bin/brew", ["--repository"], {"HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1"}),
+  "brew-prefix": ("", HERE + "/brew-in.sh", ["--prefix"], BREW),
+  "brew-version": ("", HERE + "/brew-in.sh", ["--version"], BREW),
+  "brew-repository": ("", HERE + "/brew-in.sh", ["--repository"], BREW),
+  "brew-cellar": ("", HERE + "/brew-in.sh", ["--cellar"], BREW),
+  "brew-caskroom": ("", HERE + "/brew-in.sh", ["--caskroom"], BREW),
+  "brew-cache": ("", HERE + "/brew-in.sh", ["--cache"], BREW),
+  "brew-shellenv": ("", HERE + "/brew-in.sh", ["shellenv"], BREW),
+  "brew-help": ("", HERE + "/brew-in.sh", ["help"], BREW),
+  "brew-env": ("", HERE + "/brew-in.sh", ["--env"], BREW),
+  "brew-config": ("", HERE + "/brew-in.sh", ["config"], BREW),
+  "brew-commands": ("", HERE + "/brew-in.sh", ["commands"], BREW),
   "autoconf-version": ("", "/usr/local/bin/autoconf", ["--version"], {}),
   "gettextize-help": ("", "/usr/local/bin/gettextize", ["--help"], {}),
   "autopoint-version": ("", "/usr/local/bin/autopoint", ["--version"], {}),
