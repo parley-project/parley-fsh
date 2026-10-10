@@ -107,8 +107,7 @@ public class Ls extends ShellCommand {
 		}
 		if( !output.isEmpty()) {
 			// Column 
-			if(ctx.console.isInteractive && !options.contains(LsArgument.l) && !options.contains(LsArgument.g)
-					&& !options.contains(LsArgument.ONE))  {
+			if( useColumns(ctx, options))  {
 				if( options.contains(LsArgument.R)) {
 					formatRecursive(ctx,output);
 				} else {
@@ -231,9 +230,22 @@ public class Ls extends ShellCommand {
 		return arg.indexOf('*') >= 0 || arg.indexOf('?') >= 0 || arg.indexOf('[') >= 0;
 	}
 
+	/**
+	 * Columns, as ls makes them: with -C or -x, else when its output is a terminal (not a pipe or
+	 * a file: ls | wc -l counts the names); never with -l, -g or -1.
+	 */
 	private boolean useColumns(ShellContext ctx, List<LsArgument> options) {
-		return ctx.console.isInteractive && !options.contains(LsArgument.l) && !options.contains(LsArgument.g)
-				&& !options.contains(LsArgument.ONE);
+		if( options.contains(LsArgument.l) || options.contains(LsArgument.g) || options.contains(LsArgument.ONE)) {
+			return false;
+		}
+		if( options.contains(LsArgument.C) || options.contains(LsArgument.x)) {
+			return true;
+		}
+		if( ctx.stdout != us.bringardner.fsh.Console.System_out ) {
+			return false;
+		}
+		// (without the library: the shell's window, where an interactive shell's output is seen)
+		return us.bringardner.fsh.NativeKeyboard.isAvailible() ? us.bringardner.fsh.NativeKeyboard.isatty(1) : ctx.console.isInteractive;
 	}
 
 	private void printBlock(ShellContext ctx, String heading, List<String> lines, boolean columns) {

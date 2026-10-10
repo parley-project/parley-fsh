@@ -62,7 +62,8 @@ public class TestLsWc extends AbstractConsoleTest{
 		String expect = 
 				"Folder01   Test0.txt  Test1.txt  Test2.txt  Test3.txt  Test4.txt  Test5.txt  Test6.txt  Test7.txt  Test8.txt  Test9.txt\n";
 		
-		String cmd = "ls";
+		// columns, as on a terminal
+		String cmd = "ls -C";
 		ExecuteResult res = executeCommand(cmd,"");
 		String actual = res.getStdOut();
 		

@@ -142,10 +142,11 @@ public class TestLs extends AbstractConsoleTest {
 	}
 
 
+	/** b: lay out as on a terminal (output here is never one, so that takes -C) */
 	private String executeLsCommand(boolean b, String cmd) throws IOException {
 		boolean tmp = console.isInteractive;
 		console.isInteractive = b;
-		String actual = executeCommand(cmd).trim();
+		String actual = executeCommand(b ? cmd.replaceFirst("^ls", "ls -C") : cmd).trim();
 		console.isInteractive = tmp;
 		return actual;
 	}
@@ -423,13 +424,13 @@ public class TestLs extends AbstractConsoleTest {
 
 	@Test
 	public void testLsOnePerLine() throws IOException {
-		// columns are only used interactively, and -1 turns them off
+		// -1 turns columns off even with -C
 		Console c = new Console();
 		c.isInteractive = true;
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		c.setStdOut(new PrintStream(out, true));
 		c.setStdErr(new PrintStream(out, true));
-		assertEquals(0, c.executeScript("ls -1"));
+		assertEquals(0, c.executeScript("ls -C -1"));
 		assertEquals("AbcFileA.js\nAbcFileB.php\nAbcFileC.txt\nAbcFileD.properties\nFolder01\n", out.toString());
 	}
 
