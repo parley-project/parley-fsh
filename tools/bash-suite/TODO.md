@@ -16,7 +16,10 @@ Key:
 
 ## Open
 
-(nothing open: the two remaining quirks are below, under "Bash internals")
+- [ ] **enable -f**: fsh says `-f: invalid option` (status 2). bash searches
+  BASH_LOADABLES_PATH and says `enable: cannot open shared object NAME: ...` (status 1) when it
+  can't load the file. Decide how far to follow bash, given that fsh can't load bash's C
+  builtins.
 
 ## Keep (deliberate differences, no change)
 
