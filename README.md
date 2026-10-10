@@ -1,13 +1,169 @@
 # fsh — the FileSource Shell
 
-fsh is a bash-like shell whose file system is any
-[parley-files](https://github.com/tony-bringardner/parley-files) `FileSource`:
-the local disk, memory, FTP, SFTP or a database. It implements a large part of
-Bash/POSIX: variables, functions, pipelines, redirection, `if`/`for`/`while`/`case`,
-traps, history and the usual built-ins.
+fsh is a bash-compatible shell written in Java. It runs bash scripts and works as an
+interactive shell, and its file system is any
+[parley-files](https://github.com/tony-bringardner/parley-files) `FileSource`: the local
+disk, memory, FTP, SFTP or a database. A remote server can be mounted into the shell's
+directory tree, and from then on `cd`, globbing, redirection and fsh's file builtins work
+there as they do on the local disk.
 
 fsh is built on Parley but is not part of it. It was called BjlShell
 (`us.bringardner:bjl_shell`, command `fssh`).
+
+- [What fsh is](#what-fsh-is)
+- [Why a shell in Java](#why-a-shell-in-java)
+- [Why bash is the target](#why-bash-is-the-target)
+- [How close to bash it is, and how that is tested](#how-close-to-bash-it-is-and-how-that-is-tested)
+- [Known differences from bash](#known-differences-from-bash)
+- [Performance](#performance)
+- [Requirements](#requirements), [Build and run](#build-and-run), [Files](#files), [Layout](#layout)
+
+## What fsh is
+
+- **A bash-compatible shell.** It has the bash language: variables and arrays (indexed and
+  associative), functions, pipelines, redirection, here-documents, `$( )` and `<( )`, `[[ ]]`
+  and `(( ))`, `if`/`for`/`while`/`case`/`select`, traps, job control, history with `!`
+  expansion, programmable completion (`complete`, `compgen`), and bash's builtins and `shopt`
+  options. Scripts written for bash run unchanged; the [measurements below](#how-close-to-bash-it-is-and-how-that-is-tested)
+  show how closely.
+- **A shell over any file system.** `connect` mounts a `FileSource` (FTP, SFTP, a database,
+  memory) at a path, and `unmount` removes it. fsh's own file builtins (`ls`, `cp`, `mv`,
+  `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every mounted file system.
+- **An interactive shell** with a bash-style line editor (emacs keys, history search,
+  completion, the "Display all N possibilities?" pager).
+- **Embeddable.** It is a Java library: a program can run scripts in it, and the
+  [fsh-ide](https://github.com/tony-bringardner/fsh-ide) script editor and debugger use its
+  debugger hooks.
+
+## Why a shell in Java
+
+- **One file-system interface.** Everything fsh does with files goes through `FileSource`, so
+  a script can work on a remote or virtual file system with the same commands it uses on the
+  local disk. A native shell can reach a remote file system only through programs (`scp`,
+  `sftp`, `lftp`) or a kernel mount; fsh does it inside the shell.
+- **Running inside Java programs.** An application can embed fsh as its scripting language,
+  hand it its own file systems and stream objects, and debug scripts step by step, which the
+  fsh-ide project does.
+- **Java's libraries.** FTP, SFTP and JDBC come from existing Java libraries, and new file
+  systems are Parley plug-ins rather than shell code.
+
+Where Java gets in the way (programs started as children of a subshell, signals, terminal
+control, raw bytes in arguments), fsh uses a small native library (`macos/NativeKeyboard.cpp`)
+and helper (`macos/fshexec.c`) so that it behaves as bash does.
+
+## Why bash is the target
+
+- **It is what scripts are written for.** bash is the default shell for scripts on Linux, in
+  CI systems and in container images, and the shell most shell scripts on the web, in package
+  managers and in build tools assume. A shell that runs bash's language runs the most existing
+  code.
+- **It is a superset of POSIX `sh`.** Targeting bash also covers `#!/bin/sh` scripts.
+- **It can be checked.** bash has a reference manual and a large test suite of its own, and
+  plenty of real software is written in it (Homebrew, git's completion, bash-completion, the
+  bats test framework). That makes "behaves like bash" something that can be measured, test
+  by test, rather than a goal.
+- **zsh and fish are less suitable targets.** zsh by default does not split unquoted words,
+  numbers arrays from 1 and has other non-POSIX defaults, so bash scripts often behave
+  differently in it. fish has its own language and doesn't run sh or bash scripts at all.
+  ksh93 and dash are close to POSIX but have far fewer scripts written specifically for them.
+
+## How close to bash it is, and how that is tested
+
+As of 2026-10-10:
+
+| Check | What it compares | Result |
+|---|---|---|
+| bash's own test suite (bash 5.3, `tools/bash-suite/runall.py`) | the output of each of the 83 test files, run by bash and by fsh | **96.5% of bash's output lines** are the same in fsh (13,216 of 13,691); **59 of 83** files match exactly |
+| Syntax check (`tools/real-world/syntax.py`) | `bash -n` against `fsh -n` on every sh and bash script on the machine | **276 of 276** agree |
+| Real-world scripts (`tools/real-world/cases.py`) | output, errors and status of Homebrew, git completion and prompt, git subtree and filter-branch, libtool, man, xzgrep, bash-completion and others | **46 of 47** identical (the other differs only in fsh's own help texts) |
+| bats-core 1.14 test suite, run with fsh as `bash` | bats' own 482 tests | **468** pass; bash passes 469 here (its 13 failures are environment-specific, and fsh fails the same 13). The remaining one is an intermittent failure, see below |
+| bash's `configure` script | run under both shells | identical results |
+| Interactive editing (`tools/interactive/keys.py`) | key sequences typed into a pseudo-terminal: editing, history, completion, the pager | **56 of 56** identical |
+| Unit tests (`mvn test`) | fsh's own JUnit tests | **996** pass |
+
+Every remaining difference in bash's test suite has been examined and falls into one of
+three groups, listed in [tools/bash-suite/TODO.md](tools/bash-suite/TODO.md):
+
+- **deliberate differences** (next section), which account for most of the remaining lines;
+- **quirks of the installed bash** where fsh already matches bash's own expected-output
+  files (`tests/*.right`);
+- **bash internals leaking through,** such as bash's internal quoting bytes in arithmetic
+  errors, which fsh doesn't copy.
+
+None of the remaining differences in bash's test suite is an open bug. Most of the work was
+done in rounds: run the suites, take the differences one by one, fix fsh and run everything
+again. The todo file records what each fix involved.
+
+## Known differences from bash
+
+**Deliberate:**
+
+- **fsh's own file builtins.** `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`,
+  `sleep`, `expr`, `clear`, `connect` and `unmount` are builtins (so they work on mounted file
+  systems), with their own help texts. Programs of the same names are still reachable by path or
+  with `enable -n`.
+- **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and
+  no bash identity variables (`BASH_VERSION`, `BASH_VERSINFO`, `BASH`). Scripts that refuse to run
+  without them (Homebrew does) can be given them in an `FSH_ENV` file.
+- **Associative-array keys are listed sorted**, not in bash's hash order.
+- **Always UTF-8,** whatever `LANG` says; byte-oriented locales such as `fr_FR.ISO8859-1`
+  aren't supported.
+- **Aliases expand in scripts** and in `-c`, not only interactively.
+- **Programs in the current directory run without `./`** (except in a restricted shell).
+- **`~` follows `$HOME`;** `extglob` is always on; `>( )` is waited for.
+
+**Limitations (not by choice):**
+
+- **Background jobs end with the script.** fsh runs subshells, including `&` jobs, inside its
+  own process, so when a script exits, the jobs it started in the background end too. In bash
+  they keep running.
+- **File names that aren't valid UTF-8** can't be created or opened (Java's file layer needs
+  valid text).
+- **Loadable builtins:** `enable -f` finds and checks a library as bash does, but fsh can't run
+  bash's C builtins.
+- **Under investigation:** a rare hang, seen in two of eight full bats runs (none since the
+  latest fixes), where a program at the end of a pipeline never sees end-of-file.
+
+## Performance
+
+Measured on a 3.3 GHz Intel Core i5-10600 (macOS 26.6), median of three runs (nine for
+start-up), in seconds. The scripts are POSIX `sh` so every shell runs the same code;
+lower is better.
+
+| Test | bash 5.3 | bash 3.2 (macOS) | zsh 5.9 | dash | ksh93 | fsh (JVM) | fsh (native) |
+|---|---|---|---|---|---|---|---|
+| Start-up (`-c :`) | 0.016 | 0.004 | 0.007 | 0.003 | 0.004 | 0.141 | 0.033 |
+| Loop, 100,000 iterations | 0.80 | 1.07 | 0.39 | 0.50 | 0.14 | 0.89 | 0.86 |
+| Loop, 1,000,000 iterations | 11.7 | — | 5.0 | 7.2 | 2.0 | **4.9** | 11.2 |
+| 20,000 function calls | 0.34 | 0.38 | 0.32 | 0.18 | 0.06 | 0.59 | 0.29 |
+| 20,000 string trims | 0.39 | 0.45 | 0.13 | 0.23 | 0.08 | 0.67 | 0.37 |
+| 1,000 `$(echo hi)` | 0.91 | 0.62 | 0.64 | 0.49 | 0.03 | 0.38 | 0.09 |
+| `read` loop, 20,000 lines | 0.23 | 0.22 | 0.17 | 0.16 | 0.03 | 0.54 | 0.28 |
+| 200 external programs | 0.53 | 0.48 | 0.50 | 0.47 | 0.50 | 0.74 | 0.50 |
+| 100 three-stage pipelines | 0.37 | 0.32 | 0.37 | 0.30 | 0.34 | 0.98 | 0.77 |
+
+What this shows:
+
+- **Start-up:** the JVM build takes about 0.14 s to start, which shows in short scripts run
+  many times. The native build (GraalVM) starts in about 0.03 s.
+- **Short scripts:** both builds are within about 2× of bash on most tests and faster than
+  bash at command substitution, because fsh runs `$( )` in-process instead of forking.
+- **Long-running scripts:** the JVM build's just-in-time compiler pays off; on a million-step
+  loop it is more than twice as fast as bash 5.3 and on a par with zsh. The native build has no
+  JIT and stays at bash's speed.
+- **Starting programs and pipelines** costs fsh more than a native shell: starting a program
+  from the JVM is slower than bash's `fork` and `exec`, and fsh moves data between pipeline
+  stages itself.
+- **Memory:** bash uses about 4 MB. fsh's JVM build peaks at about 88 MB on a busy script, the
+  native build at about 27 MB.
+
+ksh93 is the fastest shell here at almost everything; among other things it runs `$( )` of
+builtins without forking.
+
+The benchmark scripts are simple POSIX loops; to reproduce, time `SHELL script.sh` for each
+shell (the scripts are in the table's terms: `while [ "$i" -lt N ]` with `$((i+1))`, a function
+call, `${s#abc}`/`${t%hij}`, `v=$(echo hi)`, `while read -r`, `/usr/bin/true`,
+`echo x | cat | cat`).
 
 ## Requirements
 
@@ -44,6 +200,8 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 - `.../fsh/expand` — word expansion (braces, parameters, `$( )`, splitting, globbing)
 - `.../fsh/exec` — runs the syntax tree
 - `.../fsh/commands` — the builtins
+- `tools/bash-suite`, `tools/real-world`, `tools/interactive` — the comparisons with bash
+  described above
 
 ## The IDE
 
