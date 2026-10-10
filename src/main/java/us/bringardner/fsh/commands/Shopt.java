@@ -79,6 +79,10 @@ public class Shopt extends ShellCommand{
 				}
 				if( setOptions ) {
 					ctx.console.setOption(Console.Option.find(n), set);
+				} else if( n.equals("array_expand_once") || n.equals("assoc_expand_once")) {
+					// (two names for one option, as in bash 5.3)
+					ctx.console.getShellOptions().put("array_expand_once", set);
+					ctx.console.getShellOptions().put("assoc_expand_once", set);
 				} else {
 					ctx.console.getShellOptions().put(n, set);
 				}

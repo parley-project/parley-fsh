@@ -15,9 +15,6 @@ Key:
 
 ## Open
 
-- [ ] **array** (array32.sub, lines 57-68): a `$( )` inside an array subscript runs
-  (`INJECTION!` is printed) in places where bash refuses it with "arithmetic syntax error:
-  operand expected". This is a safety issue, not only a difference.
 - [ ] **array**: in `declare -ai a; a[42]+=…`, `echo` shows `4+3` where bash shows `7`. The
   integer attribute isn't applied on that path.
 - [ ] **array**: `declare -Au A` (associative, uppercase) prints nothing; bash prints `FOO` and
@@ -77,3 +74,18 @@ Key:
     binary ("Killed: 9", code signing), which hid what the real difference was. The fix is a
     `!restricted` check on fsh's current-directory lookup in `Programs.run`. `hash` already
     refused `/` paths in restricted mode.
+- [x] **array** (array32.sub): with `shopt -s array_expand_once`, a subscript is no longer
+  expanded a second time, so a `$( )` that came from a variable is not run; it is an
+  "operand expected" arithmetic error, as in bash.
+  - Notes: there were three separate causes.
+    1. fsh kept `array_expand_once` and `assoc_expand_once` as two options. bash 5.3 treats them
+       as two names for one option, but fsh's checks only looked at `assoc_expand_once`, and the
+       test sets `array_expand_once`. Fixed in `shopt`, which now sets both. That fixed
+       `test -v` and `[ -v`.
+    2. `let`: `Arithmetic.dequote` expanded a subscript that still had `$` in it (meant for
+       `(( $expr ))`); it now skips that when the option is on.
+    3. `declare a["$s"]=v`: the quotes inside the subscript stop the parser seeing an
+       assignment, so declare gets text, splits off the subscript and parsed it as a word again.
+       With the option on, the subscript is now quoted first. That path also never applied
+       `-i`; it now does before the element is assigned, so `a` stays `declare -ai` even when
+       the element fails, as in bash.

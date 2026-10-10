@@ -233,6 +233,10 @@ public final class Declarations {
 					Ast.Assignment element = new Ast.Assignment();
 					element.name = sub.group(1);
 					element.index = sub.group(2);
+					if( us.bringardner.fsh.Glob.option(sc, "assoc_expand_once")) {
+						// (expanded once already: a $( ) in it is text now, not run again)
+						element.index = element.index.replaceAll("([\\\\$`\"'])", "\\\\$1");
+					}
 					element.append = sub.group(3) != null;
 					if( sc.console.isReadonly(element.name)) {
 						error(command, element.name+": readonly variable");
@@ -251,6 +255,18 @@ public final class Declarations {
 						} else {
 							sc.setVariable(element.name, new TreeMap<String,Object>());
 						}
+					}
+					if( o.indexOf('i') >= 0 && !remove ) {
+						// declare -i "a[1]=2+3": an integer array first (it stays one if the element fails)
+						if( sc.getVariable(element.name) == null ) {
+							sc.console.declaredUnset.add(element.name);
+							if( local ) {
+								sc.setLocalVariable(element.name, new FshList());
+							} else {
+								sc.setVariable(element.name, new FshList());
+							}
+						}
+						sc.console.setInteger(element.name, true);
 					}
 					executor.element(element, sc, ex, sc.getVariable(element.name), s.substring(eq+1));
 					continue;

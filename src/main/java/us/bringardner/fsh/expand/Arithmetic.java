@@ -881,8 +881,10 @@ public class Arithmetic {
 
 	/** a subscript's double quotes are removed (a[\"\"] in (( )) is a[0]; not by let with assoc_expand_once) */
 	private String dequote(String sub) {
-		if( sub.indexOf('\\') < 0 && expandSubscript != null && (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0)) {
+		if( sub.indexOf('\\') < 0 && expandSubscript != null && (sub.indexOf('$') >= 0 || sub.indexOf('`') >= 0)
+				&& !us.bringardner.fsh.Glob.option(ctx, "assoc_expand_once")) {
 			// a subscript not expanded yet ((( $expr )) with expr='a[$i]'): expanded now, as bash's
+			// (not with array_expand_once: it was expanded once, and $( ) in it is an error)
 			return expandSubscript.apply(ctx, sub);
 		}
 		sub = unbackslash(sub);
