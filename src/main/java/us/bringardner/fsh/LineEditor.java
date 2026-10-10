@@ -1605,6 +1605,35 @@ public class LineEditor {
 	/** the second Tab: the possibilities, in columns, then the line again */
 	private void list(Completion.Result r) {
 		moveTo(buf.length());
+		int query = 100;
+		try {
+			query = Integer.parseInt(VARIABLES.getOrDefault("completion-query-items", "100").trim());
+		} catch (NumberFormatException e) {
+		}
+		if( query > 0 && r.candidates.size() >= query ) {
+			// as readline asks before it shows that many (completion-query-items)
+			out.print("\nDisplay all "+r.candidates.size()+" possibilities? (y or n)");
+			out.flush();
+			while( true ) {
+				int k;
+				try {
+					k = keys.next();
+				} catch (IOException e) {
+					k = -1;
+				}
+				if( k == 'y' || k == 'Y' || k == ' ' ) {
+					break;
+				}
+				if( k == 'n' || k == 'N' || k == 127 || k == 8 || k == 3 || k < 0 ) {
+					out.print("\n");
+					out.print(prompt);
+					cursorRow = 0;
+					redraw();
+					return;
+				}
+				bell();
+			}
+		}
 		out.print("\n");
 		List<String> shown = new ArrayList<>();
 		int width = 0;
