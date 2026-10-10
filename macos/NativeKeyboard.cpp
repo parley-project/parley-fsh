@@ -659,6 +659,11 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_fsh_NativeKeyboard_argv0(JNIEnv *e
 	return ret;
 }
 
+/* this process's process group (getpgrp(2)) */
+JNIEXPORT jlong JNICALL Java_us_bringardner_fsh_NativeKeyboard_pgrp0(JNIEnv *, jclass) {
+	return (jlong) getpgrp();
+}
+
 /* {uid, gid, the groups...} of this process (getgroups(2)) */
 JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_ids0(JNIEnv *env, jclass) {
 	int n = getgroups(0, NULL);

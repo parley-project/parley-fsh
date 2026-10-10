@@ -239,6 +239,14 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_setOpenFilesLimit0
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    pgrp0
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_us_bringardner_fsh_NativeKeyboard_pgrp0
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    ids0
  * Signature: ()[J
  */

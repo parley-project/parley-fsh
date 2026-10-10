@@ -1352,9 +1352,14 @@ delimiter
 				// job control
 				options.add(Option.Monitor);
 			} else if( !hasControllingTerminal()) {
-				// as bash says it when it has no terminal for its jobs
-				long pid = ProcessHandle.current().pid();
-				stdErr.println("fsh: cannot set terminal process group ("+pid+"): Inappropriate ioctl for device");
+				// as bash says it when it has no terminal for its jobs, with the shell's process group
+				long group;
+				try {
+					group = NativeKeyboard.pgrp0();
+				} catch (UnsatisfiedLinkError e) {
+					group = ProcessHandle.current().pid();
+				}
+				stdErr.println("fsh: cannot set terminal process group ("+group+"): Inappropriate ioctl for device");
 				stdErr.println("fsh: no job control in this shell");
 			}
 		} else {

@@ -227,6 +227,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** set the open-files soft limit (-1: unlimited): 0 or -errno */
 	public static native int setOpenFilesLimit0(long limit);
 
+	/** this process's process group */
+	public static native long pgrp0();
+
 	/** {uid, gid, the supplementary groups...} of this process */
 	public static native long [] ids0();
 
