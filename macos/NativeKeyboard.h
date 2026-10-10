@@ -231,6 +231,14 @@ JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_ids0
 
 /*
  * Class:     us_bringardner_fsh_NativeKeyboard
+ * Method:    startedWith0
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_startedWith0
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     us_bringardner_fsh_NativeKeyboard
  * Method:    argv0
  * Signature: ()Ljava/lang/String;
  */

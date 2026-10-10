@@ -25,7 +25,8 @@
  *     If its input is a socket (both its input and output), it also starts the subshell's
  *     programs, so that they are its children as in bash: see standIn.
  * -j: run program (java, for fsh) with -Dfsh.ignoredAtStart=SIG,... first: the signals this was
- *     started ignoring. The JVM takes some signals for itself (QUIT, USR2) before fsh can see that
+ *     started ignoring (and -Dfsh.cfAbsent=true without __CF_USER_TEXT_ENCODING, which macOS's
+ *     java sets). The JVM takes some signals for itself (QUIT, USR2) before fsh can see that
  *     its caller ignored them, which bash would keep ignored (trap -p shows them).
  * -u, -G: the system's user (or group) names, one a line, in its order (getpwent, getgrent: what
  *     bash's compgen -u and -g list; Java cannot read them).
@@ -384,11 +385,16 @@ int main(int argc, char **argv) {
 				strncat(ignoring, n, sizeof ignoring - strlen(ignoring) - 1);
 			}
 		}
-		char **args = (char **) calloc((size_t) argc+1, sizeof(char *));
-		args[0] = argv[2];
-		args[1] = ignoring;
+		char **args = (char **) calloc((size_t) argc+2, sizeof(char *));
+		int a = 0;
+		args[a++] = argv[2];
+		args[a++] = ignoring;
+		if( getenv("__CF_USER_TEXT_ENCODING") == NULL ) {
+			// (macOS's java sets it before the JVM starts: not the shell's caller's)
+			args[a++] = (char *) "-Dfsh.cfAbsent=true";
+		}
 		for(int k = 3; k < argc; k++) {
-			args[k-1] = argv[k];
+			args[a++] = argv[k];
 		}
 		execvp(argv[2], args);
 		fprintf(stderr, "fshexec: %s: %s\n", argv[2], strerror(errno));

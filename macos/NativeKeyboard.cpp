@@ -682,3 +682,46 @@ JNIEXPORT jlongArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_ids0(JNIEnv 
 	free(g);
 	return ret;
 }
+
+/* name is in the environment this process was started with (KERN_PROCARGS2: argc, the exec
+ * path, argv, then the environment), not one set since (macOS sets __CF_USER_TEXT_ENCODING in
+ * the process); -1 if it cannot be told */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_startedWith0(JNIEnv *env, jclass, jstring jname) {
+	int mib[3] = { CTL_KERN, KERN_PROCARGS2, getpid() };
+	size_t size = 0;
+	if( sysctl(mib, 3, NULL, &size, NULL, 0) != 0 || size < sizeof(int) ) {
+		return -1;
+	}
+	char *buf = (char *) malloc(size);
+	if( buf == NULL || sysctl(mib, 3, buf, &size, NULL, 0) != 0 ) {
+		free(buf);
+		return -1;
+	}
+	int argc;
+	memcpy(&argc, buf, sizeof argc);
+	char *p = buf + sizeof(int);
+	char *end = buf + size;
+	// the exec path, then NULs, then argc arguments
+	while( p < end && *p != '\0' ) {
+		p++;
+	}
+	while( p < end && *p == '\0' ) {
+		p++;
+	}
+	for(int i = 0; i < argc && p < end; i++) {
+		p += strlen(p) + 1;
+	}
+	const char *name = env->GetStringUTFChars(jname, NULL);
+	size_t n = strlen(name);
+	int found = 0;
+	while( p < end && *p != '\0' ) {
+		if( strncmp(p, name, n) == 0 && p[n] == '=' ) {
+			found = 1;
+			break;
+		}
+		p += strlen(p) + 1;
+	}
+	env->ReleaseStringUTFChars(jname, name);
+	free(buf);
+	return found;
+}

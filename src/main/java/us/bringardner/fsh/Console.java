@@ -1962,6 +1962,20 @@ delimiter
 		};
 		try {
 			environmentVariables.putAll(System.getenv());
+			// macOS sets __CF_USER_TEXT_ENCODING in the process (as the JVM starts): only one the
+			// shell was given is the environment's (and its programs')
+			if( Boolean.getBoolean("fsh.cfAbsent")) {
+				// (the launcher saw it was not given: fshexec -j)
+				environmentVariables.remove("__CF_USER_TEXT_ENCODING");
+			} else if( environmentVariables.containsKey("__CF_USER_TEXT_ENCODING") && NativeKeyboard.isAvailible()) {
+				try {
+					if( NativeKeyboard.startedWith0("__CF_USER_TEXT_ENCODING") == 0 ) {
+						environmentVariables.remove("__CF_USER_TEXT_ENCODING");
+					}
+				} catch (UnsatisfiedLinkError e) {
+					// (a library from before it had it)
+				}
+			}
 			// an inherited OLDPWD stays only if it is a directory, as in bash
 			Object oldpwd = environmentVariables.get(VARIABLE_OLDPWD);
 			if( oldpwd != null && !new java.io.File(oldpwd.toString()).isDirectory()) {

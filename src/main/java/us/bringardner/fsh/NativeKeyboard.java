@@ -211,6 +211,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** {uid, gid, the supplementary groups...} of this process */
 	public static native long [] ids0();
 
+	/** 1 if name was in the environment this process was started with, 0 if not, -1 if not known */
+	public static native int startedWith0(String name);
+
 	/** this process's argv[0] (as it was started, not its path), or null */
 	public static native String argv0();
 
