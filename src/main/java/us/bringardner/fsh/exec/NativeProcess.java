@@ -124,6 +124,22 @@ public final class NativeProcess extends Process {
 		return group;
 	}
 
+	/** its wait status once it has ended (-1: not known) */
+	private volatile int waitStatus = -1;
+
+	/** the signal that ended it (0: it exited, or it is not known) */
+	public int termSignal() {
+		int s = waitStatus;
+		int sig = s & 0x7f;
+		return s < 0 || sig == 0x7f ? 0 : sig;
+	}
+
+	/** a signal that ended it dumped core */
+	public boolean coreDumped() {
+		int s = waitStatus;
+		return s >= 0 && termSignal() != 0 && (s & 0x80) != 0;
+	}
+
 	/** its exit value once it has ended */
 	private volatile int exitValue;
 
@@ -190,6 +206,7 @@ public final class NativeProcess extends Process {
 
 	/** it ended with wait status status (-1: not known) */
 	public void exited(int status) {
+		waitStatus = status;
 		int signal = status & 0x7f;
 		// (as Java's: 128 + the signal that ended it)
 		exitValue = status < 0 ? 127 : signal == 0 ? (status >> 8) & 0xff : 0x80+signal;

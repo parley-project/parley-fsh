@@ -350,6 +350,16 @@ public final class Programs {
 		volatile int detachedStatus;
 		/** the job it became */
 		private us.bringardner.fsh.job.ProgramJob ownJob;
+		/** the shell ended it (its job was killed): bash says nothing of it */
+		private volatile boolean killed;
+
+		/** how it ended, as bash reports a signal that ended it (see SignalReport), or null */
+		SignalReport.Ended ended(String text) {
+			if( process instanceof NativeProcess np && !np.isAlive() && !killed ) {
+				return new SignalReport.Ended(np.pid(), np.termSignal(), np.coreDumped(), exitCode, text);
+			}
+			return null;
+		}
 
 		public ExternalProcess(List<String> cmd, ShellContext ctx) {
 			this.cmd  = cmd;
@@ -588,7 +598,7 @@ public final class Programs {
 					sc3.start();
 				}
 
-				boolean killed = false;
+				killed = false;
 				while(!waitFor(p, grouped ? 50 : 100)) {
 					if( !killed && ctx.getException() != null
 							&& !(ctx.getException() instanceof us.bringardner.fsh.signal.SignalException se && se.afterProgram)) {
@@ -803,6 +813,15 @@ public final class Programs {
 				return ep.detachedStatus;
 			}
 			ret =  ep.exitCode;
+			Object text = ctx.getVariable("BASH_COMMAND");
+			SignalReport.Ended ended = ep.ended(text == null ? String.join(" ", cmd) : text.toString());
+			if( ended != null ) {
+				// (a pipe stage's: its pipeline says it, see Executor.pipe)
+				ctx.lastProgram = ended;
+				if( !ctx.isIsolated()) {
+					SignalReport.report(ctx, List.of(ended));
+				}
+			}
 			// a command that ran and failed has said why itself; one that could not run has not
 			if( ep.error!=null) {
 				String msg = ""+ep.error.getMessage();

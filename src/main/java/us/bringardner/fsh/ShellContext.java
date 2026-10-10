@@ -1855,6 +1855,8 @@ $
 	}
 	/** in a $( ) (fg there has no current job, as in bash) */
 	public boolean inCommandSubstitution;
+	/** how the last program run here ended (for a pipeline's report of a signal that ended it) */
+	public us.bringardner.fsh.exec.SignalReport.Ended lastProgram;
 	/** in a subshell that has none of the shell's jobs (( ), a compound pipe stage): jobs lists none */
 	public boolean jobsCleared;
 

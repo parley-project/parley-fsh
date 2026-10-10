@@ -144,6 +144,9 @@ public class Wait extends ShellCommand{
 				}
 				IJob done = waitAny(ctx, candidates);
 				int status = done.getExitCode();
+				if( !ctx.console.isInteractive ) {
+					reportSignal(ctx, done);
+				}
 				bind(ctx, varName, done.getPid());
 				jm.remove(done);
 				return status;
@@ -245,8 +248,20 @@ public class Wait extends ShellCommand{
 		if( isFinished(job)) {
 			if( ctx.console.isInteractive ) {
 				ctx.stdout.println(jm.describe(job, false));
+			} else {
+				reportSignal(ctx, job);
 			}
 			jm.remove(job);
+		}
+	}
+
+	/** a script's job a signal ended (its last program): as bash says it, where it waits for it */
+	private static void reportSignal(ShellContext ctx, IJob job) {
+		ShellContext jc = job.getShellContext();
+		us.bringardner.fsh.exec.SignalReport.Ended e = jc == null ? null : jc.lastProgram;
+		if( e != null && e.exitCode() == job.getExitCode()) {
+			us.bringardner.fsh.exec.SignalReport.report(ctx, java.util.List.of(new us.bringardner.fsh.exec.SignalReport.Ended(
+					e.pid(), e.signal(), e.core(), e.exitCode(), job.getCommandLine())));
 		}
 	}
 

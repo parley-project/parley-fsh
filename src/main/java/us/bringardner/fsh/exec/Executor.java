@@ -774,6 +774,21 @@ public final class Executor {
 				}
 			}
 			int ret = threads[n-1].exitCode;
+			// a signal ended its last program: as bash says it
+			List<SignalReport.Ended> ended = new ArrayList<>();
+			for(int i = 0; i < n; i++) {
+				CommandThread t = threads[i];
+				SignalReport.Ended e = t.ctx == sc ? null : t.ctx.lastProgram;
+				if( e == null || e.exitCode() != t.exitCode ) {
+					// (shell code: a subshell that ended as it did)
+					e = new SignalReport.Ended(ProcessHandle.current().pid(), 0, false, t.exitCode, text(p.commands.get(i)).trim());
+				} else {
+					e = new SignalReport.Ended(e.pid(), e.signal(), e.core(), e.exitCode(), text(p.commands.get(i)).trim());
+				}
+				ended.add(e);
+			}
+			// (on the line it starts on: its stages ran elsewhere)
+			SignalReport.report(sc, ended, p.commands.get(0).line);
 			FshList statuses = new FshList();
 			for(CommandThread t : threads) {
 				statuses.add(String.valueOf(t.exitCode));
