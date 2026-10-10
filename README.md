@@ -240,8 +240,20 @@ mvn -Pnative package        # GraalVM native binary named fsh
 java -cp ... us.bringardner.fsh.Console
 ```
 
-On macOS, `macos/compile.sh` builds the native keyboard library and
-`macos/fsh.sh` starts the shell.
+On macOS and Linux, `compile.sh` (in `macos/` or `linux/`) builds the native keyboard library,
+and `fsh` there starts the shell (`fsh.sh` starts it with a debugger port on localhost:8001).
+
+`fsh` runs the native image (`build-native.sh`, in `target/native/`) when there is one as new as
+the jar, and otherwise the jar on Java. The native image starts faster (about 0.03 s, against
+0.14 s); the JVM is faster on long-running scripts (see [Performance](#performance)). To choose
+for one run, set `FSH_RUNTIME`:
+
+```sh
+FSH_RUNTIME=jvm macos/fsh long-job.sh     # the jar on Java, even if there is a native image
+FSH_RUNTIME=native macos/fsh              # the native image (an error if none is built)
+```
+
+`auto`, or leaving it unset, is the default choice above.
 
 ## Files
 

@@ -26,6 +26,9 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
 - `DebugControlPanel.DebugController` is now `us.bringardner.fsh.DebugController`.
 
 ### Changed
+- `macos/fsh` and `linux/fsh` take `FSH_RUNTIME`: `jvm` runs the jar on Java even when there is a
+  native image, `native` runs the native image (an error if none is built), and `auto` (or unset)
+  chooses as before: the native image when it is as new as the jar.
 - Runs on Java 11 or later (was Java 21), like the other components of the library: records,
   pattern matching, switch expressions and the Java 12-21 library methods were rewritten in Java 11
   terms, with no change in behaviour. The launchers pass `--enable-native-access` only to Java 17
