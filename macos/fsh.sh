@@ -12,4 +12,4 @@ fi
 
 debug="-agentlib:jdwp=transport=dt_socket,suspend=$suspend,address=localhost:8001,server=y"
 
-java $debug --enable-native-access=ALL-UNNAMED -Djava.library.path="$LIB_DIR" us.bringardner.fsh.Console "$@"
+java $debug $NATIVE_ACCESS -Djava.library.path="$LIB_DIR" us.bringardner.fsh.Console "$@"

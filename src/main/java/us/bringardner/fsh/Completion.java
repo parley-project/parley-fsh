@@ -785,12 +785,12 @@ public class Completion implements LineEditor.Completer {
 			try {
 				console.runCode(sc, function+" "+q(cmd)+" "+q(word)+" "+q(prev));
 				Object reply = sc.getVariable("COMPREPLY");
-				if( reply instanceof List<?> list ) {
-					for(Object o : list) {
+				if( reply instanceof List<?> ) {
+					for(Object o : ((List<?>) reply)) {
 						ret.add(String.valueOf(o));
 					}
-				} else if( reply instanceof Map<?,?> map ) {
-					for(Object o : map.values()) {
+				} else if( reply instanceof Map<?,?> ) {
+					for(Object o : ((Map<?,?>) reply).values()) {
 						ret.add(String.valueOf(o));
 					}
 				} else if( reply != null && !reply.toString().isEmpty()) {

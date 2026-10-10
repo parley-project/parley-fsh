@@ -18,7 +18,7 @@ public class Argument {
 
 	@Override
 	public boolean equals(Object obj) {
-		return obj instanceof Argument a && value.equals(a.value);
+		return obj instanceof Argument && value.equals(((Argument) obj).value);
 	}
 
 	@Override

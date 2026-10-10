@@ -351,7 +351,7 @@ public class Read extends ShellCommand{
 			return true;
 		}
 		// (the end of the input is no wait either: read returns what there was)
-		while( ctx.stdin instanceof us.bringardner.fsh.SharedInput shared ? !shared.readyOrEnded() : ctx.stdin.available() <= 0 ) {
+		while( ctx.stdin instanceof us.bringardner.fsh.SharedInput ? !((us.bringardner.fsh.SharedInput) ctx.stdin).readyOrEnded() : ctx.stdin.available() <= 0 ) {
 			if( System.currentTimeMillis() >= deadline ) {
 				return false;
 			}

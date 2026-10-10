@@ -195,7 +195,8 @@ public class Set extends ShellCommand{
 			if( v instanceof java.util.Map<?,?> || v instanceof us.bringardner.fsh.FshList ) {
 				// (as declare -p shows them: keys quoted as the shell reads them)
 				line.append(us.bringardner.fsh.exec.Declarations.arrayText(v));
-			} else if( v instanceof java.util.List<?> list ) {
+			} else if( v instanceof java.util.List<?> ) {
+				java.util.List<?> list = (java.util.List<?>) v;
 				line.append('(');
 				for(int i = 0; i < list.size(); i++) {
 					if( list.get(i) != null ) {

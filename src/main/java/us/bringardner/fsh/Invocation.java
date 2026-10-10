@@ -87,26 +87,25 @@ public final class Invocation {
 			}
 			if( w.startsWith("--") ) {
 				switch (w) {
-				case "--login" -> ret.login = true;
-				case "--norc" -> ret.norc = true;
-				case "--noprofile" -> ret.noprofile = true;
-				case "--help" -> ret.help = true;
-				case "--version" -> ret.version = true;
-				case "--native-status" -> ret.nativeStatus = true;
-				case "--rcfile", "--init-file" -> {
+				case "--login": ret.login = true; break;
+				case "--norc": ret.norc = true; break;
+				case "--noprofile": ret.noprofile = true; break;
+				case "--help": ret.help = true; break;
+				case "--version": ret.version = true; break;
+				case "--native-status": ret.nativeStatus = true; break;
+				case "--rcfile": case "--init-file": {
 					if( i+1 >= words.length ) {
 						throw new Bad(w+": option requires an argument");
 					}
 					ret.rcfile = words[++i];
-				}
-				case "--pretty-print" -> ret.prettyPrint = true;
-				case "--restricted" -> ret.restricted = true;
-				case "--posix" -> ret.options.add(new String[] {"posix", "-"});
-				case "--verbose" -> ret.options.add(new String[] {"v", "-"});
+				} break;
+				case "--pretty-print": ret.prettyPrint = true; break;
+				case "--restricted": ret.restricted = true; break;
+				case "--posix": ret.options.add(new String[] {"posix", "-"}); break;
+				case "--verbose": ret.options.add(new String[] {"v", "-"}); break;
 				// bash's that change nothing here
-				case "--noediting", "--debugger", "--dump-strings" -> {
-				}
-				default -> throw new Bad(w+": invalid option");
+				case "--noediting": case "--debugger": case "--dump-strings": break;
+				default: throw new Bad(w+": invalid option");
 				}
 				continue;
 			}
@@ -118,14 +117,14 @@ public final class Invocation {
 				char c = w.charAt(k);
 				if( on.equals("-") && "cilsrD".indexOf(c) >= 0 ) {
 					switch (c) {
-					case 'c' -> wantCommand = true;
-					case 'i' -> ret.interactive = true;
-					case 'l' -> ret.login = true;
-					case 's' -> ret.stdin = true;
-					case 'r' -> ret.restricted = true;
-					default -> {
+					case 'c': wantCommand = true; break;
+					case 'i': ret.interactive = true; break;
+					case 'l': ret.login = true; break;
+					case 's': ret.stdin = true; break;
+					case 'r': ret.restricted = true; break;
+					default: {
 						// -D: not in fsh
-					}
+					} break;
 					}
 				} else if( c == 'o' || c == 'O' ) {
 					if( i+1 >= words.length ) {

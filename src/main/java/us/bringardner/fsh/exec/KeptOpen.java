@@ -22,8 +22,8 @@ final class KeptOpen extends PrintStream {
 
 	/** the stream out writes to, under any KeptOpen */
 	static java.io.OutputStream unwrap(java.io.OutputStream out) {
-		while( out instanceof KeptOpen k ) {
-			out = k.target;
+		while( out instanceof KeptOpen ) {
+			out = ((KeptOpen) out).target;
 		}
 		return out;
 	}

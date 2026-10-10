@@ -431,8 +431,8 @@ public class Ls extends ShellCommand {
 	//-rw-rw-r--    1     ec2-user ec2-user    2186     Feb  2 08:41 build.txt
 	/** file is there: it exists, or it is a symbolic link (one whose target does not exist is listed too, as ls does) */
 	private static boolean present(FileSource file) throws IOException {
-		return file.exists() || file instanceof us.bringardner.parley.files.fileproxy.FileProxy p
-				&& java.nio.file.Files.isSymbolicLink(p.getTarget().toPath());
+		return file.exists() || file instanceof us.bringardner.parley.files.fileproxy.FileProxy
+				&& java.nio.file.Files.isSymbolicLink(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath());
 	}
 
 	private  void print(ShellContext ctx, List<String> out,List<LsArgument> args, FileSource file) throws IOException {
@@ -456,8 +456,8 @@ public class Ls extends ShellCommand {
 		if(label == null && isHidden(file) && !args.contains(LsArgument.a)) {
 			return;
 		}
-		java.nio.file.Path link = file instanceof us.bringardner.parley.files.fileproxy.FileProxy p
-				&& java.nio.file.Files.isSymbolicLink(p.getTarget().toPath()) ? p.getTarget().toPath() : null;
+		java.nio.file.Path link = file instanceof us.bringardner.parley.files.fileproxy.FileProxy
+				&& java.nio.file.Files.isSymbolicLink(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath()) ? ((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath() : null;
 		if(!args.contains(LsArgument.l) && !args.contains(LsArgument.g)) {
 			out.add(label != null ? label : file.getName());
 		} else if( link != null ) {

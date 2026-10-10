@@ -143,29 +143,203 @@ public final class Ast {
 	}
 
 	/** an expression of [[ ]] (parentheses only group) */
-	public sealed interface CondExpr permits CondAnd, CondOr, CondNot, CondUnary, CondBinary, CondWord {
+	public interface CondExpr {
 	}
 
-	public record CondAnd(CondExpr left, CondExpr right) implements CondExpr {
+	public static final class CondAnd implements CondExpr {
+		private final CondExpr left;
+		private final CondExpr right;
+
+		public CondAnd(CondExpr left, CondExpr right) {
+			this.left = left;
+			this.right = right;
+		}
+
+		public CondExpr left() {
+			return left;
+		}
+
+		public CondExpr right() {
+			return right;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof CondAnd)) return false;
+			CondAnd o = (CondAnd) x;
+			return java.util.Objects.equals(left, o.left) && java.util.Objects.equals(right, o.right);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(left, right);
+		}
+
+		@Override public String toString() {
+			return "CondAnd[" + "left=" + left + ", " + "right=" + right + "]";
+		}
 	}
 
-	public record CondOr(CondExpr left, CondExpr right) implements CondExpr {
+	public static final class CondOr implements CondExpr {
+		private final CondExpr left;
+		private final CondExpr right;
+
+		public CondOr(CondExpr left, CondExpr right) {
+			this.left = left;
+			this.right = right;
+		}
+
+		public CondExpr left() {
+			return left;
+		}
+
+		public CondExpr right() {
+			return right;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof CondOr)) return false;
+			CondOr o = (CondOr) x;
+			return java.util.Objects.equals(left, o.left) && java.util.Objects.equals(right, o.right);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(left, right);
+		}
+
+		@Override public String toString() {
+			return "CondOr[" + "left=" + left + ", " + "right=" + right + "]";
+		}
 	}
 
 	/** ! expression */
-	public record CondNot(CondExpr expression) implements CondExpr {
+	public static final class CondNot implements CondExpr {
+		private final CondExpr expression;
+
+		public CondNot(CondExpr expression) {
+			this.expression = expression;
+		}
+
+		public CondExpr expression() {
+			return expression;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof CondNot)) return false;
+			CondNot o = (CondNot) x;
+			return java.util.Objects.equals(expression, o.expression);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(expression);
+		}
+
+		@Override public String toString() {
+			return "CondNot[" + "expression=" + expression + "]";
+		}
 	}
 
 	/** -f file, -n string, -v name ... */
-	public record CondUnary(String op, Word operand) implements CondExpr {
+	public static final class CondUnary implements CondExpr {
+		private final String op;
+		private final Word operand;
+
+		public CondUnary(String op, Word operand) {
+			this.op = op;
+			this.operand = operand;
+		}
+
+		public String op() {
+			return op;
+		}
+
+		public Word operand() {
+			return operand;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof CondUnary)) return false;
+			CondUnary o = (CondUnary) x;
+			return java.util.Objects.equals(op, o.op) && java.util.Objects.equals(operand, o.operand);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(op, operand);
+		}
+
+		@Override public String toString() {
+			return "CondUnary[" + "op=" + op + ", " + "operand=" + operand + "]";
+		}
 	}
 
 	/** a == pattern, a =~ regex, a < b, n -eq m ... (the right of == != is a pattern, of =~ a regular expression) */
-	public record CondBinary(Word left, String op, Word right) implements CondExpr {
+	public static final class CondBinary implements CondExpr {
+		private final Word left;
+		private final String op;
+		private final Word right;
+
+		public CondBinary(Word left, String op, Word right) {
+			this.left = left;
+			this.op = op;
+			this.right = right;
+		}
+
+		public Word left() {
+			return left;
+		}
+
+		public String op() {
+			return op;
+		}
+
+		public Word right() {
+			return right;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof CondBinary)) return false;
+			CondBinary o = (CondBinary) x;
+			return java.util.Objects.equals(left, o.left) && java.util.Objects.equals(op, o.op) && java.util.Objects.equals(right, o.right);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(left, op, right);
+		}
+
+		@Override public String toString() {
+			return "CondBinary[" + "left=" + left + ", " + "op=" + op + ", " + "right=" + right + "]";
+		}
 	}
 
 	/** a word alone: true if it is not empty */
-	public record CondWord(Word word) implements CondExpr {
+	public static final class CondWord implements CondExpr {
+		private final Word word;
+
+		public CondWord(Word word) {
+			this.word = word;
+		}
+
+		public Word word() {
+			return word;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof CondWord)) return false;
+			CondWord o = (CondWord) x;
+			return java.util.Objects.equals(word, o.word);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(word);
+		}
+
+		@Override public String toString() {
+			return "CondWord[" + "word=" + word + "]";
+		}
 	}
 
 	/** coproc NAME command: command runs in the background, its output on NAME[0], its input NAME[1] */

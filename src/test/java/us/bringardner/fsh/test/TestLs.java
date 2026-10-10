@@ -47,7 +47,7 @@ public class TestLs extends AbstractConsoleTest {
 			if( idx < files.size()) {
 				File file = files.get(idx);
 				if(!complete.contains(file)) {					
-					long cdate = r.nextLong(System.currentTimeMillis());
+					long cdate = Math.floorMod(r.nextLong(), System.currentTimeMillis());
 					FileTime time = FileTime.fromMillis(cdate);
 					Files.setAttribute(file.toPath(), "lastAccessTime", time);
 					complete.add(file);
@@ -83,11 +83,11 @@ public class TestLs extends AbstractConsoleTest {
 		 */
 
 
-		long cdate = r.nextLong(System.currentTimeMillis());
+		long cdate = Math.floorMod(r.nextLong(), System.currentTimeMillis());
 		FileTime ctime = FileTime.fromMillis(cdate);
-		long mdate = cdate+r.nextLong(99999999);
+		long mdate = cdate+Math.floorMod(r.nextLong(), 99999999);
 		FileTime mtime = FileTime.fromMillis(mdate);
-		long adate = mdate+r.nextLong(99999);
+		long adate = mdate+Math.floorMod(r.nextLong(), 99999);
 		FileTime atime = FileTime.fromMillis(adate);
 		
 		if( file.isDirectory()) {

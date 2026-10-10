@@ -344,7 +344,7 @@ public class Test extends ShellCommand{
 				// -v a[@]: a has an element (a set scalar is one)
 				Object arr = ctx.getVariable(m.group(1));
 				// (of an associative array, as bash: the element whose key is @)
-				return arr instanceof java.util.Map<?,?> map ? map.containsKey(m.group(2)) : arr instanceof java.util.List<?> l ? !l.isEmpty() : arr != null;
+				return arr instanceof java.util.Map<?,?> ? ((java.util.Map<?,?>) arr).containsKey(m.group(2)) : arr instanceof java.util.List<?> ? !((java.util.List<?>) arr).isEmpty() : arr != null;
 			}
 			if( m.matches()) {
 				// -v a[1], -v m[key]: that element is set
@@ -404,10 +404,10 @@ public class Test extends ShellCommand{
 			if( d == null ) {
 				return false;
 			}
-			if( !(d.source instanceof FileSource f)) {
+			if( !(d.source instanceof FileSource)) {
 				return op.equals("-e") || op.equals("-a");
 			}
-			val = f.getAbsolutePath();
+			val = ((FileSource) d.source).getAbsolutePath();
 		}
 		java.util.Map<String,Object> st = stat(ctx, val, !op.equals("-h") && !op.equals("-L"));
 		if( st != null || isLocal(ctx, val)) {
@@ -469,8 +469,8 @@ public class Test extends ShellCommand{
 	static java.nio.file.Path path(ShellContext ctx, String val) {
 		try {
 			FileSource f = ctx.getFileSource(val);
-			if( f instanceof us.bringardner.parley.files.fileproxy.FileProxy p ) {
-				return p.getTarget().toPath();
+			if( f instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
+				return ((us.bringardner.parley.files.fileproxy.FileProxy) f).getTarget().toPath();
 			}
 		} catch (IOException e) {
 		}
@@ -497,7 +497,7 @@ public class Test extends ShellCommand{
 	/** the shell's group (bash's egid) */
 	private static Object firstGroup(ShellContext ctx) {
 		Object g = ctx.getVariable("GROUPS");
-		return g instanceof java.util.List<?> l && !l.isEmpty() ? l.get(0) : null;
+		return g instanceof java.util.List<?> && !((java.util.List<?>) g).isEmpty() ? ((java.util.List<?>) g).get(0) : null;
 	}
 
 	/** f1 -nt -ot -ef f2 (also used by test and [ ]) */

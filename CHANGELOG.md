@@ -26,6 +26,10 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
 - `DebugControlPanel.DebugController` is now `us.bringardner.fsh.DebugController`.
 
 ### Changed
+- Runs on Java 11 or later (was Java 21), like the other components of the library: records,
+  pattern matching, switch expressions and the Java 12-21 library methods were rewritten in Java 11
+  terms, with no change in behaviour. The launchers pass `--enable-native-access` only to Java 17
+  or later, which Java 11 doesn't start with (`java-options.sh`, `java-options.cmd`).
 - All of `NativeKeyboard`'s native functions are also done through JNA (`us.bringardner.fsh.jna`:
   libc on macOS and Linux, kernel32 on Windows), so a system the JNI library (`macos/`, `linux/`,
   `windows/`) was not built for still has raw keys, the terminal's width, job control and, on Unix,

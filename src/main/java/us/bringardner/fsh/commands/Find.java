@@ -291,11 +291,13 @@ public class Find extends ShellCommand{
 				String t = ""+args[++idx].getValue(ctx);
 				// (with -L a link is what it points at; -type l then finds only those that point nowhere)
 				boolean follow = fctx.followLinks;
-				test = (f, path, d) -> switch (t) {
-				case "f" -> f.isFile() && (follow || f.getLinkedTo() == null);
-				case "d" -> f.isDirectory() && (follow || d == 0 || f.getLinkedTo() == null);
-				case "l" -> f.getLinkedTo() != null && (!follow || !f.exists());
-				default -> false;
+				test = (f, path, d) -> {
+					switch (t) {
+					case "f": return f.isFile() && (follow || f.getLinkedTo() == null);
+					case "d": return f.isDirectory() && (follow || d == 0 || f.getLinkedTo() == null);
+					case "l": return f.getLinkedTo() != null && (!follow || !f.exists());
+					default: return false;
+					}
 				};
 				break;
 			}
@@ -380,14 +382,14 @@ public class Find extends ShellCommand{
 		}
 		ret.numerator = end == 0 ? 0 : Long.parseLong(number.substring(0, end));
 		String unit = number.substring(end);
-		ret.denominator = switch (unit) {
-		case "c" -> 1;
-		case "w" -> 2;
-		case "k" -> 1024;
-		case "M" -> 1048576;
-		case "G" -> 1073741824;
-		default -> 512;
-		};
+		switch (unit) {
+		case "c": ret.denominator = 1; break;
+		case "w": ret.denominator = 2; break;
+		case "k": ret.denominator = 1024; break;
+		case "M": ret.denominator = 1048576; break;
+		case "G": ret.denominator = 1073741824; break;
+		default: ret.denominator = 512; break;
+		}
 		return ret;
 	}
 }

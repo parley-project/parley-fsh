@@ -72,7 +72,37 @@ public final class Expander {
 	/** between two words of $@ or ${a[@]}; text is what joins them where words are not split */
 	private static final int BREAK = 3;
 
-	private record Piece(int kind, String text) {
+	private static final class Piece {
+		private final int kind;
+		private final String text;
+
+		private Piece(int kind, String text) {
+			this.kind = kind;
+			this.text = text;
+		}
+
+		public int kind() {
+			return kind;
+		}
+
+		public String text() {
+			return text;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Piece)) return false;
+			Piece o = (Piece) x;
+			return kind == o.kind && java.util.Objects.equals(text, o.text);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(kind, text);
+		}
+
+		@Override public String toString() {
+			return "Piece[" + "kind=" + kind + ", " + "text=" + text + "]";
+		}
 	}
 
 	// ------------------------------------------------------------------ what words are for
@@ -427,10 +457,10 @@ public final class Expander {
 	private static final Pattern ASSIGNMENT_WORD = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*(\\[[^]]*\\])?\\+?=.*", Pattern.DOTALL);
 
 	private static boolean looksLikeAssignment(Word w) {
-		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal l)) {
+		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal)) {
 			return false;
 		}
-		String t = l.text();
+		String t = ((Word.Literal) w.parts.get(0)).text();
 		// (most words are not: no = in them, or not a name first)
 		if( t.indexOf('=') <= 0 || !(Character.isLetter(t.charAt(0)) || t.charAt(0) == '_')) {
 			return false;
@@ -511,28 +541,29 @@ public final class Expander {
 	private static String source(List<Word.Part> parts) {
 		StringBuilder ret = new StringBuilder();
 		for(Word.Part p : parts) {
-			if( p instanceof Word.Literal l ) {
-				ret.append(l.text());
-			} else if( p instanceof Word.Escaped e ) {
-				ret.append('\\').append(e.c());
-			} else if( p instanceof Word.SingleQuoted q ) {
-				ret.append('\'').append(q.text()).append('\'');
-			} else if( p instanceof Word.AnsiC a ) {
-				ret.append("$'").append(a.text()).append('\'');
-			} else if( p instanceof Word.DoubleQuoted d ) {
+			if( p instanceof Word.Literal ) {
+				ret.append(((Word.Literal) p).text());
+			} else if( p instanceof Word.Escaped ) {
+				ret.append('\\').append(((Word.Escaped) p).c());
+			} else if( p instanceof Word.SingleQuoted ) {
+				ret.append('\'').append(((Word.SingleQuoted) p).text()).append('\'');
+			} else if( p instanceof Word.AnsiC ) {
+				ret.append("$'").append(((Word.AnsiC) p).text()).append('\'');
+			} else if( p instanceof Word.DoubleQuoted ) {
+				Word.DoubleQuoted d = (Word.DoubleQuoted) p;
 				ret.append(d.locale() ? "$\"" : "\"").append(source(d.parts())).append('"');
-			} else if( p instanceof Word.Param n ) {
-				ret.append('$').append(n.name());
-			} else if( p instanceof Word.ParamExpansion x ) {
-				ret.append("${").append(x.body()).append('}');
-			} else if( p instanceof Word.CommandSub c ) {
-				ret.append("$(").append(c.text()).append(')');
-			} else if( p instanceof Word.Backquote b ) {
-				ret.append('`').append(b.text()).append('`');
-			} else if( p instanceof Word.ArithSub a ) {
-				ret.append("$((").append(a.expression().raw).append("))");
-			} else if( p instanceof Word.ArithSubscript a ) {
-				ret.append('[').append(a.text()).append(']');
+			} else if( p instanceof Word.Param ) {
+				ret.append('$').append(((Word.Param) p).name());
+			} else if( p instanceof Word.ParamExpansion ) {
+				ret.append("${").append(((Word.ParamExpansion) p).body()).append('}');
+			} else if( p instanceof Word.CommandSub ) {
+				ret.append("$(").append(((Word.CommandSub) p).text()).append(')');
+			} else if( p instanceof Word.Backquote ) {
+				ret.append('`').append(((Word.Backquote) p).text()).append('`');
+			} else if( p instanceof Word.ArithSub ) {
+				ret.append("$((").append(((Word.ArithSub) p).expression().raw).append("))");
+			} else if( p instanceof Word.ArithSubscript ) {
+				ret.append('[').append(((Word.ArithSubscript) p).text()).append(']');
 			} else {
 			}
 		}
@@ -550,8 +581,8 @@ public final class Expander {
 					out.add(new Piece(TEXT, rest));
 				}
 				i++;
-			} else if( tilde != TILDE_NONE && p instanceof Word.Literal l ) {
-				tilde(l.text(), i == 0, i == parts.size()-1, tilde, out);
+			} else if( tilde != TILDE_NONE && p instanceof Word.Literal ) {
+				tilde(((Word.Literal) p).text(), i == 0, i == parts.size()-1, tilde, out);
 			} else {
 				part(p, TEXT, out);
 			}
@@ -564,8 +595,12 @@ public final class Expander {
 	 * @return how much of parts[i+1] it used, or -1 if this is not one
 	 */
 	private int indexed(List<Word.Part> parts, int i, int context, List<Piece> out) {
-		if( !(parts.get(i) instanceof Word.Param pa) || i+1 >= parts.size() || !(parts.get(i+1) instanceof Word.Literal l)
-				|| !l.text().startsWith("[") || !isName(pa.name())) {
+		if( !(parts.get(i) instanceof Word.Param) || i+1 >= parts.size() || !(parts.get(i+1) instanceof Word.Literal)) {
+			return -1;
+		}
+		Word.Param pa = (Word.Param) parts.get(i);
+		Word.Literal l = (Word.Literal) parts.get(i+1);
+		if( !l.text().startsWith("[") || !isName(pa.name())) {
 			return -1;
 		}
 		Object v = sc.getVariable(pa.name());
@@ -633,7 +668,8 @@ public final class Expander {
 			if( user.matches("[+-]?[0-9]+")) {
 				// ~N ~+N ~-N: an entry of the directory stack, as dirs +N (-N) prints it
 				Object stack = sc.getVariable("DIRSTACK");
-				if( stack instanceof List<?> l ) {
+				if( stack instanceof List<?> ) {
+					List<?> l = (List<?>) stack;
 					long n = Long.parseLong(user.startsWith("+") ? user.substring(1) : user);
 					long i = user.startsWith("-") ? l.size()-1+n : n;
 					return i >= 0 && i < l.size() ? str(l.get((int) i)) : null;
@@ -667,8 +703,8 @@ public final class Expander {
 		try {
 			return part0(p, context, out);
 		} catch (BadSubstitution b) {
-			if( p instanceof Word.DoubleQuoted d ) {
-				b.locate(source(d.parts()));
+			if( p instanceof Word.DoubleQuoted ) {
+				b.locate(source(((Word.DoubleQuoted) p).parts()));
 			}
 			throw b;
 		}
@@ -700,15 +736,16 @@ public final class Expander {
 	}
 
 	private boolean part0(Word.Part p, int context, List<Piece> out) {
-		if( p instanceof Word.Literal l ) {
-			out.add(new Piece(context, l.text()));
-		} else if( p instanceof Word.Escaped e ) {
-			out.add(new Piece(QUOTED, String.valueOf(e.c())));
-		} else if( p instanceof Word.SingleQuoted s ) {
-			out.add(new Piece(QUOTED, s.text()));
-		} else if( p instanceof Word.AnsiC a ) {
-			out.add(new Piece(QUOTED, ShellContext.ansiC(a.text())));
-		} else if( p instanceof Word.DoubleQuoted d ) {
+		if( p instanceof Word.Literal ) {
+			out.add(new Piece(context, ((Word.Literal) p).text()));
+		} else if( p instanceof Word.Escaped ) {
+			out.add(new Piece(QUOTED, String.valueOf(((Word.Escaped) p).c())));
+		} else if( p instanceof Word.SingleQuoted ) {
+			out.add(new Piece(QUOTED, ((Word.SingleQuoted) p).text()));
+		} else if( p instanceof Word.AnsiC ) {
+			out.add(new Piece(QUOTED, ShellContext.ansiC(((Word.AnsiC) p).text())));
+		} else if( p instanceof Word.DoubleQuoted ) {
+			Word.DoubleQuoted d = (Word.DoubleQuoted) p;
 			int before = out.size();
 			boolean content = d.parts().isEmpty();
 			boolean emptyAt = false;
@@ -731,7 +768,7 @@ public final class Expander {
 				boolean r = part(q, QUOTED, out);
 				// (false: a "$@" with nothing in it)
 				emptyAt |= !r;
-				literal |= (q instanceof Word.Literal l && !l.text().isEmpty()) || q instanceof Word.Escaped;
+				literal |= (q instanceof Word.Literal && !((Word.Literal) q).text().isEmpty()) || q instanceof Word.Escaped;
 				content |= r;
 			}
 			} finally {
@@ -746,26 +783,28 @@ public final class Expander {
 				// "" and "$empty" are an empty word
 				out.add(new Piece(QUOTED, ""));
 			}
-		} else if( p instanceof Word.Param pa ) {
-			return parameter(ParamExpr.simple(pa.name()), context, out);
-		} else if( p instanceof Word.ParamExpansion pe ) {
+		} else if( p instanceof Word.Param ) {
+			return parameter(ParamExpr.simple(((Word.Param) p).name()), context, out);
+		} else if( p instanceof Word.ParamExpansion ) {
 			try {
-				return parameter(ParamExpr.parse(ansiCName(pe.body(), context == QUOTED || doubleQuoted > 0 || inHereDocument), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
+				return parameter(ParamExpr.parse(ansiCName(((Word.ParamExpansion) p).body(), context == QUOTED || doubleQuoted > 0 || inHereDocument), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
 			} catch (us.bringardner.fsh.syntax.SyntaxError e) {
 				// a $( in the word that does not end: said as bash says it, and the command is not run
 				throw commandSubstitutionError(e);
 			}
-		} else if( p instanceof Word.CommandSub cs ) {
+		} else if( p instanceof Word.CommandSub ) {
+			Word.CommandSub cs = (Word.CommandSub) p;
 			value(trimNewlines(host.commandOutput(cs.body(), cs.text(), false)), context, out);
-		} else if( p instanceof Word.Backquote b ) {
-			value(trimNewlines(host.commandOutput(null, b.text(), true)), context, out);
-		} else if( p instanceof Word.FunctionSub fs ) {
+		} else if( p instanceof Word.Backquote ) {
+			value(trimNewlines(host.commandOutput(null, ((Word.Backquote) p).text(), true)), context, out);
+		} else if( p instanceof Word.FunctionSub ) {
+			Word.FunctionSub fs = (Word.FunctionSub) p;
 			String v = host.functionOutput(fs.body(), fs.text(), fs.reply());
 			value(fs.reply() ? v : trimNewlines(v), context, out);
-		} else if( p instanceof Word.ArithSub a ) {
+		} else if( p instanceof Word.ArithSub ) {
 			String n;
 			try {
-				n = String.valueOf(arithmetic(a.expression()));
+				n = String.valueOf(arithmetic(((Word.ArithSub) p).expression()));
 			} catch (ExpansionError x) {
 				if( x.kind != ExpansionError.Kind.FATAL && sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix) && !sc.console.isInteractive ) {
 					// (posix mode: a script ends, as bash's)
@@ -776,17 +815,18 @@ public final class Expander {
 				throw x;
 			}
 			value(n, context, out);
-		} else if( p instanceof Word.ArithSubscript a ) {
+		} else if( p instanceof Word.ArithSubscript ) {
 			// expanded as a word (quotes removed), then [ ] $ ` ~ \ ' " quoted with \
 			StringBuilder q = new StringBuilder("[");
-			for(char c : string(Parser.fragment(a.text(), Fragment.WORD)).toCharArray()) {
+			for(char c : string(Parser.fragment(((Word.ArithSubscript) p).text(), Fragment.WORD)).toCharArray()) {
 				if( "[]$`~\\'\"".indexOf(c) >= 0 ) {
 					q.append('\\');
 				}
 				q.append(c);
 			}
 			out.add(new Piece(QUOTED, q.append(']').toString()));
-		} else if( p instanceof Word.ProcessSub ps ) {
+		} else if( p instanceof Word.ProcessSub ) {
+			Word.ProcessSub ps = (Word.ProcessSub) p;
 			out.add(new Piece(QUOTED, host.processSubstitution(ps.direction(), ps.body(), ps.text())));
 		}
 		return true;
@@ -1143,7 +1183,7 @@ public final class Expander {
 		if( "@".equals(op) && e.arg != null && (e.arg.startsWith("a") || e.arg.startsWith("A"))) {
 			// (only looked at here: reading $RANDOM changes it)
 			Object raw = e.prefix == 0 && e.subscript == null && isName(e.name) ? sc.getVariable(e.name) : null;
-			attributes = raw != null && !(raw instanceof List<?> l && l.isEmpty()) && !(raw instanceof Map<?,?> m && m.isEmpty());
+			attributes = raw != null && !(raw instanceof List<?> && ((List<?>) raw).isEmpty()) && !(raw instanceof Map<?,?> && ((Map<?,?>) raw).isEmpty());
 		}
 		Val v = base(e, !conditional && !attributes);
 		if( op == null ) {
@@ -1348,7 +1388,7 @@ public final class Expander {
 
 	/** a[i] (arithmetic) or m[key] (expanded) */
 	private Object element(Object v, ParamExpr e) {
-		if( v instanceof Map<?,?> m ) {
+		if( v instanceof Map<?,?> ) {
 			String key = join(paramPieces(e.subscript));
 			if( key.isEmpty()) {
 				if( e.prefix == '#' ) {
@@ -1358,15 +1398,15 @@ public final class Expander {
 				host.warning(e.name+": bad array subscript");
 				return null;
 			}
-			return m.get(key);
+			return ((Map<?,?>) v).get(key);
 		}
 		// (as in $(( )): no ~, and '...' is not removed)
 		Word subscript = Parser.arithmeticFragment(e.subscript);
 		// (the blanks after it stay, as bash's errors show them)
 		long idx = evaluate(arithmeticText(subscript)+trailingBlanks(subscript)).longValue();
 		if( idx < 0 ) {
-			long size = v instanceof FshList f ? (f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1)
-					: v instanceof List<?> l ? l.size() : v == null ? 0 : 1;
+			long size = v instanceof FshList ? (((FshList) v).isEmpty() ? 0 : ((FshList) v).getIndexes().get(((FshList) v).size()-1)+1)
+					: v instanceof List<?> ? ((List<?>) v).size() : v == null ? 0 : 1;
 			idx += size;
 			if( idx < 0 ) {
 				if( v == null ) {
@@ -1381,10 +1421,11 @@ public final class Expander {
 				return null;
 			}
 		}
-		if( v instanceof FshList f ) {
-			return f.get((int) idx);
+		if( v instanceof FshList ) {
+			return ((FshList) v).get((int) idx);
 		}
-		if( v instanceof List<?> l ) {
+		if( v instanceof List<?> ) {
+			List<?> l = (List<?>) v;
 			return idx < l.size() ? l.get((int) idx) : null;
 		}
 		return idx == 0 ? v : null;
@@ -1413,16 +1454,17 @@ public final class Expander {
 		if( cur instanceof Map<?,?> ) {
 			String key = join(paramPieces(e.subscript));
 			sc.setVariable(e.name, key, value);
-			return sc.getVariable(e.name) instanceof Map<?,?> m ? m.get(key) : null;
+			Object now = sc.getVariable(e.name);
+			return now instanceof Map<?,?> ? ((Map<?,?>) now).get(key) : null;
 		}
 		int idx = (int) evaluate(arithmeticText(Parser.arithmeticFragment(e.subscript))).longValue();
 		sc.setVariable(e.name, idx, value);
 		Object now = sc.getVariable(e.name);
-		if( now instanceof us.bringardner.fsh.FshList f ) {
+		if( now instanceof us.bringardner.fsh.FshList ) {
 			// (sparse: by index)
-			return idx >= 0 ? f.get(idx) : null;
+			return idx >= 0 ? ((us.bringardner.fsh.FshList) now).get(idx) : null;
 		}
-		return now instanceof List<?> l && idx >= 0 && idx < l.size() ? l.get(idx) : null;
+		return now instanceof List<?> && idx >= 0 && idx < ((List<?>) now).size() ? ((List<?>) now).get(idx) : null;
 	}
 
 	/** a value into pieces: false for a quoted empty $@ */
@@ -1465,16 +1507,16 @@ public final class Expander {
 		List<Word.Part> parts = w.parts;
 		for (int i = 0; i < parts.size(); i++) {
 			Word.Part p = parts.get(i);
-			if( i == 0 && context != QUOTED && p instanceof Word.Literal l && l.text().startsWith("~")) {
+			if( i == 0 && context != QUOTED && p instanceof Word.Literal && ((Word.Literal) p).text().startsWith("~")) {
 				List<Piece> t = new ArrayList<>();
-				tilde(l.text(), true, parts.size() == 1, TILDE_START, t);
+				tilde(((Word.Literal) p).text(), true, parts.size() == 1, TILDE_START, t);
 				for(Piece x : t) {
 					out.add(x.kind == TEXT ? new Piece(EXPANDED, x.text) : x);
 				}
 				ret = true;
 				continue;
 			}
-			boolean at = p instanceof Word.Param pa && pa.name().equals("@") || p instanceof Word.ParamExpansion px && px.body().equals("@");
+			boolean at = p instanceof Word.Param && ((Word.Param) p).name().equals("@") || p instanceof Word.ParamExpansion && ((Word.ParamExpansion) p).body().equals("@");
 			if( at && context != QUOTED && !ifs().isEmpty() && !ifs().equals(" \t\n") ) {
 				// as bash: ${x-$@} with IFS=: is the parameters joined with spaces, then split
 				out.add(new Piece(EXPANDED, String.join(" ", strings(sc.getPositionalParameterValues()))));
@@ -1600,16 +1642,16 @@ public final class Expander {
 			String text;
 			boolean special;
 			boolean expanded = false;
-			if( p instanceof Word.Literal l ) {
-				text = l.text();
+			if( p instanceof Word.Literal ) {
+				text = ((Word.Literal) p).text();
 				if( !quoted && i == 0 && rep.isEmpty() && lit.length() == 0 && (text.equals("~") || text.startsWith("~/"))) {
 					// ${x/a/~}: ~ is the home directory (in "..." too, as bash)
 					Object home = sc.getVariable("HOME");
 					text = (home == null ? "" : home)+text.substring(1);
 				}
 				special = !quoted;
-			} else if( p instanceof Word.DoubleQuoted d ) {
-				replacement(d.parts(), true, rep, lit);
+			} else if( p instanceof Word.DoubleQuoted ) {
+				replacement(((Word.DoubleQuoted) p).parts(), true, rep, lit);
 				continue;
 			} else if( p instanceof Word.Escaped || p instanceof Word.SingleQuoted || p instanceof Word.AnsiC ) {
 				List<Piece> pieces = new ArrayList<>();
@@ -1806,7 +1848,7 @@ public final class Expander {
 			}
 			return Val.of(ret.toString());
 		}
-		if( t == 'A' && ("@".equals(e.subscript) || "*".equals(e.subscript)) && sc.getVariable(e.name) instanceof List<?> l && l.isEmpty()
+		if( t == 'A' && ("@".equals(e.subscript) || "*".equals(e.subscript)) && sc.getVariable(e.name) instanceof List<?> && ((List<?>) sc.getVariable(e.name)).isEmpty()
 				&& !sc.console.declaredUnset.contains(e.name)) {
 			// B=(); ${B[@]@A}
 			return Val.of("declare -"+attributes(e.name)+" "+e.name+"=()");
@@ -1913,23 +1955,23 @@ public final class Expander {
 		StringBuilder ret = new StringBuilder("$'");
 		for(char c : s.toCharArray()) {
 			switch (c) {
-			case 0x07 -> ret.append("\\a");
-			case '\b' -> ret.append("\\b");
-			case 0x1b -> ret.append("\\E");
-			case '\f' -> ret.append("\\f");
-			case '\n' -> ret.append("\\n");
-			case '\r' -> ret.append("\\r");
-			case '\t' -> ret.append("\\t");
-			case 0x0b -> ret.append("\\v");
-			case '\\' -> ret.append("\\\\");
-			case '\'' -> ret.append("\\'");
-			default -> {
+			case 0x07: ret.append("\\a"); break;
+			case '\b': ret.append("\\b"); break;
+			case 0x1b: ret.append("\\E"); break;
+			case '\f': ret.append("\\f"); break;
+			case '\n': ret.append("\\n"); break;
+			case '\r': ret.append("\\r"); break;
+			case '\t': ret.append("\\t"); break;
+			case 0x0b: ret.append("\\v"); break;
+			case '\\': ret.append("\\\\"); break;
+			case '\'': ret.append("\\'"); break;
+			default: {
 				if( us.bringardner.fsh.RawUtf8.unprintable(c)) {
 					ret.append(String.format("\\%03o", us.bringardner.fsh.RawUtf8.valueOf(c)));
 				} else {
 					ret.append(c);
 				}
-			}
+			} break;
 			}
 		}
 		return ret.append('\'').toString();
@@ -1968,16 +2010,16 @@ public final class Expander {
 
 	private static List<String> values(Object v) {
 		List<String> ret = new ArrayList<>();
-		if( v instanceof FshList f ) {
-			for(Object o : f.getValues()) {
+		if( v instanceof FshList ) {
+			for(Object o : ((FshList) v).getValues()) {
 				ret.add(str(o));
 			}
-		} else if( v instanceof Collection<?> c ) {
-			for(Object o : c) {
+		} else if( v instanceof Collection<?> ) {
+			for(Object o : ((Collection<?>) v)) {
 				ret.add(str(o));
 			}
-		} else if( v instanceof Map<?,?> m ) {
-			for(Object o : m.values()) {
+		} else if( v instanceof Map<?,?> ) {
+			for(Object o : ((Map<?,?>) v).values()) {
 				ret.add(str(o));
 			}
 		} else if( v != null ) {
@@ -1988,8 +2030,8 @@ public final class Expander {
 
 	private static List<String> keys(Object v) {
 		List<String> ret = new ArrayList<>();
-		if( v instanceof Map<?,?> m ) {
-			for(Object o : m.keySet()) {
+		if( v instanceof Map<?,?> ) {
+			for(Object o : ((Map<?,?>) v).keySet()) {
 				ret.add(str(o));
 			}
 		} else {
@@ -2002,12 +2044,12 @@ public final class Expander {
 
 	private static List<Long> indexes(Object v) {
 		List<Long> ret = new ArrayList<>();
-		if( v instanceof FshList f ) {
-			for(int i : f.getIndexes()) {
+		if( v instanceof FshList ) {
+			for(int i : ((FshList) v).getIndexes()) {
 				ret.add((long) i);
 			}
-		} else if( v instanceof List<?> l ) {
-			for (int i = 0; i < l.size(); i++) {
+		} else if( v instanceof List<?> ) {
+			for (int i = 0; i < ((List<?>) v).size(); i++) {
 				ret.add((long) i);
 			}
 		} else if( v != null && !(v instanceof Map<?,?>)) {
@@ -2209,9 +2251,9 @@ public final class Expander {
 		StringBuilder ret = new StringBuilder();
 		for(Piece p : pieces) {
 			switch (p.kind) {
-			case TEXT -> escape(p.text, "\\'\"", ret);
-			case EXPANDED -> escape(p.text, "'\"", ret);
-			default -> escape(p.text, null, ret);
+			case TEXT: escape(p.text, "\\'\"", ret); break;
+			case EXPANDED: escape(p.text, "'\"", ret); break;
+			default: escape(p.text, null, ret); break;
 			}
 		}
 		return ret.toString();

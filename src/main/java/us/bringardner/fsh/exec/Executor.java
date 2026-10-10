@@ -428,8 +428,12 @@ public final class Executor {
 	 */
 	/** PIPESTATUS is (status) already: setting it again changes nothing (after most commands it is (0)) */
 	private static boolean samePipeStatus(ShellContext sc, int status) {
-		return sc.getVariable("PIPESTATUS") instanceof FshList l && l.size() == 1 && l.getIndexes().get(0) == 0
-				&& String.valueOf(status).equals(String.valueOf(l.get(0)));
+		Object ps = sc.getVariable("PIPESTATUS");
+		if( !(ps instanceof FshList)) {
+			return false;
+		}
+		FshList l = (FshList) ps;
+		return l.size() == 1 && l.getIndexes().get(0) == 0 && String.valueOf(status).equals(String.valueOf(l.get(0)));
 	}
 
 	private int pipeline(Ast.Pipeline p, ShellContext sc, boolean condition) throws IOException {
@@ -657,14 +661,14 @@ public final class Executor {
 					ctx.jobsCleared = true;
 					ctx.wholeSubshell = c instanceof Ast.Subshell;
 				}
-				if( ctx != sc && c instanceof Ast.SimpleCommand sc0 ) {
+				if( ctx != sc && c instanceof Ast.SimpleCommand ) {
 					// (bash expands a simple command's words before its subshell counts: echo
 					// $BASH_SUBSHELL | cat is 0, a builtin or function it runs is 1 deeper)
 					ctx.subshellLevel--;
 					ctx.subshellPending = true;
 					// the DEBUG trap for it runs here, in the shell, as bash runs it before the fork
 					// (its output is the shell's, not the pipe's)
-					ctx.debugTrapSkips = debugTrap(sc, commandText(sc0));
+					ctx.debugTrapSkips = debugTrap(sc, commandText(((Ast.SimpleCommand) c)));
 					ctx.debugTrapRan = true;
 				}
 				int stageIndex = i;
@@ -992,7 +996,9 @@ public final class Executor {
 			return 1;
 		}
 		// (a nameref's name is what it names, as bash's: NAME and NAME_PID are that one's)
-		String cname = sc.rawVariable(k.name) instanceof ShellContext.NameRef r && !r.target().isEmpty() && isName(r.target()) ? r.target() : k.name;
+		Object named = sc.rawVariable(k.name);
+		ShellContext.NameRef r = named instanceof ShellContext.NameRef ? (ShellContext.NameRef) named : null;
+		String cname = r != null && !r.target().isEmpty() && isName(r.target()) ? r.target() : k.name;
 		Pipe toCoproc = new Pipe();
 		Pipe fromCoproc = new Pipe();
 		int readFd = freeDescriptor(sc, 63, -1);
@@ -1083,11 +1089,11 @@ public final class Executor {
 		try {
 			// a debugger stops here; a stop or suspend of the job takes effect
 			sc.enterNode(c, source);
-			if( c instanceof Ast.SimpleCommand s ) {
-				return simple(s, sc);
+			if( c instanceof Ast.SimpleCommand ) {
+				return simple(((Ast.SimpleCommand) c), sc);
 			}
-			if( c instanceof Ast.FunctionDef f ) {
-				return define(f, sc);
+			if( c instanceof Ast.FunctionDef ) {
+				return define(((Ast.FunctionDef) c), sc);
 			}
 			if( c.redirects.isEmpty()) {
 				return compound(c, sc);
@@ -1134,15 +1140,16 @@ public final class Executor {
 
 	private int compound(Ast.Command c, ShellContext sc) throws IOException {
 		sc.line = c.line;
-		if( c instanceof Ast.BraceGroup g ) {
-			return list(g.body, sc);
-		} else if( c instanceof Ast.Subshell s ) {
-			return subshell(s, sc);
-		} else if( c instanceof Ast.If f ) {
-			return ifCommand(f, sc);
-		} else if( c instanceof Ast.Loop l ) {
-			return loop(l, sc);
-		} else if( c instanceof Ast.For f ) {
+		if( c instanceof Ast.BraceGroup ) {
+			return list(((Ast.BraceGroup) c).body, sc);
+		} else if( c instanceof Ast.Subshell ) {
+			return subshell(((Ast.Subshell) c), sc);
+		} else if( c instanceof Ast.If ) {
+			return ifCommand(((Ast.If) c), sc);
+		} else if( c instanceof Ast.Loop ) {
+			return loop(((Ast.Loop) c), sc);
+		} else if( c instanceof Ast.For ) {
+			Ast.For f = (Ast.For) c;
 			// (bash's line_number in it is its own line)
 			int context = sc.contextLine;
 			sc.contextLine = f.line;
@@ -1151,7 +1158,8 @@ public final class Executor {
 			} finally {
 				sc.contextLine = context;
 			}
-		} else if( c instanceof Ast.ArithFor f ) {
+		} else if( c instanceof Ast.ArithFor ) {
+			Ast.ArithFor f = (Ast.ArithFor) c;
 			// (bash's line_number in it is its own line)
 			int context = sc.contextLine;
 			sc.contextLine = f.line;
@@ -1160,9 +1168,10 @@ public final class Executor {
 			} finally {
 				sc.contextLine = context;
 			}
-		} else if( c instanceof Ast.Select s ) {
-			return select(s, sc);
-		} else if( c instanceof Ast.Case k ) {
+		} else if( c instanceof Ast.Select ) {
+			return select(((Ast.Select) c), sc);
+		} else if( c instanceof Ast.Case ) {
+			Ast.Case k = (Ast.Case) c;
 			// (bash's line_number in it is its own line)
 			int context = sc.contextLine;
 			sc.contextLine = k.line;
@@ -1171,12 +1180,12 @@ public final class Executor {
 			} finally {
 				sc.contextLine = context;
 			}
-		} else if( c instanceof Ast.Arith a ) {
-			return arith(a, sc);
-		} else if( c instanceof Ast.Cond k ) {
-			return cond(k, sc);
-		} else if( c instanceof Ast.Coproc k ) {
-			return coproc(k, sc);
+		} else if( c instanceof Ast.Arith ) {
+			return arith(((Ast.Arith) c), sc);
+		} else if( c instanceof Ast.Cond ) {
+			return cond(((Ast.Cond) c), sc);
+		} else if( c instanceof Ast.Coproc ) {
+			return coproc(((Ast.Coproc) c), sc);
 		} else {
 			throw new IllegalStateException("not a compound command: "+c.getClass());
 		}
@@ -1695,18 +1704,21 @@ public final class Executor {
 
 	/** not: set -x shows the test after ! (as bash's [[ ! -n '' ]]) */
 	private boolean test(Ast.CondExpr e, ShellContext sc, Expander ex, String not) {
-		if( e instanceof Ast.CondAnd a ) {
+		if( e instanceof Ast.CondAnd ) {
+			Ast.CondAnd a = (Ast.CondAnd) e;
 			return test(a.left(), sc, ex) && test(a.right(), sc, ex);
-		} else if( e instanceof Ast.CondOr o ) {
+		} else if( e instanceof Ast.CondOr ) {
+			Ast.CondOr o = (Ast.CondOr) e;
 			return test(o.left(), sc, ex) || test(o.right(), sc, ex);
-		} else if( e instanceof Ast.CondNot n ) {
-			return !test(n.expression(), sc, ex, not+"! ");
-		} else if( e instanceof Ast.CondWord w ) {
-			String v = ex.string(w.word());
+		} else if( e instanceof Ast.CondNot ) {
+			return !test(((Ast.CondNot) e).expression(), sc, ex, not+"! ");
+		} else if( e instanceof Ast.CondWord ) {
+			String v = ex.string(((Ast.CondWord) e).word());
 			// (a word alone is -n word, as bash shows it)
 			traceTest(sc, not+"-n "+traced(v));
 			return !v.isEmpty();
-		} else if( e instanceof Ast.CondUnary u ) {
+		} else if( e instanceof Ast.CondUnary ) {
+			Ast.CondUnary u = (Ast.CondUnary) e;
 			// (-v m[$k]: the subscript as in (( )))
 			String v = u.op().equals("-v") ? ex.arithmeticOperand(u.operand()) : ex.string(u.operand());
 			traceTest(sc, not+u.op()+" "+traced(v));
@@ -1715,7 +1727,8 @@ public final class Executor {
 				throw new BadRegex(v+": integer expected");
 			}
 			return us.bringardner.fsh.commands.Test.unaryTest(u.op(), v, sc);
-		} else if( e instanceof Ast.CondBinary b ) {
+		} else if( e instanceof Ast.CondBinary ) {
+			Ast.CondBinary b = (Ast.CondBinary) e;
 			if( tracing(sc)) {
 				boolean arith = ARITHMETIC_TESTS.contains(b.op());
 				// (a pattern as it matches: its quoted characters escaped, a\*)
@@ -1751,14 +1764,14 @@ public final class Executor {
 			if( !(x instanceof Double) && !(y instanceof Double)) {
 				cmp = Long.compare(x.longValue(), y.longValue());
 			}
-			return switch (b.op()) {
-			case "-eq" -> cmp == 0;
-			case "-ne" -> cmp != 0;
-			case "-lt" -> cmp < 0;
-			case "-le" -> cmp <= 0;
-			case "-gt" -> cmp > 0;
-			default -> cmp >= 0;
-			};
+			switch (b.op()) {
+			case "-eq": return cmp == 0;
+			case "-ne": return cmp != 0;
+			case "-lt": return cmp < 0;
+			case "-le": return cmp <= 0;
+			case "-gt": return cmp > 0;
+			default: return cmp >= 0;
+			}
 		}
 		String l = ex.string(b.left());
 		switch (b.op()) {
@@ -1782,14 +1795,14 @@ public final class Executor {
 			Number x = Arithmetic.evaluate(l, sc);
 			Number y = Arithmetic.evaluate(ex.string(b.right()), sc);
 			int cmp = Double.compare(x.doubleValue(), y.doubleValue());
-			return switch (b.op()) {
-			case "-eq" -> cmp == 0;
-			case "-ne" -> cmp != 0;
-			case "-lt" -> cmp < 0;
-			case "-le" -> cmp <= 0;
-			case "-gt" -> cmp > 0;
-			default -> cmp >= 0;
-			};
+			switch (b.op()) {
+			case "-eq": return cmp == 0;
+			case "-ne": return cmp != 0;
+			case "-lt": return cmp < 0;
+			case "-le": return cmp <= 0;
+			case "-gt": return cmp > 0;
+			default: return cmp >= 0;
+			}
 		}
 		}
 	}
@@ -2160,8 +2173,8 @@ public final class Executor {
 						continue;
 					}
 					// (declare -x in a function makes a local, which takes the temporary value)
-					boolean exported = name.equals("export") || name.equals("declare") && args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*x[a-zA-Z]*"))
-							&& (!sc.isInFunction() || args.stream().anyMatch(x -> x instanceof String o && o.matches("-[a-zA-Z]*g[a-zA-Z]*")));
+					boolean exported = name.equals("export") || name.equals("declare") && args.stream().anyMatch(x -> x instanceof String && ((String) x).matches("-[a-zA-Z]*x[a-zA-Z]*"))
+							&& (!sc.isInFunction() || args.stream().anyMatch(x -> x instanceof String && ((String) x).matches("-[a-zA-Z]*g[a-zA-Z]*")));
 					if( exported && sc.getFunction(name) == null ) {
 						// foo= export foo, FOO=1 declare -x FOO: the assignment stays (and is exported), as in bash
 						sc.setVariable(a.name, v);
@@ -2184,7 +2197,7 @@ public final class Executor {
 					}
 					// (through a nameref: the variable it names)
 					String target = sc.resolveName(a.name);
-					if( sc.rawVariable(a.name) instanceof ShellContext.NameRef r && r.target().isEmpty()) {
+					if( sc.rawVariable(a.name) instanceof ShellContext.NameRef && ((ShellContext.NameRef) sc.rawVariable(a.name)).target().isEmpty()) {
 						// r=/ f of a nameref with no value: a plain r while it runs
 						saved.add(new Object[] {a.name, sc.rawVariable(a.name), sc.getEvironmentVariable(a.name)});
 						sc.setPlain(a.name, v);
@@ -2267,7 +2280,7 @@ public final class Executor {
 			java.util.Map<Ast.Assignment,String> before = new java.util.HashMap<>();
 			for(Ast.Assignment a : c.assignments) {
 				if( sc.console.isReadonly(sc.readonlyName(a.name)) && a.index != null && a.array == null
-						&& sc.getVariable(a.name) instanceof FshList list && !a.index.isBlank() && !a.index.equals("@") && !a.index.equals("*")) {
+						&& sc.getVariable(a.name) instanceof FshList && !a.index.isBlank() && !a.index.equals("@") && !a.index.equals("*")) { FshList list = (FshList) sc.getVariable(a.name);
 					// c[-2]=v of a readonly array that has no element there: the subscript is the
 					// error (bash's)
 					long idx = ex.arithmetic(Parser.fragment(a.index, Parser.Fragment.WORD)).longValue();
@@ -2304,7 +2317,7 @@ public final class Executor {
 						now = now.startsWith(old) ? now.substring(old.length()) : a.value == null ? "" : a.value.raw;
 					}
 					// (an array's words as written, as bash shows them)
-					String shown = a.array != null ? "("+String.join(" ", a.array.stream().map(CommandPrinter::asKept).toList())+")"
+					String shown = a.array != null ? "("+String.join(" ", a.array.stream().map(CommandPrinter::asKept).collect(java.util.stream.Collectors.toList()))+")"
 							: assigned(now);
 					traceStream(sc, streams.err()).println(prefix+a.name+(a.append ? "+=" : "=")+shown);
 				}
@@ -2400,7 +2413,7 @@ public final class Executor {
 			if( !sc.isIsolated()) {
 				// ($_: a pipe stage's or job's is its own)
 				Object last = args.isEmpty() ? name : args.get(args.size()-1);
-				sc.console.lastArgument = last instanceof Ast.Assignment a ? a.name : String.valueOf(last);
+				sc.console.lastArgument = last instanceof Ast.Assignment ? ((Ast.Assignment) last).name : String.valueOf(last);
 			}
 		}
 		return ret;
@@ -2484,12 +2497,13 @@ public final class Executor {
 		// as bash shows a declaration builtin: its words expanded (name=(...) first, on a line of
 		// its own, then the name), and export and readonly show their assignments after it
 		List<String> after = new ArrayList<>();
-		boolean assoc = args.stream().anyMatch(a -> a instanceof String s && s.startsWith("-") && s.indexOf('A') > 0);
+		boolean assoc = args.stream().anyMatch(a -> a instanceof String && ((String) a).startsWith("-") && ((String) a).indexOf('A') > 0);
 		for(Object a : args) {
-			if( !(a instanceof Ast.Assignment as)) {
+			if( !(a instanceof Ast.Assignment)) {
 				line.append(' ').append(quote(String.valueOf(a)));
 				continue;
 			}
+			Ast.Assignment as = (Ast.Assignment) a;
 			String head = as.name+(as.index != null ? "["+as.index+"]" : "");
 			String op = as.append ? "+=" : "=";
 			if( as.array != null ) {
@@ -2608,7 +2622,7 @@ public final class Executor {
 			if( k < args.size() && "--".equals(String.valueOf(args.get(k)))) {
 				k++;
 			}
-			if( k < args.size() && args.get(k) instanceof String b && OWN_BUILTINS.contains(b)) {
+			if( k < args.size() && args.get(k) instanceof String && OWN_BUILTINS.contains(((String) args.get(k)))) { String b = (String) args.get(k);
 				boolean command = name.equals("command");
 				if( command ) {
 					// (a special builtin's failure does not end the shell)
@@ -2698,7 +2712,7 @@ public final class Executor {
 			}
 			break;
 		case "export":
-			if( args.stream().anyMatch(a -> a instanceof String o && o.startsWith("-") && o.matches("-[aAilu]+"))) {
+			if( args.stream().anyMatch(a -> a instanceof String && ((String) a).startsWith("-") && ((String) a).matches("-[aAilu]+"))) {
 				// export -a x=(..): declare -gx
 				List<Object> all = new ArrayList<>(args);
 				all.add(0, "-gx");
@@ -2726,7 +2740,8 @@ public final class Executor {
 			// export x=1 a=(1 2): assigned here, then the builtin sees the names
 			List<String> names = new ArrayList<>();
 			for(Object a : args) {
-				if( a instanceof Ast.Assignment as ) {
+				if( a instanceof Ast.Assignment ) {
+					Ast.Assignment as = (Ast.Assignment) a;
 					if( sc.console.isReadonly(sc.readonlyName(as.name))) {
 						error(sc, sc.readonlyName(as.name)+": readonly variable");
 						return 1;
@@ -2907,7 +2922,7 @@ public final class Executor {
 	void assign(Ast.Assignment a, ShellContext sc, Expander ex, boolean local) {
 		// (looked up once: almost no variable is a nameref)
 		boolean ref = sc.rawVariable(a.name) instanceof ShellContext.NameRef;
-		if( ref && !local && !a.append && sc.rawVariable(a.name) instanceof ShellContext.NameRef r && r.target().isEmpty()) {
+		if( ref && !local && !a.append && sc.rawVariable(a.name) instanceof ShellContext.NameRef && ((ShellContext.NameRef) sc.rawVariable(a.name)).target().isEmpty()) {
 			// a nameref with no value yet: the value is what it names (as written: not evaluated
 			// for -i), r[0]=v is an error
 			if( a.index != null ) {
@@ -2990,15 +3005,16 @@ public final class Executor {
 			element(a, sc, ex, old, v);
 			return null;
 		}
-		if( old instanceof Map<?,?> m ) {
+		if( old instanceof Map<?,?> ) {
 			// m=v, m+=v of an associative array: its element "0"
-			sc.setVariable(a.name, "0", elementValue(m.get("0"), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc));
+			sc.setVariable(a.name, "0", elementValue(((Map<?,?>) old).get("0"), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc));
 			return null;
 		}
-		if( old instanceof FshList list && !local ) {
+		if( old instanceof FshList && !local ) {
+			FshList f = (FshList) old;
 			// x=v, x+=v of an array: its element 0
-			FshList copy = copy(list);
-			copy.set(0, sc.cased(a.name, elementValue(list.get(0), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc)));
+			FshList copy = copy(f);
+			copy.set(0, sc.cased(a.name, elementValue(f.get(0), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc)));
 			return copy;
 		}
 		// (most scripts have no -i variable: then no name to work out)
@@ -3010,9 +3026,9 @@ public final class Executor {
 			Object before = ShellContext.firstElement(old);
 			v = (before == null ? "" : before.toString())+v;
 		}
-		if( old instanceof FshList list && !local ) {
+		if( old instanceof FshList && !local ) {
 			// x=v of an array sets its element 0
-			FshList copy = copy(list);
+			FshList copy = copy(((FshList) old));
 			copy.set(0, v);
 			return copy;
 		}
@@ -3064,7 +3080,7 @@ public final class Executor {
 		} else {
 			long idx = ex.subscript(sub).longValue();
 			if( idx < 0 ) {
-				long top = old instanceof FshList f && !f.isEmpty() ? f.getIndexes().get(f.size()-1)+1 : old instanceof List<?> l ? l.size() : 0;
+				long top = old instanceof FshList && !((FshList) old).isEmpty() ? ((FshList) old).getIndexes().get(((FshList) old).size()-1)+1 : old instanceof List<?> ? ((List<?>) old).size() : 0;
 				idx += top;
 				if( idx < 0 ) {
 					throw new ExpansionError(a.name+"["+a.index+"]: bad array subscript");
@@ -3073,7 +3089,7 @@ public final class Executor {
 			key = (int) idx;
 		}
 		if( a.append ) {
-			Object before = old instanceof Map<?,?> m ? m.get(key) : old instanceof List<?> l && key instanceof Integer i ? (l instanceof FshList f ? f.get(i) : i < l.size() ? l.get(i) : null) : null;
+			Object before = old instanceof Map<?,?> ? ((Map<?,?>) old).get(key) : old instanceof List<?> && key instanceof Integer ? (old instanceof FshList ? ((FshList) old).get(((Integer) key)) : ((Integer) key) < ((List<?>) old).size() ? ((List<?>) old).get(((Integer) key)) : null) : null;
 			v = sc.console.isInteger(sc.readonlyName(a.name)) ? String.valueOf(integerAppend(before, v, sc)) : (before == null ? "" : before.toString())+v;
 		} else if( sc.console.isInteger(sc.readonlyName(a.name))) {
 			v = String.valueOf(arithmeticValue(v, sc));
@@ -3094,12 +3110,12 @@ public final class Executor {
 	private Object array(Ast.Assignment a, ShellContext sc, Expander ex, Object old, boolean assoc) {
 		if( assoc ) {
 			Map<String,Object> map = new TreeMap<>();
-			if( a.append && old instanceof TreeMap<?,?> m && sc.changesArrayInPlace(a.name)
+			if( a.append && old instanceof TreeMap<?,?> && sc.changesArrayInPlace(a.name)
 					&& !a.array.isEmpty() && a.array.stream().allMatch(w -> keyValue(w) != null)) {
 				// m+=([k]=v ...): into the array itself (not a copy each time); the words are expanded
 				// first, as bash's are, then assigned in order
 				@SuppressWarnings("unchecked")
-				Map<String,Object> into = (Map<String,Object>) m;
+				Map<String,Object> into = (Map<String,Object>) ((TreeMap<?,?>) old);
 				boolean integer = sc.console.isInteger(sc.readonlyName(a.name));
 				List<Object[]> pairs = new ArrayList<>();
 				for(Word w : a.array) {
@@ -3113,8 +3129,8 @@ public final class Executor {
 				}
 				return into;
 			}
-			if( a.append && old instanceof Map<?,?> m ) {
-				for(Map.Entry<?,?> e : m.entrySet()) {
+			if( a.append && old instanceof Map<?,?> ) {
+				for(Map.Entry<?,?> e : ((Map<?,?>) old).entrySet()) {
 					map.put(String.valueOf(e.getKey()), e.getValue());
 				}
 			}
@@ -3151,8 +3167,9 @@ public final class Executor {
 		}
 		FshList list = new FshList();
 		int next = 0;
-		if( a.append && old instanceof FshList f && sc.changesArrayInPlace(a.name)
+		if( a.append && old instanceof FshList && sc.changesArrayInPlace(a.name)
 				&& a.array.stream().allMatch(w -> keyValue(w) == null)) {
+					FshList f = (FshList) old;
 			// a+=(v ...): added to the array itself (not a copy of it each time, which made a loop of
 			// them take time by the square of their number); the words are expanded first, as bash's
 			// are (a+=(${#a[@]} ${#a[@]}) sees the array as it was)
@@ -3168,11 +3185,12 @@ public final class Executor {
 			return f;
 		}
 		if( a.append ) {
-			if( old instanceof FshList f ) {
+			if( old instanceof FshList ) {
+				FshList f = (FshList) old;
 				list = copy(f);
 				next = f.lastIndex()+1;
-			} else if( old instanceof List<?> l ) {
-				for(Object o : l) {
+			} else if( old instanceof List<?> ) {
+				for(Object o : ((List<?>) old)) {
 					list.set(next++, o);
 				}
 			} else if( old != null ) {
@@ -3230,9 +3248,10 @@ public final class Executor {
 
 	/** keyValue, and append[0] says whether it was [key]+=value */
 	static Word [] keyValue(Word w, boolean [] append) {
-		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal l) || !l.text().startsWith("[")) {
+		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal) || !((Word.Literal) w.parts.get(0)).text().startsWith("[")) {
 			return null;
 		}
+		Word.Literal l = (Word.Literal) w.parts.get(0);
 		if( w.raw != null && w.raw.startsWith("[")) {
 			// as written: a quoted key may have [ and ] in it (["a]b"]=v)
 			String r = w.raw;
@@ -3491,7 +3510,11 @@ public final class Executor {
 		if( ao.pipelines.size() != 1 || ao.pipelines.get(0).commands.size() != 1 || ao.pipelines.get(0).negated ) {
 			return null;
 		}
-		if( !(ao.pipelines.get(0).commands.get(0) instanceof Ast.SimpleCommand s) || !s.words.isEmpty() || !s.assignments.isEmpty()
+		if( !(ao.pipelines.get(0).commands.get(0) instanceof Ast.SimpleCommand)) {
+			return null;
+		}
+		Ast.SimpleCommand s = (Ast.SimpleCommand) ao.pipelines.get(0).commands.get(0);
+		if( !s.words.isEmpty() || !s.assignments.isEmpty()
 				|| s.redirects.size() != 1 || !s.redirects.get(0).op.equals("<") || s.redirects.get(0).fd != null ) {
 			return null;
 		}

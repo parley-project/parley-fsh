@@ -922,7 +922,7 @@ public class LineEditor {
 			}
 			int kind = viFindKind;
 			if( key == ',' ) {
-				kind = switch (kind) { case 'f' -> 'F'; case 'F' -> 'f'; case 't' -> 'T'; default -> 't'; };
+				kind = kind == 'f' ? 'F' : kind == 'F' ? 'f' : kind == 't' ? 'T' : 't';
 			}
 			return viRepeatFind(kind, viFindChar, count);
 		}
@@ -1264,11 +1264,9 @@ public class LineEditor {
 		}
 		saveUndo();
 		String w = buf.substring(start, end);
-		String changed = switch (how) {
-		case 'u' -> w.toUpperCase();
-		case 'l' -> w.toLowerCase();
-		default -> w.substring(0, 1).toUpperCase()+w.substring(1).toLowerCase();
-		};
+		String changed = how == 'u' ? w.toUpperCase()
+				: how == 'l' ? w.toLowerCase()
+				: w.substring(0, 1).toUpperCase()+w.substring(1).toLowerCase();
 		buf.replace(start, end, changed);
 		pos = end;
 		redraw();

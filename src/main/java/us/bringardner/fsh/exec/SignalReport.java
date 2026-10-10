@@ -19,7 +19,55 @@ public final class SignalReport {
 	}
 
 	/** a process of the pipeline: its id, how it ended (a wait status, or -1: exit) and its text */
-	public record Ended(long pid, int signal, boolean core, int exitCode, String text) {
+	public static final class Ended {
+		private final long pid;
+		private final int signal;
+		private final boolean core;
+		private final int exitCode;
+		private final String text;
+
+		public Ended(long pid, int signal, boolean core, int exitCode, String text) {
+			this.pid = pid;
+			this.signal = signal;
+			this.core = core;
+			this.exitCode = exitCode;
+			this.text = text;
+		}
+
+		public long pid() {
+			return pid;
+		}
+
+		public int signal() {
+			return signal;
+		}
+
+		public boolean core() {
+			return core;
+		}
+
+		public int exitCode() {
+			return exitCode;
+		}
+
+		public String text() {
+			return text;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Ended)) return false;
+			Ended o = (Ended) x;
+			return pid == o.pid && signal == o.signal && core == o.core && exitCode == o.exitCode && java.util.Objects.equals(text, o.text);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(pid, signal, core, exitCode, text);
+		}
+
+		@Override public String toString() {
+			return "Ended[" + "pid=" + pid + ", " + "signal=" + signal + ", " + "core=" + core + ", " + "exitCode=" + exitCode + ", " + "text=" + text + "]";
+		}
 	}
 
 	/** (bash's LONGEST_SIGNAL_DESC) */

@@ -224,7 +224,7 @@ public final class Programs {
 						if( cnt > 0 ) {
 							out.write(buffer, 0, cnt);
 							out.flush();
-							if( out instanceof java.io.PrintStream ps && ps.checkError()) {
+							if( out instanceof java.io.PrintStream && ((java.io.PrintStream) out).checkError()) {
 								// no one reads it any more (yes | head -1): the program's output is
 								// closed, so it gets SIGPIPE, as under bash
 								break;
@@ -356,7 +356,8 @@ public final class Programs {
 
 		/** how it ended, as bash reports a signal that ended it (see SignalReport), or null */
 		SignalReport.Ended ended(String text) {
-			if( process instanceof NativeProcess np && !np.isAlive() && !killed ) {
+			if( process instanceof NativeProcess && !((NativeProcess) process).isAlive() && !killed ) {
+				NativeProcess np = (NativeProcess) process;
 				return new SignalReport.Ended(np.pid(), np.termSignal(), np.coreDumped(), exitCode, text);
 			}
 			return null;
@@ -425,7 +426,7 @@ public final class Programs {
 								|| job instanceof us.bringardner.fsh.job.PipelineJob) && NativeKeyboard.helper() != null);
 				// a local file as input: the program reads it itself, from where the shell is, and the
 				// shell goes on from where the program left it (head -n 1 seeks back after its line)
-				onFile = !inheritIn && absolute && ctx.stdin instanceof ReadBack rb && rb.file() != null
+				onFile = !inheritIn && absolute && ctx.stdin instanceof ReadBack && ((ReadBack) ctx.stdin).file() != null
 						&& NativeKeyboard.helper() != null ? (ReadBack) ctx.stdin : null;
 				// (where it can, the shell starts it in the group itself)
 				boolean spawnGrouped = grouped && NativeProcess.usable();
@@ -475,7 +476,7 @@ public final class Programs {
 				// the signals it is to ignore, which Java does not pass on (trap '' INT; a job started
 				// with & without job control ignores INT and QUIT)
 				java.util.Set<Integer> ignored = ctx.console.ignoredSignals(ctx);
-				if( ctx.job instanceof us.bringardner.fsh.job.BackgroundJob bj && bj.isIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Interupt)) {
+				if( ctx.job instanceof us.bringardner.fsh.job.BackgroundJob && ((us.bringardner.fsh.job.BackgroundJob) ctx.job).isIgnoreSignal(us.bringardner.fsh.ConsoleSignal.Interupt)) {
 					ignored.add(INT);
 					ignored.add(Math.max(3, us.bringardner.fsh.job.ProcessSignals.number("QUIT")));
 				}
@@ -602,7 +603,7 @@ public final class Programs {
 				killed = false;
 				while(!waitFor(p, grouped ? 50 : 100)) {
 					if( !killed && ctx.getException() != null
-							&& !(ctx.getException() instanceof us.bringardner.fsh.signal.SignalException se && se.afterProgram)) {
+							&& !(ctx.getException() instanceof us.bringardner.fsh.signal.SignalException && ((us.bringardner.fsh.signal.SignalException) ctx.getException()).afterProgram)) {
 						// (not one its programs got themselves: they decide)
 						// the job was interrupted, terminated or killed
 						killed = true;
@@ -628,8 +629,8 @@ public final class Programs {
 				}
 				exitCode = p.exitValue();
 				childEnded(ctx);
-				if( job != null && ctx.getException() instanceof us.bringardner.fsh.signal.SignalException se && se.afterProgram
-						&& exitCode != se.exitCode()) {
+				if( job != null && ctx.getException() instanceof us.bringardner.fsh.signal.SignalException && ((us.bringardner.fsh.signal.SignalException) ctx.getException()).afterProgram
+						&& exitCode != ((us.bringardner.fsh.signal.SignalException) ctx.getException()).exitCode()) { us.bringardner.fsh.signal.SignalException se = (us.bringardner.fsh.signal.SignalException) ctx.getException();
 					// it got the job's signal and did not die of it: the job goes on (bash's wait_sigint)
 					job.programSurvived(se);
 				}

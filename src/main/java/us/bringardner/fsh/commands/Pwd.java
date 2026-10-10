@@ -30,9 +30,9 @@ public class Pwd extends ShellCommand{
 				physical = false;
 			}
 		}
-		if( physical && dir instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy ) {
+		if( physical && dir instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
 			// every link in the path resolved
-			ctx.stdout.println(proxy.getTarget().getCanonicalPath());
+			ctx.stdout.println(((us.bringardner.parley.files.fileproxy.FileProxy) dir).getTarget().getCanonicalPath());
 			return ret;
 		}
 		if( physical ) {

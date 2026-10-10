@@ -467,8 +467,8 @@ public abstract class ShellCommand {
 				i += 2;
 				continue;
 			}
-			if( it instanceof String cls ) {
-				set.append(cls);
+			if( it instanceof String ) {
+				set.append(((String) it));
 			} else if( (Integer) it >= 0 ) {
 				set.append("\\x{").append(Integer.toHexString((Integer) it)).append('}');
 			}
@@ -657,7 +657,7 @@ public abstract class ShellCommand {
 			switch (c) {
 			case '/':
 			case '\\':
-				if(! buf.isEmpty()) {
+				if( buf.length() > 0) {
 					ret.add(buf.toString());
 					buf = new StringBuilder();
 				}
@@ -667,7 +667,7 @@ public abstract class ShellCommand {
 			}
 		}
 		
-		if(! buf.isEmpty()) {
+		if( buf.length() > 0) {
 			ret.add(buf.toString());
 		}
 		

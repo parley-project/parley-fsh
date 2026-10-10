@@ -442,7 +442,7 @@ delimiter
 
 		@Override
 		public boolean contains(Object o) {
-			return o instanceof Option op && on.contains(op);
+			return o instanceof Option && on.contains(((Option) o));
 		}
 
 		@Override
@@ -901,7 +901,7 @@ delimiter
 				// a stage or job that exits (exit 3, set -e) has that status; another error is 1
 				// (return in a pipe stage ends that stage with its status, as in bash)
 				exitCode = e instanceof ExitException ? ((ExitException) e).exitCode
-						: e instanceof us.bringardner.fsh.signal.ReturnException r ? r.exitCode
+						: e instanceof us.bringardner.fsh.signal.ReturnException ? ((us.bringardner.fsh.signal.ReturnException) e).exitCode
 						: e instanceof us.bringardner.fsh.signal.SignalException ? ((us.bringardner.fsh.signal.SignalException) e).exitCode() : 1;
 			}
 			if( terminatedBy != null ) {
@@ -1438,14 +1438,15 @@ delimiter
 		StringBuilder ret = new StringBuilder();
 		List<Option> on = getOptions();
 		for(char c : "abefhikmnprtuvxBCEHPT".toCharArray()) {
-			boolean set = switch (c) {
-			case 'i' -> isInteractive;
-			case 'r' -> restricted;
-			default -> {
+			boolean set;
+			switch (c) {
+			case 'i': set = isInteractive; break;
+			case 'r': set = restricted; break;
+			default: {
 				Option o = Option.find(String.valueOf(c));
-				yield o != Option.Unsupported && on.contains(o);
+				set = o != Option.Unsupported && on.contains(o);
 			}
-			};
+			}
 			if( set ) {
 				ret.append(c);
 			}
@@ -1909,8 +1910,8 @@ delimiter
 				us.bringardner.fsh.syntax.Ast.Sequence seq = us.bringardner.fsh.syntax.Parser.parse(code);
 				if( seq.items.size() != 1 || seq.items.get(0).background || seq.items.get(0).command.pipelines.size() != 1
 						|| seq.items.get(0).command.pipelines.get(0).commands.size() != 1
-						|| !(seq.items.get(0).command.pipelines.get(0).commands.get(0) instanceof us.bringardner.fsh.syntax.Ast.FunctionDef fd)
-						|| !fd.name.equals(e.getKey())) {
+						|| !(seq.items.get(0).command.pipelines.get(0).commands.get(0) instanceof us.bringardner.fsh.syntax.Ast.FunctionDef)
+						|| !((us.bringardner.fsh.syntax.Ast.FunctionDef) seq.items.get(0).command.pipelines.get(0).commands.get(0)).name.equals(e.getKey())) {
 					continue;
 				}
 				us.bringardner.fsh.exec.Executor.run(sc, code);
@@ -2281,7 +2282,8 @@ delimiter
 
 	public void run() {
 		KeyboardReader kb = getKeyboadReader(true);
-		if( kb instanceof NativeKeyboard nk ) {
+		if( kb instanceof NativeKeyboard ) {
+			NativeKeyboard nk = (NativeKeyboard) kb;
 			// a typed backslash stays in the command, as in bash's line editor (the parser reads
 			// it, and one at the end of a line asks for the next)
 			nk.setHonorEscape(false);
@@ -2804,12 +2806,12 @@ delimiter
 			return;
 		}
 		java.util.List<String> commands = new java.util.ArrayList<>();
-		if( pc instanceof java.util.Collection<?> list ) {
-			for(Object o : list) {
+		if( pc instanceof java.util.Collection<?> ) {
+			for(Object o : ((java.util.Collection<?>) pc)) {
 				commands.add(String.valueOf(o));
 			}
-		} else if( pc instanceof java.util.Map<?,?> map ) {
-			for(Object o : map.values()) {
+		} else if( pc instanceof java.util.Map<?,?> ) {
+			for(Object o : ((java.util.Map<?,?>) pc).values()) {
 				commands.add(String.valueOf(o));
 			}
 		} else {
@@ -3619,14 +3621,14 @@ delimiter
 				if( inQuote || !Character.isWhitespace(c)) {
 					buf.append(c);
 				} else {
-					if( !buf.isEmpty()) {
+					if( buf.length() > 0) {
 						ret.add(buf.toString());
 						buf.setLength(0);	
 					}
 				}
 			}
 		}
-		if( !buf.isEmpty()) {
+		if( buf.length() > 0) {
 			ret.add(buf.toString());
 		}
 

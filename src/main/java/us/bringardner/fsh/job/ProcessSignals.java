@@ -96,32 +96,35 @@ public final class ProcessSignals {
 	 */
 	public static String describe(int signum) {
 		String name = name(signum);
-		String text = name == null ? null : switch (name) {
-		case "HUP" -> "Hangup";
-		case "INT" -> "Interrupt";
-		case "QUIT" -> "Quit";
-		case "ILL" -> "Illegal instruction";
-		case "TRAP" -> MAC ? "Trace/BPT trap" : "Trace/breakpoint trap";
-		case "ABRT" -> MAC ? "Abort trap" : "Aborted";
-		case "BUS" -> "Bus error";
-		case "FPE" -> "Floating point exception";
-		case "KILL" -> "Killed";
-		case "USR1" -> "User defined signal 1";
-		case "USR2" -> "User defined signal 2";
-		case "SEGV" -> "Segmentation fault";
-		case "PIPE" -> "Broken pipe";
-		case "ALRM" -> "Alarm clock";
-		case "TERM" -> "Terminated";
-		case "XCPU" -> "Cputime limit exceeded";
-		case "XFSZ" -> "Filesize limit exceeded";
-		case "VTALRM" -> "Virtual timer expired";
-		case "PROF" -> "Profiling timer expired";
-		case "STOP" -> MAC ? "Suspended (signal)" : "Stopped (signal)";
-		case "TSTP" -> MAC ? "Suspended" : "Stopped";
-		case "TTIN" -> "Stopped (tty input)";
-		case "TTOU" -> "Stopped (tty output)";
-		default -> null;
-		};
+		String text = null;
+		if( name != null ) {
+			switch (name) {
+			case "HUP": text = "Hangup"; break;
+			case "INT": text = "Interrupt"; break;
+			case "QUIT": text = "Quit"; break;
+			case "ILL": text = "Illegal instruction"; break;
+			case "TRAP": text = MAC ? "Trace/BPT trap" : "Trace/breakpoint trap"; break;
+			case "ABRT": text = MAC ? "Abort trap" : "Aborted"; break;
+			case "BUS": text = "Bus error"; break;
+			case "FPE": text = "Floating point exception"; break;
+			case "KILL": text = "Killed"; break;
+			case "USR1": text = "User defined signal 1"; break;
+			case "USR2": text = "User defined signal 2"; break;
+			case "SEGV": text = "Segmentation fault"; break;
+			case "PIPE": text = "Broken pipe"; break;
+			case "ALRM": text = "Alarm clock"; break;
+			case "TERM": text = "Terminated"; break;
+			case "XCPU": text = "Cputime limit exceeded"; break;
+			case "XFSZ": text = "Filesize limit exceeded"; break;
+			case "VTALRM": text = "Virtual timer expired"; break;
+			case "PROF": text = "Profiling timer expired"; break;
+			case "STOP": text = MAC ? "Suspended (signal)" : "Stopped (signal)"; break;
+			case "TSTP": text = MAC ? "Suspended" : "Stopped"; break;
+			case "TTIN": text = "Stopped (tty input)"; break;
+			case "TTOU": text = "Stopped (tty output)"; break;
+			default: break;
+			}
+		}
 		if( text == null ) {
 			return "Signal "+signum;
 		}

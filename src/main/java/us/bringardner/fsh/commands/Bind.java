@@ -69,24 +69,24 @@ public class Bind extends ShellCommand{
 					break;
 				}
 				switch (c) {
-				case 'l' -> {
+				case 'l': {
 					for(String f : LineEditor.FUNCTIONS.keySet()) {
 						ctx.stdout.println(f);
 					}
-				}
-				case 'p', 'P' -> listFunctions(ctx, c == 'P');
-				case 's', 'S' -> listMacros(ctx, c == 'S');
-				case 'v', 'V' -> {
+				} break;
+				case 'p': case 'P': listFunctions(ctx, c == 'P'); break;
+				case 's': case 'S': listMacros(ctx, c == 'S'); break;
+				case 'v': case 'V': {
 					for(Map.Entry<String, String> e : LineEditor.VARIABLES.entrySet()) {
 						ctx.stdout.println(c == 'v' ? "set "+e.getKey()+" "+e.getValue() : e.getKey()+" is set to `"+e.getValue()+"'");
 					}
-				}
-				case 'X' -> {
+				} break;
+				case 'X': {
 					for(Map.Entry<String, String> e : LineEditor.commandBindings().entrySet()) {
 						ctx.stdout.println("\""+LineEditor.keyText(e.getKey())+"\" \""+e.getValue().replace("\\", "\\\\").replace("\"", "\\\"")+"\"");
 					}
-				}
-				default -> {
+				} break;
+				default: {
 					ctx.error("bind: -"+c+": invalid option");
 					ctx.stderr.println(USAGE);
 					return 2;

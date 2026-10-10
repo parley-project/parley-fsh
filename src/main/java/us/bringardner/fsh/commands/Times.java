@@ -24,9 +24,9 @@ public class Times extends ShellCommand{
 		long user = 0;
 		long system = 0;
 		java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-		if( os instanceof com.sun.management.OperatingSystemMXBean sun ) {
+		if( os instanceof com.sun.management.OperatingSystemMXBean ) {
 			// the JVM's CPU time (user and system together)
-			user = sun.getProcessCpuTime();
+			user = ((com.sun.management.OperatingSystemMXBean) os).getProcessCpuTime();
 		} else {
 			java.lang.management.ThreadMXBean t = ManagementFactory.getThreadMXBean();
 			user = t.getCurrentThreadUserTime();

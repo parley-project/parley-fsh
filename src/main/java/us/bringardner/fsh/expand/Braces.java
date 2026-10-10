@@ -16,7 +16,37 @@ public final class Braces {
 	}
 
 	/** a character of unquoted text (c >= 0), or another part of the word */
-	private record Item(int c, Word.Part part) {
+	private static final class Item {
+		private final int c;
+		private final Word.Part part;
+
+		private Item(int c, Word.Part part) {
+			this.c = c;
+			this.part = part;
+		}
+
+		public int c() {
+			return c;
+		}
+
+		public Word.Part part() {
+			return part;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Item)) return false;
+			Item o = (Item) x;
+			return c == o.c && java.util.Objects.equals(part, o.part);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(c, part);
+		}
+
+		@Override public String toString() {
+			return "Item[" + "c=" + c + ", " + "part=" + part + "]";
+		}
 		boolean is(char x) {
 			return c == x;
 		}
@@ -27,7 +57,7 @@ public final class Braces {
 		// (most words have no brace: nothing to take apart)
 		boolean brace = false;
 		for(Word.Part p : w.parts) {
-			if( p instanceof Word.Literal l && l.text().indexOf('{') >= 0 ) {
+			if( p instanceof Word.Literal && ((Word.Literal) p).text().indexOf('{') >= 0 ) {
 				brace = true;
 				break;
 			}
@@ -38,8 +68,8 @@ public final class Braces {
 		List<Item> items = new ArrayList<>();
 		boolean any = false;
 		for(Word.Part p : w.parts) {
-			if( p instanceof Word.Literal l ) {
-				for(char c : l.text().toCharArray()) {
+			if( p instanceof Word.Literal ) {
+				for(char c : ((Word.Literal) p).text().toCharArray()) {
 					items.add(new Item(c, null));
 					any |= c == '{';
 				}
@@ -71,8 +101,8 @@ public final class Braces {
 		StringBuilder lit = new StringBuilder();
 		for (int k = 0; k < items.size(); k++) {
 			Item i = items.get(k);
-			if( i.part instanceof Word.Param p && Character.isJavaIdentifierStart(p.name().charAt(0)) && p.name().matches("[A-Za-z_][A-Za-z0-9_]*")
-					&& k+1 < items.size() && items.get(k+1).part == null && isNameChar(items.get(k+1).c)) {
+			if( i.part instanceof Word.Param && Character.isJavaIdentifierStart(((Word.Param) i.part).name().charAt(0)) && ((Word.Param) i.part).name().matches("[A-Za-z_][A-Za-z0-9_]*")
+					&& k+1 < items.size() && items.get(k+1).part == null && isNameChar(items.get(k+1).c)) { Word.Param p = (Word.Param) i.part;
 				// $var{x,y} is $varx $vary: the name goes on into what the braces gave, as bash's
 				StringBuilder name = new StringBuilder(p.name());
 				while( k+1 < items.size() && items.get(k+1).part == null && isNameChar(items.get(k+1).c)) {
@@ -87,7 +117,7 @@ public final class Braces {
 			}
 			if( i.part == null ) {
 				lit.append((char) i.c);
-			} else if( i.part instanceof Word.Literal l ) {
+			} else if( i.part instanceof Word.Literal ) { Word.Literal l = (Word.Literal) i.part;
 				lit.append(l.text());
 			} else {
 				if( lit.length() > 0 ) {

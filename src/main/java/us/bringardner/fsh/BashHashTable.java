@@ -57,13 +57,13 @@ public class BashHashTable<V> extends AbstractMap<String,V> {
 
 	@Override
 	public V get(Object key) {
-		Item<V> it = key instanceof String s ? find(s) : null;
+		Item<V> it = key instanceof String ? find(((String) key)) : null;
 		return it == null ? null : it.value;
 	}
 
 	@Override
 	public boolean containsKey(Object key) {
-		return key instanceof String s && find(s) != null;
+		return key instanceof String && find(((String) key)) != null;
 	}
 
 	@Override
@@ -103,9 +103,10 @@ public class BashHashTable<V> extends AbstractMap<String,V> {
 
 	@Override
 	public V remove(Object key) {
-		if( !(key instanceof String s)) {
+		if( !(key instanceof String)) {
 			return null;
 		}
+		String s = (String) key;
 		int h = hash(s);
 		int b = h & (buckets.length-1);
 		Item<V> prev = null;

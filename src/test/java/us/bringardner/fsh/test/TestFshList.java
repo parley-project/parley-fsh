@@ -44,7 +44,7 @@ public class TestFshList {
 		assertEquals(list.size(), values.size());
 		StringBuilder buf = new StringBuilder();
 		for(Object o : values) {
-			if( !buf.isEmpty()) {
+			if( buf.length() > 0) {
 				buf.append(' ');
 			}
 			buf.append(""+o);
@@ -57,7 +57,7 @@ public class TestFshList {
 		assertEquals(list.size(), indexes.size());
 		buf = new StringBuilder();
 		for(Integer o : indexes) {
-			if( !buf.isEmpty()) {
+			if( buf.length() > 0) {
 				buf.append(' ');
 			}
 			buf.append(""+o);
@@ -93,7 +93,7 @@ public class TestFshList {
 			Collections.sort(indexes);
 			StringBuilder buf = new StringBuilder();
 			for(Integer i : indexes) {
-				if( !buf.isEmpty()) {
+				if( buf.length() > 0) {
 					buf.append(' ');
 				}
 				buf.append(""+i);

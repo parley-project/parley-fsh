@@ -53,14 +53,14 @@ public class Connect extends ShellCommand{
 				ret = -1;
 			}
 			
-			String fid = args.removeFirst();
+			String fid = args.remove(0);
 			FileSourceFactory tmp = FileSourceFactory.getFileSourceFactory(fid);
 			if( tmp == null ) {
 				ctx.stdout.println("Unknown factory id="+fid);
 				ret = -1;
 			} else {
 				if( !tmp.isConnected()) {
-					String mountPoint = args.removeLast().trim();
+					String mountPoint = args.remove(args.size()-1).trim();
 					if( mountPoint.isEmpty()) {
 						throw new IOException("No valid mount point");
 					}
@@ -73,7 +73,7 @@ public class Connect extends ShellCommand{
 						if( readStdin) {
 							String line = readLine(ctx.stdin);
 							if( !line.isBlank()) {
-								for(String arg: line.split("\s")) {
+								for(String arg: line.split(" ")) {
 									processArg(ctx,arg,props);
 								}
 							}
@@ -117,7 +117,7 @@ public class Connect extends ShellCommand{
 				throw new IOException("Too many property files after evaluating  "+fileName);
 			}
 
-			FileSource file = files.removeFirst();
+			FileSource file = files.remove(0);
 			if( !file.exists() || file.length() <=0 ) {
 				throw new IOException("Can't load properies. "+file+" does not exists or is empty");
 			}

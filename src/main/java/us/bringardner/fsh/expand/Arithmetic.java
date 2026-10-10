@@ -808,7 +808,8 @@ public class Arithmetic {
 			return ZERO;
 		}
 		Object v = ctx.getVariable(name);
-		if( v instanceof Map<?,?> m ) {
+		if( v instanceof Map<?,?> ) {
+			Map<?,?> m = (Map<?,?>) v;
 			if( nounset && m.get(key(sub)) == null ) {
 				throw new Unbound(name);
 			}
@@ -866,8 +867,8 @@ public class Arithmetic {
 			long index = tok.equals(lastElement) ? lastIndex : subscriptValue(sub).longValue();
 			if( index < 0 ) {
 				Object v = ctx.getVariable(name);
-				long size = v instanceof us.bringardner.fsh.FshList f ? (f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1)
-						: v instanceof List<?> l ? l.size() : v == null ? 0 : 1;
+				long size = v instanceof us.bringardner.fsh.FshList ? (((us.bringardner.fsh.FshList) v).isEmpty() ? 0 : ((us.bringardner.fsh.FshList) v).getIndexes().get(((us.bringardner.fsh.FshList) v).size()-1)+1)
+						: v instanceof List<?> ? ((List<?>) v).size() : v == null ? 0 : 1;
 				index += size;
 			}
 			ctx.setVariable(name, (int) index, value);
@@ -933,20 +934,22 @@ public class Arithmetic {
 	}
 
 	private static Object element(Object val, long index) {
-		if( val instanceof us.bringardner.fsh.FshList f ) {
+		if( val instanceof us.bringardner.fsh.FshList ) {
+			us.bringardner.fsh.FshList f = (us.bringardner.fsh.FshList) val;
 			// (sparse: by index; a negative one from past the highest)
 			if( index < 0 ) {
 				index += f.isEmpty() ? 0 : f.getIndexes().get(f.size()-1)+1;
 			}
 			return index >= 0 && index <= Integer.MAX_VALUE ? f.get((int) index) : null;
 		}
-		if( val instanceof List<?> list ) {
+		if( val instanceof List<?> ) {
+			List<?> list = (List<?>) val;
 			if( index < 0 ) {
 				index += list.size();
 			}
 			return index >= 0 && index < list.size() ? list.get((int) index) : null;
-		} else if( val instanceof Map<?,?> m ) {
-			return m.get(""+index);
+		} else if( val instanceof Map<?,?> ) {
+			return ((Map<?,?>) val).get(""+index);
 		}
 		return index == 0 ? val : null;
 	}
@@ -962,11 +965,12 @@ public class Arithmetic {
 		if( val instanceof Number ) {
 			return ((Number) val).longValue();
 		}
-		if( val instanceof List<?> list ) {
+		if( val instanceof List<?> ) {
+			List<?> list = (List<?>) val;
 			return list.isEmpty() ? ZERO : valueOf(list.get(0));
 		}
-		if( val instanceof Map<?,?> m ) {
-			return valueOf(m.get("0"));
+		if( val instanceof Map<?,?> ) {
+			return valueOf(((Map<?,?>) val).get("0"));
 		}
 		String s = val.toString();
 		if( s.isBlank()) {

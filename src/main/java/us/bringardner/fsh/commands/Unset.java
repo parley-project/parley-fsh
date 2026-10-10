@@ -187,12 +187,12 @@ public class Unset extends ShellCommand{
 	/** the indexes of an array (or the keys of an associative one), in order */
 	private static java.util.List<Object> keys(Object val) {
 		java.util.List<Object> ret = new java.util.ArrayList<>();
-		if( val instanceof us.bringardner.fsh.FshList list ) {
-			ret.addAll(list.getIndexes());
-		} else if( val instanceof java.util.Map<?,?> map ) {
-			ret.addAll(map.keySet());
-		} else if( val instanceof java.util.List<?> list ) {
-			for (int i = 0; i < list.size(); i++) {
+		if( val instanceof us.bringardner.fsh.FshList ) {
+			ret.addAll(((us.bringardner.fsh.FshList) val).getIndexes());
+		} else if( val instanceof java.util.Map<?,?> ) {
+			ret.addAll(((java.util.Map<?,?>) val).keySet());
+		} else if( val instanceof java.util.List<?> ) {
+			for (int i = 0; i < ((java.util.List<?>) val).size(); i++) {
 				ret.add(i);
 			}
 		}

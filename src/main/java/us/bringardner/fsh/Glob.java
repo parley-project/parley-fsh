@@ -122,8 +122,9 @@ public class Glob {
 				if( !isPattern(segment)) {
 					String child = join(path, unescape(segment));
 					FileSource file = ctx.console.createFileSource(child);
-					if( !path.isEmpty() && ctx.console.createFileSource(path) instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy
-							&& !java.nio.file.Files.isExecutable(proxy.getTarget().toPath())) {
+					FileSource parent = path.isEmpty() ? null : ctx.console.createFileSource(path);
+					if( parent instanceof us.bringardner.parley.files.fileproxy.FileProxy
+							&& !java.nio.file.Files.isExecutable(((us.bringardner.parley.files.fileproxy.FileProxy) parent).getTarget().toPath())) {
 						// nothing in a directory that cannot be searched (readable/. as well)
 						continue;
 					}
@@ -267,24 +268,24 @@ public class Glob {
 		java.util.Comparator<String> byName = Collation.current(ctx);
 		java.util.Comparator<String> order;
 		switch (spec) {
-		case "size", "blocks", "mtime", "atime", "ctime" -> {
+		case "size": case "blocks": case "mtime": case "atime": case "ctime": {
 			final String key = spec;
 			java.util.Map<String,Long> keys = new java.util.HashMap<>();
 			for(String p : paths) {
 				keys.put(p, attribute(ctx, p, key));
 			}
 			order = Comparator.<String,Long>comparing(keys::get).thenComparing(byName);
-		}
-		case "numeric" -> order = Comparator.<String,java.math.BigInteger>comparing(p -> {
+		} break;
+		case "numeric": order = Comparator.<String,java.math.BigInteger>comparing(p -> {
 			String n = p.replaceAll("^.*/", "");
 			return n.matches("[0-9]+") ? new java.math.BigInteger(n) : java.math.BigInteger.valueOf(-1);
-		}).thenComparing(byName);
-		case "name" -> order = byName;
-		default -> {
+		}).thenComparing(byName); break;
+		case "name": order = byName; break;
+		default: {
 			// (not a sort key: by name, never reversed)
 			order = byName;
 			reverse = false;
-		}
+		} break;
 		}
 		paths.sort(reverse ? order.reversed() : order);
 	}
@@ -301,21 +302,21 @@ public class Glob {
 	private static long attribute(ShellContext ctx, String path, String key) {
 		try {
 			FileSource f = ctx.console.createFileSource(path);
-			if( !(f instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy)) {
+			if( !(f instanceof us.bringardner.parley.files.fileproxy.FileProxy)) {
 				return 0;
 			}
-			java.nio.file.Path p = proxy.getTarget().toPath();
+			java.nio.file.Path p = ((us.bringardner.parley.files.fileproxy.FileProxy) f).getTarget().toPath();
 			java.nio.file.attribute.BasicFileAttributes a = java.nio.file.Files.readAttributes(p, java.nio.file.attribute.BasicFileAttributes.class);
-			return switch (key) {
-			case "size" -> a.size();
-			case "blocks" -> (a.size()+511)/512;
-			case "mtime" -> a.lastModifiedTime().to(TIME_UNIT);
-			case "atime" -> a.lastAccessTime().to(TIME_UNIT);
-			default -> {
+			switch (key) {
+			case "size": return a.size();
+			case "blocks": return (a.size()+511)/512;
+			case "mtime": return a.lastModifiedTime().to(TIME_UNIT);
+			case "atime": return a.lastAccessTime().to(TIME_UNIT);
+			default: {
 				Object c = java.nio.file.Files.getAttribute(p, "unix:ctime");
-				yield c instanceof java.nio.file.attribute.FileTime t ? t.to(TIME_UNIT) : 0;
+				return c instanceof java.nio.file.attribute.FileTime ? ((java.nio.file.attribute.FileTime) c).to(TIME_UNIT) : 0;
 			}
-			};
+			}
 		} catch (Exception e) {
 			return 0;
 		}
@@ -340,8 +341,8 @@ public class Glob {
 			String child = join(path, name);
 			if( kid.isDirectory()) {
 				// a link to a directory: listed by a last **, never gone into (as bash's)
-				boolean link = kid instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy
-						&& java.nio.file.Files.isSymbolicLink(proxy.getTarget().toPath());
+				boolean link = kid instanceof us.bringardner.parley.files.fileproxy.FileProxy
+						&& java.nio.file.Files.isSymbolicLink(((us.bringardner.parley.files.fileproxy.FileProxy) kid).getTarget().toPath());
 				if( !link || last ) {
 					out.add(child);
 				}

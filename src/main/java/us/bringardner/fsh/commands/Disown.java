@@ -58,10 +58,10 @@ public class Disown extends ShellCommand{
 			}
 			for(char c : w.substring(1).toCharArray()) {
 				switch (c) {
-				case 'a' -> options.add(DisownOptions.a);
-				case 'r' -> options.add(DisownOptions.r);
-				case 'h' -> options.add(DisownOptions.h);
-				default -> {
+				case 'a': options.add(DisownOptions.a); break;
+				case 'r': options.add(DisownOptions.r); break;
+				case 'h': options.add(DisownOptions.h); break;
+				default: {
 					ctx.error("disown: -"+c+": invalid option");
 					ctx.stderr.println("disown: usage: disown [-h] [-ar] [jobspec ... | pid ...]");
 					return 2;

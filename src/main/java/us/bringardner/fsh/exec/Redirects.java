@@ -33,7 +33,49 @@ final class Redirects {
 	 * 2 begin, to put back after a command (cmd 4>file, cmd 4>&- are the command's; only exec
 	 * keeps them, and {name} ones stay, as in bash).
 	 */
-	record Saved(InputStream in, PrintStream out, PrintStream err, int mark) {
+	static final class Saved {
+		private final InputStream in;
+		private final PrintStream out;
+		private final PrintStream err;
+		private final int mark;
+
+		Saved(InputStream in, PrintStream out, PrintStream err, int mark) {
+			this.in = in;
+			this.out = out;
+			this.err = err;
+			this.mark = mark;
+		}
+
+		public InputStream in() {
+			return in;
+		}
+
+		public PrintStream out() {
+			return out;
+		}
+
+		public PrintStream err() {
+			return err;
+		}
+
+		public int mark() {
+			return mark;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Saved)) return false;
+			Saved o = (Saved) x;
+			return java.util.Objects.equals(in, o.in) && java.util.Objects.equals(out, o.out) && java.util.Objects.equals(err, o.err) && mark == o.mark;
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(in, out, err, mark);
+		}
+
+		@Override public String toString() {
+			return "Saved[" + "in=" + in + ", " + "out=" + out + ", " + "err=" + err + ", " + "mark=" + mark + "]";
+		}
 		static Saved of(ShellContext sc) {
 			return new Saved(sc.stdin, sc.stdout, sc.stderr, CHANGES.get().size());
 		}
@@ -239,7 +281,8 @@ final class Redirects {
 			}
 			// a file (not a device or a named pipe, where a read can wait) is shared with the programs
 			InputStream in;
-			if( file instanceof FileProxy proxy && proxy.getTarget().isFile()) {
+			if( file instanceof FileProxy && ((FileProxy) file).getTarget().isFile()) {
+				FileProxy proxy = (FileProxy) file;
 				// a local file: a program reads it itself, from where the shell is
 				if( !proxy.getTarget().canRead()) {
 					throw new IOException(word+": Permission denied");
@@ -337,7 +380,7 @@ final class Redirects {
 	/** name (or name[sub]) = fd */
 	private static void assignFd(ShellContext sc, String name, int fd, Expander ex) {
 		int bracket = name.indexOf('[');
-		if( bracket < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef nr && nr.target().isEmpty()) {
+		if( bracket < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef && ((ShellContext.NameRef) sc.rawVariable(name)).target().isEmpty()) {
 			// a nameref with no value: a number is no name for it (said, and the redirect fails)
 			String cmd = COMMAND.get();
 			sc.error((cmd != null ? cmd+": " : "")+"`"+fd+"': not a valid identifier");
@@ -502,9 +545,9 @@ final class Redirects {
 
 	private static void openReadWrite(ShellContext sc, int n, String path) throws IOException {
 		FileSource file = sc.getFileSource(path);
-		if( file instanceof FileProxy proxy && proxy.getTarget().exists() && !proxy.getTarget().isFile() && !proxy.getTarget().isDirectory()) {
+		if( file instanceof FileProxy && ((FileProxy) file).getTarget().exists() && !((FileProxy) file).getTarget().isFile() && !((FileProxy) file).getTarget().isDirectory()) {
 			// a named pipe or a device (exec 9<> fifo): opened for reading and writing at once
-			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(proxy.getTarget(), "rw");
+			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(((FileProxy) file).getTarget(), "rw");
 			InputStream in = new PipeInput(raf);
 			OutputStream out = new OutputStream() {
 				@Override

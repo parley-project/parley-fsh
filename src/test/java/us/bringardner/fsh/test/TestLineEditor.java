@@ -31,7 +31,7 @@ public class TestLineEditor {
 	private static int[] keys(Object ... parts) {
 		List<Integer> ret = new ArrayList<>();
 		for(Object p : parts) {
-			if( p instanceof String s ) {
+			if( p instanceof String ) { String s = (String) p;
 				for(int k : LineEditor.typed(s)) {
 					ret.add(k);
 				}

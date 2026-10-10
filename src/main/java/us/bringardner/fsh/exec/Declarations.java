@@ -43,7 +43,7 @@ public final class Declarations {
 		StringBuilder opts = new StringBuilder();
 		boolean remove = false;
 		int i = 0;
-		while( i < args.size() && args.get(i) instanceof String s && s.length() > 1 && (s.startsWith("-") || s.startsWith("+"))) {
+		while( i < args.size() && args.get(i) instanceof String && ((String) args.get(i)).length() > 1 && (((String) args.get(i)).startsWith("-") || ((String) args.get(i)).startsWith("+"))) { String s = (String) args.get(i);
 			i++;
 			if( s.equals("--")) {
 				break;
@@ -60,7 +60,7 @@ public final class Declarations {
 			// declare -ft name: the trace attribute (+t takes it off)
 			int ret = 0;
 			for(Object item : items) {
-				String n = String.valueOf(item instanceof Ast.Assignment a ? a.name : item);
+				String n = String.valueOf(item instanceof Ast.Assignment ? ((Ast.Assignment) item).name : item);
 				if( sc.getFunction(n) == null ) {
 					error(command, n+": not found");
 					ret = 1;
@@ -133,7 +133,7 @@ public final class Declarations {
 			// local -p names: the function's own variables only
 			int ret = 0;
 			for(Object item : items) {
-				String n = String.valueOf(item instanceof Ast.Assignment a ? a.name : item);
+				String n = String.valueOf(item instanceof Ast.Assignment ? ((Ast.Assignment) item).name : item);
 				if( sc.isOwnLocal(n)) {
 					sc.stdout.println(declaration(n, sc.getVariable(n)));
 				} else {
@@ -163,8 +163,8 @@ public final class Declarations {
 		// local w=1 p=$w: every value is expanded before any is set (p gets the old w)
 		List<Object> values = new ArrayList<>();
 		for(Object item : items) {
-			values.add(item instanceof Ast.Assignment a && local && a.array == null && a.index == null
-					? (a.value == null ? "" : ex.assignment(a.value)) : null);
+			values.add(item instanceof Ast.Assignment && local && ((Ast.Assignment) item).array == null && ((Ast.Assignment) item).index == null
+					? (((Ast.Assignment) item).value == null ? "" : ex.assignment(((Ast.Assignment) item).value)) : null);
 		}
 		int status = 0;
 		for (int n = 0; n < items.size(); n++) {
@@ -174,7 +174,8 @@ public final class Declarations {
 			String text = null;
 			// declare "x+=v": the v
 			String appended = null;
-			if( item instanceof Ast.Assignment a ) {
+			if( item instanceof Ast.Assignment ) {
+				Ast.Assignment a = (Ast.Assignment) item;
 				assignment = a;
 				name = a.name;
 			} else {
@@ -288,7 +289,7 @@ public final class Declarations {
 				continue;
 			}
 			if( !Executor.isName(name)) {
-				error(command, "`"+(item instanceof String s ? s : name)+"': not a valid identifier");
+				error(command, "`"+(item instanceof String ? ((String) item) : name)+"': not a valid identifier");
 				status = 1;
 				if( command.equals("readonly") || command.equals("export")) {
 					// (a special builtin: in posix mode a script ends)
@@ -308,7 +309,7 @@ public final class Declarations {
 				continue;
 			}
 			if( local && text == null && assignment == null && sc.commandTemporaries != null
-					&& isTemporary(sc, name) && sc.getVariable(name) instanceof String tv ) {
+					&& isTemporary(sc, name) && sc.getVariable(name) instanceof String ) { String tv = (String) sc.getVariable(name);
 				// var=value declare var in a function: the local takes the temporary value, as bash's
 				text = tv;
 			}
@@ -340,14 +341,14 @@ public final class Declarations {
 					}
 				}
 			}
-			if( (assignment != null || text != null) && o.indexOf('n') < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef r0
-					&& r0.target().isEmpty() && sc.console.isReadonly(name)) {
+			if( (assignment != null || text != null) && o.indexOf('n') < 0 && sc.rawVariable(name) instanceof ShellContext.NameRef
+					&& ((ShellContext.NameRef) sc.rawVariable(name)).target().isEmpty() && sc.console.isReadonly(name)) {
 				// typeset r=v of a readonly nameref with no value
 				error(command, name+": readonly variable");
 				status = 1;
 				continue;
 			}
-			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef empty && empty.target().isEmpty()
+			if( o.indexOf('n') < 0 && !remove && sc.rawVariable(name) instanceof ShellContext.NameRef && ((ShellContext.NameRef) sc.rawVariable(name)).target().isEmpty()
 					&& !(local && sc.isInFunction() && !sc.isOwnLocal(name))) {
 				if( o.indexOf('a') >= 0 || o.indexOf('A') >= 0 ) {
 					// declare -a of a nameref with no value: an array (with an element: said)
@@ -384,7 +385,7 @@ public final class Declarations {
 				boolean global = o.indexOf('g') >= 0;
 				Object raw = global ? sc.globalRaw(name) : sc.rawVariable(name);
 				// (in a function, a nameref of its own: local ref=v of a global one makes a local ref)
-				if( raw instanceof ShellContext.NameRef r && !r.target().isEmpty() && (global || !local || sc.isOwnLocal(name))) {
+				if( raw instanceof ShellContext.NameRef && !((ShellContext.NameRef) raw).target().isEmpty() && (global || !local || sc.isOwnLocal(name))) {
 					String t = global ? sc.resolveGlobalName(name) : sc.resolveName(name);
 					if( Executor.isName(t)) {
 						name = t;
@@ -416,8 +417,8 @@ public final class Declarations {
 					}
 				}
 			}
-			if( remove && o.indexOf('r') >= 0 && sc.console.isReadonly(name) && sc.rawVariable(name) instanceof ShellContext.NameRef r1
-					&& r1.target().isEmpty()) {
+			if( remove && o.indexOf('r') >= 0 && sc.console.isReadonly(name) && sc.rawVariable(name) instanceof ShellContext.NameRef
+					&& ((ShellContext.NameRef) sc.rawVariable(name)).target().isEmpty()) {
 				// typeset +r of a readonly nameref that names nothing: nothing
 				continue;
 			}
@@ -494,15 +495,15 @@ public final class Declarations {
 				// a reference: the variable named by the value (with no value, the one it has now; a
 				// function's local one is new)
 				Object raw = local && sc.isInFunction() && !sc.isOwnLocal(name) ? null : sc.rawVariable(name);
-				if( raw == null && assignment == null && text == null && sc.rawVariable(name) instanceof String visible ) {
+				if( raw == null && assignment == null && text == null && sc.rawVariable(name) instanceof String ) { String visible = (String) sc.rawVariable(name);
 					// (local -n r with no value: the value r has where it is called, r=/ f)
 					raw = visible;
 				}
 				boolean append = assignment != null && assignment.append || appended != null;
-				if( append && raw instanceof ShellContext.NameRef r ) {
+				if( append && raw instanceof ShellContext.NameRef ) {
 					// ref+=x: x after the name it has (typeset -n ref=var ref+=[@])
 					String more = appended != null ? appended : assignment.value == null ? "" : ex.assignment(assignment.value);
-					String target = r.target()+more;
+					String target = ((ShellContext.NameRef) raw).target()+more;
 					if( target.equals(name)) {
 						sc.error(name+": nameref variable self references not allowed");
 						status = 1;
@@ -530,7 +531,7 @@ public final class Declarations {
 					continue;
 				}
 				String target = text != null ? text : assignment != null && assignment.value != null ? ex.assignment(assignment.value)
-						: raw instanceof ShellContext.NameRef r ? r.target() : raw == null ? "" : raw instanceof List<?> || raw instanceof Map<?,?> ? null : String.valueOf(raw);
+						: raw instanceof ShellContext.NameRef ? ((ShellContext.NameRef) raw).target() : raw == null ? "" : raw instanceof List<?> || raw instanceof Map<?,?> ? null : String.valueOf(raw);
 				if( target == null ) {
 					error(command, name+": reference variable cannot be an array");
 					status = 1;
@@ -576,7 +577,7 @@ public final class Declarations {
 				}
 				continue;
 			}
-			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef ref && sc.console.isReadonly(name)) {
+			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef && sc.console.isReadonly(name)) { ShellContext.NameRef ref = (ShellContext.NameRef) sc.rawVariable(name);
 				// +n of a readonly nameref: only of one with no value yet (it stays readonly)
 				if( !ref.target().isEmpty() || assignment != null || text != null ) {
 					error(command, name+": readonly variable");
@@ -589,7 +590,7 @@ public final class Declarations {
 				sc.console.setReadonly(name);
 				continue;
 			}
-			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef ref ) {
+			if( o.indexOf('n') >= 0 && remove && sc.rawVariable(name) instanceof ShellContext.NameRef ) { ShellContext.NameRef ref = (ShellContext.NameRef) sc.rawVariable(name);
 				// +n: a value goes to the variable it names; then it is a plain variable whose value
 				// is that name
 				if( assignment != null || text != null ) {
@@ -700,7 +701,7 @@ public final class Declarations {
 				}
 			} else if( text != null ) {
 				val = sc.console.isInteger(name) ? String.valueOf(us.bringardner.fsh.expand.Arithmetic.evaluate(text, sc)) : text;
-				if( !local && sc.getVariable(name) instanceof FshList f ) {
+				if( !local && sc.getVariable(name) instanceof FshList ) { FshList f = (FshList) sc.getVariable(name);
 					// readonly 'a=(3)' of an array: its element 0
 					FshList list = copyOf(f);
 					list.set(0, inCase(o, name, (String) val, sc));
@@ -728,20 +729,20 @@ public final class Declarations {
 				status = 1;
 				continue;
 			}
-			if( arrays && val instanceof String v && (o.indexOf('A') >= 0 || old instanceof Map<?,?>)) {
+			if( arrays && val instanceof String && (o.indexOf('A') >= 0 || old instanceof Map<?,?>)) {
 				// declare -A m=v: the element "0"
 				Map<String,Object> map = new TreeMap<>();
-				if( old instanceof Map<?,?> m ) {
-					for(Map.Entry<?,?> e : m.entrySet()) {
+				if( old instanceof Map<?,?> ) {
+					for(Map.Entry<?,?> e : ((Map<?,?>) old).entrySet()) {
 						map.put(String.valueOf(e.getKey()), e.getValue());
 					}
 				}
-				map.put("0", v);
+				map.put("0", ((String) val));
 				val = map;
-			} else if( arrays && val instanceof String v && o.indexOf('A') < 0 && !(old instanceof Map<?,?>)) {
+			} else if( arrays && val instanceof String && o.indexOf('A') < 0 && !(old instanceof Map<?,?>)) {
 				// declare -a x=v: element 0
-				FshList list = old instanceof FshList f ? copyOf(f) : new FshList();
-				list.set(0, inCase(o, name, v, sc));
+				FshList list = old instanceof FshList ? copyOf(((FshList) old)) : new FshList();
+				list.set(0, inCase(o, name, ((String) val), sc));
 				val = list;
 			}
 			if( val == null && !remove ) {
@@ -769,10 +770,10 @@ public final class Declarations {
 				// (declare +r x too)
 				sc.console.declaredUnset.add(name);
 			}
-			if( val instanceof String v && sc.rawVariable(name) instanceof ShellContext.NameRef r && r.target().isEmpty()
-					&& !ShellContext.validReference(v)) {
+			if( val instanceof String && sc.rawVariable(name) instanceof ShellContext.NameRef && ((ShellContext.NameRef) sc.rawVariable(name)).target().isEmpty()
+					&& !ShellContext.validReference(((String) val))) {
 				// declare r=/ of a nameref with no value
-				error(command, "`"+v+"': not a valid identifier");
+				error(command, "`"+((String) val)+"': not a valid identifier");
 				status = 1;
 				continue;
 			}
@@ -829,8 +830,8 @@ public final class Declarations {
 			Ast.Sequence seq = us.bringardner.fsh.syntax.Parser.parse(name+"="+text);
 			if( seq.items.size() == 1 && seq.items.get(0).command.pipelines.size() == 1
 					&& seq.items.get(0).command.pipelines.get(0).commands.size() == 1
-					&& seq.items.get(0).command.pipelines.get(0).commands.get(0) instanceof Ast.SimpleCommand c
-					&& c.words.isEmpty() && c.assignments.size() == 1 && c.assignments.get(0).array != null ) {
+					&& seq.items.get(0).command.pipelines.get(0).commands.get(0) instanceof Ast.SimpleCommand
+					&& ((Ast.SimpleCommand) seq.items.get(0).command.pipelines.get(0).commands.get(0)).words.isEmpty() && ((Ast.SimpleCommand) seq.items.get(0).command.pipelines.get(0).commands.get(0)).assignments.size() == 1 && ((Ast.SimpleCommand) seq.items.get(0).command.pipelines.get(0).commands.get(0)).assignments.get(0).array != null ) { Ast.SimpleCommand c = (Ast.SimpleCommand) seq.items.get(0).command.pipelines.get(0).commands.get(0);
 				return c.assignments.get(0);
 			}
 		} catch (us.bringardner.fsh.syntax.SyntaxError e) {
@@ -840,12 +841,12 @@ public final class Declarations {
 
 	/** a value to start a local with (an array: its own copy) */
 	private static Object copy(Object v) {
-		if( v instanceof FshList f ) {
-			return copyOf(f);
+		if( v instanceof FshList ) {
+			return copyOf(((FshList) v));
 		}
-		if( v instanceof Map<?,?> m ) {
+		if( v instanceof Map<?,?> ) {
 			Map<String,Object> ret = new TreeMap<>();
-			for(Map.Entry<?,?> e : m.entrySet()) {
+			for(Map.Entry<?,?> e : ((Map<?,?>) v).entrySet()) {
 				ret.put(String.valueOf(e.getKey()), e.getValue());
 			}
 			return ret;
@@ -865,7 +866,7 @@ public final class Declarations {
 	private int functions(String command, List<Object> items, boolean names, boolean p, boolean exported, boolean readonly) {
 		List<String> wanted = new ArrayList<>();
 		for(Object item : items) {
-			wanted.add(item instanceof Ast.Assignment a ? a.name : String.valueOf(item));
+			wanted.add(item instanceof Ast.Assignment ? ((Ast.Assignment) item).name : String.valueOf(item));
 		}
 		if( wanted.isEmpty()) {
 			for(String n : new TreeSet<>(sc.console.getFunctions().keySet())) {
@@ -915,7 +916,7 @@ public final class Declarations {
 	private int print(String command, List<Object> items, String o) {
 		List<String> names = new ArrayList<>();
 		for(Object item : items) {
-			names.add(item instanceof Ast.Assignment a ? a.name : String.valueOf(item));
+			names.add(item instanceof Ast.Assignment ? ((Ast.Assignment) item).name : String.valueOf(item));
 		}
 		if( names.isEmpty()) {
 			TreeSet<String> all = new TreeSet<>(sc.getVariables().keySet());
@@ -990,7 +991,7 @@ public final class Declarations {
 		}
 		String flags = flags(name, val);
 		boolean declaredOnly = sc.hasLocal(name) ? sc.isDeclaredLocal(name) : sc.console.declaredUnset.contains(name);
-		if( (declaredOnly || val == null && name.equals("FUNCNAME")) && (val == null || val instanceof Map<?,?> m0 && m0.isEmpty() || val instanceof List<?> l0 && l0.isEmpty())) {
+		if( (declaredOnly || val == null && name.equals("FUNCNAME")) && (val == null || val instanceof Map<?,?> && ((Map<?,?>) val).isEmpty() || val instanceof List<?> && ((List<?>) val).isEmpty())) {
 			// declared, never given a value
 			return "declare -"+(flags.isEmpty() ? "-" : flags)+" "+name;
 		}
@@ -1001,11 +1002,12 @@ public final class Declarations {
 	/** an array as declare -p shows it: ([0]="a" [1]="b"), ([k]="v" ) */
 	public static String arrayText(Object val) {
 		StringBuilder value = new StringBuilder("(");
-		if( val instanceof Map<?,?> m ) {
-			for(Map.Entry<?,?> e : m.entrySet()) {
+		if( val instanceof Map<?,?> ) {
+			for(Map.Entry<?,?> e : ((Map<?,?>) val).entrySet()) {
 				value.append('[').append(key(String.valueOf(e.getKey()))).append("]=").append(quote(e.getValue())).append(' ');
 			}
-		} else if( val instanceof FshList list ) {
+		} else if( val instanceof FshList ) {
+			FshList list = (FshList) val;
 			boolean first = true;
 			for(int idx : list.getIndexes()) {
 				if( !first ) {
@@ -1090,23 +1092,23 @@ public final class Declarations {
 			for (int i = 0; i < s.length(); i++) {
 				char c = s.charAt(i);
 				switch (c) {
-				case 033 -> ret.append("\\E");
-				case 007 -> ret.append("\\a");
-				case 013 -> ret.append("\\v");
-				case '\b' -> ret.append("\\b");
-				case '\f' -> ret.append("\\f");
-				case '\n' -> ret.append("\\n");
-				case '\r' -> ret.append("\\r");
-				case '\t' -> ret.append("\\t");
-				case '\\', '\'' -> ret.append('\\').append(c);
-				default -> {
+				case 033: ret.append("\\E"); break;
+				case 007: ret.append("\\a"); break;
+				case 013: ret.append("\\v"); break;
+				case '\b': ret.append("\\b"); break;
+				case '\f': ret.append("\\f"); break;
+				case '\n': ret.append("\\n"); break;
+				case '\r': ret.append("\\r"); break;
+				case '\t': ret.append("\\t"); break;
+				case '\\': case '\'': ret.append('\\').append(c); break;
+				default: {
 					if( Character.isISOControl(c) || us.bringardner.fsh.RawUtf8.isEscape(c)) {
 						int b = us.bringardner.fsh.RawUtf8.valueOf(c);
 						ret.append('\\').append((b >> 6) & 7).append((b >> 3) & 7).append(b & 7);
 					} else {
 						ret.append(c);
 					}
-				}
+				} break;
 				}
 			}
 			return ret.append('\'').toString();

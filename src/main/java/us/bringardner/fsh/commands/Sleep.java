@@ -63,13 +63,13 @@ public class Sleep extends ShellCommand{
 					return 1;
 				}
 				ival = m.group(1);
-				multiplyer = switch (m.group(2)) {
-				case "m" -> Minute;
-				case "h" -> Hour;
-				case "d" -> Day;
-				case "M" -> MilliSecond;
-				default -> Second;
-				};
+				switch (m.group(2)) {
+				case "m": multiplyer = Minute; break;
+				case "h": multiplyer = Hour; break;
+				case "d": multiplyer = Day; break;
+				case "M": multiplyer = MilliSecond; break;
+				default: multiplyer = Second; break;
+				}
 				timeToSleep += Math.round(Double.parseDouble(m.group(1)) * multiplyer);
 				any = true;
 			}

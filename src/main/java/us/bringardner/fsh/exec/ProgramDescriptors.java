@@ -85,7 +85,7 @@ final class ProgramDescriptors {
 
 	/** the stream itself, under what keeps it open */
 	private static Object stream(Object s) {
-		return s instanceof OutputStream o ? KeptOpen.unwrap(o) : s;
+		return s instanceof OutputStream ? KeptOpen.unwrap(((OutputStream) s)) : s;
 	}
 
 	/** the program has started */

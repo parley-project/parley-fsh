@@ -13,3 +13,4 @@ if [ ! -f "$cp_file" ] || [ "$PROJECT_DIR/pom.xml" -nt "$cp_file" ]; then
 fi
 
 export CLASSPATH="$PROJECT_DIR/target/classes:$(cat "$cp_file")"
+. "$LIB_DIR/java-options.sh"

@@ -107,10 +107,10 @@ public class Rm extends ShellCommand{
 	}
 
 	private void remove(ShellContext ctx, List<Arguments> options, FileSource file) throws IOException {
-		if( file instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy
-				&& java.nio.file.Files.isSymbolicLink(proxy.getTarget().toPath())) {
+		if( file instanceof us.bringardner.parley.files.fileproxy.FileProxy
+				&& java.nio.file.Files.isSymbolicLink(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath())) {
 			// a link (to a directory too) is removed itself, not what it points to
-			java.nio.file.Files.delete(proxy.getTarget().toPath());
+			java.nio.file.Files.delete(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath());
 			if( options.contains(Arguments.v)) {
 				ctx.stdout.println(file.getAbsolutePath());
 			}

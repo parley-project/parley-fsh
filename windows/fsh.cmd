@@ -26,7 +26,8 @@ for /f "usebackq delims=" %%i in ("%cp_file%") do set deps=%%i
 rem (-Xss: deep recursion in scripts needs more than Java's 1 MB stacks; the serial collector with
 rem a small young generation, its heap given back when it is not used; -XX:-MaxFDLimit, which
 rem macos/fsh passes, is Unix-only: the JVM would not start with it here)
-set opts=--enable-native-access=ALL-UNNAMED -Djava.library.path="%LIB_DIR%" -Xss16m
+call "%~dp0java-options.cmd"
+set opts=%NATIVE_ACCESS% -Djava.library.path="%LIB_DIR%" -Xss16m
 set opts=%opts% -XX:+UseSerialGC -Xmn16m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20
 set opts=%opts% -Djava.awt.headless=true
 

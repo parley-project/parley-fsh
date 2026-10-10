@@ -43,7 +43,7 @@ public class FshList implements List<Object> {
 	public String getIndexesAsString() {
 		StringBuilder buf = new StringBuilder();
 		for(Integer o : entries.keySet()) {
-			if( !buf.isEmpty()) {
+			if( buf.length() > 0) {
 				buf.append(' ');
 			}
 			buf.append(""+o);
@@ -67,7 +67,7 @@ public class FshList implements List<Object> {
 	public String getValuesAsString() {
 		StringBuilder buf = new StringBuilder();
 		for(ListEntry o : entries.values()) {
-			if( !buf.isEmpty()) {
+			if( buf.length() > 0) {
 				buf.append(' ');
 			}
 			buf.append(""+o.value);

@@ -345,7 +345,37 @@ public final class Parser {
 	 * in a quote, a here-document, after |: any line may end it). A shell reading a script a line
 	 * at a time need parse it again only once a line has one of them.
 	 */
-	public record Completeness(boolean complete, Set<String> closers) {
+	public static final class Completeness {
+		private final boolean complete;
+		private final Set<String> closers;
+
+		public Completeness(boolean complete, Set<String> closers) {
+			this.complete = complete;
+			this.closers = closers;
+		}
+
+		public boolean complete() {
+			return complete;
+		}
+
+		public Set<String> closers() {
+			return closers;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Completeness)) return false;
+			Completeness o = (Completeness) x;
+			return complete == o.complete && java.util.Objects.equals(closers, o.closers);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(complete, closers);
+		}
+
+		@Override public String toString() {
+			return "Completeness[" + "complete=" + complete + ", " + "closers=" + closers + "]";
+		}
 	}
 
 	public static Completeness completeness(String code) {
@@ -363,15 +393,18 @@ public final class Parser {
 			if( !e.endOfInput ) {
 				return new Completeness(true, null);
 			}
-			Set<String> closers = p.outerOpen == null ? null : switch (p.outerOpen) {
-			case "if" -> Set.of("fi");
-			case "while", "until", "for", "select" -> Set.of("done", "}");
-			case "case" -> Set.of("esac");
-			case "{" -> Set.of("}");
-			case "[[" -> Set.of("]]");
-			case "(" -> Set.of(")");
-			default -> null;
-			};
+			Set<String> closers = null;
+			if( p.outerOpen != null ) {
+				switch (p.outerOpen) {
+				case "if": closers = Set.of("fi"); break;
+				case "while": case "until": case "for": case "select": closers = Set.of("done", "}"); break;
+				case "case": closers = Set.of("esac"); break;
+				case "{": closers = Set.of("}"); break;
+				case "[[": closers = Set.of("]]"); break;
+				case "(": closers = Set.of(")"); break;
+				default: break;
+				}
+			}
 			return new Completeness(false, closers);
 		}
 		return new Completeness(!p.hereDocumentOpen && p.pendingHereDocs.isEmpty(), null);
@@ -1810,24 +1843,24 @@ public final class Parser {
 	private static String unquote(Word w) {
 		StringBuilder ret = new StringBuilder();
 		for(Word.Part p : w.parts) {
-			if( p instanceof Word.Literal l ) {
-				ret.append(l.text());
-			} else if( p instanceof Word.SingleQuoted s ) {
-				ret.append(s.text());
-			} else if( p instanceof Word.Escaped e ) {
-				ret.append(e.c());
-			} else if( p instanceof Word.DoubleQuoted d ) {
-				for(Word.Part q : d.parts()) {
-					if( q instanceof Word.Literal l ) {
-						ret.append(l.text());
-					} else if( q instanceof Word.Escaped e ) {
-						ret.append(e.c());
-					} else if( q instanceof Word.Param pa ) {
-						ret.append('$').append(pa.name());
+			if( p instanceof Word.Literal ) {
+				ret.append(((Word.Literal) p).text());
+			} else if( p instanceof Word.SingleQuoted ) {
+				ret.append(((Word.SingleQuoted) p).text());
+			} else if( p instanceof Word.Escaped ) {
+				ret.append(((Word.Escaped) p).c());
+			} else if( p instanceof Word.DoubleQuoted ) {
+				for(Word.Part q : ((Word.DoubleQuoted) p).parts()) {
+					if( q instanceof Word.Literal ) {
+						ret.append(((Word.Literal) q).text());
+					} else if( q instanceof Word.Escaped ) {
+						ret.append(((Word.Escaped) q).c());
+					} else if( q instanceof Word.Param ) {
+						ret.append('$').append(((Word.Param) q).name());
 					}
 				}
-			} else if( p instanceof Word.Param pa ) {
-				ret.append('$').append(pa.name());
+			} else if( p instanceof Word.Param ) {
+				ret.append('$').append(((Word.Param) p).name());
 			} else {
 				// $(..) `..` ${..}: as written (a delimiter is not expanded)
 				ret.append(written(p));
@@ -1838,18 +1871,18 @@ public final class Parser {
 
 	private static String written(Word.Part p) {
 		// (instanceof, not a switch on the type: that is slow in a native image)
-		if( p instanceof Word.ParamExpansion x ) {
-			return "${"+x.body()+"}";
-		} else if( p instanceof Word.CommandSub c ) {
-			return "$("+c.text()+")";
-		} else if( p instanceof Word.Backquote b ) {
-			return "`"+b.text()+"`";
-		} else if( p instanceof Word.ArithSub a ) {
-			return "$(("+a.expression().raw+"))";
-		} else if( p instanceof Word.ArithSubscript a ) {
-			return "["+a.text()+"]";
-		} else if( p instanceof Word.AnsiC a ) {
-			return "$'"+a.text()+"'";
+		if( p instanceof Word.ParamExpansion ) {
+			return "${"+((Word.ParamExpansion) p).body()+"}";
+		} else if( p instanceof Word.CommandSub ) {
+			return "$("+((Word.CommandSub) p).text()+")";
+		} else if( p instanceof Word.Backquote ) {
+			return "`"+((Word.Backquote) p).text()+"`";
+		} else if( p instanceof Word.ArithSub ) {
+			return "$(("+((Word.ArithSub) p).expression().raw+"))";
+		} else if( p instanceof Word.ArithSubscript ) {
+			return "["+((Word.ArithSubscript) p).text()+"]";
+		} else if( p instanceof Word.AnsiC ) {
+			return "$'"+((Word.AnsiC) p).text()+"'";
 		}
 		return "";
 	}
@@ -1957,10 +1990,10 @@ public final class Parser {
 	 * the word is no assignment.
 	 */
 	private static int assignmentLength(Word w) {
-		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal l)) {
+		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal)) {
 			return 0;
 		}
-		String s = l.text();
+		String s = ((Word.Literal) w.parts.get(0)).text();
 		int i = 0;
 		if( s.isEmpty() || !isNameChar(s.charAt(0), true)) {
 			return 0;

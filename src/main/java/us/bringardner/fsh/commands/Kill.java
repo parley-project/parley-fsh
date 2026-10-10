@@ -206,18 +206,17 @@ public class Kill extends ShellCommand{
 			return;
 		}
 		switch (name) {
-		case "STOP", "TSTP", "TTIN", "TTOU" -> job.stopJob(name);
-		case "CONT" -> {
+		case "STOP": case "TSTP": case "TTIN": case "TTOU": job.stopJob(name); break;
+		case "CONT": {
 			// (a stopped one that goes on is the current job again, as with bash)
 			boolean stopped = job.getState() == us.bringardner.fsh.job.JobState.Suspended;
 			job.continueJob();
 			if( stopped ) {
 				ctx.console.jobManager.touch(job);
 			}
-		}
-		case "CHLD", "WINCH", "URG", "INFO" -> {
-		}
-		default -> {
+		} break;
+		case "CHLD": case "WINCH": case "URG": case "INFO": break;
+		default: {
 			us.bringardner.fsh.ShellContext jc = job.getShellContext();
 			if( jc != null && jc.subshell != null ) {
 				// the job's subshell: its trap runs, or it ends (see ShellContext.signal)
@@ -225,7 +224,7 @@ public class Kill extends ShellCommand{
 			} else if( !job.isIgnoreSignal(ConsoleSignal.find(name))) {
 				job.signalJob(sig);
 			}
-		}
+		} break;
 		}
 	}
 

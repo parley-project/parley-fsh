@@ -700,7 +700,7 @@ public class Printf extends ShellCommand{
 				return '.';
 			}
 			String[] parts = locale.split("_");
-			java.util.Locale l = parts.length > 1 ? java.util.Locale.of(parts[0], parts[1]) : java.util.Locale.of(parts[0]);
+			java.util.Locale l = parts.length > 1 ? new java.util.Locale(parts[0], parts[1]) : new java.util.Locale(parts[0]);
 			return java.text.DecimalFormatSymbols.getInstance(l).getDecimalSeparator();
 		}
 		return '.';

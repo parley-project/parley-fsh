@@ -68,8 +68,8 @@ public class Caller extends ShellCommand{
 
 	private static java.util.List<Object> list(Object v) {
 		java.util.List<Object> ret = new java.util.ArrayList<>();
-		if( v instanceof java.util.List<?> l ) {
-			ret.addAll(l);
+		if( v instanceof java.util.List<?> ) {
+			ret.addAll(((java.util.List<?>) v));
 		} else if( v != null ) {
 			ret.add(v);
 		}

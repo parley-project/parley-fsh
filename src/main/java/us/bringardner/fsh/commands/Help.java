@@ -131,14 +131,14 @@ public class Help extends ShellCommand{
 			for(String n : found) {
 				String text = topics.get(n);
 				switch (mode) {
-				case 's' -> ctx.stdout.println(n+": "+usage(n, text));
-				case 'd' -> ctx.stdout.println(n+" - "+summary(n, text));
-				case 'm' -> {
+				case 's': ctx.stdout.println(n+": "+usage(n, text)); break;
+				case 'd': ctx.stdout.println(n+" - "+summary(n, text)); break;
+				case 'm': {
 					ctx.stdout.println("NAME\n    "+n+" - "+summary(n, text)+"\n");
 					ctx.stdout.println("SYNOPSIS\n    "+usage(n, text)+"\n");
 					ctx.stdout.println("DESCRIPTION\n"+indented(description(n, text))+"\n");
-				}
-				default -> ctx.stdout.print(full(n, text));
+				} break;
+				default: ctx.stdout.print(full(n, text)); break;
 				}
 			}
 		}

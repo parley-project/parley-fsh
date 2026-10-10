@@ -56,7 +56,7 @@ public class Cp extends ShellCommand{
 			return -1;
 		}
 
-		FileSource lastFile = files.removeLast();
+		FileSource lastFile = files.remove(files.size()-1);
 		if( lastFile.isDirectory()) {
 			ctx.setValue(ROOT_FACTORY_ID, lastFile.getFileSourceFactory().getTypeId());
 			copyToDir(ctx,options,files,lastFile);
@@ -65,7 +65,7 @@ public class Cp extends ShellCommand{
 				ctx.stdout.println(lastFile+" is not a valid directory.");
 				return -1;
 			}
-			copyFileToFile(ctx,options,files.getFirst(),lastFile);
+			copyFileToFile(ctx,options,files.get(0),lastFile);
 		}
 
 		return ret;
@@ -78,14 +78,14 @@ public class Cp extends ShellCommand{
 				copyStream(ctx,in,out);
 			}
 		}		
-		if( !existed && from instanceof us.bringardner.parley.files.fileproxy.FileProxy f
-				&& to instanceof us.bringardner.parley.files.fileproxy.FileProxy t ) {
+		if( !existed && from instanceof us.bringardner.parley.files.fileproxy.FileProxy
+				&& to instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
 			// as cp: a new file gets the source's mode (less group and other write, as umask 022)
 			try {
-				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(f.getTarget().toPath());
+				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(((us.bringardner.parley.files.fileproxy.FileProxy) from).getTarget().toPath());
 				mode.remove(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
 				mode.remove(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
-				java.nio.file.Files.setPosixFilePermissions(t.getTarget().toPath(), mode);
+				java.nio.file.Files.setPosixFilePermissions(((us.bringardner.parley.files.fileproxy.FileProxy) to).getTarget().toPath(), mode);
 			} catch (UnsupportedOperationException e) {
 			}
 		}

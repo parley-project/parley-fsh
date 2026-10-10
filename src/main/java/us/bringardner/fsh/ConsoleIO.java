@@ -47,7 +47,39 @@ public class ConsoleIO implements KeyboardReader {
 	/** Output waiting for the UI beyond which a writer waits (unless it's on the UI's thread). */
 	static final int MAX_PENDING = 1 << 20;
 
-	private record Segment(StringBuilder text, boolean error) {}
+	private static final class Segment {
+		private final StringBuilder text;
+		private final boolean error;
+
+		private Segment(StringBuilder text, boolean error) {
+			this.text = text;
+			this.error = error;
+		}
+
+		public StringBuilder text() {
+			return text;
+		}
+
+		public boolean error() {
+			return error;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Segment)) return false;
+			Segment o = (Segment) x;
+			return java.util.Objects.equals(text, o.text) && error == o.error;
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(text, error);
+		}
+
+		@Override public String toString() {
+			return "Segment[" + "text=" + text + ", " + "error=" + error + "]";
+		}
+
+	}
 
 	private final Executor uiThread;
 	private final BooleanSupplier onUiThread;

@@ -98,7 +98,8 @@ public final class AstPrinter {
 	}
 
 	private void command(Command c) {
-		if( c instanceof SimpleCommand s ) {
+		if( c instanceof SimpleCommand ) {
+			SimpleCommand s = (SimpleCommand) c;
 			out.append("(cmd");
 			for(Assignment a : s.assignments) {
 				out.append(' ');
@@ -113,13 +114,14 @@ public final class AstPrinter {
 					word(w);
 				}
 			}
-		} else if( c instanceof BraceGroup g ) {
+		} else if( c instanceof BraceGroup ) {
 			out.append("(group ");
-			sequence(g.body);
-		} else if( c instanceof Subshell s ) {
+			sequence(((BraceGroup) c).body);
+		} else if( c instanceof Subshell ) {
 			out.append("(subshell ");
-			sequence(s.body);
-		} else if( c instanceof If f ) {
+			sequence(((Subshell) c).body);
+		} else if( c instanceof If ) {
+			If f = (If) c;
 			out.append("(if");
 			for (int i = 0; i < f.conditions.size(); i++) {
 				out.append(' ');
@@ -131,25 +133,30 @@ public final class AstPrinter {
 				out.append(" else ");
 				sequence(f.elseBody);
 			}
-		} else if( c instanceof Loop l ) {
+		} else if( c instanceof Loop ) {
+			Loop l = (Loop) c;
 			out.append(l.until ? "(until " : "(while ");
 			sequence(l.condition);
 			out.append(' ');
 			sequence(l.body);
-		} else if( c instanceof For f ) {
+		} else if( c instanceof For ) {
+			For f = (For) c;
 			out.append("(for ").append(f.variable);
 			words(f.words);
 			out.append(' ');
 			sequence(f.body);
-		} else if( c instanceof Select f ) {
+		} else if( c instanceof Select ) {
+			Select f = (Select) c;
 			out.append("(select ").append(f.variable);
 			words(f.words);
 			out.append(' ');
 			sequence(f.body);
-		} else if( c instanceof ArithFor f ) {
+		} else if( c instanceof ArithFor ) {
+			ArithFor f = (ArithFor) c;
 			out.append("(arith-for {").append(f.init.raw).append("} {").append(f.condition.raw).append("} {").append(f.step.raw).append("} ");
 			sequence(f.body);
-		} else if( c instanceof Case k ) {
+		} else if( c instanceof Case ) {
+			Case k = (Case) c;
 			out.append("(case ");
 			word(k.subject);
 			for(CaseClause cl : k.clauses) {
@@ -167,15 +174,17 @@ public final class AstPrinter {
 				}
 				out.append(')');
 			}
-		} else if( c instanceof Arith a ) {
-			out.append("(arith {").append(a.expression.raw).append('}');
-		} else if( c instanceof Cond k ) {
+		} else if( c instanceof Arith ) {
+			out.append("(arith {").append(((Arith) c).expression.raw).append('}');
+		} else if( c instanceof Cond ) {
 			out.append("(cond ");
-			cond(k.expression);
-		} else if( c instanceof Ast.Coproc k ) {
+			cond(((Cond) c).expression);
+		} else if( c instanceof Ast.Coproc ) {
+			Ast.Coproc k = (Ast.Coproc) c;
 			out.append("(coproc ").append(k.name).append(' ');
 			command(k.body);
-		} else if( c instanceof FunctionDef f ) {
+		} else if( c instanceof FunctionDef ) {
+			FunctionDef f = (FunctionDef) c;
 			out.append("(function ").append(f.name).append(' ');
 			command(f.body);
 		}
@@ -187,39 +196,40 @@ public final class AstPrinter {
 	}
 
 	private void cond(Ast.CondExpr e) {
-		switch (e) {
-		case Ast.CondAnd a -> {
+		if( e instanceof Ast.CondAnd ) {
+			Ast.CondAnd a = (Ast.CondAnd) e;
 			out.append("(&& ");
 			cond(a.left());
 			out.append(' ');
 			cond(a.right());
 			out.append(')');
-		}
-		case Ast.CondOr o -> {
+		} else if( e instanceof Ast.CondOr ) {
+			Ast.CondOr o = (Ast.CondOr) e;
 			out.append("(|| ");
 			cond(o.left());
 			out.append(' ');
 			cond(o.right());
 			out.append(')');
-		}
-		case Ast.CondNot n -> {
+		} else if( e instanceof Ast.CondNot ) {
+			Ast.CondNot n = (Ast.CondNot) e;
 			out.append("(! ");
 			cond(n.expression());
 			out.append(')');
-		}
-		case Ast.CondUnary u -> {
+		} else if( e instanceof Ast.CondUnary ) {
+			Ast.CondUnary u = (Ast.CondUnary) e;
 			out.append('(').append(u.op()).append(' ');
 			word(u.operand());
 			out.append(')');
-		}
-		case Ast.CondBinary b -> {
+		} else if( e instanceof Ast.CondBinary ) {
+			Ast.CondBinary b = (Ast.CondBinary) e;
 			out.append('(').append(b.op()).append(' ');
 			word(b.left());
 			out.append(' ');
 			word(b.right());
 			out.append(')');
-		}
-		case Ast.CondWord w -> word(w.word());
+		} else if( e instanceof Ast.CondWord ) {
+			Ast.CondWord w = (Ast.CondWord) e;
+			word(w.word());
 		}
 	}
 
@@ -278,46 +288,61 @@ public final class AstPrinter {
 
 	private void parts(List<Word.Part> parts) {
 		for(Word.Part p : parts) {
-			switch (p) {
-			case Word.Literal l -> out.append(l.text());
-			case Word.Escaped e -> out.append('\\').append(e.c());
-			case Word.SingleQuoted s -> out.append('\'').append(s.text()).append('\'');
-			case Word.AnsiC a -> out.append("$'").append(a.text()).append('\'');
-			case Word.DoubleQuoted d -> {
+			if( p instanceof Word.Literal ) {
+				Word.Literal l = (Word.Literal) p;
+				out.append(l.text());
+			} else if( p instanceof Word.Escaped ) {
+				Word.Escaped e = (Word.Escaped) p;
+				out.append('\\').append(e.c());
+			} else if( p instanceof Word.SingleQuoted ) {
+				Word.SingleQuoted s = (Word.SingleQuoted) p;
+				out.append('\'').append(s.text()).append('\'');
+			} else if( p instanceof Word.AnsiC ) {
+				Word.AnsiC a = (Word.AnsiC) p;
+				out.append("$'").append(a.text()).append('\'');
+			} else if( p instanceof Word.DoubleQuoted ) {
+				Word.DoubleQuoted d = (Word.DoubleQuoted) p;
 				out.append(d.locale() ? "$\"" : "\"");
 				parts(d.parts());
 				out.append('"');
-			}
-			case Word.Param pa -> out.append('$').append(pa.name());
-			case Word.ParamExpansion pe -> out.append("${").append(pe.body()).append('}');
-			case Word.CommandSub cs -> {
+			} else if( p instanceof Word.Param ) {
+				Word.Param pa = (Word.Param) p;
+				out.append('$').append(pa.name());
+			} else if( p instanceof Word.ParamExpansion ) {
+				Word.ParamExpansion pe = (Word.ParamExpansion) p;
+				out.append("${").append(pe.body()).append('}');
+			} else if( p instanceof Word.CommandSub ) {
+				Word.CommandSub cs = (Word.CommandSub) p;
 				out.append("$");
 				if( cs.body() == null ) {
 					out.append('(').append(cs.text()).append(')');
 				} else {
 					sequence(cs.body());
 				}
-			}
-			case Word.FunctionSub fs -> {
+			} else if( p instanceof Word.FunctionSub ) {
+				Word.FunctionSub fs = (Word.FunctionSub) p;
 				out.append(fs.reply() ? "${|" : "${");
 				sequence(fs.body());
 				out.append('}');
-			}
-			case Word.Backquote b -> out.append('`').append(b.text()).append('`');
-			case Word.ArithSub a -> {
+			} else if( p instanceof Word.Backquote ) {
+				Word.Backquote b = (Word.Backquote) p;
+				out.append('`').append(b.text()).append('`');
+			} else if( p instanceof Word.ArithSub ) {
+				Word.ArithSub a = (Word.ArithSub) p;
 				out.append("$((");
 				parts(a.expression().parts);
 				out.append("))");
-			}
-			case Word.ArithSubscript a -> out.append('[').append(a.text()).append(']');
-			case Word.ProcessSub ps -> {
+			} else if( p instanceof Word.ArithSubscript ) {
+				Word.ArithSubscript a = (Word.ArithSubscript) p;
+				out.append('[').append(a.text()).append(']');
+			} else if( p instanceof Word.ProcessSub ) {
+				Word.ProcessSub ps = (Word.ProcessSub) p;
 				out.append(ps.direction());
 				if( ps.body() == null ) {
 					out.append('(').append(ps.text()).append(')');
 				} else {
 					sequence(ps.body());
 				}
-			}
 			}
 		}
 	}

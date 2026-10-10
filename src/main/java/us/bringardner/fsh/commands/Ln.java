@@ -72,7 +72,7 @@ public class Ln extends ShellCommand{
 			return -1;
 		}
 
-		FileSource lastFile = files.removeLast();
+		FileSource lastFile = files.remove(files.size()-1);
 		if( lastFile.isDirectory()) {
 			ret = linkFilesInDir(ctx, options, files, lastFile);
 		} else {
@@ -80,7 +80,7 @@ public class Ln extends ShellCommand{
 				ctx.stdout.println(help);
 				return -1;
 			}
-			ret = linkFiles(ctx, options, files.getFirst(), lastFile);
+			ret = linkFiles(ctx, options, files.get(0), lastFile);
 		}
 
 		return ret;

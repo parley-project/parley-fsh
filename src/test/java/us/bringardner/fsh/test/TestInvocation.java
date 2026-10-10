@@ -19,7 +19,7 @@ import us.bringardner.fsh.Console;
  */
 public class TestInvocation {
 
-	private record Result(int status, String out, String err) {
+	private static final class Result { private final int status; private final String out; private final String err; Result(int status, String out, String err) { this.status = status; this.out = out; this.err = err; } public int status() { return status; } public String out() { return out; } public String err() { return err; } @Override public boolean equals(Object x) { if (this == x) return true; if (!(x instanceof Result)) return false; Result o = (Result) x; return status == o.status && java.util.Objects.equals(out, o.out) && java.util.Objects.equals(err, o.err); } @Override public int hashCode() { return java.util.Objects.hash(status, out, err); } @Override public String toString() { return "Result[" + "status=" + status + ", " + "out=" + out + ", " + "err=" + err + "]"; }
 	}
 
 	private static Result run(String stdin, String ... args) {

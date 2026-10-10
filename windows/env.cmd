@@ -20,3 +20,4 @@ if not exist "%cp_file%" (
 set deps=
 for /f "usebackq delims=" %%i in ("%cp_file%") do set deps=%%i
 set CLASSPATH=%PROJECT_DIR%\target\classes;%deps%
+call "%~dp0java-options.cmd"

@@ -89,7 +89,7 @@ public class TestBashCompat extends AbstractConsoleTest {
 	public Stream<DynamicTest> cases() throws IOException {
 		List<Path> scripts;
 		try (Stream<Path> files = Files.list(DIR.resolve("cases"))) {
-			scripts = files.filter(p -> p.toString().endsWith(".sh")).sorted().toList();
+			scripts = files.filter(p -> p.toString().endsWith(".sh")).sorted().collect(java.util.stream.Collectors.toList());
 		}
 		return scripts.stream().map(script -> {
 			String name = script.getFileName().toString().replaceAll("\\.sh$", "");

@@ -2,7 +2,6 @@ package us.bringardner.fsh.exec;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -88,28 +87,18 @@ final class SubstitutionLines {
 				|| o.getClass().isEnum() || seen.put(o, true) != null ) {
 			return;
 		}
-		if( o instanceof Ast.Node n ) {
-			out.add(n);
+		if( o instanceof Ast.Node ) {
+			out.add(((Ast.Node) o));
 		}
-		if( o instanceof Iterable<?> list ) {
-			for(Object e : list) {
+		if( o instanceof Iterable<?> ) {
+			for(Object e : ((Iterable<?>) o)) {
 				walk(e, out, seen);
 			}
 			return;
 		}
-		if( o instanceof Object[] array ) {
-			for(Object e : array) {
+		if( o instanceof Object[] ) {
+			for(Object e : ((Object[]) o)) {
 				walk(e, out, seen);
-			}
-			return;
-		}
-		if( o.getClass().isRecord()) {
-			for(RecordComponent rc : o.getClass().getRecordComponents()) {
-				try {
-					walk(rc.getAccessor().invoke(o), out, seen);
-				} catch (ReflectiveOperationException e) {
-					throw new IllegalAccessException(e.getMessage());
-				}
 			}
 			return;
 		}

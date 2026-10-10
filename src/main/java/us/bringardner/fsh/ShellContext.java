@@ -300,7 +300,7 @@ public class ShellContext {
 		case '@':
 			StringBuilder buf = new StringBuilder();
 			for(int idx=1, sz= positionalParameters.size(); idx < sz;idx++) {
-				if( !buf.isEmpty()) {
+				if( buf.length() > 0) {
 					buf.append(seperator);
 				}
 				buf.append(positionalParameters.get(idx));
@@ -386,18 +386,19 @@ $
 
 	/** an array or map copied (so changing one does not change the other); anything else as it is */
 	public static Object copyValue(Object val) {
-		if( val instanceof FshList list ) {
+		if( val instanceof FshList ) {
+			FshList list = (FshList) val;
 			FshList ret = new FshList();
 			for(int idx : list.getIndexes()) {
 				ret.set(idx, list.get(idx));
 			}
 			return ret;
-		} else if( val instanceof List<?> list ) {
-			return new ArrayList<Object>(list);
-		} else if( val instanceof TreeMap<?,?> map ) {
-			return new TreeMap<Object,Object>(map);
-		} else if( val instanceof Map<?,?> map ) {
-			return new java.util.LinkedHashMap<Object,Object>(map);
+		} else if( val instanceof List<?> ) {
+			return new ArrayList<Object>(((List<?>) val));
+		} else if( val instanceof TreeMap<?,?> ) {
+			return new TreeMap<Object,Object>(((TreeMap<?,?>) val));
+		} else if( val instanceof Map<?,?> ) {
+			return new java.util.LinkedHashMap<Object,Object>(((Map<?,?>) val));
 		}
 		return val;
 	}
@@ -405,7 +406,8 @@ $
 	/** an array's element 0 (a map's "0"); anything else as it is */
 	public static Object firstElement(Object val) {
 		if( val instanceof List<?> ) {
-			return ((List<?>) val).isEmpty() ? null : ((List<?>) val).get(0);
+			List<?> list = (List<?>) val;
+			return list.isEmpty() ? null : list.get(0);
 		} else if( val instanceof Map<?,?> ) {
 			return ((Map<?,?>) val).get("0");
 		}
@@ -523,11 +525,11 @@ $
 			setVariable(name, m);
 			return;
 		}
-		if( name.equals("DIRSTACK") && index instanceof Integer i && value != null ) {
+		if( name.equals("DIRSTACK") && index instanceof Integer && value != null ) {
 			// DIRSTACK[1]=/bin: that entry of pushd's stack
 			int size = console.dirStack.size();
-			if( i >= 1 && i <= size ) {
-				console.dirStack.set(size-i, value.toString());
+			if( ((Integer) index) >= 1 && ((Integer) index) <= size ) {
+				console.dirStack.set(size-((Integer) index), value.toString());
 			}
 			return;
 		}
@@ -537,35 +539,37 @@ $
 			// a function's local array: its element (in place: a subshell has copies of them)
 			Object cur = scope.local.get(name);
 			Object val;
-			if( cur instanceof FshList f && index instanceof Integer idx ) {
-				f.set(idx, value);
+			if( cur instanceof FshList && index instanceof Integer ) {
+				((FshList) cur).set(((Integer) index), value);
 				return;
 			}
-			if( cur instanceof Map<?,?> m && !(index instanceof Integer)) {
-				((Map<String,Object>) m).put(""+index, value);
+			if( cur instanceof Map<?,?> && !(index instanceof Integer)) {
+				((Map<String,Object>) ((Map<?,?>) cur)).put(""+index, value);
 				return;
 			}
-			if( cur instanceof Map<?,?> m ) {
+			if( cur instanceof Map<?,?> ) {
 				Map<String,Object> map = new TreeMap<>();
-				for(Map.Entry<?,?> e : m.entrySet()) {
+				for(Map.Entry<?,?> e : ((Map<?,?>) cur).entrySet()) {
 					map.put(String.valueOf(e.getKey()), e.getValue());
 				}
 				map.put(""+index, value);
 				val = map;
-			} else if( index instanceof Integer idx ) {
+			} else if( index instanceof Integer ) {
 				FshList list = new FshList();
-				if( cur instanceof FshList f ) {
+				if( cur instanceof FshList ) {
+					FshList f = (FshList) cur;
 					for(int i : f.getIndexes()) {
 						list.set(i, f.get(i));
 					}
-				} else if( cur instanceof List<?> l ) {
+				} else if( cur instanceof List<?> ) {
+					List<?> l = (List<?>) cur;
 					for (int i = 0; i < l.size(); i++) {
 						list.set(i, l.get(i));
 					}
 				} else if( cur != null && cur != UNSET_LOCAL ) {
 					list.set(0, cur);
 				}
-				list.set(idx, value);
+				list.set(((Integer) index), value);
 				val = list;
 			} else {
 				Map<String,Object> map = new TreeMap<>();
@@ -652,14 +656,14 @@ $
 			setGlobalVariable(name, withCase(name, value));
 			return;
 		}
-		if( (value instanceof List<?> || value instanceof Map<?,?>) && raw instanceof NameRef r && r.target.isEmpty()) {
+		if( (value instanceof List<?> || value instanceof Map<?,?>) && raw instanceof NameRef && ((NameRef) raw).target.isEmpty()) {
 			// an array for a nameref with no value (mapfile ref): a plain array (bash's)
 			error("warning: "+name+": removing nameref attribute");
 			setPlain(name, value);
 			return;
 		}
 		if( value != null && !(value instanceof List<?>) && !(value instanceof Map<?,?>) && !(value instanceof NameRef)
-				&& raw instanceof NameRef r && r.target.isEmpty()) {
+				&& raw instanceof NameRef && ((NameRef) raw).target.isEmpty()) {
 			String v = String.valueOf(value);
 			// ref=name for a nameref with no value yet: what it names
 			if( !validReference(v)) {
@@ -692,9 +696,9 @@ $
 				}
 				Object cur = getVariable(base);
 				value = withCase(base, value);
-				if( cur instanceof Map<?,?> m ) {
+				if( cur instanceof Map<?,?> ) {
 					Map<String,Object> copy = new TreeMap<>();
-					for(Map.Entry<?,?> e : m.entrySet()) {
+					for(Map.Entry<?,?> e : ((Map<?,?>) cur).entrySet()) {
 						copy.put(String.valueOf(e.getKey()), e.getValue());
 					}
 					copy.put(sub, value);
@@ -703,7 +707,8 @@ $
 				}
 				int idx = (int) us.bringardner.fsh.expand.Arithmetic.evaluate(sub, this).longValue();
 				FshList copy = new FshList();
-				if( cur instanceof FshList f ) {
+				if( cur instanceof FshList ) {
+					FshList f = (FshList) cur;
 					for(int i : f.getIndexes()) {
 						copy.set(i, f.get(i));
 					}
@@ -725,7 +730,7 @@ $
 		if( name.equals("OPTIND")) {
 			optindAssigned(value);
 		}
-		if( value != null && !(value instanceof List<?> l && l.isEmpty()) && !(value instanceof Map<?,?> m && m.isEmpty()) && localScope(name) == null ) {
+		if( value != null && !(value instanceof List<?> && ((List<?>) value).isEmpty()) && !(value instanceof Map<?,?> && ((Map<?,?>) value).isEmpty()) && localScope(name) == null ) {
 			// (a global given a value; a local's is the local's)
 			console.declaredUnset.remove(name);
 		}
@@ -745,7 +750,8 @@ $
 			}
 			return;
 		}
-		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && value instanceof Map<?,?> m && !console.unsetSpecials.contains(name)) {
+		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && value instanceof Map<?,?> && !console.unsetSpecials.contains(name)) {
+			Map<?,?> m = (Map<?,?>) value;
 			// BASH_ALIASES[x]=y defines alias x (BASH_CMDS[x]=/bin/y: hash -p /bin/y x)
 			if( name.equals("BASH_ALIASES")) {
 				for(String old : new java.util.ArrayList<>(console.getAliases().keySet())) {
@@ -972,7 +978,7 @@ $
 		for (int depth = 0; depth < 8 && ret instanceof NameRef; depth++) {
 			String target = ((NameRef) ret).target;
 			ret = target.isEmpty() ? null : target.equals(cur) ? globalVariable(target) : getVariable0(target);
-			if( target.equals(cur) && ret instanceof NameRef r && r.target.equals(cur)) {
+			if( target.equals(cur) && ret instanceof NameRef && ((NameRef) ret).target.equals(cur)) {
 				return null;
 			}
 			cur = target;
@@ -1037,7 +1043,8 @@ $
 		}
 		java.util.Set<String> seen = new java.util.HashSet<>();
 		String cur = name;
-		while( rawVariable(cur) instanceof NameRef r && !r.target.isEmpty()) {
+		while( rawVariable(cur) instanceof NameRef && !((NameRef) rawVariable(cur)).target.isEmpty()) {
+			NameRef r = (NameRef) rawVariable(cur);
 			if( !seen.add(cur)) {
 				return true;
 			}
@@ -1048,9 +1055,10 @@ $
 
 	/** a function's own nameref that names itself (local -n v=v, or v=v[0]) */
 	public boolean selfReference(String name) {
-		if( localScope(name) == null || !(rawVariable(name) instanceof NameRef r)) {
+		if( localScope(name) == null || !(rawVariable(name) instanceof NameRef)) {
 			return false;
 		}
+		NameRef r = (NameRef) rawVariable(name);
 		return r.target.equals(name) || r.target.startsWith(name+"[");
 	}
 
@@ -1820,19 +1828,18 @@ $
 			return;
 		}
 		switch (name) {
-		case "CONT" -> {
+		case "CONT": {
 			if( jobTop && job.getState() == us.bringardner.fsh.job.JobState.Suspended ) {
 				job.continueJob();
 			}
-		}
-		case "CHLD", "WINCH", "URG", "INFO" -> {
-		}
-		case "STOP", "TSTP", "TTIN", "TTOU" -> {
+		} break;
+		case "CHLD": case "WINCH": case "URG": case "INFO": break;
+		case "STOP": case "TSTP": case "TTIN": case "TTOU": {
 			if( jobTop ) {
 				job.stopJob(name);
 			}
-		}
-		default -> {
+		} break;
+		default: {
 			if( jobTop ) {
 				// (its programs get it and decide; else it ends)
 				if( !job.signalPrograms(sig)) {
@@ -1841,7 +1848,7 @@ $
 			} else {
 				setExecption(new SubshellSignal(this, sig));
 			}
-		}
+		} break;
 		}
 	}
 
@@ -2002,7 +2009,7 @@ $
 			if( v instanceof Map<?,?> || v instanceof NameRef ) {
 				return null;
 			}
-			return v instanceof List<?> l ? (l.isEmpty() ? null : firstElement(v)) : v;
+			return v instanceof List<?> ? (((List<?>) v).isEmpty() ? null : firstElement(v)) : v;
 		}
 		return envValue;
 	}

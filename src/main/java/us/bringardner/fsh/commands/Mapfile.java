@@ -121,8 +121,9 @@ public class Mapfile extends ShellCommand{
 			Object old = ctx.getVariable(var);
 			FshList array = new FshList();
 			if( old instanceof FshList ) {
-				for(int idx : ((FshList) old).getIndexes()) {
-					array.set(idx, ((FshList) old).get(idx));
+				FshList fshList = (FshList) old;
+				for(int idx : fshList.getIndexes()) {
+					array.set(idx, fshList.get(idx));
 				}
 			} else if( old instanceof java.util.List<?> ) {
 				array.addAll((java.util.List<?>) old);

@@ -128,7 +128,7 @@ public class Mv extends ShellCommand{
 			return 1;
 		}
 
-		FileSource dest = files.removeLast();
+		FileSource dest = files.remove(files.size()-1);
 		if(dest.isDirectory()) {
 			for(FileSource file : files) {
 				FileSource dest2= dest.getChild(file.getName());
@@ -141,7 +141,7 @@ public class Mv extends ShellCommand{
 				sc.stderr.println( USAGE);			
 				return 1;
 			} 
-			ret = mv_or_copy(sc,files.getFirst(),dest,sa.options);
+			ret = mv_or_copy(sc,files.get(0),dest,sa.options);
 		}
 
 		return ret;

@@ -127,9 +127,9 @@ public class Cd extends ShellCommand{
 				dir = link;
 				link = dir.getLinkedTo();
 			}
-			if( dir instanceof us.bringardner.parley.files.fileproxy.FileProxy proxy && proxy.getTarget().exists()) {
+			if( dir instanceof us.bringardner.parley.files.fileproxy.FileProxy && ((us.bringardner.parley.files.fileproxy.FileProxy) dir).getTarget().exists()) {
 				// (every link in the path resolved, as cd -P does)
-				dir = ctx.console.createFileSource(proxy.getTarget().getCanonicalPath());
+				dir = ctx.console.createFileSource(((us.bringardner.parley.files.fileproxy.FileProxy) dir).getTarget().getCanonicalPath());
 			}
 		}
 		if( !dir.isDirectory()) {

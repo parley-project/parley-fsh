@@ -112,18 +112,93 @@ public abstract class GlobPattern {
 
 	// ------------------------------------------------------------------ the pattern's parts
 
-	private sealed interface Node permits Chars, Star, Group {
+	private interface Node {
 	}
 
 	/** one character: a literal, ?, or [...] */
-	private record Chars(Pattern one, boolean literal) implements Node {
+	private static final class Chars implements Node {
+		private final Pattern one;
+		private final boolean literal;
+
+		private Chars(Pattern one, boolean literal) {
+			this.one = one;
+			this.literal = literal;
+		}
+
+		public Pattern one() {
+			return one;
+		}
+
+		public boolean literal() {
+			return literal;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Chars)) return false;
+			Chars o = (Chars) x;
+			return java.util.Objects.equals(one, o.one) && literal == o.literal;
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(one, literal);
+		}
+
+		@Override public String toString() {
+			return "Chars[" + "one=" + one + ", " + "literal=" + literal + "]";
+		}
 	}
 
-	private record Star() implements Node {
+	private static final class Star implements Node {
+		Star() { }
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Star)) return false;
+			return true;
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash();
+		}
+
+		@Override public String toString() {
+			return "Star[" + "]";
+		}
 	}
 
 	/** ?(..) *(..) +(..) @(..) !(..): kind, and its alternatives */
-	private record Group(char kind, List<List<Node>> alternatives) implements Node {
+	private static final class Group implements Node {
+		private final char kind;
+		private final List<List<Node>> alternatives;
+
+		private Group(char kind, List<List<Node>> alternatives) {
+			this.kind = kind;
+			this.alternatives = alternatives;
+		}
+
+		public char kind() {
+			return kind;
+		}
+
+		public List<List<Node>> alternatives() {
+			return alternatives;
+		}
+
+		@Override public boolean equals(Object x) {
+			if (this == x) return true;
+			if (!(x instanceof Group)) return false;
+			Group o = (Group) x;
+			return kind == o.kind && java.util.Objects.equals(alternatives, o.alternatives);
+		}
+
+		@Override public int hashCode() {
+			return java.util.Objects.hash(kind, alternatives);
+		}
+
+		@Override public String toString() {
+			return "Group[" + "kind=" + kind + ", " + "alternatives=" + alternatives + "]";
+		}
 	}
 
 	private static List<Node> parse(String glob, boolean ignoreCase) {
@@ -287,29 +362,30 @@ public abstract class GlobPattern {
 			Node node = nodes.get(i);
 			if( period && pos == 0 && pos < end ) {
 				// the leading .: only a . in the pattern takes it
-				if( node instanceof Chars ch ) {
-					if( !ch.literal()) {
+				if( node instanceof Chars ) {
+					if( !((Chars) node).literal()) {
 						return false;
 					}
-				} else if( node instanceof Star s ) {
+				} else if( node instanceof Star ) {
 					// (not even matching nothing: *.bats is not .bats, as in bash)
 					return false;
-				} else if( node instanceof Group g ) {
-					if( g.kind() == '!' ) {
+				} else if( node instanceof Group ) {
+					if( ((Group) node).kind() == '!' ) {
 						return false;
 					}
 				}
 			}
-			if( node instanceof Chars ch ) {
-				return pos < end && ch.one().matcher(text.substring(pos, pos+1)).matches() && seq(nodes, i+1, pos+1, end);
-			} else if( node instanceof Star s ) {
+			if( node instanceof Chars ) {
+				return pos < end && ((Chars) node).one().matcher(text.substring(pos, pos+1)).matches() && seq(nodes, i+1, pos+1, end);
+			} else if( node instanceof Star ) {
 				for (int k = pos; k <= end; k++) {
 					if( seq(nodes, i+1, k, end)) {
 						return true;
 					}
 				}
 				return false;
-			} else if( node instanceof Group g ) {
+			} else if( node instanceof Group ) {
+				Group g = (Group) node;
 				switch (g.kind()) {
 				case '@':
 					return one(g, nodes, i, pos, end);

@@ -176,8 +176,8 @@ final class CommandPrinter {
 
 	/** the commands of a function: a { } group's own, or the one command */
 	private void functionBody(Ast.Command body) {
-		if( body instanceof Ast.BraceGroup g ) {
-			make(tree(g.body));
+		if( body instanceof Ast.BraceGroup ) {
+			make(tree(((Ast.BraceGroup) body).body));
 		} else {
 			Node n = new Node();
 			n.command = body;
@@ -223,31 +223,51 @@ final class CommandPrinter {
 			return;
 		}
 		Ast.Command c = n.command;
-		switch (c) {
-		case Ast.SimpleCommand s -> simple(s, n.stderrToo);
-		case Ast.For f -> forCommand(f);
-		case Ast.ArithFor f -> arithFor(f);
-		case Ast.Select s -> select(s);
-		case Ast.Case k -> caseCommand(k);
-		case Ast.Loop l -> loop(l);
-		case Ast.If i -> ifCommand(i, 0);
-		case Ast.Arith a -> out.append(arithText(a));
-		case Ast.Cond k -> {
+		if( c instanceof Ast.SimpleCommand ) {
+			Ast.SimpleCommand s = (Ast.SimpleCommand) c;
+			simple(s, n.stderrToo);
+		} else if( c instanceof Ast.For ) {
+			Ast.For f = (Ast.For) c;
+			forCommand(f);
+		} else if( c instanceof Ast.ArithFor ) {
+			Ast.ArithFor f = (Ast.ArithFor) c;
+			arithFor(f);
+		} else if( c instanceof Ast.Select ) {
+			Ast.Select s = (Ast.Select) c;
+			select(s);
+		} else if( c instanceof Ast.Case ) {
+			Ast.Case k = (Ast.Case) c;
+			caseCommand(k);
+		} else if( c instanceof Ast.Loop ) {
+			Ast.Loop l = (Ast.Loop) c;
+			loop(l);
+		} else if( c instanceof Ast.If ) {
+			Ast.If i = (Ast.If) c;
+			ifCommand(i, 0);
+		} else if( c instanceof Ast.Arith ) {
+			Ast.Arith a = (Ast.Arith) c;
+			out.append(arithText(a));
+		} else if( c instanceof Ast.Cond ) {
+			Ast.Cond k = (Ast.Cond) c;
 			out.append("[[ ");
 			cond(k.expression);
 			out.append(" ]]");
-		}
-		case Ast.FunctionDef f -> functionDef(f);
-		case Ast.BraceGroup g -> group(g);
-		case Ast.Subshell s -> {
+		} else if( c instanceof Ast.FunctionDef ) {
+			Ast.FunctionDef f = (Ast.FunctionDef) c;
+			functionDef(f);
+		} else if( c instanceof Ast.BraceGroup ) {
+			Ast.BraceGroup g = (Ast.BraceGroup) c;
+			group(g);
+		} else if( c instanceof Ast.Subshell ) {
+			Ast.Subshell s = (Ast.Subshell) c;
 			out.append("( ");
 			skipThisIndent++;
 			make(tree(s.body));
 			printDeferredHeredocs("");
 			out.append(" )");
 			wasHeredoc = false;
-		}
-		case Ast.Coproc k -> {
+		} else if( c instanceof Ast.Coproc ) {
+			Ast.Coproc k = (Ast.Coproc) c;
 			out.append("coproc ");
 			if( !(k.body instanceof Ast.SimpleCommand)) {
 				out.append(k.name == null ? "COPROC" : k.name).append(' ');
@@ -256,8 +276,8 @@ final class CommandPrinter {
 			Node b = new Node();
 			b.command = k.body;
 			make(b);
-		}
-		default -> out.append(executor.text(c).trim());
+		} else {
+			out.append(executor.text(c).trim());
 		}
 		if( !(c instanceof Ast.SimpleCommand) && !(c instanceof Ast.FunctionDef) && !c.redirects.isEmpty()) {
 			out.append(' ');
@@ -395,7 +415,8 @@ final class CommandPrinter {
 	private static String ansiC(String ret, List<Word.Part> parts) {
 		int from = 0;
 		for(Word.Part p : parts) {
-			if( p instanceof Word.AnsiC a ) {
+			if( p instanceof Word.AnsiC ) {
+				Word.AnsiC a = (Word.AnsiC) p;
 				String written = "$'"+a.text()+"'";
 				int at = ret.indexOf(written, from);
 				if( at >= 0 ) {
@@ -428,10 +449,10 @@ final class CommandPrinter {
 
 	private static void commandSubs(List<Word.Part> parts, List<Word.CommandSub> out) {
 		for(Word.Part p : parts) {
-			if( p instanceof Word.CommandSub c ) {
-				out.add(c);
-			} else if( p instanceof Word.DoubleQuoted d ) {
-				commandSubs(d.parts(), out);
+			if( p instanceof Word.CommandSub ) {
+				out.add(((Word.CommandSub) p));
+			} else if( p instanceof Word.DoubleQuoted ) {
+				commandSubs(((Word.DoubleQuoted) p).parts(), out);
 			}
 		}
 	}
@@ -504,7 +525,7 @@ final class CommandPrinter {
 			if( !clause.patterns.isEmpty() && "esac".equals(clause.patterns.get(0).raw)) {
 				out.append('(');
 			}
-			out.append(String.join(" | ", clause.patterns.stream().map(this::word).toList()));
+			out.append(String.join(" | ", clause.patterns.stream().map(this::word).collect(java.util.stream.Collectors.toList())));
 			out.append(")\n");
 			indentation += amount;
 			make(tree(clause.body));
@@ -573,24 +594,29 @@ final class CommandPrinter {
 	}
 
 	private void cond(Ast.CondExpr e) {
-		switch (e) {
-		case Ast.CondAnd a -> {
+		if( e instanceof Ast.CondAnd ) {
+			Ast.CondAnd a = (Ast.CondAnd) e;
 			condOperand(a.left(), a.left() instanceof Ast.CondOr);
 			out.append(" && ");
 			condOperand(a.right(), a.right() instanceof Ast.CondOr);
-		}
-		case Ast.CondOr o -> {
+		} else if( e instanceof Ast.CondOr ) {
+			Ast.CondOr o = (Ast.CondOr) e;
 			cond(o.left());
 			out.append(" || ");
 			cond(o.right());
-		}
-		case Ast.CondNot n -> {
+		} else if( e instanceof Ast.CondNot ) {
+			Ast.CondNot n = (Ast.CondNot) e;
 			out.append("! ");
 			condOperand(n.expression(), n.expression() instanceof Ast.CondAnd || n.expression() instanceof Ast.CondOr);
-		}
-		case Ast.CondUnary u -> out.append(u.op()).append(' ').append(word(u.operand()));
-		case Ast.CondBinary b -> out.append(word(b.left())).append(' ').append(b.op()).append(' ').append(word(b.right()));
-		case Ast.CondWord w -> out.append(word(w.word()));
+		} else if( e instanceof Ast.CondUnary ) {
+			Ast.CondUnary u = (Ast.CondUnary) e;
+			out.append(u.op()).append(' ').append(word(u.operand()));
+		} else if( e instanceof Ast.CondBinary ) {
+			Ast.CondBinary b = (Ast.CondBinary) e;
+			out.append(word(b.left())).append(' ').append(b.op()).append(' ').append(word(b.right()));
+		} else if( e instanceof Ast.CondWord ) {
+			Ast.CondWord w = (Ast.CondWord) e;
+			out.append(word(w.word()));
 		}
 	}
 
@@ -711,16 +737,16 @@ final class CommandPrinter {
 		String target = r.target == null ? "" : word(r.target);
 		String var = r.fdVariable != null ? "{"+r.fdVariable+"}" : null;
 		switch (r.op) {
-		case "<", "<>", "<<<" -> {
+		case "<": case "<>": case "<<<": {
 			out.append(var != null ? var : r.fd != null && r.fd != 0 ? String.valueOf(r.fd) : "");
 			out.append(r.op).append(' ').append(target);
-		}
-		case ">", ">>", ">|" -> {
+		} break;
+		case ">": case ">>": case ">|": {
 			out.append(var != null ? var : r.fd != null && r.fd != 1 ? String.valueOf(r.fd) : "");
 			out.append(r.op).append(' ').append(target);
-		}
-		case "&>", "&>>" -> out.append(r.op).append(' ').append(target);
-		case "<&", ">&" -> {
+		} break;
+		case "&>": case "&>>": out.append(r.op).append(' ').append(target); break;
+		case "<&": case ">&": {
 			int usual = r.op.equals("<&") ? 0 : 1;
 			int fd = r.fd == null ? usual : r.fd;
 			String head = var != null ? var : null;
@@ -733,8 +759,8 @@ final class CommandPrinter {
 			} else {
 				out.append(head != null ? head : fd == usual ? "" : String.valueOf(fd)).append(r.op).append(target);
 			}
-		}
-		default -> out.append(r.fd == null ? "" : r.fd).append(r.op).append(' ').append(target);
+		} break;
+		default: out.append(r.fd == null ? "" : r.fd).append(r.op).append(' ').append(target); break;
 		}
 	}
 

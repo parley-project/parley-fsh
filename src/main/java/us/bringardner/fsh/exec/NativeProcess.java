@@ -68,7 +68,9 @@ public final class NativeProcess extends Process {
 
 	private static void waitFor(int pid, NativeProcess process) {
 		if( pid > 0 ) {
-			Thread.ofPlatform().daemon().name("fsh wait "+pid).stackSize(64*1024).start(() -> process.exited(NativeKeyboard.waitExit(pid)));
+			Thread waiter = new Thread(null, () -> process.exited(NativeKeyboard.waitExit(pid)), "fsh wait "+pid, 64*1024);
+			waiter.setDaemon(true);
+			waiter.start();
 		}
 	}
 
@@ -224,11 +226,9 @@ public final class NativeProcess extends Process {
 		}
 		default: {
 			File f = redirect.file();
-			int fd = NativeKeyboard.open(bytes(f.getPath()), switch (redirect.type()) {
-			case READ -> 'r';
-			case APPEND -> 'a';
-			default -> 'w';
-			});
+			char mode = redirect.type() == ProcessBuilder.Redirect.Type.READ ? 'r'
+					: redirect.type() == ProcessBuilder.Redirect.Type.APPEND ? 'a' : 'w';
+			int fd = NativeKeyboard.open(bytes(f.getPath()), mode);
 			if( fd < 0 ) {
 				throw new IOException(f+": "+NativeKeyboard.strerror(-fd));
 			}
