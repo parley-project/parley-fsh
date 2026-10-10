@@ -289,7 +289,15 @@ public class Glob {
 		paths.sort(reverse ? order.reversed() : order);
 	}
 
-	/** a file's size, blocks or time (nanoseconds), for GLOBSORT */
+	/**
+	 * How finely GLOBSORT tells times apart: bash on macOS compares whole seconds (its stat
+	 * times have no nanoseconds there; files made in the same second go by name), elsewhere
+	 * nanoseconds.
+	 */
+	private static final java.util.concurrent.TimeUnit TIME_UNIT = System.getProperty("os.name", "").toLowerCase().contains("mac")
+			? java.util.concurrent.TimeUnit.SECONDS : java.util.concurrent.TimeUnit.NANOSECONDS;
+
+	/** a file's size, blocks or time, for GLOBSORT */
 	private static long attribute(ShellContext ctx, String path, String key) {
 		try {
 			FileSource f = ctx.console.createFileSource(path);
@@ -301,11 +309,11 @@ public class Glob {
 			return switch (key) {
 			case "size" -> a.size();
 			case "blocks" -> (a.size()+511)/512;
-			case "mtime" -> a.lastModifiedTime().to(java.util.concurrent.TimeUnit.NANOSECONDS);
-			case "atime" -> a.lastAccessTime().to(java.util.concurrent.TimeUnit.NANOSECONDS);
+			case "mtime" -> a.lastModifiedTime().to(TIME_UNIT);
+			case "atime" -> a.lastAccessTime().to(TIME_UNIT);
 			default -> {
 				Object c = java.nio.file.Files.getAttribute(p, "unix:ctime");
-				yield c instanceof java.nio.file.attribute.FileTime t ? t.to(java.util.concurrent.TimeUnit.NANOSECONDS) : 0;
+				yield c instanceof java.nio.file.attribute.FileTime t ? t.to(TIME_UNIT) : 0;
 			}
 			};
 		} catch (Exception e) {
