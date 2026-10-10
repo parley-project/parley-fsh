@@ -9,3 +9,4 @@ LnTestFiles/TargetDir/HardLink2AbcFileA.js
 TestFiles/SymLink2Folder01
 LnTestFiles/SymLink2AbcFileA2.js
 __pycache__/
+dist/
