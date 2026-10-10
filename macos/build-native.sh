@@ -5,6 +5,10 @@
 # src/main/resources/META-INF/native-image/us.bringardner/fsh.
 #
 # GRAALVM_HOME (or JAVA_HOME) names the GraalVM; else the newest one installed is used.
+#
+# --pgo (Oracle GraalVM): profile-guided optimization, which a native image needs to run scripts
+# about as fast as the JVM's JIT does: an instrumented image runs tools/aot-training.sh, and the
+# image is built again from what it recorded (three times as long to build).
 
 LIB_DIR=$(cd "$(dirname "$0")" && pwd)
 PROJECT_DIR=$(dirname "$LIB_DIR")
@@ -30,7 +34,20 @@ mkdir -p target/native target/native-tmp target/native-config
 jars=$(printf '%s:%s' "$jar" "$(cat target/runtime-classpath.txt)" | tr ':' '\n' | grep -E 'fsh-|parley' | tr '\n' ' ')
 python3 -I "$PROJECT_DIR/tools/native-reflect.py" $jars target/native-config/reflect-config.json > /dev/null || exit 1
 # (its work files in target, not the system's temporary directory)
-TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)" \
-	-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config \
-	-Dfsh.libdir="$PROJECT_DIR/target/native" -o target/native/fsh us.bringardner.fsh.Console || exit 1
-cp -f "$LIB_DIR/libnativekeyboard.dylib" "$LIB_DIR/fshexec" target/native/
+build() { # output-directory [native-image options]
+	out=$1
+	shift
+	mkdir -p "$out"
+	TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)" \
+		-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config \
+		-Dfsh.libdir="$PROJECT_DIR/$out" "$@" -o "$out/fsh" us.bringardner.fsh.Console || exit 1
+	cp -f "$LIB_DIR/libnativekeyboard.dylib" "$LIB_DIR/fshexec" "$out/"
+}
+if [ "$1" = "--pgo" ]; then
+	build target/native-instrumented --pgo-instrument
+	# (the profile, default.iprof, is written where it runs)
+	(cd target/native-instrumented && rm -f default.iprof && TMPDIR="$PROJECT_DIR/target/native-tmp" ./fsh "$PROJECT_DIR/tools/aot-training.sh" > /dev/null) || exit 1
+	build target/native --pgo="$PROJECT_DIR/target/native-instrumented/default.iprof"
+else
+	build target/native
+fi
