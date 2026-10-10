@@ -172,6 +172,64 @@ call, `${s#abc}`/`${t%hij}`, `v=$(echo hi)`, `while read -r`, `/usr/bin/true`,
   run time so FTP and SFTP work without any setup. parley-files-jdbc is included
   only when you build with `-Pjdbc`.
 
+## Download
+
+Each [release](https://github.com/tony-bringardner/fsh/releases) has a native binary for every
+platform as a separate download (a GraalVM native image, which starts in about 0.03 s, with its
+keyboard library); nothing else needs to be installed:
+
+| Platform | File |
+|---|---|
+| macOS, Apple silicon | `fsh-VERSION-macos-aarch64.tar.gz` |
+| macOS, Intel | `fsh-VERSION-macos-x86_64.tar.gz` |
+| Linux, x86-64 | `fsh-VERSION-linux-x86_64.tar.gz` |
+| Linux, ARM64 | `fsh-VERSION-linux-aarch64.tar.gz` |
+| Windows, x64 | `fsh-VERSION-windows-x86_64.zip` |
+
+Unpack it and run `fsh` (`fsh.exe`); keep the files in the folder together. Each file has a
+`.sha256` beside it. macOS marks a download as quarantined and the files are not notarized: once,
+after unpacking, `xattr -dr com.apple.quarantine .`
+
+The binaries are built by `.github/workflows/release-binaries.yml` when a release is published,
+from `macos/`, `linux/` or `windows/` (`compile`, then `build-native`) and packaged by
+`tools/package-native.sh` (`.ps1` on Windows). The behaviour of the native library each one
+carries is specified in [NATIVE-CONTRACT.md](NATIVE-CONTRACT.md).
+
+## Native support
+
+fsh's terminal handling and program starting use native code, and keeps working without it. What
+you get depends on which of three pieces are present, from most to least:
+
+| Present | Keyboard, terminal, job control | Starting programs | What is limited |
+|---|---|---|---|
+| **The JNI library and `fshexec`** (the download; `macos/`, `linux/`, `windows/` `compile`) | all | `posix_spawn` | nothing |
+| **JNA, and `fshexec`** (the jar, with `fshexec` beside the library path) | all | `posix_spawn` through JNA | nothing |
+| **JNA, no `fshexec`** (the plain jar on a platform nobody built for) | all | `posix_spawn` through JNA | programs share the shell's process group; no `exec -a` for programs or shared stdin position; no subshell stand-in; no user and group name completion; no `enable -f` |
+| **Nothing** (no JNI library, JNA cannot load) | none | Java's `ProcessBuilder` | no raw keyboard (each typed line is echoed twice, arrow keys act only after Enter), Ctrl-C may not interrupt a builtin, no Ctrl-Z, no terminal width; plus the row above |
+
+Windows has no `fshexec` and no process groups, by design: its first row is the JNI DLL or JNA, and
+it starts programs with `ProcessBuilder`.
+
+JNA brings its own small library inside its jar for the usual platforms (macOS, Linux on x86-64,
+ARM64 and others, Windows). It is extracted to the temporary directory, so a `noexec` or read-only
+`java.io.tmpdir` is the usual reason it is not there.
+
+**Finding out which you have.** An interactive shell that is limited says so in one line before
+the first prompt:
+
+```
+fsh: fshexec not found (fsh --native-status says more): programs share the shell's process group ...
+fsh: no native support (fsh --native-status says why): line editing and job control are limited
+```
+
+`fsh --native-status` prints what was found, where it looked and why something failed to load
+(`--help`'s usage is bash's, and does not list it). To silence the line, set `FSH_NATIVE_NOTICE=0`
+(or `-Dfsh.native.notice=false`).
+
+**Choosing.** `-Dfsh.native=` is `auto` (the default: the JNI library when it loads, else JNA; a
+native image never tries JNA), `jni`, or `jna`. What every implementation must do is in
+[NATIVE-CONTRACT.md](NATIVE-CONTRACT.md).
+
 ## Build and run
 
 ```sh

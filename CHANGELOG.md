@@ -26,6 +26,21 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
 - `DebugControlPanel.DebugController` is now `us.bringardner.fsh.DebugController`.
 
 ### Changed
+- All of `NativeKeyboard`'s native functions are also done through JNA (`us.bringardner.fsh.jna`:
+  libc on macOS and Linux, kernel32 on Windows), so a system the JNI library (`macos/`, `linux/`,
+  `windows/`) was not built for still has raw keys, the terminal's width, job control and, on Unix,
+  starting programs with `posix_spawn` and passing descriptors. The JNI library is used when it is
+  loaded, as before (and always in a native image); `-Dfsh.native=jna` uses JNA, `-Dfsh.native=jni`
+  never. Only `fshexec` and the native image's launcher stay C. New dependency:
+  `net.java.dev.jna:jna`. What every implementation must do is in `NATIVE-CONTRACT.md`.
+- Releases carry a native binary for each platform as a separate download: macOS (Apple silicon
+  and Intel), Linux (x86-64 and ARM64) and Windows (x64), built by
+  `.github/workflows/release-binaries.yml` when a release is published. New:
+  `windows/build-native.cmd`, `tools/package-native.sh`, `tools/package-native.ps1`.
+- An interactive shell with limited native support (no keyboard and terminal library, or no
+  `fshexec`) says so in one line before its first prompt, and `fsh --native-status` reports what
+  was found, where it looked and why something did not load. `FSH_NATIVE_NOTICE=0` silences the
+  line. The README has a "Native support" section on what each combination provides.
 - The GUI console's workings are in `ConsoleIO`, which uses no UI toolkit, so consoles in
   other toolkits (JavaFX) can share them; `ConsolePanel` is now its Swing view. Its
   methods are unchanged.
