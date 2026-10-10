@@ -8,7 +8,9 @@ idir=$JAVA_HOME/include
 name=NativeKeyboard
 
 # regenerate the JNI header so the function names always match the Java package
-classes=$(mktemp -d)
+# (javac's classes go in the project's target, not the system's temporary directory)
+classes=../target/jni-classes
+mkdir -p "$classes" || exit 1
 deps=$(cd .. && mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout) || exit 1
 "$JAVA_HOME/bin/javac" -h . -d "$classes" ../src/main/java/us/bringardner/fsh/$name.java \
 	-cp "../target/classes:$deps" || exit 1

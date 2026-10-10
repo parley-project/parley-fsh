@@ -30,6 +30,9 @@ opts="--enable-native-access=ALL-UNNAMED -Djava.library.path=$LIB_DIR -Xss16m"
 opts="$opts -XX:+UseSerialGC -Xmn16m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20"
 # (the open-files limit as the caller left it, for the shell's programs too: the JVM raises it)
 opts="$opts -XX:-MaxFDLimit"
+# (never the ConsoleFrame window: from a terminal, a script or -c the shell works there, and
+# asking whether there is a display would load AWT)
+opts="$opts -Djava.awt.headless=true"
 
 aot=""
 cache="$PROJECT_DIR/target/fsh.aot"
