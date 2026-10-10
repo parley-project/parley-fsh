@@ -1964,6 +1964,18 @@ delimiter
 			environmentVariables.putAll(System.getenv());
 			// macOS sets __CF_USER_TEXT_ENCODING in the process (as the JVM starts): only one the
 			// shell was given is the environment's (and its programs')
+			// the open-files limit the shell was given, which a native image raises as it starts
+			// (its launcher, macos/fsh-native.c, notes it): put back, for the shell's programs
+			Object nofile = environmentVariables.remove("FSH_NOFILE");
+			if( nofile != null && NativeKeyboard.isAvailible()) {
+				String n = nofile.toString();
+				try {
+					if( n.equals("unlimited") || n.matches("[0-9]{1,18}")) {
+						NativeKeyboard.setOpenFilesLimit0(n.equals("unlimited") ? -1 : Long.parseLong(n));
+					}
+				} catch (UnsatisfiedLinkError e) {
+				}
+			}
 			if( Boolean.getBoolean("fsh.cfAbsent")) {
 				// (the launcher saw it was not given: fshexec -j)
 				environmentVariables.remove("__CF_USER_TEXT_ENCODING");

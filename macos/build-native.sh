@@ -40,13 +40,15 @@ build() { # output-directory [native-image options]
 	mkdir -p "$out"
 	TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)" \
 		-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config \
-		-Dfsh.libdir="$PROJECT_DIR/$out" "$@" -o "$out/fsh" us.bringardner.fsh.Console || exit 1
+		-Dfsh.libdir="$PROJECT_DIR/$out" "$@" -o "$out/fsh-image" us.bringardner.fsh.Console || exit 1
 	cp -f "$LIB_DIR/libnativekeyboard.dylib" "$LIB_DIR/fshexec" "$out/"
+	# (fsh: the image's launcher, which notes the open-files limit the image raises)
+	cc -O2 -DIMAGE_DIR="\"$PROJECT_DIR/$out\"" -o "$out/fsh" "$LIB_DIR/fsh-native.c" || exit 1
 }
 if [ "$1" = "--pgo" ]; then
 	build target/native-instrumented --pgo-instrument
 	# (the profile, default.iprof, is written where it runs)
-	(cd target/native-instrumented && rm -f default.iprof && TMPDIR="$PROJECT_DIR/target/native-tmp" ./fsh "$PROJECT_DIR/tools/aot-training.sh" > /dev/null) || exit 1
+	(cd target/native-instrumented && rm -f default.iprof && TMPDIR="$PROJECT_DIR/target/native-tmp" ./fsh-image "$PROJECT_DIR/tools/aot-training.sh" > /dev/null) || exit 1
 	build target/native --pgo="$PROJECT_DIR/target/native-instrumented/default.iprof"
 else
 	build target/native

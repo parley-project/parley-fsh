@@ -725,3 +725,13 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_startedWith0(JNIEn
 	free(buf);
 	return found;
 }
+
+/* the open-files soft limit (setrlimit RLIMIT_NOFILE): limit, or -1 for unlimited; 0 or -errno */
+JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_setOpenFilesLimit0(JNIEnv *, jclass, jlong limit) {
+	struct rlimit r;
+	if( getrlimit(RLIMIT_NOFILE, &r) != 0 ) {
+		return -errno;
+	}
+	r.rlim_cur = limit < 0 ? RLIM_INFINITY : (rlim_t) limit;
+	return setrlimit(RLIMIT_NOFILE, &r) == 0 ? 0 : -errno;
+}

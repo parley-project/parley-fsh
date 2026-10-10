@@ -208,6 +208,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	public static native String strerror0(int err);
 
+	/** set the open-files soft limit (-1: unlimited): 0 or -errno */
+	public static native int setOpenFilesLimit0(long limit);
+
 	/** {uid, gid, the supplementary groups...} of this process */
 	public static native long [] ids0();
 
