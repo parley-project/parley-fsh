@@ -16,11 +16,6 @@ Key:
 
 ## Open
 
-- [ ] **enable -f**: fsh says `-f: invalid option` (status 2). bash searches
-  BASH_LOADABLES_PATH and says `enable: cannot open shared object NAME: ...` (status 1) when it
-  can't load the file. Decide how far to follow bash, given that fsh can't load bash's C
-  builtins.
-
 - [ ] **pipeline hang** (seen in full bats runs, twice; not in the suite): sometimes a program at
   the end of a pipeline inside a process substitution (`... | cut -f 2-` in bats-exec-suite, and
   a `cat` in bats' validator) waits for EOF forever. Its input FIFO has no writer that `lsof`
@@ -150,3 +145,13 @@ copying a bug. Decided 2026-10-10; reopen if wanted.
     stand-in sees the socket close first. It needs a signal at the moment fsh dies, as when a
     whole process group is killed. Tested with a socket pair, a stopped stand-in and a pending
     HUP: the old binary spins, the new one exits.
+
+- [x] **enable -f**: follows bash: a name without `/` is looked for on BASH_LOADABLES_PATH (not
+  found: `cannot open shared object NAME: (null)`), the file is loaded with dlopen(RTLD_LAZY) and
+  each `NAME_struct` looked up, with bash's messages and dyld's own reasons, status 1. `-f`
+  without an argument and invalid options print bash's usage line (status 2); `-f` with no names
+  lists, as in bash.
+  - Notes: the load happens in fsh's helper (`fshexec -l FILE NAME...`), never in fsh's own
+    process, so a foreign library's code can't run inside the JVM. A file that does load still
+    can't be used (bash's builtins are C code for bash), and fsh says so. Only the `dlsym(0x...)`
+    handle address differs, as it does between two bash runs.

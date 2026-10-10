@@ -1,6 +1,7 @@
 /*
  * fshexec -s [-g]
  * fshexec -u | -G
+ * fshexec -l FILE NAME...
  * fshexec -j program [args...]
  * fshexec [-g PGID FG] [-i FILE OFFSET REPORT] [-0 NAME] [-r [-e NAME=VALUE]...] [-f N r|w|d ARG]... [-I SIG,...] [--] program [args...]
  *
@@ -28,6 +29,9 @@
  *     started ignoring (and -Dfsh.cfAbsent=true without __CF_USER_TEXT_ENCODING, which macOS's
  *     java sets). The JVM takes some signals for itself (QUIT, USR2) before fsh can see that
  *     its caller ignored them, which bash would keep ignored (trap -p shows them).
+ * -l: load FILE as bash's enable -f does (dlopen, RTLD_LAZY) and look for each NAME_struct in it,
+ *     in this process (fsh cannot load bash's builtins itself): prints "L" if all are there, else
+ *     "O" and dlopen's error, or "S", the name, a tab and dlsym's error (one line).
  * -u, -G: the system's user (or group) names, one a line, in its order (getpwent, getgrent: what
  *     bash's compgen -u and -g list; Java cannot read them).
  * -I: the program ignores these signals (by number), as the shell does (trap '' INT): Java
@@ -37,6 +41,7 @@
  *     for reading (r) or writing (w), or a copy of descriptor ARG (d), as N is open in the shell.
  */
 #include <arpa/inet.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <grp.h>
 #include <spawn.h>
@@ -377,7 +382,32 @@ static int standIn(void) {
 	return n == 0 ? 0 : atoi(line) & 0xff;
 }
 
+/* -l: see the top */
+static int loadCheck(const char *file, int n, char **names) {
+	void *h = dlopen(file, RTLD_LAZY);
+	if( h == NULL ) {
+		const char *e = dlerror();
+		printf("O%s\n", e == NULL ? "(null)" : e);
+		return 1;
+	}
+	for(int i = 0; i < n; i++) {
+		char sym[1024];
+		snprintf(sym, sizeof sym, "%s_struct", names[i]);
+		dlerror();
+		if( dlsym(h, sym) == NULL ) {
+			const char *e = dlerror();
+			printf("S%s\t%s\n", names[i], e == NULL ? "(null)" : e);
+			return 1;
+		}
+	}
+	printf("L\n");
+	return 0;
+}
+
 int main(int argc, char **argv) {
+	if( argc >= 3 && strcmp(argv[1], "-l") == 0 ) {
+		return loadCheck(argv[2], argc-3, argv+3);
+	}
 	if( argc >= 2 && strcmp(argv[1], "-s") == 0 ) {
 		if( argc == 3 && strcmp(argv[2], "-g") == 0 ) {
 			setpgid(0, 0);
