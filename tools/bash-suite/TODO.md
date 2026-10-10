@@ -9,16 +9,12 @@ Baseline: 59 of 83 tests the same as bash (2026-10-10, master `b07208d`).
 Key:
 - `[ ]` open: fsh is wrong and should change
 - `[x]` done
-- **keep**: a deliberate difference (see "Deliberate differences" at the end), so no change
+- **keep**: a deliberate difference (see "Keep" below), so no change
 - **bash quirk**: fsh already matches bash's own expected output (`tests/*.right`); the installed
   bash differs from it, so there is nothing to fix
 
 ## Open
 
-- [ ] **rsh**: in a restricted shell (`set -r`), `a -c 'echo hello'` runs `./a` because fsh runs
-  programs in the current directory without `./`. bash says `a: command not found`. Restricted
-  mode must turn that lookup off. (macOS then killed the copy of /bin/sh, which is why the diff
-  shows "Killed: 9".)
 - [ ] **array** (array32.sub, lines 57-68): a `$( )` inside an array subscript runs
   (`INJECTION!` is printed) in places where bash refuses it with "arithmetic syntax error:
   operand expected". This is a safety issue, not only a difference.
@@ -74,3 +70,10 @@ Key:
     script (`native/rebuild.sh`), which does not remake the JNI dylib; `nm` showed no `pgrp0`
     until I ran `macos/compile.sh`. After that, `history` shows the same number as bash (80051
     on both).
+- [x] **rsh**: a restricted shell no longer runs programs from the current directory without
+  `./`; it runs only what PATH (or hash) finds, so `a -c 'echo hello'` gives
+  `a: command not found`, as in bash.
+  - Notes: the test copies /bin/sh to `./a`. fsh found and ran it, and macOS killed the copied
+    binary ("Killed: 9", code signing), which hid what the real difference was. The fix is a
+    `!restricted` check on fsh's current-directory lookup in `Programs.run`. `hash` already
+    refused `/` paths in restricted mode.

@@ -51,8 +51,9 @@ public final class Programs {
 		FileSource exec = hashed(name, sc);
 		// (found on PATH: an error names where, as bash's)
 		boolean onPath = exec != null && !name.contains("/");
-		if( exec == null && !name.contains("/")) {
-			// fsh runs a program in the current directory without ./ (bash does not)
+		if( exec == null && !name.contains("/") && !sc.console.restricted ) {
+			// fsh runs a program in the current directory without ./ (bash does not), but a
+			// restricted shell runs only what PATH finds
 			FileSource here = sc.getFileSource(name);
 			if( here.exists() && here.isFile()) {
 				exec = here;
