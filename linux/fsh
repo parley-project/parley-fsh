@@ -1,0 +1,59 @@
+#!/bin/sh
+# Run the shell from its packaged jar (target/fsh-*.jar: mvn package), passing the arguments to it,
+# or its native image (target/native/fsh: linux/build-native.sh) when that is as new as the jar.
+# With JDK 25 or later it uses an AOT cache (target/fsh.aot), which makes it start and warm up
+# faster; the cache is made the first time (from tools/aot-training.sh) and again when the jar
+# changes.
+
+LIB_DIR=$(cd "$(dirname "$0")" && pwd)
+PROJECT_DIR=$(dirname "$LIB_DIR")
+cp_file="$PROJECT_DIR/target/runtime-classpath.txt"
+
+jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar 2>/dev/null | head -1)
+if [ -z "$jar" ]; then
+	(cd "$PROJECT_DIR" && mvn -q package -DskipTests) || exit 1
+	jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar | head -1)
+fi
+# the native image (linux/build-native.sh), unless the jar was built after it
+native="$PROJECT_DIR/target/native/fsh"
+if [ -x "$native" ] && [ ! "$jar" -nt "$native" ]; then
+	exec "$native" "$@"
+fi
+if [ ! -f "$cp_file" ] || [ "$PROJECT_DIR/pom.xml" -nt "$cp_file" ]; then
+	(cd "$PROJECT_DIR" && mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile="$cp_file") || exit 1
+fi
+cp="$jar:$(cat "$cp_file")"
+# (-Xss: deep recursion in scripts, as bash allows it, needs more than Java's 1 MB stacks; the
+# serial collector with a small young generation, its heap given back when it is not used: a shell
+# that does some work uses about 90 MB at most, where G1 grew to 300 MB, and runs as fast)
+opts="--enable-native-access=ALL-UNNAMED -Djava.library.path=$LIB_DIR -Xss16m"
+opts="$opts -XX:+UseSerialGC -Xmn16m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20"
+# (the open-files limit as the caller left it, for the shell's programs too: the JVM raises it)
+opts="$opts -XX:-MaxFDLimit"
+# (never the ConsoleFrame window: from a terminal, a script or -c the shell works there, and
+# asking whether there is a display would load AWT)
+opts="$opts -Djava.awt.headless=true"
+
+aot=""
+cache="$PROJECT_DIR/target/fsh.aot"
+if [ ! -f "$cache" ] && [ ! -f "$cache.none" ] || [ "$jar" -nt "$cache" ] && [ "$jar" -nt "$cache.none" ]; then
+	# (made aside and moved: two shells starting at once do not use a half-made one; a JDK before
+	# 25 makes none, which cache.none remembers until the jar changes)
+	tmp="$cache.$$"
+	java -XX:+IgnoreUnrecognizedVMOptions -XX:AOTCacheOutput="$tmp" $opts -cp "$cp" us.bringardner.fsh.Console \
+		"$PROJECT_DIR/tools/aot-training.sh" > /dev/null 2>&1
+	if [ -f "$tmp" ]; then
+		mv -f "$tmp" "$cache"
+		rm -f "$cache.none"
+	else
+		touch "$cache.none"
+	fi
+	rm -f "$tmp" "$tmp.config"
+fi
+[ -f "$cache" ] && aot="-XX:+IgnoreUnrecognizedVMOptions -XX:AOTCache=$cache -Xlog:aot=off -Xlog:cds=off"
+
+# (through fshexec -j: the signals the shell was started ignoring, which the JVM may take over)
+if [ -x "$LIB_DIR/fshexec" ]; then
+	exec "$LIB_DIR/fshexec" -j java $aot $opts -cp "$cp" us.bringardner.fsh.Console "$@"
+fi
+exec java $aot $opts -cp "$cp" us.bringardner.fsh.Console "$@"
