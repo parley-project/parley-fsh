@@ -1162,13 +1162,10 @@ public final class Expander {
 					return emit(v, context, out);
 				}
 				String s = paramText(e.arg, context);
-				assign(e, s);
-				if( e.subscript == null ) {
-					// the value as the variable has it (declare -i: 4+3 is 7; declare -u: upper case)
-					Object now = sc.getVariable(e.name);
-					if( now != null && !(now instanceof List<?>) && !(now instanceof Map<?,?>)) {
-						s = now.toString();
-					}
+				// the value as the variable (or element) has it (declare -i: 4+3 is 7; declare -u: upper case)
+				Object now = assign(e, s);
+				if( now != null && !(now instanceof List<?>) && !(now instanceof Map<?,?>)) {
+					s = now.toString();
 				}
 				return emit(Val.of(s), context, out);
 			}
@@ -1393,8 +1390,8 @@ public final class Expander {
 		return idx == 0 ? v : null;
 	}
 
-	/** ${x:=word}: set x (not $1 or $?) */
-	private void assign(ParamExpr e, String value) {
+	/** ${x:=word}: set x (not $1 or $?); what x (or its element) has then */
+	private Object assign(ParamExpr e, String value) {
 		if( !isName(e.name)) {
 			throw new ExpansionError("$"+e.name+": cannot assign in this way");
 		}
@@ -1408,14 +1405,24 @@ public final class Expander {
 		}
 		if( e.subscript == null ) {
 			sc.setVariable(e.name, value);
-			return;
+			return sc.getVariable(e.name);
 		}
+		// (an element: -u, -l and -c apply to it too)
+		value = String.valueOf(sc.cased(e.name, value));
 		Object cur = sc.getVariable(e.name);
 		if( cur instanceof Map<?,?> ) {
-			sc.setVariable(e.name, join(paramPieces(e.subscript)), value);
-		} else {
-			sc.setVariable(e.name, (int) evaluate(arithmeticText(Parser.arithmeticFragment(e.subscript))).longValue(), value);
+			String key = join(paramPieces(e.subscript));
+			sc.setVariable(e.name, key, value);
+			return sc.getVariable(e.name) instanceof Map<?,?> m ? m.get(key) : null;
 		}
+		int idx = (int) evaluate(arithmeticText(Parser.arithmeticFragment(e.subscript))).longValue();
+		sc.setVariable(e.name, idx, value);
+		Object now = sc.getVariable(e.name);
+		if( now instanceof us.bringardner.fsh.FshList f ) {
+			// (sparse: by index)
+			return idx >= 0 ? f.get(idx) : null;
+		}
+		return now instanceof List<?> l && idx >= 0 && idx < l.size() ? l.get(idx) : null;
 	}
 
 	/** a value into pieces: false for a quoted empty $@ */

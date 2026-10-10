@@ -15,10 +15,10 @@ Key:
 
 ## Open
 
-- [ ] **array**: in `declare -ai a; a[42]+=…`, `echo` shows `4+3` where bash shows `7`. The
-  integer attribute isn't applied on that path.
-- [ ] **array**: `declare -Au A` (associative, uppercase) prints nothing; bash prints `FOO` and
-  `declare -Au A=([Darwin]="FOO" )`.
+- [ ] **array** (array33.sub): some "cannot convert associative to indexed array" errors
+  (lines 27, 31, 46) are named differently. bash names the function (`f: A: ...`) or nothing
+  (`A: ...`); fsh always says `declare: A: ...`. Line 52's `read: A: not an indexed array` is
+  missing.
 - [ ] **builtins** (usage lines): fsh's `help -s` lines leave out options it does support:
   - `readarray`/`mapfile` support `-O`, `-u`, `-C` and `-c`.
   - `read`: check `-E`.
@@ -89,3 +89,11 @@ Key:
        With the option on, the subscript is now quoted first. That path also never applied
        `-i`; it now does before the element is assigned, so `a` stays `declare -ai` even when
        the element fails, as in bash.
+- [x] **array** (array30.sub): `${a[i]=v}` and `${A[k]=v}` now give the element's value as stored,
+  so `declare -ai` makes `4+3` into 7 and `declare -Au` makes `foo` into FOO. `-u`, `-l` and `-c`
+  now also apply to the element itself.
+  - Notes: the todo first described this as two bugs (`a[42]+=` and `declare -Au` printing
+    nothing). Reading array30.sub showed both are `${name[sub]=word}`, which echoed the word as
+    written. `Expander.assign` now returns what was stored. It also didn't apply the case
+    attribute to an element (the assignment code calls `sc.cased`; this path didn't). array.diff
+    went from 253 to 221 lines.
