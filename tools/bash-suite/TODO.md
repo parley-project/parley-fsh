@@ -105,3 +105,11 @@ Key:
   - Notes: before changing any usage line I ran each option under both shells. mapfile's `-O`,
     `-u`, `-C` and `-c` and readonly's `-a`, `-A` and `-f` already worked; only `read -E` was
     missing, though fsh's own error message listed it. builtins.diff: 328 to 320 lines.
+- [x] **ulimit** (found through the real-world bash-completion case, not the suite): on macOS,
+  `ulimit -b` (and `-e -i -k -q -r -x -P -R -T`) is now fsh's own "invalid option" plus bash's
+  bare usage line, as bash 5.3 on macOS says it.
+  - Notes: at first the source looked right (it already had bash's usage text), but the output
+    showed a different, shorter option list with the script's name and line in front. That
+    came from `/bin/sh` (bash 3.2), which fsh uses to apply limits: fsh accepted every letter
+    bash knows and passed it on, and the old sh rejected it in its own words. bash is built
+    with only the limits the system has, so fsh now checks against the macOS set first.

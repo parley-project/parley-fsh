@@ -18,6 +18,10 @@ public class Ulimit extends ShellCommand{
 
 	static final String USAGE = "ulimit: usage: ulimit [-SHabcdefiklmnpqrstuvxPRT] [limit]";
 
+	/** the options bash has here */
+	static final String OPTIONS = System.getProperty("os.name", "").toLowerCase().contains("mac")
+			? "SHacdflmnpstuv" : "SHabcdefiklmnpqrstuvxPRT";
+
 	public Ulimit() {
 		super(name, help);
 	}
@@ -33,9 +37,10 @@ public class Ulimit extends ShellCommand{
 			if( options && w.equals("--")) {
 				options = false;
 			} else if( options && w.startsWith("-") && w.length() > 1 ) {
-				// bash's options (checked here: the sh that applies them has others)
+				// bash's options (checked here: the sh that applies them has others), the ones this
+				// system has limits for, as bash is built (on macOS no -b -e -i -k -q -r -x -P -R -T)
 				for(char c : w.substring(1).toCharArray()) {
-					if( "SHabcdefiklmnpqrstuvxPRT".indexOf(c) < 0 ) {
+					if( OPTIONS.indexOf(c) < 0 ) {
 						ctx.error("ulimit: -"+c+": invalid option");
 						ctx.stderr.println(USAGE);
 						return 2;
