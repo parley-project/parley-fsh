@@ -15,7 +15,7 @@ public class Read extends ShellCommand{
 	enum Options {e,r,s,a,d,i,n,N,p,t,u};
 
 	static String name = "read";
-	static String help = " read [-ers] [-a aname] [-d delim] [-i text] [-n nchars] [-N  nchars] [-p prompt] "
+	static String help = "read [-Eers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] "
 			+ "[-t timeout] [-u fd] [name ...]\n"
 			+ "	One line is read from the standard input, or from the file descriptor fd supplied as an argument to the -u option,\n"
 			+ "	split into words as described under Word Splitting, and the first word is assigned to the first name,\n"
@@ -27,7 +27,7 @@ public class Read extends ShellCommand{
 			+ "The characters in IFS are used to split the line into words using the same rules the shell uses for expansion\n"
 			+ "	(described under Word Splitting).  The backslash\n"
 			+ "	character (\\) may be used to remove any special meaning for\n"
-			+ "	the next character read and for line continuation."
+			+ "	the next character read and for line continuation. -e and -E read the line with the line editor."
 			+ "\n"
 			+ " If no names are supplied, the line read, without the ending\n"
 			+ "              delimiter but otherwise unmodified, is assigned to the\n"
@@ -104,6 +104,8 @@ public class Read extends ShellCommand{
 					lineDelim = value.isEmpty() ? '\0' : (char) (us.bringardner.fsh.RawUtf8.toBytes(value)[0] & 0xff);
 					break;
 				case 'e':options.add(Options.e);break;
+				// -E: the line editor with the shell's completion, which fsh's -e has too
+				case 'E':options.add(Options.e);break;
 				case 'i':editLineText = value; break;
 				case 'n':
 				case 'N': {

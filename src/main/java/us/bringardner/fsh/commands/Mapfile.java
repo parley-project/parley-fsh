@@ -10,10 +10,12 @@ import us.bringardner.fsh.ShellContext;
 
 public class Mapfile extends ShellCommand{
 	static String name = "mapfile";
-	static String help = "mapfile [-t] [-n count] [-s count] [-d delim] [array]\n"
-			+ "	Read lines from standard input into the indexed array (MAPFILE if none is named).\n"
-			+ "	-t removes the delimiter from each line, -n reads at most count lines, -s skips the first\n"
-			+ "	count, -d ends lines with delim instead of a newline. readarray is the same command."
+	static String help = "mapfile [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]\n"
+			+ "	Read lines from standard input (or fd with -u) into the indexed array (MAPFILE if none is\n"
+			+ "	named). -t removes the delimiter from each line, -n reads at most count lines, -s skips the\n"
+			+ "	first count, -d ends lines with delim instead of a newline, -O starts at index origin (the\n"
+			+ "	array is not cleared first), -C runs callback every quantum lines (-c, 5000 by default)\n"
+			+ "	with the index and the line. readarray is the same command."
 			;
 
 	public Mapfile() {

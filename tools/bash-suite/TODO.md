@@ -15,12 +15,6 @@ Key:
 
 ## Open
 
-- [ ] **builtins** (usage lines): fsh's `help -s` lines leave out options it does support:
-  - `readarray`/`mapfile` support `-O`, `-u`, `-C` and `-c`.
-  - `read`: check `-E`.
-  - `readonly`: check `-a`, `-A` and `-f`.
-
-  The help texts are fsh's own, but they should list what works.
 - [ ] **read** (read7.sub): `read -t 0.00001 -e var` with stdin on /dev/null returns 1 (EOF);
   bash returns >128 (the timeout fires before the read). It depends on timing, so it may not be
   worth matching. Decide.
@@ -100,3 +94,10 @@ Key:
   - Notes: fsh already used bash's two-message rule for indexed-to-associative inside a
     function, so I combined both directions into one check. bash's top-level message has no
     `declare:` prefix, which is easy to miss in the diff. array.diff: 221 to 202 lines.
+- [x] **builtins** (usage lines): `help -s read*` now lists the options fsh supports, in bash's
+  words: `read [-Eers] [-a array] ...`, `readarray`/`mapfile` with `-O -u -C -c`, and
+  `readonly [-aAf] ... or readonly -p`. `read -E` now works (it was "invalid option"); fsh's line
+  editor is used, as with `-e`. The rest of builtins.diff is fsh's own help text (keep).
+  - Notes: before changing any usage line I ran each option under both shells. mapfile's `-O`,
+    `-u`, `-C` and `-c` and readonly's `-a`, `-A` and `-f` already worked; only `read -E` was
+    missing, though fsh's own error message listed it. builtins.diff: 328 to 320 lines.

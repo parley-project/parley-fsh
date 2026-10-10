@@ -7,9 +7,9 @@ import us.bringardner.fsh.ShellContext;
 
 public class Readonly extends ShellCommand{
 	static String name = "readonly";
-	static String help = "readonly [-p] [name[=value] ...]\n"
-			+ "	Make each name readonly, after setting it to value if one is given. With no names,\n"
-			+ "	or -p, list the readonly variables. Exit status: 0, or 1 if a name is already\n"
+	static String help = "readonly [-aAf] [name[=value] ...] or readonly -p\n"
+			+ "	Make each name readonly, after setting it to value if one is given (-a an indexed array,\n"
+			+ "	-A an associative one, -f functions). With no names, or -p, list the readonly variables. Exit status: 0, or 1 if a name is already\n"
 			+ "	readonly and has a value."
 			;
 
