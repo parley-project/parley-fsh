@@ -56,6 +56,11 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   longer garbled) and shown in batches. Debug messages it printed to `System.out` and
   its status labels are gone.
 
+### Fixed
+- `connect FACTORY - MOUNT` reads its `name=value` settings from standard input separated by any
+  white space; it split on single spaces, so two spaces or a tab between settings was an error
+  (`Invalid arg =`).
+
 ### Still accepted
 - `~/.fsshrc` is read when `~/.fshrc` doesn't exist.
 - `#!fssh` scripts run as before.

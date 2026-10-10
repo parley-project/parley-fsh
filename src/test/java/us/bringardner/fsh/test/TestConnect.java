@@ -81,6 +81,16 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals("", err,"stderr");				
 	}
 	
+	@Test
+	public void testConnectMemoryStdinWhiteSpace() throws IOException {
+		// settings from standard input: separated by any white space (two spaces, a tab), and
+		// blanks around the line are not settings
+		ExecuteResult res = executeCommand("connect memory - /mem03", "  name=memset03  \tother=x  ");
+		assertEquals("", res.getStdErr().trim(),"stderr");
+		assertEquals(0, res.exitCode,"Exit code");
+		assertEquals("memory connected as /mem03", res.getStdOut().trim(),"stdout");
+	}
+
 	@Test()
 	public void testConnectSftpStdin() throws IOException {
 		if( getOs()!=OperatingSystem.Mac) {

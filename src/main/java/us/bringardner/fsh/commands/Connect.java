@@ -73,7 +73,8 @@ public class Connect extends ShellCommand{
 						if( readStdin) {
 							String line = readLine(ctx.stdin);
 							if( !line.isBlank()) {
-								for(String arg: line.split(" ")) {
+								// (name=value settings separated by any white space)
+								for(String arg: line.trim().split("\\s+")) {
 									processArg(ctx,arg,props);
 								}
 							}
