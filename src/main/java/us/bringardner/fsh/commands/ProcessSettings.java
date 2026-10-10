@@ -65,6 +65,9 @@ public class ProcessSettings {
 	}
 
 	/** run a umask or ulimit command: query (prints) or set (kept if sh accepts it) */
+	/** a line of ulimit -a: its description, (units, -option), the limit */
+	private static final java.util.regex.Pattern LIMIT_LINE = java.util.regex.Pattern.compile("(.*?)\\s+(\\([^)]*\\))\\s+(\\S+)");
+
 	static int run(ShellContext ctx, String name, String[] words, boolean sets) {
 		if( isWindows()) {
 			ctx.stderr.println(name+": not supported on this system");
@@ -75,7 +78,17 @@ public class ProcessSettings {
 			cmd.append(' ').append(quote(w));
 		}
 		Object[] r = sh(ctx, cmd.toString());
-		ctx.stdout.print(r[1]);
+		String out = (String) r[1];
+		if( name.equals("ulimit")) {
+			// (laid out as bash 5's ulimit -a, not the sh's: "%-20s %20s" then the limit)
+			StringBuilder b = new StringBuilder();
+			for(String line : out.split("\n", -1)) {
+				java.util.regex.Matcher m = LIMIT_LINE.matcher(line);
+				b.append(m.matches() ? String.format("%-20s %20s%s", m.group(1), m.group(2)+" ", m.group(3)) : line).append('\n');
+			}
+			out = b.substring(0, b.length()-1);
+		}
+		ctx.stdout.print(out);
 		// (sh's messages, said as the shell says its own)
 		for(String line : ((String) r[2]).split("\n")) {
 			line = line.replaceFirst("^/bin/sh: (line \\d+: )?", "");

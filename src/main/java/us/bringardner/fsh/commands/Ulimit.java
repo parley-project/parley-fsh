@@ -41,6 +41,12 @@ public class Ulimit extends ShellCommand{
 						return 2;
 					}
 				}
+				// -cn: bash takes what follows a limit's letter as its value
+				String letters = w.substring(1).replaceAll("[SH]", "");
+				if( letters.length() > 1 ) {
+					ctx.error("ulimit: "+letters.substring(1)+": invalid number");
+					return 1;
+				}
 			} else {
 				// a limit: a number, unlimited, hard or soft
 				if( !w.matches("[0-9]+|unlimited|hard|soft")) {
@@ -50,7 +56,7 @@ public class Ulimit extends ShellCommand{
 				sets = true;
 			}
 		}
-		// for the sh that applies it (an old bash): one option word, -S and -H first, no --
+		// for the sh that applies it (an old bash): -S and -H first, no --
 		StringBuilder hs = new StringBuilder();
 		StringBuilder rest = new StringBuilder();
 		java.util.List<String> limits = new java.util.ArrayList<>();
@@ -67,8 +73,12 @@ public class Ulimit extends ShellCommand{
 			}
 		}
 		java.util.List<String> sh = new java.util.ArrayList<>();
-		if( hs.length()+rest.length() > 0 ) {
-			sh.add("-"+hs+rest);
+		// (each option a word of its own: the sh takes -c -n, not -cn)
+		for(char c : hs.toString().toCharArray()) {
+			sh.add("-"+c);
+		}
+		for(char c : rest.toString().toCharArray()) {
+			sh.add("-"+c);
 		}
 		sh.addAll(limits);
 		int status = ProcessSettings.run(ctx, name, sh.toArray(new String[0]), sets);
