@@ -511,20 +511,29 @@ public final class Expander {
 	private static String source(List<Word.Part> parts) {
 		StringBuilder ret = new StringBuilder();
 		for(Word.Part p : parts) {
-			switch (p) {
-			case Word.Literal l -> ret.append(l.text());
-			case Word.Escaped e -> ret.append('\\').append(e.c());
-			case Word.SingleQuoted q -> ret.append('\'').append(q.text()).append('\'');
-			case Word.AnsiC a -> ret.append("$'").append(a.text()).append('\'');
-			case Word.DoubleQuoted d -> ret.append(d.locale() ? "$\"" : "\"").append(source(d.parts())).append('"');
-			case Word.Param n -> ret.append('$').append(n.name());
-			case Word.ParamExpansion x -> ret.append("${").append(x.body()).append('}');
-			case Word.CommandSub c -> ret.append("$(").append(c.text()).append(')');
-			case Word.Backquote b -> ret.append('`').append(b.text()).append('`');
-			case Word.ArithSub a -> ret.append("$((").append(a.expression().raw).append("))");
-			case Word.ArithSubscript a -> ret.append('[').append(a.text()).append(']');
-			default -> {
-			}
+			if( p instanceof Word.Literal l ) {
+				ret.append(l.text());
+			} else if( p instanceof Word.Escaped e ) {
+				ret.append('\\').append(e.c());
+			} else if( p instanceof Word.SingleQuoted q ) {
+				ret.append('\'').append(q.text()).append('\'');
+			} else if( p instanceof Word.AnsiC a ) {
+				ret.append("$'").append(a.text()).append('\'');
+			} else if( p instanceof Word.DoubleQuoted d ) {
+				ret.append(d.locale() ? "$\"" : "\"").append(source(d.parts())).append('"');
+			} else if( p instanceof Word.Param n ) {
+				ret.append('$').append(n.name());
+			} else if( p instanceof Word.ParamExpansion x ) {
+				ret.append("${").append(x.body()).append('}');
+			} else if( p instanceof Word.CommandSub c ) {
+				ret.append("$(").append(c.text()).append(')');
+			} else if( p instanceof Word.Backquote b ) {
+				ret.append('`').append(b.text()).append('`');
+			} else if( p instanceof Word.ArithSub a ) {
+				ret.append("$((").append(a.expression().raw).append("))");
+			} else if( p instanceof Word.ArithSubscript a ) {
+				ret.append('[').append(a.text()).append(']');
+			} else {
 			}
 		}
 		return ret.toString();
@@ -691,12 +700,15 @@ public final class Expander {
 	}
 
 	private boolean part0(Word.Part p, int context, List<Piece> out) {
-		switch (p) {
-		case Word.Literal l -> out.add(new Piece(context, l.text()));
-		case Word.Escaped e -> out.add(new Piece(QUOTED, String.valueOf(e.c())));
-		case Word.SingleQuoted s -> out.add(new Piece(QUOTED, s.text()));
-		case Word.AnsiC a -> out.add(new Piece(QUOTED, ShellContext.ansiC(a.text())));
-		case Word.DoubleQuoted d -> {
+		if( p instanceof Word.Literal l ) {
+			out.add(new Piece(context, l.text()));
+		} else if( p instanceof Word.Escaped e ) {
+			out.add(new Piece(QUOTED, String.valueOf(e.c())));
+		} else if( p instanceof Word.SingleQuoted s ) {
+			out.add(new Piece(QUOTED, s.text()));
+		} else if( p instanceof Word.AnsiC a ) {
+			out.add(new Piece(QUOTED, ShellContext.ansiC(a.text())));
+		} else if( p instanceof Word.DoubleQuoted d ) {
 			int before = out.size();
 			boolean content = d.parts().isEmpty();
 			boolean emptyAt = false;
@@ -734,25 +746,23 @@ public final class Expander {
 				// "" and "$empty" are an empty word
 				out.add(new Piece(QUOTED, ""));
 			}
-		}
-		case Word.Param pa -> {
+		} else if( p instanceof Word.Param pa ) {
 			return parameter(ParamExpr.simple(pa.name()), context, out);
-		}
-		case Word.ParamExpansion pe -> {
+		} else if( p instanceof Word.ParamExpansion pe ) {
 			try {
 				return parameter(ParamExpr.parse(ansiCName(pe.body(), context == QUOTED || doubleQuoted > 0 || inHereDocument), sc.console.isOptionEnabled(us.bringardner.fsh.Console.Option.Posix)), context, out);
 			} catch (us.bringardner.fsh.syntax.SyntaxError e) {
 				// a $( in the word that does not end: said as bash says it, and the command is not run
 				throw commandSubstitutionError(e);
 			}
-		}
-		case Word.CommandSub cs -> value(trimNewlines(host.commandOutput(cs.body(), cs.text(), false)), context, out);
-		case Word.Backquote b -> value(trimNewlines(host.commandOutput(null, b.text(), true)), context, out);
-		case Word.FunctionSub fs -> {
+		} else if( p instanceof Word.CommandSub cs ) {
+			value(trimNewlines(host.commandOutput(cs.body(), cs.text(), false)), context, out);
+		} else if( p instanceof Word.Backquote b ) {
+			value(trimNewlines(host.commandOutput(null, b.text(), true)), context, out);
+		} else if( p instanceof Word.FunctionSub fs ) {
 			String v = host.functionOutput(fs.body(), fs.text(), fs.reply());
 			value(fs.reply() ? v : trimNewlines(v), context, out);
-		}
-		case Word.ArithSub a -> {
+		} else if( p instanceof Word.ArithSub a ) {
 			String n;
 			try {
 				n = String.valueOf(arithmetic(a.expression()));
@@ -766,8 +776,7 @@ public final class Expander {
 				throw x;
 			}
 			value(n, context, out);
-		}
-		case Word.ArithSubscript a -> {
+		} else if( p instanceof Word.ArithSubscript a ) {
 			// expanded as a word (quotes removed), then [ ] $ ` ~ \ ' " quoted with \
 			StringBuilder q = new StringBuilder("[");
 			for(char c : string(Parser.fragment(a.text(), Fragment.WORD)).toCharArray()) {
@@ -777,8 +786,8 @@ public final class Expander {
 				q.append(c);
 			}
 			out.add(new Piece(QUOTED, q.append(']').toString()));
-		}
-		case Word.ProcessSub ps -> out.add(new Piece(QUOTED, host.processSubstitution(ps.direction(), ps.body(), ps.text())));
+		} else if( p instanceof Word.ProcessSub ps ) {
+			out.add(new Piece(QUOTED, host.processSubstitution(ps.direction(), ps.body(), ps.text())));
 		}
 		return true;
 	}

@@ -1134,20 +1134,15 @@ public final class Executor {
 
 	private int compound(Ast.Command c, ShellContext sc) throws IOException {
 		sc.line = c.line;
-		switch (c) {
-		case Ast.BraceGroup g -> {
+		if( c instanceof Ast.BraceGroup g ) {
 			return list(g.body, sc);
-		}
-		case Ast.Subshell s -> {
+		} else if( c instanceof Ast.Subshell s ) {
 			return subshell(s, sc);
-		}
-		case Ast.If f -> {
+		} else if( c instanceof Ast.If f ) {
 			return ifCommand(f, sc);
-		}
-		case Ast.Loop l -> {
+		} else if( c instanceof Ast.Loop l ) {
 			return loop(l, sc);
-		}
-		case Ast.For f -> {
+		} else if( c instanceof Ast.For f ) {
 			// (bash's line_number in it is its own line)
 			int context = sc.contextLine;
 			sc.contextLine = f.line;
@@ -1156,8 +1151,7 @@ public final class Executor {
 			} finally {
 				sc.contextLine = context;
 			}
-		}
-		case Ast.ArithFor f -> {
+		} else if( c instanceof Ast.ArithFor f ) {
 			// (bash's line_number in it is its own line)
 			int context = sc.contextLine;
 			sc.contextLine = f.line;
@@ -1166,11 +1160,9 @@ public final class Executor {
 			} finally {
 				sc.contextLine = context;
 			}
-		}
-		case Ast.Select s -> {
+		} else if( c instanceof Ast.Select s ) {
 			return select(s, sc);
-		}
-		case Ast.Case k -> {
+		} else if( c instanceof Ast.Case k ) {
 			// (bash's line_number in it is its own line)
 			int context = sc.contextLine;
 			sc.contextLine = k.line;
@@ -1179,17 +1171,14 @@ public final class Executor {
 			} finally {
 				sc.contextLine = context;
 			}
-		}
-		case Ast.Arith a -> {
+		} else if( c instanceof Ast.Arith a ) {
 			return arith(a, sc);
-		}
-		case Ast.Cond k -> {
+		} else if( c instanceof Ast.Cond k ) {
 			return cond(k, sc);
-		}
-		case Ast.Coproc k -> {
+		} else if( c instanceof Ast.Coproc k ) {
 			return coproc(k, sc);
-		}
-		default -> throw new IllegalStateException("not a compound command: "+c.getClass());
+		} else {
+			throw new IllegalStateException("not a compound command: "+c.getClass());
 		}
 	}
 
@@ -1706,23 +1695,18 @@ public final class Executor {
 
 	/** not: set -x shows the test after ! (as bash's [[ ! -n '' ]]) */
 	private boolean test(Ast.CondExpr e, ShellContext sc, Expander ex, String not) {
-		switch (e) {
-		case Ast.CondAnd a -> {
+		if( e instanceof Ast.CondAnd a ) {
 			return test(a.left(), sc, ex) && test(a.right(), sc, ex);
-		}
-		case Ast.CondOr o -> {
+		} else if( e instanceof Ast.CondOr o ) {
 			return test(o.left(), sc, ex) || test(o.right(), sc, ex);
-		}
-		case Ast.CondNot n -> {
+		} else if( e instanceof Ast.CondNot n ) {
 			return !test(n.expression(), sc, ex, not+"! ");
-		}
-		case Ast.CondWord w -> {
+		} else if( e instanceof Ast.CondWord w ) {
 			String v = ex.string(w.word());
 			// (a word alone is -n word, as bash shows it)
 			traceTest(sc, not+"-n "+traced(v));
 			return !v.isEmpty();
-		}
-		case Ast.CondUnary u -> {
+		} else if( e instanceof Ast.CondUnary u ) {
 			// (-v m[$k]: the subscript as in (( )))
 			String v = u.op().equals("-v") ? ex.arithmeticOperand(u.operand()) : ex.string(u.operand());
 			traceTest(sc, not+u.op()+" "+traced(v));
@@ -1731,8 +1715,7 @@ public final class Executor {
 				throw new BadRegex(v+": integer expected");
 			}
 			return us.bringardner.fsh.commands.Test.unaryTest(u.op(), v, sc);
-		}
-		case Ast.CondBinary b -> {
+		} else if( e instanceof Ast.CondBinary b ) {
 			if( tracing(sc)) {
 				boolean arith = ARITHMETIC_TESTS.contains(b.op());
 				// (a pattern as it matches: its quoted characters escaped, a\*)
@@ -1741,7 +1724,7 @@ public final class Executor {
 			}
 			return binary(b, sc, ex);
 		}
-		}
+		throw new IllegalStateException("not a [[ ]] expression: "+e.getClass());
 	}
 
 	/** a [[ ]] operand as set -x shows it: as it is, '' if empty */

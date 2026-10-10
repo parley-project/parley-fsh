@@ -1837,15 +1837,21 @@ public final class Parser {
 	}
 
 	private static String written(Word.Part p) {
-		return switch (p) {
-		case Word.ParamExpansion x -> "${"+x.body()+"}";
-		case Word.CommandSub c -> "$("+c.text()+")";
-		case Word.Backquote b -> "`"+b.text()+"`";
-		case Word.ArithSub a -> "$(("+a.expression().raw+"))";
-		case Word.ArithSubscript a -> "["+a.text()+"]";
-		case Word.AnsiC a -> "$'"+a.text()+"'";
-		default -> "";
-		};
+		// (instanceof, not a switch on the type: that is slow in a native image)
+		if( p instanceof Word.ParamExpansion x ) {
+			return "${"+x.body()+"}";
+		} else if( p instanceof Word.CommandSub c ) {
+			return "$("+c.text()+")";
+		} else if( p instanceof Word.Backquote b ) {
+			return "`"+b.text()+"`";
+		} else if( p instanceof Word.ArithSub a ) {
+			return "$(("+a.expression().raw+"))";
+		} else if( p instanceof Word.ArithSubscript a ) {
+			return "["+a.text()+"]";
+		} else if( p instanceof Word.AnsiC a ) {
+			return "$'"+a.text()+"'";
+		}
+		return "";
 	}
 
 	private Command simpleCommand() {

@@ -287,36 +287,29 @@ public abstract class GlobPattern {
 			Node node = nodes.get(i);
 			if( period && pos == 0 && pos < end ) {
 				// the leading .: only a . in the pattern takes it
-				switch (node) {
-				case Chars ch -> {
+				if( node instanceof Chars ch ) {
 					if( !ch.literal()) {
 						return false;
 					}
-				}
-				case Star s -> {
+				} else if( node instanceof Star s ) {
 					// (not even matching nothing: *.bats is not .bats, as in bash)
 					return false;
-				}
-				case Group g -> {
+				} else if( node instanceof Group g ) {
 					if( g.kind() == '!' ) {
 						return false;
 					}
 				}
-				}
 			}
-			switch (node) {
-			case Chars ch -> {
+			if( node instanceof Chars ch ) {
 				return pos < end && ch.one().matcher(text.substring(pos, pos+1)).matches() && seq(nodes, i+1, pos+1, end);
-			}
-			case Star s -> {
+			} else if( node instanceof Star s ) {
 				for (int k = pos; k <= end; k++) {
 					if( seq(nodes, i+1, k, end)) {
 						return true;
 					}
 				}
 				return false;
-			}
-			case Group g -> {
+			} else if( node instanceof Group g ) {
 				switch (g.kind()) {
 				case '@':
 					return one(g, nodes, i, pos, end);
@@ -343,7 +336,7 @@ public abstract class GlobPattern {
 				}
 				}
 			}
-			}
+			throw new IllegalStateException("not a pattern node: "+node.getClass());
 		}
 
 		/** one of g's alternatives, then the rest */
