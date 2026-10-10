@@ -3644,7 +3644,7 @@ delimiter
 			alias = new TreeMap<>(c.alias);
 			functions = new TreeMap<>(c.functions);
 			cwd = c.getCurrentDirectory();
-			files = new TreeMap<>(c.getFiles());
+			files = new java.util.concurrent.ConcurrentSkipListMap<>(c.getFiles());
 		}
 	}
 
@@ -3752,10 +3752,8 @@ delimiter
 		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
 		s.osTraps = new ConcurrentSkipListMap<>(osTraps());
 		s.metaTraps = new ConcurrentSkipListMap<>(metaTraps());
-		Map<Integer,FileDiscriptor> fds = getFiles();
-		synchronized (fds) {
-			s.files = new TreeMap<>(fds);
-		}
+		// (the shell's table changes as stages start: a copy that may be made as it does)
+		s.files = new java.util.concurrent.ConcurrentSkipListMap<>(getFiles());
 		s.inheritedFds = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 		s.inheritedFds.addAll(s.files.values());
 		stage.set(s);
@@ -4556,7 +4554,8 @@ delimiter
 		if( files == null) {
 			synchronized (this) {
 				if( files == null) {
-					files = new TreeMap<Integer, Console.FileDiscriptor>();
+					// (stages copy it while the shell changes it: see enterStage)
+					files = new java.util.concurrent.ConcurrentSkipListMap<Integer, Console.FileDiscriptor>();
 					files.put(0,new FileDiscriptor(0,getStdIn()));
 					files.put(1,new FileDiscriptor(1,getStdOut()));
 					files.put(2,new FileDiscriptor(2,getStdErr()));
