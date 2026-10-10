@@ -816,9 +816,10 @@ public final class Programs {
 			Object text = ctx.getVariable("BASH_COMMAND");
 			SignalReport.Ended ended = ep.ended(text == null ? String.join(" ", cmd) : text.toString());
 			if( ended != null ) {
-				// (a pipe stage's: its pipeline says it, see Executor.pipe)
+				// (a pipe stage's: its pipeline says it, see Executor.pipe; a job's or coproc's runs
+				// on a thread of its own, and is not in the foreground: wait says it)
 				ctx.lastProgram = ended;
-				if( !ctx.isIsolated()) {
+				if( !ctx.isIsolated() && !Console.IN_COMMAND_THREAD.get()) {
 					SignalReport.report(ctx, List.of(ended));
 				}
 			}
