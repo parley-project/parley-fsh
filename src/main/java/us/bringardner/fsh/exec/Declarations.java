@@ -234,8 +234,9 @@ public final class Declarations {
 					element.name = sub.group(1);
 					element.index = sub.group(2);
 					if( us.bringardner.fsh.Glob.option(sc, "assoc_expand_once")) {
-						// (expanded once already: a $( ) in it is text now, not run again)
-						element.index = element.index.replaceAll("([\\\\$`\"'])", "\\\\$1");
+						// (expanded once already: a $( ) in it is text now, not run again; its quotes
+						// still quote, as bash's: a[" "] is a[0])
+						element.index = element.index.replaceAll("([$`])", "\\\\$1");
 					}
 					element.append = sub.group(3) != null;
 					if( sc.console.isReadonly(element.name)) {

@@ -4,7 +4,8 @@ What is left between fsh and bash 5.3 in `runall.py`, test by test. Each item is
 it is done, with notes on what happened along the way: what was tried, what turned out to be the
 real cause, and anything that went wrong.
 
-Baseline: 59 of 83 tests the same as bash (2026-10-10, master `b07208d`).
+Baseline: 59 of 83 tests the same as bash (2026-10-10, round 5 merged). Lines of diff: array 202,
+builtins 320, rsh 0 (from 253, 328, 10 at master `b07208d`).
 
 Key:
 - `[ ]` open: fsh is wrong and should change
@@ -79,6 +80,9 @@ Key:
        With the option on, the subscript is now quoted first. That path also never applied
        `-i`; it now does before the element is assigned, so `a` stays `declare -ai` even when
        the element fails, as in bash.
+    4. Mistake caught by the full run: my first quoting in (3) also escaped `"` and `'`, which broke
+       `declare "a[\" \"]=14"` in arith10 (bash still treats those quotes as quoting, so the
+       subscript is a blank, i.e. 0). Now only `$` and `` ` `` are escaped; arith matches again.
 - [x] **array** (array30.sub): `${a[i]=v}` and `${A[k]=v}` now give the element's value as stored,
   so `declare -ai` makes `4+3` into 7 and `declare -Au` makes `foo` into FOO. `-u`, `-l` and `-c`
   now also apply to the element itself.
