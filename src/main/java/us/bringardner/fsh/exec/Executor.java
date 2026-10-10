@@ -735,7 +735,7 @@ public final class Executor {
 					sc.console.foreground(own, false);
 					if( !sc.console.isInteractive ) {
 						// (its programs had the terminal: the script's shell takes it back)
-						us.bringardner.fsh.NativeKeyboard.ttyTo0(0);
+						us.bringardner.fsh.NativeKeyboard.ttyTo(0);
 					}
 				}
 				Integer by = own.getTerminatedBy();

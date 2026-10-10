@@ -283,9 +283,9 @@ public class Kill extends ShellCommand{
 		if( pid < 0 ) {
 			// a process group that is not a job's: the system's kill
 			if( us.bringardner.fsh.exec.NativeProcess.usable()) {
-				int err = us.bringardner.fsh.NativeKeyboard.kill0((int) pid, signum);
+				int err = us.bringardner.fsh.NativeKeyboard.kill((int) pid, signum);
 				if( err != 0 ) {
-					ctx.error("kill: ("+pid+") - "+us.bringardner.fsh.NativeKeyboard.strerror0(-err));
+					ctx.error("kill: ("+pid+") - "+us.bringardner.fsh.NativeKeyboard.strerror(-err));
 				}
 				return err == 0 ? 0 : 1;
 			}
@@ -323,9 +323,9 @@ public class Kill extends ShellCommand{
 		}
 		// another signal: the system's kill
 		if( us.bringardner.fsh.exec.NativeProcess.usable()) {
-			int err = us.bringardner.fsh.NativeKeyboard.kill0((int) pid, signum);
+			int err = us.bringardner.fsh.NativeKeyboard.kill((int) pid, signum);
 			if( err != 0 ) {
-				ctx.error("kill: ("+pid+") - "+us.bringardner.fsh.NativeKeyboard.strerror0(-err));
+				ctx.error("kill: ("+pid+") - "+us.bringardner.fsh.NativeKeyboard.strerror(-err));
 			}
 			return err == 0 ? 0 : 1;
 		}

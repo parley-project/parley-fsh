@@ -1028,7 +1028,7 @@ delimiter
 			// library, the program's own path)
 			String a0 = null;
 			try {
-				a0 = NativeKeyboard.isAvailible() ? NativeKeyboard.argv0() : null;
+				a0 = NativeKeyboard.isAvailible() ? NativeKeyboard.argv() : null;
 			} catch (UnsatisfiedLinkError e) {
 			}
 			if( a0 == null ) {
@@ -1250,6 +1250,10 @@ delimiter
 			}
 			return 2;
 		}
+		if( inv.nativeStatus ) {
+			stdOut.print(NativeStatus.report());
+			return 0;
+		}
 		if( inv.help || inv.version ) {
 			stdOut.println("fsh, version "+VERSION);
 			if( inv.help ) {
@@ -1333,6 +1337,11 @@ delimiter
 		if( isInteractive ) {
 			// (completion's, as bash's line editor sets it)
 			variables.put("COMP_WORDBREAKS", " \t\n\"'@><=;|&(:");
+			// (once: what is limited here, so a shell that seems broken says why)
+			String notice = NativeStatus.notice();
+			if( notice != null && inv.command == null && inv.file == null ) {
+				stdErr.println(notice);
+			}
 		}
 		if( !environmentVariables.containsKey("SHELL") && !variables.containsKey("SHELL")) {
 			// the user's login shell, as bash sets it when the environment has none
@@ -1355,7 +1364,7 @@ delimiter
 				// as bash says it when it has no terminal for its jobs, with the shell's process group
 				long group;
 				try {
-					group = NativeKeyboard.pgrp0();
+					group = NativeKeyboard.pgrp();
 				} catch (UnsatisfiedLinkError e) {
 					group = ProcessHandle.current().pid();
 				}
@@ -1976,7 +1985,7 @@ delimiter
 				String n = nofile.toString();
 				try {
 					if( n.equals("unlimited") || n.matches("[0-9]{1,18}")) {
-						NativeKeyboard.setOpenFilesLimit0(n.equals("unlimited") ? -1 : Long.parseLong(n));
+						NativeKeyboard.setOpenFilesLimit(n.equals("unlimited") ? -1 : Long.parseLong(n));
 					}
 				} catch (UnsatisfiedLinkError e) {
 				}
@@ -1986,7 +1995,7 @@ delimiter
 				environmentVariables.remove("__CF_USER_TEXT_ENCODING");
 			} else if( environmentVariables.containsKey("__CF_USER_TEXT_ENCODING") && NativeKeyboard.isAvailible()) {
 				try {
-					if( NativeKeyboard.startedWith0("__CF_USER_TEXT_ENCODING") == 0 ) {
+					if( NativeKeyboard.startedWith("__CF_USER_TEXT_ENCODING") == 0 ) {
 						environmentVariables.remove("__CF_USER_TEXT_ENCODING");
 					}
 				} catch (UnsatisfiedLinkError e) {
@@ -2159,7 +2168,7 @@ delimiter
 				String release = null;
 				try {
 					// (uname(3) from the library: no uname program to start)
-					release = NativeKeyboard.isAvailible() ? NativeKeyboard.osRelease0() : null;
+					release = NativeKeyboard.isAvailible() ? NativeKeyboard.osRelease() : null;
 				} catch (UnsatisfiedLinkError e) {
 					// (a library from before it had it)
 				}

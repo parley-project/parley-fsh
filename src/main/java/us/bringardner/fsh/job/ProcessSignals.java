@@ -77,7 +77,7 @@ public final class ProcessSignals {
 		if( signum > 0 && us.bringardner.fsh.exec.NativeProcess.usable()) {
 			// (without starting a kill program for it)
 			for(String pid : cmd.subList(2, cmd.size())) {
-				us.bringardner.fsh.NativeKeyboard.kill0(Integer.parseInt(pid), signum);
+				us.bringardner.fsh.NativeKeyboard.kill(Integer.parseInt(pid), signum);
 			}
 			return;
 		}

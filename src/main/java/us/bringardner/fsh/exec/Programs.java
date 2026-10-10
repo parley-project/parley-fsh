@@ -663,7 +663,7 @@ public final class Programs {
 				error = e;
 			} finally {
 				if( reclaimTty ) {
-					NativeKeyboard.ttyTo0(0);
+					NativeKeyboard.ttyTo(0);
 				}
 				if( report != null ) {
 					report.delete();

@@ -163,6 +163,15 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- Optional at run time: the keyboard and terminal calls (NativeKeyboard) through libc and
+		     kernel32 where the JNI library (macos/, linux/, windows/) is not built. Without it fsh
+		     works as before; with the library, JNA is not loaded (-Dfsh.native=jna to use it). -->
+		<dependency>
+			<groupId>net.java.dev.jna</groupId>
+			<artifactId>jna</artifactId>
+			<version>5.19.1</version>
+		</dependency>
+
 		<!-- The tests use JUnit 5 (plus JUnit 4's Assert in places) -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

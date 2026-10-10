@@ -65,6 +65,8 @@ public final class Invocation {
 	public String rcfile;
 	public boolean help;
 	public boolean version;
+	/** --native-status: what native support there is (not in USAGE, which is bash's) */
+	public boolean nativeStatus;
 	/** set's options, in order: {letter or name, "-" or "+"} */
 	public final List<String[]> options = new ArrayList<>();
 	/** what follows the options and the command or file: $0 (for -c) and the arguments */
@@ -90,6 +92,7 @@ public final class Invocation {
 				case "--noprofile" -> ret.noprofile = true;
 				case "--help" -> ret.help = true;
 				case "--version" -> ret.version = true;
+				case "--native-status" -> ret.nativeStatus = true;
 				case "--rcfile", "--init-file" -> {
 					if( i+1 >= words.length ) {
 						throw new Bad(w+": option requires an argument");

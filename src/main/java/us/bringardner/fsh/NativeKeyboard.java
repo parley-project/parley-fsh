@@ -39,7 +39,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static String ttyName() {
 		if( availible ) {
 			try {
-				String name = new NativeKeyboard().ttyName0();
+				String name = new NativeKeyboard().opsTtyName0();
 				if( name != null ) {
 					return name.substring(name.lastIndexOf('/')+1);
 				}
@@ -74,7 +74,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static void noteOpenAtStart() {
 		if( availible && openAtStart == null ) {
 			try {
-				openAtStart = new NativeKeyboard().openDescriptors0();
+				openAtStart = new NativeKeyboard().opsOpenDescriptors0();
 			} catch (UnsatisfiedLinkError e) {
 			}
 		}
@@ -87,7 +87,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		String [] open = openAtStart;
 		if( open == null ) {
 			try {
-				open = new NativeKeyboard().openDescriptors0();
+				open = new NativeKeyboard().opsOpenDescriptors0();
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 				return new int[0];
@@ -123,7 +123,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static long [] resourceUsage() {
 		if( availible ) {
 			try {
-				return new NativeKeyboard().resourceUsage0();
+				return new NativeKeyboard().opsResourceUsage0();
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 			}
@@ -138,7 +138,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static boolean inputIsPipeOrFile() {
 		if( availible ) {
 			try {
-				return new NativeKeyboard().inputKind0() != 0;
+				return new NativeKeyboard().opsInputKind0() != 0;
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 			}
@@ -150,7 +150,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static int inputKind() {
 		if( availible ) {
 			try {
-				return new NativeKeyboard().inputKind0();
+				return new NativeKeyboard().opsInputKind0();
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 			}
@@ -162,7 +162,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static boolean inputIsTerminal() {
 		if( availible ) {
 			try {
-				return new NativeKeyboard().isInputTerminal0();
+				return new NativeKeyboard().opsIsInputTerminal0();
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 			}
@@ -217,7 +217,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			return false;
 		}
 		try {
-			return isatty0(fd);
+			return ops != null ? ops.isatty(fd) : isatty0(fd);
 		} catch (UnsatisfiedLinkError e) {
 			// (a library from before it had it: as before, input and output together)
 			return terminal();
@@ -290,7 +290,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			boolean ok = terminal() && helper() != null;
 			if( ok ) {
 				try {
-					new NativeKeyboard().stoppedBy(-1);
+					new NativeKeyboard().opsStoppedBy(-1);
 				} catch (UnsatisfiedLinkError e) {
 					ok = false;
 				}
@@ -302,17 +302,17 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	/** a job's process group gets the terminal (fg) */
 	public static void giveTerminal(long group) {
-		new NativeKeyboard().giveTerminalTo(group);
+		new NativeKeyboard().opsGiveTerminalTo(group);
 	}
 
 	/** put child pid in process group (as the child does itself) */
 	public static void processGroup(long pid, long group) {
-		new NativeKeyboard().setProcessGroup(pid, group);
+		new NativeKeyboard().opsSetProcessGroup(pid, group);
 	}
 
 	/** the signal that stopped child pid since the last call, or 0 */
 	public static int stopSignal(long pid) {
-		return new NativeKeyboard().stoppedBy(pid);
+		return new NativeKeyboard().opsStoppedBy(pid);
 	}
 
 	/** the programs that have the terminal now (see lendTerminal) */
@@ -325,7 +325,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			boolean t = false;
 			if( availible ) {
 				try {
-					t = new NativeKeyboard().isTerminal();
+					t = new NativeKeyboard().opsIsTerminal();
 				} catch (UnsatisfiedLinkError e) {
 					// an older library
 				}
@@ -367,7 +367,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	private static void programMode(boolean on) {
 		if( availible ) {
 			try {
-				new NativeKeyboard().setProgramMode(on);
+				new NativeKeyboard().opsSetProgramMode(on);
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 			}
@@ -397,7 +397,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static void signalKeys(boolean on) {
 		if( availible ) {
 			try {
-				new NativeKeyboard().setSignalKeys(on);
+				new NativeKeyboard().opsSetSignalKeys(on);
 			} catch (UnsatisfiedLinkError e) {
 				// an older library: they stay signals
 			}
@@ -411,7 +411,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			if( k != null ) {
 				return k;
 			}
-			int key = getChar();
+			int key = opsGetChar();
 			if( taken(key)) {
 				return key == CTRL_C ? KEY_INTR : KEY_NONE;
 			}
@@ -437,8 +437,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			if( poller == null ) {
 				poller = new NativeKeyboard();
 			}
-			while( poller.ready() > 0 ) {
-				int key = poller.getChar();
+			while( poller.opsReady() > 0 ) {
+				int key = poller.opsGetChar();
 				if( key == KEY_EOF || key == KEY_NONE ) {
 					break;
 				}
@@ -695,8 +695,51 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	private static Boolean availible=false;
 
+	/** the JNI library (libnativekeyboard) was loaded */
+	private static boolean jniLoaded;
+
+	/** why the JNI library was not loaded (see NativeStatus), or null */
+	private static String jniProblem;
+
+	/**
+	 * The native functions done through JNA (jna.NativeOps), or null: then the JNI library does
+	 * them. Starting programs and passing descriptors (spawn ...) are all JNA's when it has them
+	 * (spawnOps), else all the JNI library's.
+	 *
+	 * The fsh.native property chooses: "jni" never uses JNA; "jna" uses it for what it has;
+	 * "auto" (the default) uses JNA only where the JNI library is not there (and not in a native
+	 * image), so a system the library was not built for still has the keyboard and the terminal, and
+	 * one that has it starts as quickly as before.
+	 */
+	private static final us.bringardner.fsh.jna.NativeOps ops;
+
 	public static boolean isAvailible() {
 		return availible;
+	}
+
+	/** the JNI library, which starts programs and passes descriptors, was loaded */
+	public static boolean isJniAvailible() {
+		return jniLoaded;
+	}
+
+	/** why the JNI library was not loaded, or null (it was, or it was not looked for) */
+	public static String jniProblem() {
+		return jniProblem;
+	}
+
+	/** why JNA is not in use although it was asked for or the library is missing, or null */
+	public static String jnaProblem() {
+		return us.bringardner.fsh.jna.NativeOps.failure;
+	}
+
+	/** why JNA cannot start programs although it does the rest, or null */
+	public static String spawnProblem() {
+		return ops == null ? null : ops.spawnProblem();
+	}
+
+	/** the keyboard and terminal are done through JNA (not the JNI library) */
+	public static boolean usesJna() {
+		return ops != null;
 	}
 
 
@@ -709,6 +752,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			availible = true;
 		} catch (Throwable e) {
 			availible = false;
+			jniProblem = e.getClass().getSimpleName()+": "+e.getMessage();
 		}
 		if( NATIVE_IMAGE ) {
 			// (no launcher gives a native image its library path: the library and fshexec are next
@@ -735,6 +779,261 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			}
 			// (where helper() finds fshexec)
 			System.setProperty("java.library.path", path+System.getProperty("java.library.path", ""));
+		}
+		jniLoaded = availible;
+		us.bringardner.fsh.jna.NativeOps jna = null;
+		String mode = System.getProperty("fsh.native", "auto");
+		// (a native image has no reflection and JNI metadata for JNA: only if asked for)
+		if( !"jni".equals(mode) && ("jna".equals(mode) || (!jniLoaded && !NATIVE_IMAGE)) ) {
+			try {
+				jna = us.bringardner.fsh.jna.NativeOps.create();
+			} catch (Throwable e) {
+				// (no JNA, or its library: as without it)
+			}
+		}
+		ops = jna;
+		availible = jniLoaded || ops != null;
+	}
+
+	// the functions that JNA does when it can, and the JNI library's otherwise
+
+	private int opsGetChar() {
+		return ops != null ? ops.getChar() : getChar();
+	}
+
+	private int opsReady() {
+		return ops != null ? ops.ready() : ready();
+	}
+
+	private void opsSetSignalKeys(boolean on) {
+		if( ops != null ) {
+			ops.setSignalKeys(on);
+		} else {
+			setSignalKeys(on);
+		}
+	}
+
+	private void opsSetProgramMode(boolean on) {
+		if( ops != null ) {
+			ops.setProgramMode(on);
+		} else {
+			setProgramMode(on);
+		}
+	}
+
+	private boolean opsIsTerminal() {
+		return ops != null ? ops.isTerminal() : isTerminal();
+	}
+
+	private boolean opsIsInputTerminal0() {
+		return ops != null ? ops.isInputTerminal() : isInputTerminal0();
+	}
+
+	private String opsTtyName0() {
+		return ops != null ? ops.ttyName() : ttyName0();
+	}
+
+	private int opsInputKind0() {
+		return ops != null ? ops.inputKind() : inputKind0();
+	}
+
+	private String [] opsOpenDescriptors0() {
+		return ops != null ? ops.openDescriptors() : openDescriptors0();
+	}
+
+	private long [] opsResourceUsage0() {
+		return ops != null ? ops.resourceUsage() : resourceUsage0();
+	}
+
+	private void opsGiveTerminalTo(long group) {
+		if( ops != null ) {
+			ops.giveTerminalTo(group);
+		} else {
+			giveTerminalTo(group);
+		}
+	}
+
+	private void opsSetProcessGroup(long pid, long group) {
+		if( ops != null ) {
+			ops.setProcessGroup(pid, group);
+		} else {
+			setProcessGroup(pid, group);
+		}
+	}
+
+	private int opsStoppedBy(long pid) {
+		return ops != null ? ops.stoppedBy(pid) : stoppedBy(pid);
+	}
+
+	private int opsColumns0() {
+		return ops != null ? ops.columns() : columns0();
+	}
+
+	/** this process's process group */
+	public static long pgrp() {
+		return ops != null ? ops.pgrp() : pgrp0();
+	}
+
+	/** {uid, gid, the supplementary groups...} of this process */
+	public static long [] ids() {
+		return ops != null ? ops.ids() : ids0();
+	}
+
+	/** the open-files soft limit (-1: unlimited): 0 or -errno */
+	public static int setOpenFilesLimit(long limit) {
+		return ops != null ? ops.setOpenFilesLimit(limit) : setOpenFilesLimit0(limit);
+	}
+
+	/** 1 if name was in the environment this process was started with, 0 if not, -1 if not known */
+	public static int startedWith(String name) {
+		return ops != null ? ops.startedWith(name) : startedWith0(name);
+	}
+
+	/** this process's argv[0] (as it was started, not its path), or null */
+	public static String argv() {
+		return ops != null ? ops.argv0() : argv0();
+	}
+
+	/** the kernel's release (uname -r), or null */
+	public static String osRelease() {
+		return ops != null ? ops.osRelease() : osRelease0();
+	}
+
+	// starting programs and passing descriptors (NATIVE-CONTRACT.md, C): all through JNA, or all
+	// through the JNI library
+
+	/** JNA does C (ops has it all): else the JNI library does */
+	private static final boolean spawnOps;
+
+	static {
+		boolean s = false;
+		try {
+			s = ops != null && ops.canSpawn();
+		} catch (Throwable e) {
+		}
+		spawnOps = s;
+	}
+
+	/**
+	 * Programs can be started here with spawn(), and descriptors passed (the capability that
+	 * exec.NativeProcess.usable() is): a Unix, and JNA or the JNI library having all of it.
+	 */
+	public static boolean canSpawn() {
+		if( java.io.File.separatorChar != '/' ) {
+			return false;
+		}
+		if( spawnOps ) {
+			return true;
+		}
+		if( !jniLoaded ) {
+			return false;
+		}
+		try {
+			// (a library from before it had these has no strerror0)
+			strerror0(0);
+			return true;
+		} catch (UnsatisfiedLinkError e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Start path with argv and envp (bytes, as given) in dir (null: here); fds are pairs of the
+	 * program's descriptor and the shell's it is to be (all others closed); pgroup: the process
+	 * group (-1: the shell's, 0: a new one); suspended: it does not run until it holds the
+	 * terminal (macOS: until it gets SIGCONT).
+	 * @return its process id, or -errno
+	 */
+	public static int spawn(byte [] path, byte [][] argv, byte [][] envp, byte [] dir, int [] fds, int pgroup, boolean suspended) {
+		if( !spawnOps ) {
+			return spawn0(path, argv, envp, dir, fds, pgroup, suspended);
+		}
+		String helper = null;
+		if( suspended && pgroup >= 0 && System.getProperty("os.name", "").toLowerCase().startsWith("linux") ) {
+			// (no POSIX_SPAWN_START_SUSPENDED on Linux: fshexec takes the terminal before it runs
+			// the program, as the JNI library's own fork does; without it the program may run
+			// first, and is stopped by SIGTTIN until the shell gives the terminal and continues it)
+			helper = helper();
+		}
+		if( helper == null ) {
+			return ops.spawn(path, argv, envp, dir, fds, pgroup, suspended);
+		}
+		// fshexec -g PGID 1 -0 ARGV0 -- PATH ARGV1...: in the group, the terminal's, then the program
+		java.nio.charset.Charset utf8 = java.nio.charset.StandardCharsets.UTF_8;
+		java.util.List<byte []> wrapped = new java.util.ArrayList<>();
+		wrapped.add(helper.getBytes(utf8));
+		wrapped.add("-g".getBytes(utf8));
+		wrapped.add(String.valueOf(pgroup).getBytes(utf8));
+		wrapped.add("1".getBytes(utf8));
+		wrapped.add("-0".getBytes(utf8));
+		wrapped.add(argv.length > 0 ? argv[0] : path);
+		wrapped.add("--".getBytes(utf8));
+		wrapped.add(path);
+		for(int k = 1; k < argv.length; k++) {
+			wrapped.add(argv[k]);
+		}
+		// (the group is fshexec's to make: -1 here)
+		return ops.spawn(helper.getBytes(utf8), wrapped.toArray(new byte[0][]), envp, dir, fds, -1, false);
+	}
+
+	/** {read, write}, both close-on-exec; null on failure */
+	public static int [] pipe() {
+		return spawnOps ? ops.pipe() : pipe0();
+	}
+
+	/** open path to read ('r'), write ('w': created or truncated) or append ('a'), close-on-exec: the descriptor or -errno */
+	public static int open(byte [] path, int how) {
+		return spawnOps ? ops.open(path, how) : open0(path, how);
+	}
+
+	public static void close(int fd) {
+		if( spawnOps ) {
+			ops.close(fd);
+		} else {
+			close0(fd);
+		}
+	}
+
+	/** wait until child pid ends: its wait status, or -1 if it is not a child */
+	public static int waitExit(int pid) {
+		return spawnOps ? ops.waitExit(pid) : waitExit0(pid);
+	}
+
+	/** a stream that reads descriptor fd (closing it closes the descriptor) */
+	public static java.io.InputStream inputStream(int fd) {
+		return spawnOps ? ops.inputStream(fd) : new java.io.FileInputStream(fd0(fd));
+	}
+
+	/** a stream that writes descriptor fd (closing it closes the descriptor) */
+	public static java.io.OutputStream outputStream(int fd) {
+		return spawnOps ? ops.outputStream(fd) : new java.io.FileOutputStream(fd0(fd));
+	}
+
+	/** a connected pair of sockets, both close-on-exec; null on failure */
+	public static int [] socketPair() {
+		return spawnOps ? ops.socketPair() : socketPair0();
+	}
+
+	/** send payload (after its length, 4 bytes in network order) with descriptors fds: 0 or -errno */
+	public static int sendWithDescriptors(int sock, byte [] payload, int [] fds) {
+		return spawnOps ? ops.sendWithDescriptors(sock, payload, fds) : sendWithDescriptors0(sock, payload, fds);
+	}
+
+	/** kill(2): 0 or -errno */
+	public static int kill(int pid, int sig) {
+		return spawnOps ? ops.kill(pid, sig) : kill0(pid, sig);
+	}
+
+	public static String strerror(int err) {
+		return spawnOps ? ops.strerror(err) : strerror0(err);
+	}
+
+	/** the terminal (/dev/tty) is process group group's (0: the shell's) */
+	public static void ttyTo(int group) {
+		if( ops != null ) {
+			ops.ttyTo(group);
+		} else {
+			ttyTo0(group);
 		}
 	}
 
@@ -829,7 +1128,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static int columns() {
 		if( availible ) {
 			try {
-				int c = new NativeKeyboard().columns0();
+				int c = new NativeKeyboard().opsColumns0();
 				if( c > 0 ) {
 					return c;
 				}
@@ -864,7 +1163,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					if( k != null ) {
 						return k;
 					}
-					if( ready() > 0 ) {
+					if( opsReady() > 0 ) {
 						return getChar();
 					}
 				}
@@ -1051,10 +1350,10 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			Integer k = typedAhead.poll();
 			if( k != null ) {
 				key = k;
-			} else if( ready() <= 0 ) {
+			} else if( opsReady() <= 0 ) {
 				return KEY_NONE;
 			} else {
-				key = getChar();
+				key = opsGetChar();
 				if( taken(key)) {
 					return KEY_NONE;
 				}
@@ -1076,7 +1375,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			return pending.size()+System.in.available();
 		}
 		synchronized (keyLock) {
-			return pending.size()+typedAhead.size()+ready();
+			return pending.size()+typedAhead.size()+opsReady();
 		}
 	}
 

@@ -1,8 +1,6 @@
 package us.bringardner.fsh.exec;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,15 +28,8 @@ public final class NativeProcess extends Process {
 	public static boolean usable() {
 		Boolean u = usable;
 		if( u == null ) {
-			u = NativeKeyboard.isAvailible() && !"java".equals(System.getProperty("fsh.spawn"));
-			if( u ) {
-				try {
-					NativeKeyboard.strerror0(0);
-				} catch (UnsatisfiedLinkError e) {
-					// (a library from before these were added)
-					u = false;
-				}
-			}
+			// (Unix descriptors, process groups and paths: Windows starts programs with ProcessBuilder)
+			u = NativeKeyboard.canSpawn() && !"java".equals(System.getProperty("fsh.spawn"));
 			usable = u;
 		}
 		return u;
@@ -70,14 +61,14 @@ public final class NativeProcess extends Process {
 
 	/** the shell starts it and waits for it itself */
 	public static final Spawner DIRECT = (path, argv, envp, dir, fds, process) -> {
-		int pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, -1, false);
+		int pid = NativeKeyboard.spawn(path, argv, envp, dir, fds, -1, false);
 		waitFor(pid, process);
 		return pid;
 	};
 
 	private static void waitFor(int pid, NativeProcess process) {
 		if( pid > 0 ) {
-			Thread.ofPlatform().daemon().name("fsh wait "+pid).stackSize(64*1024).start(() -> process.exited(NativeKeyboard.waitExit0(pid)));
+			Thread.ofPlatform().daemon().name("fsh wait "+pid).stackSize(64*1024).start(() -> process.exited(NativeKeyboard.waitExit(pid)));
 		}
 	}
 
@@ -88,20 +79,20 @@ public final class NativeProcess extends Process {
 	 */
 	public static Process startInGroup(ProcessBuilder builder, long group, boolean foreground) throws IOException {
 		return new NativeProcess(builder, (path, argv, envp, dir, fds, process) -> {
-			int pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, (int) group, foreground && group == 0);
+			int pid = NativeKeyboard.spawn(path, argv, envp, dir, fds, (int) group, foreground && group == 0);
 			process.group = group == 0 ? pid : group;
 			if( pid == -1 || pid == -3 ) {
 				// (EPERM, ESRCH: its programs have all ended)
-				pid = NativeKeyboard.spawn0(path, argv, envp, dir, fds, 0, foreground);
+				pid = NativeKeyboard.spawn(path, argv, envp, dir, fds, 0, foreground);
 				process.group = pid;
 				if( foreground && pid > 0 ) {
-					NativeKeyboard.ttyTo0(pid);
-					NativeKeyboard.kill0(pid, CONT);
+					NativeKeyboard.ttyTo(pid);
+					NativeKeyboard.kill(pid, CONT);
 				}
 			} else if( foreground && pid > 0 ) {
-				NativeKeyboard.ttyTo0(group == 0 ? pid : (int) group);
+				NativeKeyboard.ttyTo(group == 0 ? pid : (int) group);
 				if( group == 0 ) {
-					NativeKeyboard.kill0(pid, CONT);
+					NativeKeyboard.kill(pid, CONT);
 				}
 			}
 			waitFor(pid, process);
@@ -184,24 +175,24 @@ public final class NativeProcess extends Process {
 			if( ret < 0 ) {
 				// (as the ProcessBuilder says it: error=2 is "command not found")
 				throw new IOException("Cannot run program \""+program+"\""+(dir == null ? "" : " (in directory \""+dir+"\")")
-						+": error="+(-ret)+", "+NativeKeyboard.strerror0(-ret));
+						+": error="+(-ret)+", "+NativeKeyboard.strerror(-ret));
 			}
 			pid = ret;
 		} catch (IOException | RuntimeException e) {
 			for(int fd : parent) {
 				if( fd >= 0 ) {
-					NativeKeyboard.close0(fd);
+					NativeKeyboard.close(fd);
 				}
 			}
 			throw e;
 		} finally {
 			for(int fd : close) {
-				NativeKeyboard.close0(fd);
+				NativeKeyboard.close(fd);
 			}
 		}
-		stdin = parent[0] < 0 ? OutputStream.nullOutputStream() : new FileOutputStream(NativeKeyboard.fd0(parent[0]));
-		stdout = parent[1] < 0 ? InputStream.nullInputStream() : new FileInputStream(NativeKeyboard.fd0(parent[1]));
-		stderr = parent[2] < 0 ? InputStream.nullInputStream() : new FileInputStream(NativeKeyboard.fd0(parent[2]));
+		stdin = parent[0] < 0 ? OutputStream.nullOutputStream() : NativeKeyboard.outputStream(parent[0]);
+		stdout = parent[1] < 0 ? InputStream.nullInputStream() : NativeKeyboard.inputStream(parent[1]);
+		stderr = parent[2] < 0 ? InputStream.nullInputStream() : NativeKeyboard.inputStream(parent[2]);
 	}
 
 	/** it ended with wait status status (-1: not known) */
@@ -222,7 +213,7 @@ public final class NativeProcess extends Process {
 		case INHERIT:
 			return n;
 		case PIPE: {
-			int [] p = NativeKeyboard.pipe0();
+			int [] p = NativeKeyboard.pipe();
 			if( p == null ) {
 				throw new IOException("pipe failed");
 			}
@@ -233,13 +224,13 @@ public final class NativeProcess extends Process {
 		}
 		default: {
 			File f = redirect.file();
-			int fd = NativeKeyboard.open0(bytes(f.getPath()), switch (redirect.type()) {
+			int fd = NativeKeyboard.open(bytes(f.getPath()), switch (redirect.type()) {
 			case READ -> 'r';
 			case APPEND -> 'a';
 			default -> 'w';
 			});
 			if( fd < 0 ) {
-				throw new IOException(f+": "+NativeKeyboard.strerror0(-fd));
+				throw new IOException(f+": "+NativeKeyboard.strerror(-fd));
 			}
 			close.add(fd);
 			return fd;
@@ -322,14 +313,14 @@ public final class NativeProcess extends Process {
 	@Override
 	public void destroy() {
 		if( isAlive()) {
-			NativeKeyboard.kill0(pid, 15);
+			NativeKeyboard.kill(pid, 15);
 		}
 	}
 
 	@Override
 	public Process destroyForcibly() {
 		if( isAlive()) {
-			NativeKeyboard.kill0(pid, 9);
+			NativeKeyboard.kill(pid, 9);
 		}
 		return this;
 	}

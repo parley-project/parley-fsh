@@ -73,7 +73,7 @@ public final class StandIn implements NativeProcess.Spawner {
 	 */
 	private void readSocket() {
 		DataInputStream in = new DataInputStream(new java.io.BufferedInputStream(
-				new java.io.FileInputStream(NativeKeyboard.fd0(sock)), 256));
+				NativeKeyboard.inputStream(sock), 256));
 		try {
 			int kind;
 			while( (kind = in.read()) >= 0 ) {
@@ -145,11 +145,11 @@ public final class StandIn implements NativeProcess.Spawner {
 			ProcessBuilder builder = group ? new ProcessBuilder(helper, "-s", "-g") : new ProcessBuilder(helper, "-s");
 			builder.redirectError(ProcessBuilder.Redirect.DISCARD);
 			Process p;
-			if( NativeProcess.usable() && (pair = NativeKeyboard.socketPair0()) != null ) {
+			if( NativeProcess.usable() && (pair = NativeKeyboard.socketPair()) != null ) {
 				// (the socket is its input and output)
 				builder.redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT);
 				p = NativeProcess.start(builder, new int[] {0, pair[1], 1, pair[1]});
-				NativeKeyboard.close0(pair[1]);
+				NativeKeyboard.close(pair[1]);
 			} else {
 				p = NativeProcess.start(builder);
 			}
@@ -158,8 +158,8 @@ public final class StandIn implements NativeProcess.Spawner {
 			return ret;
 		} catch (IOException e) {
 			if( pair != null ) {
-				NativeKeyboard.close0(pair[0]);
-				NativeKeyboard.close0(pair[1]);
+				NativeKeyboard.close(pair[0]);
+				NativeKeyboard.close(pair[1]);
 			}
 			return null;
 		}
@@ -197,7 +197,7 @@ public final class StandIn implements NativeProcess.Spawner {
 				CompletableFuture<Integer> a = new CompletableFuture<>();
 				answer = a;
 				starting = p;
-				int ret = NativeKeyboard.sendWithDescriptors0(sock, out.toByteArray(), mine);
+				int ret = NativeKeyboard.sendWithDescriptors(sock, out.toByteArray(), mine);
 				if( ret == 0 ) {
 					while( true ) {
 						try {
@@ -262,7 +262,7 @@ public final class StandIn implements NativeProcess.Spawner {
 			}
 		} else {
 			synchronized (sending) {
-				told = sock >= 0 && NativeKeyboard.sendWithDescriptors0(sock, ("E"+exitStatus).getBytes(), null) == 0;
+				told = sock >= 0 && NativeKeyboard.sendWithDescriptors(sock, ("E"+exitStatus).getBytes(), null) == 0;
 			}
 		}
 		if( !told ) {

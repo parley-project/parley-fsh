@@ -1301,7 +1301,7 @@ $
 	/** {uid, gid, groups...} from the library, or null */
 	private static long [] nativeIds() {
 		try {
-			return NativeKeyboard.isAvailible() ? NativeKeyboard.ids0() : null;
+			return NativeKeyboard.isAvailible() ? NativeKeyboard.ids() : null;
 		} catch (UnsatisfiedLinkError e) {
 			// (a library from before it had it)
 			return null;
