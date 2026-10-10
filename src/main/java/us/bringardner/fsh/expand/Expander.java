@@ -427,7 +427,15 @@ public final class Expander {
 	private static final Pattern ASSIGNMENT_WORD = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*(\\[[^]]*\\])?\\+?=.*", Pattern.DOTALL);
 
 	private static boolean looksLikeAssignment(Word w) {
-		return !w.parts.isEmpty() && w.parts.get(0) instanceof Word.Literal l && ASSIGNMENT_WORD.matcher(l.text()).matches();
+		if( w.parts.isEmpty() || !(w.parts.get(0) instanceof Word.Literal l)) {
+			return false;
+		}
+		String t = l.text();
+		// (most words are not: no = in them, or not a name first)
+		if( t.indexOf('=') <= 0 || !(Character.isLetter(t.charAt(0)) || t.charAt(0) == '_')) {
+			return false;
+		}
+		return ASSIGNMENT_WORD.matcher(t).matches();
 	}
 
 	private void word(Word w, List<Piece> out, int tilde) {

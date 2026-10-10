@@ -24,6 +24,17 @@ public final class Braces {
 
 	/** the words w becomes: just w if it has no braces to expand */
 	public static List<Word> expand(Word w) {
+		// (most words have no brace: nothing to take apart)
+		boolean brace = false;
+		for(Word.Part p : w.parts) {
+			if( p instanceof Word.Literal l && l.text().indexOf('{') >= 0 ) {
+				brace = true;
+				break;
+			}
+		}
+		if( !brace ) {
+			return List.of(w);
+		}
 		List<Item> items = new ArrayList<>();
 		boolean any = false;
 		for(Word.Part p : w.parts) {

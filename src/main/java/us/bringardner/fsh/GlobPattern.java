@@ -57,6 +57,9 @@ public abstract class GlobPattern {
 		return ret;
 	}
 
+	/** patterns made into regular expressions already (case and [[ == ]] in a loop: the same ones again) */
+	private static final java.util.Map<String,Pattern> REGEXES = new java.util.concurrent.ConcurrentHashMap<>();
+
 	private static GlobPattern compile0(String glob, boolean ignoreCase) {
 		if( hasNegation(glob) || glob.indexOf('[') >= 0 && glob.indexOf('(') >= 0 ) {
 			// (with [ in a group too: an unclosed one there makes it no group, as bash's)
@@ -65,16 +68,25 @@ public abstract class GlobPattern {
 			return m;
 		}
 		int flags = Pattern.DOTALL | (ignoreCase ? Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE : 0);
-		Pattern rx = Pattern.compile(ShellCommand.prepWildCards(glob, true), flags);
+		String key = (ignoreCase ? "i" : "c")+glob;
+		Pattern rx = REGEXES.get(key);
+		if( rx == null ) {
+			rx = Pattern.compile(ShellCommand.prepWildCards(glob, true), flags);
+			if( REGEXES.size() > 512 ) {
+				REGEXES.clear();
+			}
+			REGEXES.put(key, rx);
+		}
+		Pattern compiled = rx;
 		return new GlobPattern() {
 			@Override
 			public boolean matches(String text) {
-				return rx.matcher(text).matches();
+				return compiled.matcher(text).matches();
 			}
 
 			@Override
 			public Pattern regex() {
-				return rx;
+				return compiled;
 			}
 		};
 	}
