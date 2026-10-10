@@ -426,6 +426,12 @@ public final class Executor {
 	 * A pipeline, and what follows its status: $?, the ERR trap and set -e (not for a condition:
 	 * the left of && ||, after !, in if and while).
 	 */
+	/** PIPESTATUS is (status) already: setting it again changes nothing (after most commands it is (0)) */
+	private static boolean samePipeStatus(ShellContext sc, int status) {
+		return sc.getVariable("PIPESTATUS") instanceof FshList l && l.size() == 1 && l.getIndexes().get(0) == 0
+				&& String.valueOf(status).equals(String.valueOf(l.get(0)));
+	}
+
 	private int pipeline(Ast.Pipeline p, ShellContext sc, boolean condition) throws IOException {
 		boolean cond = condition || p.negated;
 		// (the CPU times first: their first reading is slow, and is not the command's)
@@ -440,7 +446,7 @@ public final class Executor {
 				ret = 0;
 			} else if( p.commands.size() == 1 ) {
 				ret = command(p.commands.get(0), sc);
-				if( !(p.commands.get(0) instanceof Ast.FunctionDef)) {
+				if( !(p.commands.get(0) instanceof Ast.FunctionDef) && !samePipeStatus(sc, ret)) {
 					FshList statuses = new FshList();
 					statuses.add(String.valueOf(ret));
 					sc.setVariable("PIPESTATUS", statuses);
@@ -3012,7 +3018,8 @@ public final class Executor {
 			copy.set(0, sc.cased(a.name, elementValue(list.get(0), v, a.append, sc.console.isInteger(sc.readonlyName(a.name)), sc)));
 			return copy;
 		}
-		if( sc.console.isInteger(sc.readonlyName(a.name))) {
+		// (most scripts have no -i variable: then no name to work out)
+		if( sc.console.hasIntegers() && sc.console.isInteger(sc.readonlyName(a.name))) {
 			Number n = a.append ? integerAppend(ShellContext.firstElement(old), v, sc) : arithmeticValue(v, sc);
 			return String.valueOf(n);
 		}

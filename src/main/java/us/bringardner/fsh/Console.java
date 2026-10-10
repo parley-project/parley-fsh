@@ -4277,6 +4277,11 @@ delimiter
 		return integerVariables.contains(name);
 	}
 
+	/** some variable is declared -i */
+	public boolean hasIntegers() {
+		return !integerVariables.isEmpty();
+	}
+
 	public void setInteger(String name, boolean integer) {
 		if( integer ) {
 			integerVariables.add(name);
