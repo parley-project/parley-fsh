@@ -32,6 +32,10 @@ Key:
 - **heredoc** (heredoc7.sub): fsh's line numbers after a multi-line `$( )`.
 - **parser, arith-for, history (`5.3`), new-exp (`\v`, `\s` prompts)**: these depend on the name
   `bash` or on `BASH_VERSION`, which fsh does not set.
+- **BASH_LOADABLES_PATH / `enable -f`** (seen in the real-world bash-completion case): fsh has no
+  loadable builtins. bash's are C libraries built against bash's own internals, so fsh can't
+  load them, and it sets no search path for them. bash-completion's `export` completion lists
+  one fewer variable for that reason.
 
 ## Bash internals (not copied)
 
