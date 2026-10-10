@@ -21,6 +21,12 @@ Key:
   can't load the file. Decide how far to follow bash, given that fsh can't load bash's C
   builtins.
 
+- [ ] **pipeline hang** (seen in full bats runs, twice; not in the suite): sometimes a program at
+  the end of a pipeline inside a process substitution (`... | cut -f 2-` in bats-exec-suite, and
+  a `cat` in bats' validator) waits for EOF forever. Its input FIFO has no writer that `lsof`
+  can see. It doesn't reproduce in isolation or under parallel load. A watchdog
+  (`r6/watch-bats.py`) now records lsof, the process tree and stack samples when a run stalls.
+
 ## Keep (deliberate differences, no change)
 
 - **assoc, appendop, casemod, varenv, quotearray, new-exp (part), array (part)**: associative-array
@@ -134,3 +140,13 @@ copying a bug. Decided 2026-10-10; reopen if wanted.
   - Notes: at first I filed this under "keep" because fsh can't load bash's C loadable builtins.
     The user pointed out that we shouldn't presume what scripts need from the variable, so it's
     set as bash sets it. `enable -f` is still fsh's "invalid option" (open).
+
+- [x] **stand-in spinning after fsh is gone** (found while chasing the pipeline hang): a
+  `fshexec -s` whose fsh had died spun at 100% CPU for hours. It forwards every signal to fsh
+  over its socket; with fsh gone the write raised SIGPIPE, which it "forwarded" too, forever.
+  Now a failed write to fsh (EPIPE) ends the stand-in, and the socket has `SO_NOSIGPIPE`.
+  - Notes: found as an orphan with state R and a socket whose peer was gone; `/usr/bin/sample`
+    showed it looping in `forward` → `write`. A plain kill of fsh didn't reproduce it, because the
+    stand-in sees the socket close first. It needs a signal at the moment fsh dies, as when a
+    whole process group is killed. Tested with a socket pair, a stopped stand-in and a pending
+    HUP: the old binary spins, the new one exits.

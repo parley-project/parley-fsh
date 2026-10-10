@@ -155,7 +155,10 @@ static void tell(char kind, int a, int b) {
 	m[0] = (unsigned char) kind;
 	memcpy(m+1, &na, 4);
 	memcpy(m+5, &nb, 4);
-	writeFully(1, m, sizeof m);
+	if( writeFully(1, m, sizeof m) != 0 && errno == EPIPE ) {
+		// fsh is gone: so is the stand-in (its SIGPIPE would only come back here)
+		_exit(0);
+	}
 }
 
 static void forward(int sig) {
@@ -164,7 +167,10 @@ static void forward(int sig) {
 		tell('G', sig, 0);
 	} else {
 		unsigned char b = (unsigned char) sig;
-		(void) write(1, &b, 1);
+		if( write(1, &b, 1) < 0 && errno == EPIPE ) {
+			// (as in tell)
+			_exit(0);
+		}
 	}
 	errno = saved;
 }
@@ -343,6 +349,9 @@ static int standIn(void) {
 	if( onSocket ) {
 		fcntl(0, F_SETFD, FD_CLOEXEC);
 		fcntl(1, F_SETFD, FD_CLOEXEC);
+		// a write after fsh is gone fails (EPIPE) without a SIGPIPE to forward
+		int on = 1;
+		setsockopt(1, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof on);
 		sa.sa_handler = childEnded;
 		sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
 		sigaction(SIGCHLD, &sa, NULL);
