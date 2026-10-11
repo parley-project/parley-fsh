@@ -116,6 +116,12 @@ public class TestBashCompat extends AbstractConsoleTest {
 
 		ExecuteResult res = run(code);
 		boolean ok = res != null && expectOut.equals(res.getStdOut()) && expectStatus == res.exitCode;
+		if( !ok && res != null && getOs() == OperatingSystem.Windows && res.getStdErr().contains("is not recognized as an internal or external command") ) {
+			//  the case runs a program Windows doesn't have (cat, sed, grep ...): that is not the shell's
+			skipped.incrementAndGet();
+			record(name, "skipped");
+			Assumptions.abort("needs a program Windows doesn't have");
+		}
 		if( ok ) {
 			passed.incrementAndGet();
 		} else {
