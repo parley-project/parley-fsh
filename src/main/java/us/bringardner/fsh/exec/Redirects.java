@@ -251,7 +251,7 @@ final class Redirects {
 		case ">":
 		case ">|": {
 			String word = target(r, ex);
-			FileSource file = sc.getFileSource(word);
+			FileSource file = sc.getFileSource(nullDevice(word));
 			if( r.op.equals(">") && file.exists() && !file.isDirectory() && sc.console.isOptionEnabled(Option.NoClobberRedirect) && !word.equals("/dev/null")) {
 				throw new IOException(word+": cannot overwrite existing file");
 			}
@@ -260,14 +260,14 @@ final class Redirects {
 		}
 		case ">>": {
 			String word = target(r, ex);
-			FileSource file = sc.getFileSource(word);
+			FileSource file = sc.getFileSource(nullDevice(word));
 			setOut(sc, fd == null ? 1 : fd, new PrintStream(open(file, word, true), false, us.bringardner.fsh.RawUtf8.CHARSET), file, opened);
 			break;
 		}
 		case "&>":
 		case "&>>": {
 			String word = target(r, ex);
-			FileSource file = sc.getFileSource(word);
+			FileSource file = sc.getFileSource(nullDevice(word));
 			PrintStream out = new PrintStream(open(file, word, r.op.equals("&>>")), false, us.bringardner.fsh.RawUtf8.CHARSET);
 			setOut(sc, 1, out, file, opened);
 			sc.stderr = out;
@@ -275,8 +275,8 @@ final class Redirects {
 		}
 		case "<": {
 			String word = target(r, ex);
-			FileSource file = sc.getFileSource(word);
-			if( !file.exists()) {
+			FileSource file = sc.getFileSource(nullDevice(word));
+			if( !file.exists() && !isNullDevice(word)) {
 				throw new IOException(word+": No such file or directory");
 			}
 			// a file (not a device or a named pipe, where a read can wait) is shared with the programs
@@ -309,7 +309,7 @@ final class Redirects {
 			String word = target(r, ex);
 			if( fd == null && !isDescriptor(word)) {
 				// >&word is &>word
-				FileSource file = sc.getFileSource(word);
+				FileSource file = sc.getFileSource(nullDevice(word));
 				PrintStream out = new PrintStream(open(file, word, false), false, us.bringardner.fsh.RawUtf8.CHARSET);
 				setOut(sc, 1, out, file, opened);
 				sc.stderr = out;
@@ -327,6 +327,18 @@ final class Redirects {
 		default:
 			throw new IOException("unknown redirect "+r.op);
 		}
+	}
+
+	private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase().startsWith("windows");
+
+	/** /dev/null where the platform has no such file: Windows, which has the NUL device. */
+	private static boolean isNullDevice(String word) {
+		return WINDOWS && word.equals("/dev/null");
+	}
+
+	/** The name to open for a redirect word: NUL (a device in any directory) for /dev/null on Windows. */
+	private static String nullDevice(String word) {
+		return isNullDevice(word) ? "NUL" : word;
 	}
 
 	/** a file to write, or bash's message if it cannot be */
