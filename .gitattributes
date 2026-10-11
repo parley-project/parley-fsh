@@ -7,3 +7,7 @@
 *.bat text eol=crlf
 *.ps1 text eol=crlf
 *.sh  text eol=lf
+
+# Bash's recorded output is compared byte for byte with fsh's, which writes LF: these files
+# are LF in a working copy whatever the checkout's autocrlf
+src/test/resources/bash-compat/** text eol=lf
