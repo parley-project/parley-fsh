@@ -35,7 +35,6 @@ import javax.swing.SwingUtilities;
 
 
 import sun.misc.Signal;
-import us.bringardner.parley.core.util.ThreadSafeDateFormat;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
@@ -2639,8 +2638,6 @@ delimiter
 		return ret;
 	}
 
-	ThreadSafeDateFormat fmt = new ThreadSafeDateFormat("EE MMM dd");
-
 	public String strftimeToJava (String val) {
 		StringBuilder ret = new StringBuilder();
 
@@ -2853,7 +2850,7 @@ delimiter
 					break;
 					// \d 	The date, in "Weekday Month Date" format (e.g., "Tue May 26").
 				case 'd': 
-					ret.append(fmt.format(date));
+					ret.append(new SimpleDateFormat("EE MMM dd").format(date));
 					break;
 					// \D{format} The format is passed to strftime(3) and the result is inserted into the prompt string; an empty format results in a locale-specific time representation. The braces are required.
 				case 'D': 
