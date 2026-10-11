@@ -10,3 +10,7 @@ TestFiles/SymLink2Folder01
 LnTestFiles/SymLink2AbcFileA2.js
 __pycache__/
 dist/
+# Eclipse
+.classpath
+.project
+.settings/
