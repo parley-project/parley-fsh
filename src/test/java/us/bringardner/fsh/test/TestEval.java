@@ -87,6 +87,7 @@ public class TestEval  extends AbstractConsoleTest{
 	}
 	
 	@SuppressWarnings("unused")
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "date is cmd.exe's own interactive command on Windows, not a program that is not found")
 	@Test
 	public void testEval03() throws Exception{
 		// make sure we fail in the same way bash does

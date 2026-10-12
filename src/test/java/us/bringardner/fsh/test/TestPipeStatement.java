@@ -25,6 +25,20 @@ public class TestPipeStatement extends AbstractConsoleTest{
 	}
 	
 
+	/**
+	 * The output of "ls -l | wc": lines, words and bytes. The bytes include the width of the owner
+	 * and group names in every line, so they differ from one machine to the next: on Windows
+	 * (where the owner is the domain, a backslash and the user name) the lines and the words are compared, which are the same.
+	 */
+	private static void assertWc(String expect, String actual) {
+		if( getOs() == OperatingSystem.Windows ) {
+			String [] e = expect.trim().split("\\s+");
+			String [] a = actual.trim().split("\\s+");
+			assertEquals(e[0] + " " + e[1], a[0] + " " + a[1], "lines and words of " + actual);
+		} else {
+			assertEquals(expect, actual);
+		}
+	}
 	@Test
 	public void testLogicStatent01() throws Exception{
 		String cmd = "echo one && echo two"
@@ -104,7 +118,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String out = res.getStdOut();
 		String err = res.getStdErr();
 		assertEquals("", err);
-		assertEquals(expect, out.trim());
+		assertWc(expect, out.trim());
 		assertEquals(0, res.exitCode);
 		
 		
@@ -132,7 +146,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String err = res.getStdErr();
 		// bash's format: a blank line, then real, user and sys
 		assertTrue(err.startsWith("\nreal\t"));
-		assertEquals(expect, out.trim());
+		assertWc(expect, out.trim());
 		assertEquals(0, res.exitCode);
 		
 		
@@ -160,7 +174,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String err = res.getStdErr();
 		
 		assertTrue(err.startsWith("real "));
-		assertEquals(expect, out.trim());
+		assertWc(expect, out.trim());
 		assertEquals(1, res.exitCode);
 		
 		
@@ -187,7 +201,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String err = res.getStdErr();
 		
 		assertEquals("", err);
-		assertEquals(expect, out.trim());
+		assertWc(expect, out.trim());
 		assertEquals(0, res.exitCode);
 		
 		

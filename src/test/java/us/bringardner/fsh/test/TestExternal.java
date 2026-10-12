@@ -215,6 +215,7 @@ public class TestExternal extends AbstractConsoleTest {
 	}
 
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "runs a .bat file: its %1 is not expanded when started this way")
 	@Test
 	public void testExternal05() throws Exception{
 		setup("ExternalTestFiles");
@@ -236,6 +237,7 @@ public class TestExternal extends AbstractConsoleTest {
 
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "runs a .bat file: its %1 is not expanded when started this way")
 	@Test
 	public void testExternal06() throws Exception{
 		setup("ExternalTestFiles");

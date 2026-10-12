@@ -118,7 +118,7 @@ public class TestLs extends AbstractConsoleTest {
 		console.setStdErr(new PrintStream(bae));
 		console.setStdIn(new ByteArrayInputStream(new byte[0]));
 		
-		console.executeScript(command);
+		console.executeScript(AbstractConsoleTest.portable(command));
 		String err = new String(bae.toByteArray());
 		
 		String actual = new String(bao.toByteArray());
@@ -166,9 +166,6 @@ public class TestLs extends AbstractConsoleTest {
 				+ "AbcFileD.properties\n"
 				+ "AbcFileC.txt"
 				;
-		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
-			expect = expect.replaceAll("\n", "\r\n");
-		}
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);
 	}
@@ -189,9 +186,6 @@ public class TestLs extends AbstractConsoleTest {
 				+ "AbcFileC.txt\n"
 				+ "AbcFileD.properties\n"
 				+ "Folder01";
-		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
-			expect = expect.replaceAll("\n", "\r\n");
-		}
 		
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);
@@ -365,9 +359,6 @@ public class TestLs extends AbstractConsoleTest {
 		String expect = "AbcFile01.php         AbcFile01.properties  AbcFile01.txt         Folder01abc.1         Folder01def.2";
 		
 		String cmd = "ls ~/Folder01";
-		if(FileSourceFactory.isWindows()) {
-			cmd = "ls ~\\Folder01";
-		}
 		String actual = executeLsCommand(true,cmd).trim();		
 		assertEquals(expect, actual);
 		
@@ -377,9 +368,6 @@ public class TestLs extends AbstractConsoleTest {
 				+ "Folder01abc.1\n"
 				+ "Folder01def.2"
 				;
-		if( AbstractConsoleTest.getOs()==OperatingSystem.Windows) {
-			expect = expect.replaceAll("\n", "\r\n");
-		}
 		
 		String actual2 = executeLsCommand(false,cmd).trim();		
 		assertEquals(expect, actual2);

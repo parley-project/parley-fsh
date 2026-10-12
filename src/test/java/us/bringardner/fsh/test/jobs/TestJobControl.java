@@ -136,6 +136,7 @@ public class TestJobControl {
 		console.join(10000);
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "job control and the TSTP signal: Windows has neither")
 	@Test
 	public void ctrlZStopsTheJobAndFgBgContinueIt() throws Exception {
 		startShell();
@@ -177,6 +178,7 @@ public class TestJobControl {
 		}
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "job control and the TSTP signal: Windows has neither")
 	@Test
 	public void exitWithStoppedJobs() throws Exception {
 		startShell();
@@ -199,6 +201,7 @@ public class TestJobControl {
 		assertEquals(129, job.getExitCode());
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "job control and the TSTP signal: Windows has neither")
 	@Test
 	public void doneNoticesBeforeThePrompt() throws Exception {
 		startShell();

@@ -60,6 +60,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("d="+path("")+"; cd $d/sub-dir; pwd", path("sub-dir")+"\n");
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testPathsWithDashes() throws IOException {
 		expect("cd "+path("-dash")+"; pwd", path("-dash")+"\n");
@@ -218,6 +219,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("f() { local lv21=1; lv21=2; echo $lv21; }; f; echo :$lv21:", "2\n::\n");
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testCompoundCommandInPipe() throws IOException {
 		expect("echo a b | while read x; do echo \"<$x>\"; done", "<a b>\n");
@@ -290,6 +292,7 @@ public class TestWords extends AbstractConsoleTest {
 		assertTrue(res.getStdErr().contains("-q: invalid option"), res.getStdErr());
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testRedirectFileDescriptors() throws IOException {
 		String f = path("fd.txt");
@@ -318,6 +321,7 @@ public class TestWords extends AbstractConsoleTest {
 		assertEquals("fsh: line 1: 7: Bad file descriptor", res.getStdErr().trim());
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testGroupsAndSubshells() throws IOException {
 		expect("{ echo a; echo b >&2; } 2>/dev/null", "a\n");
@@ -347,6 +351,7 @@ public class TestWords extends AbstractConsoleTest {
 		expect("( exit 4 ); echo $?; x=$(exit 5); echo $?", "4\n5\n");
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testHereString() throws IOException {
 		expect("cat <<< \"here\"; cat <<< here; cat <<<here", "here\nhere\nhere\n");
@@ -368,6 +373,7 @@ public class TestWords extends AbstractConsoleTest {
 		assertTrue(res.getStdErr().contains("-3: substring expression < 0"), res.getStdErr());
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testTestErrorsAndStatus() throws IOException {
 		// [ ] tests its words; it does not run them

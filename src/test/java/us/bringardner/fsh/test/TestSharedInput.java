@@ -30,6 +30,7 @@ public class TestSharedInput extends AbstractConsoleTest {
 		System.clearProperty("fsh.exec");
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void programsLeaveTheRestOfTheFile() throws Exception {
 		assumeTrue(HELPER.canExecute(), "no fshexec");

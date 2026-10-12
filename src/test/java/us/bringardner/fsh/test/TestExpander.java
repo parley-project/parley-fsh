@@ -46,7 +46,7 @@ public class TestExpander {
 			i++;
 			StringBuilder setup = new StringBuilder();
 			while( i < lines.size() && !lines.get(i).startsWith("### words")) {
-				setup.append(lines.get(i++).replace("@GLOBDIR@", globDir.getPath())).append('\n');
+				setup.append(lines.get(i++).replace("@GLOBDIR@", globDir.getPath().replace('\\', '/'))).append('\n');
 			}
 			i++;
 			Console c = new Console();

@@ -125,6 +125,7 @@ public class TestCommandSubstitution extends AbstractConsoleTest{
 		}
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void testDollarAndEscapesInDoubleQuotes() throws IOException {
 		String[][] cases = {

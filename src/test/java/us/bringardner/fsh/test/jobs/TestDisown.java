@@ -51,6 +51,7 @@ public class TestDisown extends AbstractConsoleTest {
 		
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "job control and the TSTP signal: Windows has neither")
 	@Test
 	public void testDisown02() throws IOException, InterruptedException {
 		// disown all running jobs

@@ -30,6 +30,7 @@ public class TestExec extends AbstractConsoleTest {
 
 
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "exec runs a program: there is no ls on Windows")
 	@Test
 	public void testExec01() throws IOException {
 		String [] expect = 
@@ -52,6 +53,7 @@ public class TestExec extends AbstractConsoleTest {
 
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "exec runs a program: there is no ls on Windows")
 	@Test
 	public void testExec02() throws IOException {
 		String expect = "This will be logged.";

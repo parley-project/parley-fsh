@@ -155,6 +155,7 @@ public class TestSelectStatement extends AbstractConsoleTest {
 		assertEquals(expectErr.trim(), err.replace("#? ", "").trim());
 	}
 	
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "writes the glob with backslashes, which a shell treats as escapes")
 	@Test
 	public void testSelectStatent05() throws Exception{
 		String cmd = 

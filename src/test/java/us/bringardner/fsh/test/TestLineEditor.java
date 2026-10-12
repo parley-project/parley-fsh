@@ -114,6 +114,7 @@ public class TestLineEditor {
 		assertThrows(NativeKeyboard.LineCancelled.class, () -> c.readLine("$ "));
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "completion of $HOME depends on HOME being a directory")
 	@Test
 	public void completion() throws Exception {
 		File dir = Files.createTempDirectory("complete").toFile();

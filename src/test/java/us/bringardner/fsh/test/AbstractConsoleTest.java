@@ -138,6 +138,23 @@ public abstract class AbstractConsoleTest {
 		
 	}
 
+	/**
+	 * On Windows a test writes a file's native path into a command (C:\dir\file). In a shell a
+	 * backslash escapes the character after it, as in bash, so the path would arrive as C:dirfile:
+	 * a drive path is written with forward slashes, as the shell's user would write it.
+	 */
+	public static String portable(String command) {
+		if( getOs() != OperatingSystem.Windows || command == null ) {
+			return command;
+		}
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("[A-Za-z]:\\\\[^\\s;|&<>()'\"`]*").matcher(command);
+		StringBuffer sb = new StringBuffer();
+		while( m.find() ) {
+			m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(m.group().replace('\\', '/')));
+		}
+		m.appendTail(sb);
+		return sb.toString();
+	}
 public static ExecuteResult executeCommand(String [] args,String stdIn,int exitCode,String expectOut,String expectErr) throws IOException {
 		
 		Console console = new Console();
@@ -167,7 +184,7 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 		console.setStdErr(new PrintStream(ret.bae));
 		console.setStdIn(new ByteArrayInputStream(stdIn.getBytes()));
 
-		ret.exitCode=console.executeScript(command);
+		ret.exitCode=console.executeScript(portable(command));
 
 		if(showError && ret.bae.size()!=0) {
 			System.out.println(new String(ret.bae.toByteArray()));
@@ -218,7 +235,7 @@ public static ExecuteResult executeCommand(String [] args,String stdIn,int exitC
 		console.setStdOut(out);
 		console.setStdErr(err);
 
-		ret.exitCode=console.executeScript(command);
+		ret.exitCode=console.executeScript(portable(command));
 		List<IJob> jobs = console.jobManager.getJobs();
 		long start = System.currentTimeMillis();
 

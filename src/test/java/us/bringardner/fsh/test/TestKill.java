@@ -30,6 +30,7 @@ public class TestKill extends AbstractConsoleTest {
 
 
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "signals to background jobs: timing and POSIX signals")
 	@Test
 	public void testKill01() throws IOException {
 		boolean showErrTmp = showError;

@@ -295,6 +295,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 		return String.valueOf(id).equals(String.valueOf(mine));
 	}
 
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "reads the unix: file attribute view, which Windows does not have")
 	@Test
 	public void testIfStatent03_2() throws Exception{
 		File testFilesDir = new File("LnTestFiles").getCanonicalFile();

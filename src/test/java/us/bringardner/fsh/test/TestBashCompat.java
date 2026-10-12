@@ -46,6 +46,17 @@ public class TestBashCompat extends AbstractConsoleTest {
 
 	/** name -> reason ("" or "hang") */
 	private static final Map<String,String> knownFailures = new TreeMap<>();
+	/** cases that cannot match bash on Windows, and why (no /tmp, no job control, no ulimit ...) */
+	private static final Map<String,String> windowsOnly = new TreeMap<>();
+	static {
+		windowsOnly.put("bracket-redirect", "tests -r /dev/stdin, which is no file on Windows");
+		windowsOnly.put("enable-builtin", "asks type -t of a program Windows does not have");
+		windowsOnly.put("jobs-specs", "needs job control");
+		windowsOnly.put("jobs-kill-int-ignored", "needs POSIX signals: a job that ignores SIGINT and ends on TERM");
+		windowsOnly.put("procsub-streaming", "needs /dev/fd and a pipe that streams");
+		windowsOnly.put("subshell-cd", "changes to /tmp");
+		windowsOnly.put("ulimit-set", "needs ulimit");
+	}
 	private static final AtomicInteger passed = new AtomicInteger();
 	private static final AtomicInteger failed = new AtomicInteger();
 	private static final AtomicInteger skipped = new AtomicInteger();
@@ -103,6 +114,11 @@ public class TestBashCompat extends AbstractConsoleTest {
 		int expectStatus = Integer.parseInt(Files.readString(DIR.resolve("cases/"+name+".status")).trim());
 		String known = knownFailures.get(name);
 
+		if( getOs() == OperatingSystem.Windows && windowsOnly.containsKey(name) ) {
+			skipped.incrementAndGet();
+			record(name, "skipped");
+			Assumptions.abort("not on Windows: "+windowsOnly.get(name));
+		}
 		if( "hang".equals(known)) {
 			skipped.incrementAndGet();
 			record(name, "hang");
@@ -116,7 +132,7 @@ public class TestBashCompat extends AbstractConsoleTest {
 
 		ExecuteResult res = run(code);
 		boolean ok = res != null && expectOut.equals(res.getStdOut()) && expectStatus == res.exitCode;
-		if( !ok && res != null && getOs() == OperatingSystem.Windows && res.getStdErr().contains("is not recognized as an internal or external command") ) {
+		if( !ok && res != null && getOs() == OperatingSystem.Windows && res.getStdErr().contains("command not found") ) {
 			//  the case runs a program Windows doesn't have (cat, sed, grep ...): that is not the shell's
 			skipped.incrementAndGet();
 			record(name, "skipped");
