@@ -176,4 +176,16 @@ class NativeKeyboardContractTest {
 			return true;
 		}
 	}
-}
+
+	// the JNA layer must load where there is one: every other test here skips when nothing is
+	// loaded, which is how WindowsOps failing to load on 64-bit Windows (an unsupported calling
+	// convention) went unnoticed
+
+	@Test
+	void theJnaLayerLoadsOnWindowsAndLinuxAndMac() {
+		String os = System.getProperty("os.name", "").toLowerCase();
+		assumeTrue(os.startsWith("windows") || os.startsWith("linux") || os.startsWith("mac"),
+				"no JNA layer for " + os);
+		assertNotNull(us.bringardner.fsh.jna.NativeOps.create(),
+				"the JNA layer did not load: " + us.bringardner.fsh.jna.NativeOps.failure);
+	}}
