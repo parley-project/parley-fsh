@@ -1044,10 +1044,11 @@ delimiter
 			System.setProperty("java.awt.headless", "true");
 		}
 		// the shell's standard output: a broken pipe ends the shell, as SIGPIPE ends bash
-		System_out = new PrintStream(new java.io.BufferedOutputStream(new BrokenPipeGuard(new java.io.FileOutputStream(java.io.FileDescriptor.out)), 8192), true, us.bringardner.fsh.RawUtf8.CHARSET);
+		// (LfPrintStream: println ends a line with LF on every platform, as echo and printf do)
+		System_out = LfPrintStream.of(new PrintStream(new java.io.BufferedOutputStream(new BrokenPipeGuard(new java.io.FileOutputStream(java.io.FileDescriptor.out)), 8192), true, us.bringardner.fsh.RawUtf8.CHARSET));
 		System.setOut(System_out);
 		// (its standard error too writes the bytes that are not UTF-8 as they were: RawUtf8)
-		System_err = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.err), true, RawUtf8.CHARSET);
+		System_err = LfPrintStream.of(new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.err), true, RawUtf8.CHARSET));
 		System.setErr(System_err);
 
 			Console c = new Console();
@@ -1204,7 +1205,19 @@ delimiter
 	}
 
 	public void setStdOut(PrintStream stdOut) {
-		this.stdOut = stdOut;
+		this.stdOut = lfStream(stdOut);
+	}
+
+	/**
+	 * A stream handed to the console, with println ending lines in LF as everything the shell writes
+	 * does. The process's own System.out and System.err, and the shell's own, are left as they are:
+	 * which of them a stream is decides whether a program inherits the terminal.
+	 */
+	private static PrintStream lfStream(PrintStream ps) {
+		if( ps == null || ps == System.out || ps == System.err || ps == System_out || ps == System_err ) {
+			return ps;
+		}
+		return LfPrintStream.of(ps);
 	}
 
 	public PrintStream getStdErr() {
@@ -1212,7 +1225,7 @@ delimiter
 	}
 
 	public void setStdErr(PrintStream stdErr) {
-		this.stdErr = stdErr;
+		this.stdErr = lfStream(stdErr);
 	}
 
 	public DebugContext getDebugContext() {

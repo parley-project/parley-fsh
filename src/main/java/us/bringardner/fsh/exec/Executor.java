@@ -368,7 +368,7 @@ public final class Executor {
 	public static boolean test(ShellContext sc, String code) throws IOException {
 		Ast.Sequence seq = Parser.parse(code);
 		PrintStream out = sc.stdout;
-		sc.stdout = new PrintStream(java.io.OutputStream.nullOutputStream(), false, us.bringardner.fsh.RawUtf8.CHARSET);
+		sc.stdout = us.bringardner.fsh.LfPrintStream.of(new PrintStream(java.io.OutputStream.nullOutputStream(), false, us.bringardner.fsh.RawUtf8.CHARSET));
 		sc.conditionDepth++;
 		try {
 			return new Executor(seq.source).list(seq, sc) == 0;
@@ -1004,7 +1004,7 @@ public final class Executor {
 		int readFd = freeDescriptor(sc, 63, -1);
 		int writeFd = freeDescriptor(sc, 60, readFd);
 		sc.console.setFileDistcriptor(new Console.FileDiscriptor(readFd, fromCoproc.in, null));
-		sc.console.setFileDistcriptor(new Console.FileDiscriptor(writeFd, new PrintStream(toCoproc.out, true, us.bringardner.fsh.RawUtf8.CHARSET), null));
+		sc.console.setFileDistcriptor(new Console.FileDiscriptor(writeFd, us.bringardner.fsh.LfPrintStream.of(new PrintStream(toCoproc.out, true, us.bringardner.fsh.RawUtf8.CHARSET)), null));
 		// (they stay after the command they are in)
 		sc.console.keptFds.put(readFd, sc.console.getFileDistcriptor(readFd));
 		sc.console.keptFds.put(writeFd, sc.console.getFileDistcriptor(writeFd));
@@ -1014,7 +1014,7 @@ public final class Executor {
 		Console.FileDiscriptor writeDescriptor = sc.console.getFileDistcriptor(writeFd);
 		ShellContext ctx = sc.subShell();
 		ctx.stdin = toCoproc.in;
-		ctx.stdout = new PrintStream(fromCoproc.out, true, us.bringardner.fsh.RawUtf8.CHARSET);
+		ctx.stdout = us.bringardner.fsh.LfPrintStream.of(new PrintStream(fromCoproc.out, true, us.bringardner.fsh.RawUtf8.CHARSET));
 		String text = text(k).trim();
 		CommandThread thread = new CommandThread(ctx, new ShellTask() {
 			@Override
@@ -3422,7 +3422,7 @@ public final class Executor {
 			}
 			PrintStream out = sc.stdout;
 			ByteArrayOutputStream bao = new ByteArrayOutputStream();
-			sc.stdout = new PrintStream(bao, true, us.bringardner.fsh.RawUtf8.CHARSET);
+			sc.stdout = us.bringardner.fsh.LfPrintStream.of(new PrintStream(bao, true, us.bringardner.fsh.RawUtf8.CHARSET));
 			sc.enterNofork();
 			try {
 				status = noforkList(body);
@@ -3551,7 +3551,7 @@ public final class Executor {
 		ctx.substitutionLevel++;
 		ctx.inCommandSubstitution = true;
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();
-		ctx.stdout = new PrintStream(bao, true, us.bringardner.fsh.RawUtf8.CHARSET);
+		ctx.stdout = us.bringardner.fsh.LfPrintStream.of(new PrintStream(bao, true, us.bringardner.fsh.RawUtf8.CHARSET));
 		Console.Snapshot saved = null;
 		int status = 0;
 		List<String> trap = null;
