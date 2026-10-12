@@ -19,6 +19,10 @@
  * (exec.NativeProcess, StandIn) is written for Unix paths and descriptors, and does not start
  * programs through them there (NativeProcess.usable() is false): ProcessBuilder does.
  */
+/* GetTickCount64 is Windows Vista and later: older MinGW headers default to Windows XP and omit it */
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <wchar.h>
@@ -56,6 +60,23 @@ static HANDLE in() {
 
 static HANDLE out() {
 	return GetStdHandle(STD_OUTPUT_HANDLE);
+}
+
+/* milliseconds since the system started, that do not wrap */
+static ULONGLONG tickCount() {
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+	/* MinGW.org's headers have no GetTickCount64: widen GetTickCount, noticing its wrap (one reader at a time) */
+	static DWORD last = 0;
+	static ULONGLONG wraps = 0;
+	DWORD now = GetTickCount();
+	if( now < last ) {
+		wraps += 0x100000000ULL;
+	}
+	last = now;
+	return wraps + now;
+#else
+	return GetTickCount64();
+#endif
 }
 
 static int isConsole(HANDLE h) {
@@ -111,6 +132,8 @@ static void enableRawMode() {
 
 static DWORD origOutMode, origErrMode;
 static int outSaved = 0, errSaved = 0;
+/* the console's output code page when the shell started (0: not changed) */
+static UINT origOutputCp = 0;
 
 static void restoreOutput() {
 	if( outSaved ) {
@@ -118,6 +141,10 @@ static void restoreOutput() {
 	}
 	if( errSaved ) {
 		SetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), origErrMode);
+	}
+	if( origOutputCp != 0 ) {
+		SetConsoleOutputCP(origOutputCp);
+		origOutputCp = 0;
 	}
 }
 
@@ -145,8 +172,29 @@ static void enableEscapes() {
 	}
 }
 
+/*
+ * The shell writes UTF-8 bytes. A console decodes what is written with its output code page (437
+ * or 850 in a new window), so any text outside ASCII came out as the wrong characters. The code
+ * page is made UTF-8 for as long as the shell runs and put back when it ends. FSH_CONSOLE_UTF8=0
+ * leaves it alone.
+ */
+static void utf8Output() {
+	const char *optOut = getenv("FSH_CONSOLE_UTF8");
+	if( origOutputCp != 0 || (optOut != NULL && strcmp(optOut, "0") == 0) ) {
+		return;
+	}
+	if( !isConsole(out()) && !isConsole(GetStdHandle(STD_ERROR_HANDLE)) ) {
+		return;
+	}
+	UINT cp = GetConsoleOutputCP();
+	if( cp != 0 && cp != CP_UTF8 && SetConsoleOutputCP(CP_UTF8) ) {
+		origOutputCp = cp;
+	}
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *, void *) {
 	enableEscapes();
+	utf8Output();
 	atexit(restoreOutput);
 	return JNI_VERSION_1_8;
 }
@@ -490,9 +538,9 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_ready(JNIEnv *, jo
  * milliseconds, or KEY_EOF if the console cannot be read.
  */
 static int readConsoleKey(HANDLE h, DWORD timeout) {
-	ULONGLONG until = GetTickCount64() + timeout;
+	ULONGLONG until = tickCount() + timeout;
 	while( true ) {
-		ULONGLONG now = GetTickCount64();
+		ULONGLONG now = tickCount();
 		DWORD left = now >= until ? 0 : (DWORD) (until - now);
 		DWORD w = WaitForSingleObject(h, left);
 		if( w == WAIT_TIMEOUT ) {
@@ -542,7 +590,7 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_getChar(JNIEnv *, 
 
 	if( GetFileType(h) == FILE_TYPE_PIPE ) {
 		// wait up to a second for something to read, as poll() does on a terminal
-		ULONGLONG until = GetTickCount64() + 1000;
+		ULONGLONG until = tickCount() + 1000;
 		while( true ) {
 			DWORD avail = 0;
 			if( !PeekNamedPipe(h, NULL, 0, NULL, &avail, NULL) ) {
@@ -553,7 +601,7 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_getChar(JNIEnv *, 
 			if( avail > 0 ) {
 				break;
 			}
-			if( GetTickCount64() >= until ) {
+			if( tickCount() >= until ) {
 				return KEY_NONE;
 			}
 			Sleep(10);
