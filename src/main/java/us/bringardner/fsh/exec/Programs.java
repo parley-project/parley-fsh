@@ -47,6 +47,13 @@ public final class Programs {
 		}
 	}
 
+	/** cmd.exe's own commands: there is no program of the name to find, and they are run by cmd. */
+	private static final java.util.Set<String> CMD_INTERNAL = new java.util.HashSet<>(java.util.Arrays.asList(
+			"assoc", "break", "call", "cd", "chcp", "chdir", "cls", "color", "copy", "date", "del", "dir", "echo",
+			"endlocal", "erase", "exit", "for", "ftype", "goto", "if", "md", "mkdir", "mklink", "move", "path",
+			"pause", "popd", "prompt", "pushd", "rd", "rem", "ren", "rename", "rmdir", "set", "setlocal", "shift",
+			"start", "time", "title", "type", "ver", "verify", "vol"));
+
 	static int run(String name, List<String> args, ShellContext sc) throws IOException {
 		FileSource exec = hashed(name, sc);
 		// (found on PATH: an error names where, as bash's)
@@ -96,6 +103,14 @@ public final class Programs {
 		}
 		if( name.contains("/")) {
 			sc.error(name+": No such file or directory");
+			return 127;
+		}
+
+		if( FileSourceFactory.isWindows() && !CMD_INTERNAL.contains(name.toLowerCase(java.util.Locale.ROOT))) {
+			// not on the PATH and not one of cmd's own commands: as bash says it, and its status.
+			// (Handing it to cmd gave cmd's message, "is not recognized as an internal or external
+			// command", and status 1.)
+			sc.error(name+": command not found");
 			return 127;
 		}
 
