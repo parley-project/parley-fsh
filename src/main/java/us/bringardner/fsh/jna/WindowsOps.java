@@ -22,11 +22,21 @@ import com.sun.jna.Pointer;
  */
 final class WindowsOps extends NativeOps {
 
+	/**
+	 * The options to load a Win32 library with. 32-bit Windows calls its functions as stdcall, which
+	 * JNA calls ALT_CONVENTION; on 64-bit Windows there is one calling convention, and JNA refuses
+	 * ALT_CONVENTION there ("Invalid calling convention 63"), so the default is the one to use.
+	 */
+	static java.util.Map<String, Object> win32Options() {
+		if( Native.POINTER_SIZE == 4 ) {
+			return Collections.<String, Object>singletonMap(Library.OPTION_CALLING_CONVENTION, Function.ALT_CONVENTION);
+		}
+		return Collections.<String, Object>emptyMap();
+	}
+
 	static final class K {
 		static {
-			// (stdcall: the calling convention of Win32 on 32-bit Windows; the same as C on 64-bit)
-			Native.register(NativeLibrary.getInstance("kernel32",
-					Collections.singletonMap(Library.OPTION_CALLING_CONVENTION, Function.ALT_CONVENTION)));
+			Native.register(NativeLibrary.getInstance("kernel32", win32Options()));
 		}
 		static native Pointer GetStdHandle(int which);
 		static native int GetConsoleMode(Pointer h, Pointer mode);
@@ -46,13 +56,14 @@ final class WindowsOps extends NativeOps {
 		static native int SetFilePointerEx(Pointer h, long distance, Pointer newPosition, int method);
 		static native int GetCurrentProcessId();
 		static native Pointer GetCommandLineW();
+		static native int GetConsoleOutputCP();
+		static native int SetConsoleOutputCP(int codePage);
 	}
 
 	/** ntdll's RtlGetVersion (a class of its own: JNA looks up all of a class's functions as it loads it) */
 	static final class N {
 		static {
-			Native.register(NativeLibrary.getInstance("ntdll",
-					Collections.singletonMap(Library.OPTION_CALLING_CONVENTION, Function.ALT_CONVENTION)));
+			Native.register(NativeLibrary.getInstance("ntdll", win32Options()));
 		}
 		static native int RtlGetVersion(Pointer info);
 	}
@@ -115,11 +126,16 @@ final class WindowsOps extends NativeOps {
 	private boolean errSaved;
 	private int origOutMode;
 	private int origErrMode;
+	/** the console's output code page when the shell started (0: not changed) */
+	private int origOutputCp;
+
+	private static final int CP_UTF8 = 65001;
 
 	WindowsOps() {
 		// (loads kernel32 and fails here, not later, if it cannot)
 		K.GetCurrentProcess();
 		enableEscapes();
+		utf8Output();
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			synchronized (WindowsOps.this) {
 				restoreOutput();
@@ -166,6 +182,28 @@ final class WindowsOps extends NativeOps {
 		}
 		if( errSaved ) {
 			K.SetConsoleMode(K.GetStdHandle(STD_ERROR_HANDLE), origErrMode);
+		}
+		if( origOutputCp != 0 ) {
+			K.SetConsoleOutputCP(origOutputCp);
+			origOutputCp = 0;
+		}
+	}
+
+	/**
+	 * The shell writes UTF-8 bytes. A console decodes what is written with its output code page
+	 * (437 or 850 in a new window), so "café" came out as "caf├⌐". The code page is made UTF-8
+	 * for as long as the shell runs and put back when it ends. FSH_CONSOLE_UTF8=0 leaves it alone.
+	 */
+	private void utf8Output() {
+		if( origOutputCp != 0 || "0".equals(System.getenv("FSH_CONSOLE_UTF8")) ) {
+			return;
+		}
+		if( !isConsole(out()) && !isConsole(K.GetStdHandle(STD_ERROR_HANDLE)) ) {
+			return;
+		}
+		int cp = K.GetConsoleOutputCP();
+		if( cp != 0 && cp != CP_UTF8 && K.SetConsoleOutputCP(CP_UTF8) != 0 ) {
+			origOutputCp = cp;
 		}
 	}
 
