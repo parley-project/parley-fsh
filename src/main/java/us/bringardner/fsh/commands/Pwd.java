@@ -31,8 +31,10 @@ public class Pwd extends ShellCommand{
 			}
 		}
 		if( physical && dir instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
-			// every link in the path resolved
-			ctx.stdout.println(((us.bringardner.parley.files.fileproxy.FileProxy) dir).getTarget().getCanonicalPath());
+			// every link in the path resolved (the library's canonical path resolves them on Windows,
+			// where java.io.File's does not; it is written with '/', the platform's own is shown)
+			String real = dir.getCanonicalPath();
+			ctx.stdout.println(java.io.File.separatorChar == '/' ? real : real.replace('/', java.io.File.separatorChar));
 			return ret;
 		}
 		if( physical ) {
