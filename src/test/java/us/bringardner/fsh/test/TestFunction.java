@@ -320,6 +320,13 @@ public class TestFunction extends AbstractConsoleTest{
 		assertEquals(java.util.Arrays.asList(zero, "world"), strings(all.get(0)));
 	}
 
+	@Test
+	public void testLeadingBlankLinesCountForLineNumbers() throws IOException {
+		// code run as a string (as fsh-ide and fshdb run scripts) keeps its leading blank lines
+		ExecuteResult res = executeCommand("\n\n  \necho \"line $LINENO\"\nf() { echo \"from $BASH_LINENO\"; }\nf\n", "");
+		assertEquals("line 4\nfrom 6\n", res.getStdOut());
+	}
+
 	private static java.util.List<String> strings(java.util.List<Object> list) {
 		java.util.List<String> ret = new java.util.ArrayList<>();
 		for(Object o : list) {

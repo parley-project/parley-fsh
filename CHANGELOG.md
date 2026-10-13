@@ -60,6 +60,9 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   its status labels are gone.
 
 ### Fixed
+- Code run as a string (`Console.executeScript(ShellContext, code)`, as fsh-ide, fshdb and jobs
+  run scripts) lost its leading blank lines, so `$LINENO`, `BASH_LINENO` and error messages
+  were too low by that many lines in a script that starts with blank lines. They're kept now.
 - Inside a function, `ShellContext.getVariables()` gave `$0` as the function's name (`$0`
   itself expands to the script's, as in bash), so debuggers showed it. And
   `getAllPositionalParameters()` inserted the function's `$1 ...` in front of the script's (or
