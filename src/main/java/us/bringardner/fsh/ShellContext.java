@@ -2501,12 +2501,13 @@ $
 			}
 		}
 
+		// $0 is the script's in a function too, as in bash (a function's args[0] is its own name)
 		Object zero = topPositional().get(0);
 		ret.put("$0", zero);
 
 		if( functionStack.size()>0) {
 			FunctionInvocation inv = functionStack.peek();
-			for(int idx=0,sz=inv.args.size(); idx<sz; idx++ ) {
+			for(int idx=1,sz=inv.args.size(); idx<sz; idx++ ) {
 				Object val = inv.args.get(idx) ;
 				ret.put("$"+idx, val);
 			}
@@ -2557,23 +2558,16 @@ $
 		}
 	}
 
+	/**
+	 * $0 $1 $2 ... as they expand here: $0 is the script's, the rest are the running
+	 * function's (or the script's outside a function). To change $1 ..., see
+	 * setPositionalParameterValues.
+	 */
 	public List<Object>  getAllPositionalParameters() {
 		List<Object> ret = new ArrayList<>();
-		ret.addAll(topPositional());
-
-		if( functionStack.size()>0) {
-			FunctionInvocation inv = functionStack.peek();
-
-			for(int idx=1,sz=inv.args.size(); idx<sz; idx++ ) {
-				Object val = inv.args.get(idx) ;
-				if( idx < ret.size()) {
-					ret.add(idx, val);
-				} else {
-					ret.set(idx, val);
-				}
-			}
-		}
-
+		List<Object> top = topPositional();
+		ret.add(top.isEmpty() ? "" : top.get(0));
+		ret.addAll(getPositionalParameterValues());
 		return ret;
 	}
 

@@ -60,6 +60,12 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   its status labels are gone.
 
 ### Fixed
+- Inside a function, `ShellContext.getVariables()` gave `$0` as the function's name (`$0`
+  itself expands to the script's, as in bash), so debuggers showed it. And
+  `getAllPositionalParameters()` inserted the function's `$1 ...` in front of the script's (or
+  failed with an index error when the script had fewer), which made a debugger's "set $1" change
+  the script's parameters. It now returns `$0 $1 ...` as they expand: the script's `$0`, then the
+  function's parameters.
 - Inside a function, its `local` variables were missing from the shell's list of variables, and
   the outer values showed instead (a local that was `unset` still showed the global). So `set`,
   `declare -p`, `${!prefix*}`, completion and debuggers (fsh-ide's variables view, fshdb) didn't

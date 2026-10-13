@@ -279,4 +279,52 @@ public class TestFunction extends AbstractConsoleTest{
 				+ "shadow=global\n", res.getStdOut());
 		assertEquals(0, res.exitCode);
 	}
+
+	@Test
+	public void testPositionalParametersSeenWhileAFunctionRuns() throws IOException {
+		// what a debugger sees (getVariables, getAllPositionalParameters) in a function: $0 is
+		// the script's, as $0 expands; $1 ... are the function's, and the script's aren't mixed in
+		java.util.List<java.util.Map<String,Object>> seen = new java.util.ArrayList<>();
+		java.util.List<java.util.List<Object>> all = new java.util.ArrayList<>();
+		us.bringardner.fsh.DebugContext before = console.getDebugContext();
+		console.setDebugContext(new us.bringardner.fsh.DebugContext() {
+			@Override
+			public synchronized void before(us.bringardner.fsh.syntax.Ast.Node node, String source, us.bringardner.fsh.ShellContext ctx) {
+				if( node.text(source).startsWith("echo \"f:") && seen.isEmpty()) {
+					seen.add(ctx.getVariables());
+					all.add(ctx.getAllPositionalParameters());
+				}
+			}
+		});
+		ExecuteResult res;
+		try {
+			res = executeCommand("set -- a b c\n"
+					+ "f() {\n"
+					+ "  echo \"f: $0 $1 $#\"\n"
+					+ "}\n"
+					+ "f world\n"
+					+ "echo \"main: $@\"\n", "");
+		} finally {
+			console.setDebugContext(before);
+		}
+		String[] lines = res.getStdOut().split("\n");
+		assertEquals(2, lines.length, res.getStdOut());
+		String zero = lines[0].substring(3, lines[0].length()-" world 1".length());
+		assertEquals("f: "+zero+" world 1", lines[0]);
+		assertEquals("main: a b c", lines[1]);
+
+		java.util.Map<String,Object> vars = seen.get(0);
+		assertEquals(zero, String.valueOf(vars.get("$0")));
+		assertEquals("world", String.valueOf(vars.get("$1")));
+		assertEquals(false, vars.containsKey("$2"), "the script's $2 isn't the function's");
+		assertEquals(java.util.Arrays.asList(zero, "world"), strings(all.get(0)));
+	}
+
+	private static java.util.List<String> strings(java.util.List<Object> list) {
+		java.util.List<String> ret = new java.util.ArrayList<>();
+		for(Object o : list) {
+			ret.add(String.valueOf(o));
+		}
+		return ret;
+	}
 }
