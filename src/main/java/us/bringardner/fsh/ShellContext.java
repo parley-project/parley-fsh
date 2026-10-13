@@ -2482,6 +2482,25 @@ $
 				}
 			}
 		}
+		// the running functions' local variables, as names are looked up: the innermost
+		// function's local wins, and a local that was unset hides the variable outside. (They
+		// were left out, so set, declare -p, ${!prefix*}, completion and debuggers didn't see them
+		// and showed the outer values.)
+		if( !functionStack.isEmpty()) {
+			java.util.Set<String> locals = new java.util.TreeSet<>();
+			for(FunctionInvocation inv : functionStack) {
+				locals.addAll(inv.local.keySet());
+			}
+			for(String name : locals) {
+				Object v = getVariable(name);
+				if( v == null ) {
+					ret.remove(name);
+				} else {
+					ret.put(name, v);
+				}
+			}
+		}
+
 		Object zero = topPositional().get(0);
 		ret.put("$0", zero);
 

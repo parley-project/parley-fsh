@@ -60,6 +60,11 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   its status labels are gone.
 
 ### Fixed
+- Inside a function, its `local` variables were missing from the shell's list of variables, and
+  the outer values showed instead (a local that was `unset` still showed the global). So `set`,
+  `declare -p`, `${!prefix*}`, completion and debuggers (fsh-ide's variables view, fshdb) didn't
+  see them. `ShellContext.getVariables()` now includes them as names are looked up: the innermost
+  function's local wins and an unset local hides the variable outside, as in bash.
 - `connect FACTORY - MOUNT` reads its `name=value` settings from standard input separated by any
   white space; it split on single spaces, so two spaces or a tab between settings was an error
   (`Invalid arg =`).

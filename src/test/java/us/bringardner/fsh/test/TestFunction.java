@@ -237,4 +237,46 @@ public class TestFunction extends AbstractConsoleTest{
 		assertEquals("i=1\nrc=5\n", res.getStdOut());
 		assertEquals(0, res.exitCode);
 	}
+
+	/** A function's local variables are among the shell's variables while it runs, as in bash. */
+	@Test
+	public void testLocalsAreListedWhileTheFunctionRuns() throws Exception{
+		String cmd = "myglobal=g\n"
+				+ "shadow=global\n"
+				+ "gone=global\n"
+				+ "f() {\n"
+				+ "  local mylocal=1\n"
+				+ "  local shadow=inner\n"
+				+ "  local gone\n"
+				+ "  unset gone\n"
+				+ "  g\n"
+				+ "}\n"
+				+ "g() {\n"
+				+ "  local myinner=2\n"
+				+ "  set | grep -E '^(my|shadow|gone)'\n"
+				+ "  echo \"names: ${!my*}\"\n"
+				+ "  declare -p | grep -E ' (mylocal|myinner|shadow)='\n"
+				+ "}\n"
+				+ "f\n"
+				+ "echo \"after: ${!my*}\"\n"
+				+ "set | grep -E '^(my|shadow|gone)'\n"
+				;
+
+		ExecuteResult res = executeCommand(cmd,"");
+		assertEquals("", res.getStdErr());
+		// (what bash 5 prints)
+		assertEquals("myglobal=g\n"
+				+ "myinner=2\n"
+				+ "mylocal=1\n"
+				+ "shadow=inner\n"
+				+ "names: myglobal myinner mylocal\n"
+				+ "declare -- myinner=\"2\"\n"
+				+ "declare -- mylocal=\"1\"\n"
+				+ "declare -- shadow=\"inner\"\n"
+				+ "after: myglobal\n"
+				+ "gone=global\n"
+				+ "myglobal=g\n"
+				+ "shadow=global\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+	}
 }
