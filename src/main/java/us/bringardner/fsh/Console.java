@@ -4838,7 +4838,7 @@ delimiter
 				verbose(sc.stderr, code);
 			}
 
-			code = code.stripLeading();
+			// (not stripped: leading blank lines count for $LINENO and messages)
 			return us.bringardner.fsh.exec.Executor.script(sc, code);
 
 		} catch(us.bringardner.fsh.signal.SignalException e) {
@@ -5061,7 +5061,7 @@ delimiter
 				verbose(sc.stderr, code);
 			}
 
-			code = code.stripLeading();
+			// (not stripped: leading blank lines count for $LINENO and messages)
 			ret = us.bringardner.fsh.exec.Executor.script(sc, code, firstLine);
 			if( ret != 0 && isInteractive && isOptionEnabled(Option.ExitImediately)) {
 				Console.exit(sc.console, ret);
