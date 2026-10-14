@@ -411,7 +411,9 @@ delimiter
 
 	private VirtualFileSourceFactory mountFactory;
 	public boolean forceHeadless=true;
-	public boolean isInteractive=false;	
+	public boolean isInteractive=false;
+	/** said once per shell: a line with a plain password was kept out of the history */
+	private boolean warnedPlainSecret;	
 	private Map<String,ShellFunction> functions = new ConcurrentSkipListMap<>();
 
 	// (a hash map: it is looked up several times for each command; listings sort it themselves)
@@ -521,6 +523,7 @@ delimiter
 		registerCommand(new Cd());
 		registerCommand(new Cp());
 		registerCommand(new Connect());
+		registerCommand(new us.bringardner.fsh.commands.Cred());
 		
 		registerCommand(new Dirs());
 		registerCommand(new Disown());
@@ -3214,6 +3217,15 @@ delimiter
 		boolean ignoreSpace = control.contains("ignorespace") || control.contains("ignoreboth");
 		boolean ignoreDups = control.contains("ignoredups") || control.contains("ignoreboth");
 		if( ignoreSpace && (typed.startsWith(" ") || typed.startsWith("\t"))) {
+			return;
+		}
+		if( us.bringardner.fsh.commands.CredentialPrompts.holdsPlainSecret(typed)) {
+			// a password typed on the command line would be saved in the history file
+			if( !warnedPlainSecret ) {
+				warnedPlainSecret = true;
+				stdErr.println("fsh: not saved in the history: the line holds a password. Name it by reference instead,"
+						+" such as password=@keychain:parley/ftp (see: help cred)");
+			}
 			return;
 		}
 		// (as typed: its blanks are kept, only a newline at its end goes)

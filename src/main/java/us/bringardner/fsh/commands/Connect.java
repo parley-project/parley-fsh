@@ -79,7 +79,9 @@ public class Connect extends ShellCommand{
 								}
 							}
 						}
-						if( tmp.connect(props)) {
+						// a setting may name its secret by reference (password=@keychain:...); @prompt:
+						// asks on this shell's terminal
+						if( CredentialPrompts.with(ctx, () -> tmp.connect(props))) {
 							FileSource[] roots =  tmp.listRoots();
 							if( roots.length>1) {
 								throw new IOException("more than one root . factory = "+tmp.getTypeId());

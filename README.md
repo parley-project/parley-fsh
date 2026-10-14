@@ -33,6 +33,8 @@ you build**, using the library the same way your own application would. It was c
 - **A shell over any file system.** `connect` mounts a `FileSource` (FTP, SFTP, a database,
   memory) at a path, and `unmount` removes it. fsh's own file builtins (`ls`, `cp`, `mv`,
   `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every mounted file system.
+- **No passwords in scripts.** A connect setting can name its secret instead of holding it, and
+  `cred` stores and checks those secrets ([below](#passwords-in-startup-scripts)).
 - **An interactive shell** with a bash-style line editor (emacs keys, history search,
   completion, the "Display all N possibilities?" pager).
 - **Embeddable.** It is a Java library: a program can run scripts in it, and the
@@ -103,7 +105,7 @@ again. The todo file records what each fix involved.
 **Deliberate:**
 
 - **fsh's own file builtins.** `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`,
-  `sleep`, `expr`, `clear`, `connect` and `unmount` are builtins (so they work on mounted file
+  `sleep`, `expr`, `clear`, `connect`, `cred` and `unmount` are builtins (so they work on mounted file
   systems), with their own help texts. Programs of the same names are still reachable by path or
   with `enable -n`.
 - **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and
@@ -258,6 +260,31 @@ FSH_RUNTIME=native macos/fsh              # the native image (an error if none i
 ```
 
 `auto`, or leaving it unset, is the default choice above.
+
+## Passwords in startup scripts
+
+A `connect` setting that holds a secret (an SFTP, FTP or JDBC password) can name where the secret
+is kept instead, so `~/.fshrc` is safe to commit and share:
+
+```bash
+connect sftp host=prod.example.com user=deploy auth=Agent /prod
+connect ftp  host=files.example.com user=uploader secure=true password=@keychain:parley/ftp /ftp
+connect jdbc url=jdbc:postgresql://db/app user=app password=@env:APP_DB_PW /db
+```
+
+| Reference | Where the secret is |
+|---|---|
+| `@keychain:service/account` | The OS keychain (needs parley-credentials-keychain on the class path) |
+| `@keystore:name` | `~/.parley/credentials.p12`, encrypted with a master password |
+| `@file:path` | A file only its owner can read |
+| `@env:NAME` | An environment variable |
+| `@prompt:` | Asked for on the terminal, once per session |
+| `@cmd:command` | What a command prints (`op read ...`); off until `cred enable cmd` |
+
+`cred set keychain:parley/ftp` stores a secret (it asks twice, without echo, and never takes the
+secret as an argument); `cred get`, `cred list`, `cred rm`, `cred test` and `cred providers` do the
+rest. See `help cred`. In a script nobody is watching, `@prompt:` fails at once rather than waiting.
+A typed `connect` line that holds a plain password is kept out of the history, with a warning.
 
 ## Files
 
