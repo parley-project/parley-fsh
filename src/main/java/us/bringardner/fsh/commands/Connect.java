@@ -129,9 +129,11 @@ public class Connect extends ShellCommand{
 				pin.close();
 			}			
 		} else {
-			String  [] parts=arg.split("=");
-			if( parts.length != 2) {
-				throw new IOException("Invalid arg = "+arg);
+			// limit 2: a value (a generated password, a JDBC url) may itself contain '='
+			String  [] parts=arg.split("=",2);
+			if( parts.length != 2 || parts[0].isBlank()) {
+				// only the name: the value may be a password
+				throw new IOException("Invalid arg (expected name=value): "+parts[0]);
 			}
 			props.setProperty(parts[0].trim(), parts[1].trim());
 		}
