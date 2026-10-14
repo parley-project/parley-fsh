@@ -30,8 +30,9 @@ if not exist "%LIB_DIR%\nativekeyboard.dll" (
 call mvn -q package -DskipTests || exit /b 1
 call mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile=target\runtime-classpath.txt || exit /b 1
 
-rem (the jar and its dependencies in one folder, so the class path is a wildcard: a Windows
-rem command line is limited, and the dependencies' paths are long)
+rem (the jar and its dependencies in one folder, with the class path in an argument file: a Windows
+rem command line is limited, and the dependencies' paths are long. Not a wildcard: native-image
+rem of GraalVM 25 expands it into separate arguments, which it takes for options)
 if exist target\native-libs rmdir /s /q target\native-libs
 mkdir target\native-libs target\native target\native-tmp target\native-config
 set jar=
@@ -45,7 +46,8 @@ powershell -NoProfile -Command "$jars = Get-ChildItem target\native-libs\*.jar |
 rem (its work files in target, not the system's temporary directory)
 set TMP=%PROJECT_DIR%\target\native-tmp
 set TEMP=%TMP%
-call "%graal%\bin\native-image.cmd" -cp "target\native-libs\*" ^
+powershell -NoProfile -Command "$cp = (Get-ChildItem target\native-libs\*.jar | ForEach-Object { 'target/native-libs/' + $_.Name }) -join ';'; Set-Content -Path target\native-args.txt -Value @('-cp', $cp) -Encoding ascii" || exit /b 1
+call "%graal%\bin\native-image.cmd" @target\native-args.txt ^
 	-H:TempDirectory="%PROJECT_DIR%\target\native-tmp" -H:ConfigurationFileDirectories=target\native-config ^
 	-Dfsh.libdir="%PROJECT_DIR%\target\native" -o target\native\fsh us.bringardner.fsh.Console || exit /b 1
 copy /y "%LIB_DIR%\nativekeyboard.dll" target\native\ >nul || exit /b 1
