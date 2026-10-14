@@ -49,11 +49,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # GraalVM 21: the same Java as the build (maven.compiler.release 21), with native-image
+      # GraalVM 25 (Community Edition, the one the native build was tested with), with native-image
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '21'
-          distribution: 'graalvm'
+          java-version: '25'
+          distribution: 'graalvm-community'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: maven
 
