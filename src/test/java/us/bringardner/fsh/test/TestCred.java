@@ -27,6 +27,8 @@ public class TestCred extends AbstractConsoleTest {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
+		// never wait on a password dialog (these tests run as a non-interactive shell)
+		System.setProperty("fsh.credentials.dialog", "false");
 		setup("ConnectTestFiles");
 	}
 
@@ -79,7 +81,7 @@ public class TestCred extends AbstractConsoleTest {
 	public void setNeedsSomeoneToAsk() throws IOException {
 		ExecuteResult res = executeCommand("cred set file:"+dir.resolve("new"), "typed\ntyped\n");
 		assertEquals(1, res.exitCode);
-		assertTrue(res.getStdErr().contains("needs an interactive shell"), res.getStdErr());
+		assertTrue(res.getStdErr().contains("needs an interactive shell, or a display"), res.getStdErr());
 		assertFalse(Files.exists(dir.resolve("new")));
 	}
 
