@@ -15,3 +15,8 @@ dist/
 .project
 .settings/
 /bin/
+
+# Linux native build outputs (linux/compile.sh); distributed via GitHub Releases
+linux/*.o
+linux/*.so
+linux/fshexec
