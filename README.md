@@ -7,8 +7,12 @@ disk, memory, FTP, SFTP or a database. A remote server can be mounted into the s
 directory tree, and from then on `cd`, globbing, redirection and fsh's file builtins work
 there as they do on the local disk.
 
-fsh is built on Parley but is not part of it. It was called BjlShell
+fsh is built on Parley but is not part of it: it is **an example of what
+[Parley](https://github.com/tony-bringardner/parley-parent#what-parley-can-help-you-build) can help
+you build**, using the library the same way your own application would. It was called BjlShell
 (`us.bringardner:bjl_shell`, command `fssh`).
+
+<img src="https://raw.githubusercontent.com/tony-bringardner/parley-brand/master/src/main/resources/us/bringardner/parley/brand/parley-hero.png" alt="Margot the magpie on the Parley tower" width="160">
 
 - [What fsh is](#what-fsh-is)
 - [Why a shell in Java](#why-a-shell-in-java)
