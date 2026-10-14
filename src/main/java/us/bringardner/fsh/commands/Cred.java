@@ -93,7 +93,7 @@ public class Cred extends ShellCommand {
 		}
 		CredentialRef ref = ref(a.get(0));
 		if( !CredentialPrompts.canAsk(ctx)) {
-			ctx.stderr.println(name+": set asks for the secret, so it needs an interactive shell");
+			ctx.stderr.println(name+": set asks for the secret: it needs an interactive shell, or a display for a password dialog");
 			return 1;
 		}
 		char[] first = CredentialPrompts.readSecret(ctx, "Secret for "+ref+": ");

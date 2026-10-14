@@ -59,7 +59,28 @@ public final class CredentialPrompts {
 
 	/** Whether ctx's shell can ask the person at the keyboard. */
 	static boolean canAsk(ShellContext ctx) {
-		return ctx != null && ctx.console != null && ctx.console.isInteractive;
+		if( ctx == null || ctx.console == null ) {
+			return false;
+		}
+		// an interactive shell asks at its terminal; one that isn't (Eclipse's console, a GUI
+		// window) can still ask with a dialog when there's a display
+		return ctx.console.isInteractive || dialogAvailable();
+	}
+
+	/**
+	 * Whether a password dialog may be shown: there's a display, and dialogs haven't been
+	 * turned off (-Dfsh.credentials.dialog=false; the tests do, so they never wait on one).
+	 */
+	static boolean dialogAvailable() {
+		if( "false".equalsIgnoreCase(System.getProperty("fsh.credentials.dialog"))) {
+			return false;
+		}
+		try {
+			return !java.awt.GraphicsEnvironment.isHeadless();
+		} catch (Throwable e) {
+			// no AWT (a native image built without it, say)
+			return false;
+		}
 	}
 
 	/**
@@ -68,6 +89,10 @@ public final class CredentialPrompts {
 	 * @return the answer, or null at end of input
 	 */
 	static char[] readSecret(ShellContext ctx, String prompt) throws IOException {
+		if( !ctx.console.isInteractive && dialogAvailable()) {
+			// standard input isn't a terminal, so it can't be read without echo: ask in a dialog
+			return askInDialog(prompt.trim().endsWith(":") ? prompt.trim().substring(0, prompt.trim().length()-1) : prompt.trim());
+		}
 		List<Read.Options> silent = new ArrayList<>(List.of(Read.Options.s, Read.Options.r));
 		String line;
 		try {
@@ -77,6 +102,48 @@ public final class CredentialPrompts {
 		}
 		ctx.stderr.println();
 		return line == null ? null : line.toCharArray();
+	}
+
+	/** A password dialog; null if it was cancelled. */
+	static char[] askInDialog(String label) throws IOException {
+		char[][] answer = new char[1][];
+		Runnable ask = ()->{
+			javax.swing.JPasswordField field = new javax.swing.JPasswordField(24);
+			javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(0, 6));
+			panel.add(new javax.swing.JLabel(label+":"), java.awt.BorderLayout.NORTH);
+			panel.add(field, java.awt.BorderLayout.CENTER);
+			javax.swing.JOptionPane pane = new javax.swing.JOptionPane(panel, javax.swing.JOptionPane.PLAIN_MESSAGE,
+					javax.swing.JOptionPane.OK_CANCEL_OPTION);
+			javax.swing.JDialog dialog = pane.createDialog("fsh");
+			dialog.setAlwaysOnTop(true);
+			dialog.addWindowFocusListener(new java.awt.event.WindowAdapter() {
+				@Override
+				public void windowGainedFocus(java.awt.event.WindowEvent e) {
+					field.requestFocusInWindow();
+				}
+			});
+			field.addActionListener(e->pane.setValue(javax.swing.JOptionPane.OK_OPTION));
+			dialog.setVisible(true);
+			dialog.dispose();
+			Object v = pane.getValue();
+			if( v instanceof Integer && (Integer) v == javax.swing.JOptionPane.OK_OPTION ) {
+				answer[0] = field.getPassword();
+			}
+			field.setText("");
+		};
+		try {
+			if( javax.swing.SwingUtilities.isEventDispatchThread()) {
+				ask.run();
+			} else {
+				javax.swing.SwingUtilities.invokeAndWait(ask);
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} catch (java.lang.reflect.InvocationTargetException e) {
+			throw new IOException("Can't show the password dialog: "+e.getCause(), e.getCause());
+		}
+		return answer[0];
 	}
 
 	private static final class FshPrompter implements Credentials.Prompter {
