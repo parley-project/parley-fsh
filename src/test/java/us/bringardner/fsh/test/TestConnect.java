@@ -1,6 +1,8 @@
 package us.bringardner.fsh.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.io.IOException;
 
@@ -89,6 +91,23 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals("", res.getStdErr().trim(),"stderr");
 		assertEquals(0, res.exitCode,"Exit code");
 		assertEquals("memory connected as /mem03", res.getStdOut().trim(),"stdout");
+	}
+
+	@Test
+	public void testConnectValueContainsEquals() throws IOException {
+		// generated passwords (base64) often end in '='; the value is everything after the first '='
+		ExecuteResult res = executeCommand("connect memory - /mem04", "name=memset04 password=abc==");
+		assertEquals("", res.getStdErr().trim(),"stderr");
+		assertEquals(0, res.exitCode,"Exit code");
+		assertEquals("memory connected as /mem04", res.getStdOut().trim(),"stdout");
+	}
+
+	@Test
+	public void testConnectBadArgDoesNotEchoValue() throws IOException {
+		// a malformed setting is reported by name only: the rest may be a password
+		ExecuteResult res = executeCommand("connect memory - /mem05", "=s3cret");
+		assertNotEquals(0, res.exitCode,"Exit code");
+		assertFalse((res.getStdOut()+res.getStdErr()).contains("s3cret"), "secret echoed");
 	}
 
 	@Test()
