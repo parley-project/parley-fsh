@@ -101,6 +101,10 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"us.bringardner.fsh.commands.Disconnect",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
   "name":"us.bringardner.fsh.commands.Disown",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
@@ -302,10 +306,6 @@
 },
 {
   "name":"us.bringardner.fsh.commands.Unalias",
-  "methods":[{"name":"<init>","parameterTypes":[] }]
-},
-{
-  "name":"us.bringardner.fsh.commands.Unmount",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
