@@ -224,7 +224,22 @@ public class Cred extends ShellCommand {
 					: "unavailable: "+p.unavailableReason();
 			ctx.stdout.println(p.scheme()+"\t"+state+"\t"+p.description());
 		}
+		if( Credentials.get("keychain").isEmpty()) {
+			ctx.stdout.println("keychain\tnot installed: "+whyNoKeychain());
+		}
 		return 0;
+	}
+
+	/** Why this fsh has no @keychain: store, so a build that left it out is easy to spot. */
+	static String whyNoKeychain() {
+		if( System.getProperty("org.graalvm.nativeimage.imagecode") != null ) {
+			return "this is the native fsh, which is built without it; run the Java fsh (fsh.jar) for @keychain:";
+		}
+		if( Runtime.version().feature() < 17 ) {
+			return "it needs Java 17 or newer, and this is Java "+Runtime.version().feature();
+		}
+		return "parley-credentials-keychain isn't on the classpath; build fsh with Maven (not with -Dfsh.noKeychain),"
+				+ " or refresh the IDE's Maven dependencies before exporting a jar";
 	}
 
 	private int enable(ShellContext ctx, List<String> a, boolean on) {
