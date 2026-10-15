@@ -55,6 +55,19 @@ public class TestCred extends AbstractConsoleTest {
 			assertTrue(out.contains(scheme+"\t"), out);
 		}
 		assertTrue(out.contains("cmd\tunavailable"), "cmd is off by default:\n"+out);
+		assertTrue(out.contains("keychain\t"), "the keychain is listed, installed or not:\n"+out);
+	}
+
+	@Test
+	public void aMissingKeychainSaysWhy() throws IOException {
+		us.bringardner.parley.files.credentials.Credentials.unregister("keychain");
+		try {
+			ExecuteResult res = executeCommand("cred providers", "");
+			assertEquals(0, res.exitCode, res.getStdErr());
+			assertTrue(res.getStdOut().contains("keychain\tnot installed: "), res.getStdOut());
+		} finally {
+			us.bringardner.parley.files.credentials.Credentials.restoreDefaults();
+		}
 	}
 
 	@Test
