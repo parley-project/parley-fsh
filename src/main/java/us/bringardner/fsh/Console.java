@@ -398,7 +398,26 @@ delimiter
 	private PrintStream stdOut = System.out;
 	private PrintStream stdErr = System.err;
 	public List<HistoryEntry> history = new ArrayList<>();
+	/** $? of the shell (the main thread); a stage (pipe stage, job, <(cmd)) has its own */
 	private int lastExitCode;
+
+	/**
+	 * $? where this runs: the stage's own in a stage (a <(cmd) or a job runs at the same time as
+	 * the shell, and its last command must not change the shell's $?), else the shell's.
+	 */
+	private int status() {
+		StageState s = stage.get();
+		return s != null ? s.lastExitCode : lastExitCode;
+	}
+
+	private void status(int code) {
+		StageState s = stage.get();
+		if( s != null ) {
+			s.lastExitCode = code;
+		} else {
+			lastExitCode = code;
+		}
+	}
 	private String adminMessage;
 	// read and written by the console thread, background jobs, signal handlers and the IDE
 	private Map<String,List<PropertyChangeListener>> listners = new ConcurrentHashMap<>();
@@ -1095,7 +1114,7 @@ delimiter
 					}
 				}
 				c.runLogout();
-				System.exit(c.lastExitCode);
+				System.exit(c.getLastExitCode());
 			} else {
 				Console.exit(c,ret);
 			}
@@ -1423,7 +1442,7 @@ delimiter
 			return runFile(inv.file);
 		}
 		if( isInteractive ) {
-			return lastExitCode;
+			return status();
 		}
 		return runStandardInput();
 	}
@@ -1708,7 +1727,7 @@ delimiter
 					if( !rest.isBlank()) {
 						// (an unfinished command: its syntax error, status 2)
 						int status = runChunk(rest, first);
-						lastExitCode = status < 0 ? 2 : status;
+						status(status < 0 ? 2 : status);
 					}
 					prettyEmpty();
 					break;
@@ -1734,7 +1753,7 @@ delimiter
 						// (said, and the line is not run)
 						commandsContext.line = line;
 						commandsContext.error(r.error);
-						lastExitCode = 1;
+						status(1);
 						if( code.length() == 0 ) {
 							first = line+1;
 						}
@@ -1780,10 +1799,10 @@ delimiter
 					int status = runChunk(code.toString(), first);
 					if( status < 0 ) {
 						// a syntax error ends the script
-						lastExitCode = 2;
+						status(2);
 						break;
 					}
-					lastExitCode = status;
+					status(status);
 					code.setLength(0);
 					first = line+1;
 					if( isOptionEnabled(Option.ExitAfterOne)) {
@@ -1797,7 +1816,7 @@ delimiter
 				runExitTrap();
 			}
 		}
-		return lastExitCode;
+		return status();
 	}
 
 	/** run a whole command; -1 if it has a syntax error (reported) */
@@ -2830,7 +2849,7 @@ delimiter
 		} else {
 			commands.add(pc.toString());
 		}
-		int status = lastExitCode;
+		int status = status();
 		for(String c : commands) {
 			if( !c.isBlank()) {
 				executeQuietly(c);
@@ -3890,6 +3909,8 @@ delimiter
 	 * stages are subshells). Threads a stage starts inherit it.
 	 */
 	public static final class StageState {
+		/** the stage's own $?: it starts as the shell's was, as after bash's fork */
+		int lastExitCode;
 		FileSource cwd;
 		List<Option> options;
 		Map<String,Boolean> shellOptions;
@@ -3914,6 +3935,7 @@ delimiter
 	 */
 	public void enterStage() throws IOException {
 		StageState s = new StageState();
+		s.lastExitCode = status();
 		s.cwd = getCurrentDirectory();
 		s.options = new OptionList(optionList());
 		s.shellOptions = new ConcurrentHashMap<>(getShellOptions());
@@ -4209,7 +4231,7 @@ delimiter
 	}
 
 	public void setLastExitCode(int code) {
-		lastExitCode = code;
+		status(code);
 	}
 
 	/** complete's specs, by command (-D, -E, -I for the default, an empty line, a command's name) */
@@ -4401,12 +4423,12 @@ delimiter
 	}
 
 	public void substitutionDone(int code) {
-		lastExitCode = code;
+		status(code);
 		substitutions.incrementAndGet();
 	}
 
 	public int getLastExitCode() {
-		return lastExitCode;
+		return status();
 	}
 
 
@@ -4825,7 +4847,7 @@ delimiter
 						job.handleSignal(ConsoleSignal.Hup);
 					}
 				}
-				throw new ExitException(null, lastExitCode);
+				throw new ExitException(null, status());
 			}			
 		} else {
 			IJob job = foregroundJobs.peekLast();

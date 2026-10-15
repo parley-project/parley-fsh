@@ -61,15 +61,19 @@ final class ProcessSubstitutions {
 					int status;
 					try (OutputStream out = new FileOutputStream(fifo)) {
 						opened.set(true);
-						c.stdout = us.bringardner.fsh.LfPrintStream.of(new PrintStream(new PipeOutput(out, c), true, us.bringardner.fsh.RawUtf8.CHARSET));
-						status = ex.list(seq, c);
-					}
-					// read again (wc -l < $1 twice), it is at its end at once, as bash's /dev/fd/N
-					while( !done.get()) {
-						try (OutputStream again = new FileOutputStream(fifo)) {
-							// opened and closed: that reader sees the end
-						} catch (IOException e) {
-							break;
+						try {
+							c.stdout = us.bringardner.fsh.LfPrintStream.of(new PrintStream(new PipeOutput(out, c), true, us.bringardner.fsh.RawUtf8.CHARSET));
+							status = ex.list(seq, c);
+							c.stdout.flush();
+						} finally {
+							// read again (wc -l < $1 twice), it is at its end at once, as bash's
+							// /dev/fd/N: an empty file takes the pipe's name before this end closes,
+							// so no later reader can open the pipe and wait for a writer that is gone.
+							// (Opening the pipe again and again for each reader starved a reader
+							// waiting for the end: Linux gives it only when no writer has the pipe open.)
+							if( !done.get()) {
+								replaceWithEmptyFile(fifo);
+							}
 						}
 					}
 					return status;
@@ -94,6 +98,19 @@ final class ProcessSubstitutions {
 		return fifo.getAbsolutePath();
 	}
 
+	/** an empty file in place of the pipe (rename replaces it at once), so a reader finds its end */
+	private static void replaceWithEmptyFile(File fifo) {
+		File empty = new File(fifo.getParentFile(), fifo.getName()+".end");
+		try {
+			java.nio.file.Files.deleteIfExists(empty.toPath());
+			java.nio.file.Files.createFile(empty.toPath());
+			java.nio.file.Files.move(empty.toPath(), fifo.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+					java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+		} catch (IOException | RuntimeException e) {
+			empty.delete();
+		}
+	}
+
 	/**
 	 * The command is done. If it never opened the pipe, open the other end so cmd is not left
 	 * waiting. Wait for >(cmd) to read the rest, so what it writes comes before what follows
@@ -101,16 +118,6 @@ final class ProcessSubstitutions {
 	 */
 	private static void finish(char direction, File fifo, CommandThread thread, AtomicBoolean opened, AtomicBoolean done) {
 		done.set(true);
-		if( direction == '<' && opened.get() && thread.isAlive()) {
-			// the writer may wait to give a next reader its end: let it go
-			Thread unblock = new Thread(() -> {
-				try (Closeable c = new FileInputStream(fifo)) {
-				} catch (IOException e) {
-				}
-			}, "process substitution end");
-			unblock.setDaemon(true);
-			unblock.start();
-		}
 		if( !opened.get()) {
 			Thread unblock = new Thread(() -> {
 				try (Closeable c = direction == '<' ? new FileInputStream(fifo) : new FileOutputStream(fifo)) {
