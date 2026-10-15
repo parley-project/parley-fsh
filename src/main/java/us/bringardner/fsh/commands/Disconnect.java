@@ -8,8 +8,11 @@ import us.bringardner.fsh.ShellContext;
 /** Undoes connect: removes the file system mounted at a path and closes its connection. */
 public class Disconnect extends ShellCommand {
 	static String name = "disconnect";
-	static String help = "Remove a file system that connect mounted, and close its connection\n"
-			+ "USAGE: disconnect mount_point";
+	static String help = "disconnect MOUNT_POINT\n"
+			+ "\tRemove a file system that connect mounted at MOUNT_POINT, and close its connection (unless\n"
+			+ "\tanother mount point uses the same connection). The status is 1 if nothing is connected there.\n"
+			+ "\tExample:\n"
+			+ "\tdisconnect /prod";
 
 	public Disconnect() {
 		super(name, help);

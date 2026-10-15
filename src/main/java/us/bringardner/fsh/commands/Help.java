@@ -218,4 +218,125 @@ public class Help extends ShellCommand{
 		}
 		return ret.toString();
 	}
+
+	/** fsh's own commands, in the order COMMANDS.md lists them */
+	static final List<String> FSH_COMMANDS = List.of("connect", "disconnect", "cred");
+	/** the file builtins: fsh's own versions, which work on every mounted file system */
+	static final List<String> FILE_COMMANDS = List.of("ls", "cp", "mv", "rm", "mkdir", "touch", "ln", "find", "wc");
+	/** builtins that are separate programs in bash */
+	static final List<String> OTHER_COMMANDS = List.of("sleep", "expr", "clear");
+
+	/**
+	 * COMMANDS.md: the builtins' help, as Markdown. It is made from the same text help prints, so
+	 * the two can't disagree; TestCommandsDoc checks the file is current.
+	 */
+	public static String markdown() {
+		Map<String, String> topics = topics(null);
+		StringBuilder md = new StringBuilder();
+		md.append("# fsh commands\n\n")
+		.append("<!-- Made from the builtins' help text; don't edit it by hand. After changing a help text, run\n")
+		.append("     mvn test -Dtest=TestCommandsDoc -Dfsh.writeCommandsDoc=true -->\n\n")
+		.append("Everything here is also in the shell: `help NAME` shows a command's text, and `help` lists them all.\n\n")
+		.append("- [fsh's own commands](#fshs-own-commands): connecting file systems and managing their passwords\n")
+		.append("- [File commands](#file-commands): fsh's versions of ls, cp, mv and the rest, which work on every\n")
+		.append("  mounted file system\n")
+		.append("- [Other commands](#other-commands): commands that are separate programs in bash\n")
+		.append("- [Bash builtins](#bash-builtins): the builtins that work as they do in bash\n\n");
+
+		md.append("## fsh's own commands\n\n");
+		for(String n : FSH_COMMANDS) {
+			section(md, n, topics.get(n));
+		}
+		md.append("## File commands\n\n")
+		.append("These are fsh's own versions, so they work on every mounted file system (see `connect`), and\n")
+		.append("between them: `cp /prod/app.log /mem/` copies a file from one mounted file system to another. They take the options listed for\n")
+		.append("each. Given an option it doesn't know (`cp -r`, say), a file command runs the system's command of\n")
+		.append("the same name instead, if there is one, and that works only on the local disk.\n\n");
+		for(String n : FILE_COMMANDS) {
+			section(md, n, topics.get(n));
+		}
+		md.append("## Other commands\n\n")
+		.append("In bash these are separate programs; fsh has them built in.\n\n");
+		for(String n : OTHER_COMMANDS) {
+			section(md, n, topics.get(n));
+		}
+		md.append("## Bash builtins\n\n")
+		.append("These work as they do in bash; the [bash manual](https://www.gnu.org/software/bash/manual/bash.html#Shell-Builtin-Commands)\n")
+		.append("describes them in full, and `help NAME` shows fsh's summary.\n\n")
+		.append("| Command | Usage | What it does |\n")
+		.append("|---|---|---|\n");
+		for(Map.Entry<String, String> e : topics.entrySet()) {
+			String n = e.getKey();
+			if( FSH_COMMANDS.contains(n) || FILE_COMMANDS.contains(n) || OTHER_COMMANDS.contains(n)) {
+				continue;
+			}
+			md.append("| `").append(cell(n)).append("` | `").append(cell(usage(n, e.getValue())))
+			.append("` | ").append(cell(sentence(n, e.getValue(), topics.keySet()))).append(" |\n");
+		}
+		return md.toString();
+	}
+
+	private static void section(StringBuilder md, String n, String text) {
+		if( text == null ) {
+			throw new IllegalStateException("no help for "+n);
+		}
+		md.append("### ").append(n).append("\n\n```\n").append(usage(n, text)).append("\n```\n\n");
+		String d = description(n, text);
+		if( !d.isEmpty()) {
+			md.append("```text\n");
+			for(String line : d.split("\n")) {
+				md.append(line.strip()).append('\n');
+			}
+			md.append("```\n\n");
+		}
+	}
+
+	/**
+	 * The first sentence of what it does, across line breaks, skipping usage lines (its own, or
+	 * another builtin's that it shares, such as readarray's mapfile).
+	 */
+	private static String sentence(String n, String text, java.util.Set<String> names) {
+		StringBuilder ret = new StringBuilder();
+		for(String line : description(n, text).split("\n")) {
+			String l = line.strip();
+			if( l.startsWith("USAGE:") || l.equals("SYNOPSIS") || l.equals("DESCRIPTION")) {
+				continue;
+			}
+			for(String dash : new String[] {" – ", " - "}) {
+				if( l.startsWith(n+dash)) {
+					// (echo – write arguments ...)
+					l = l.substring(n.length()+dash.length()).strip();
+				}
+			}
+			String first = l.split("[ \\[]", 2)[0];
+			if( ret.length() == 0 && (l.isEmpty() || l.startsWith("-") || names.contains(first))) {
+				continue;
+			}
+			if( l.isEmpty()) {
+				break;
+			}
+			if( ret.length() > 0 ) {
+				ret.append(' ');
+			}
+			ret.append(l);
+			int dot = ret.indexOf(". ");
+			if( dot > 0 ) {
+				ret.setLength(dot+1);
+				break;
+			}
+			if( ret.charAt(ret.length()-1) == '.' ) {
+				break;
+			}
+		}
+		String r = ret.toString().strip().replaceAll(" {2,}", " ");
+		if( r.isEmpty()) {
+			r = summary(n, text);
+		}
+		return Character.toUpperCase(r.charAt(0))+r.substring(1);
+	}
+
+	/** text for a table cell: one line, with | escaped */
+	private static String cell(String s) {
+		return s.replace("\n", " ").replace("|", "\\|").strip();
+	}
 }
