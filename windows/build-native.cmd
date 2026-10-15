@@ -28,7 +28,7 @@ if not exist "%LIB_DIR%\nativekeyboard.dll" (
 )
 
 call mvn -q package -DskipTests || exit /b 1
-call mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile=target\runtime-classpath.txt || exit /b 1
+call mvn -q dependency:build-classpath -Dfsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target\runtime-classpath.txt || exit /b 1
 
 rem (the jar and its dependencies in one folder, with the class path in an argument file: a Windows
 rem command line is limited, and the dependencies' paths are long. Not a wildcard: native-image

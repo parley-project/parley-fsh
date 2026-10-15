@@ -274,16 +274,19 @@ connect jdbc url=jdbc:postgresql://db/app user=app password=@env:APP_DB_PW /db
 
 | Reference | Where the secret is |
 |---|---|
-| `@keychain:service/account` | The OS keychain (needs parley-credentials-keychain on the class path) |
+| `@keychain:service/account` | The OS keychain: macOS Keychain, Linux Secret Service, Windows Credential Manager (the Java build, on Java 17 or later; not the native binary yet) |
 | `@keystore:name` | `~/.parley/credentials.p12`, encrypted with a master password |
 | `@file:path` | A file only its owner can read |
 | `@env:NAME` | An environment variable |
 | `@prompt:` | Asked for on the terminal, once per session |
 | `@cmd:command` | What a command prints (`op read ...`); off until `cred enable cmd` |
 
-`cred set keychain:parley/ftp` stores a secret (it asks twice, without echo, and never takes the
-secret as an argument); `cred get`, `cred list`, `cred rm`, `cred test` and `cred providers` do the
-rest. See `help cred`. In a script nobody is watching, `@prompt:` fails at once rather than waiting.
+`cred set keychain:parley/ftp` stores a secret (it asks twice and never takes the secret as an
+argument); `cred get`, `cred list`, `cred rm`, `cred test` and `cred providers` do the rest. See
+`help cred`. While a secret is typed a spinner turns, so you can see the keys land without the length
+showing; `FSH_SECRET_MASK='*'` shows a `*` per character instead, and `FSH_SECRET_MASK=` nothing. A
+keystore asks for its master password before the secret. Without a terminal (an IDE's console), `cred
+set` and `@prompt:` ask in a password dialog; in a script nobody is watching, they fail at once.
 A typed `connect` line that holds a plain password is kept out of the history, with a warning.
 
 ## Files
