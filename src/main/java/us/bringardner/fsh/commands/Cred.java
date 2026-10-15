@@ -16,6 +16,7 @@ import us.bringardner.parley.files.credentials.CredentialProvider;
 import us.bringardner.parley.files.credentials.CredentialRef;
 import us.bringardner.parley.files.credentials.CredentialRequest;
 import us.bringardner.parley.files.credentials.Credentials;
+import us.bringardner.parley.files.credentials.KeyStoreCredentialProvider;
 
 /**
  * Manages the secrets that connect settings name by reference (password=@keychain:parley/ftp):
@@ -32,7 +33,9 @@ public class Cred extends ShellCommand {
 			+ "       cred providers          the credential stores and whether each works here\n"
 			+ "       cred enable|disable cmd allow @cmd: references for this session (off by default)\n"
 			+ "REF is scheme:locator, with or without the leading @: keychain:parley/ftp, keystore:prod-db,\n"
-			+ "file:~/.parley/db.pw. The secret is never taken as an argument, so it stays out of the history.";
+			+ "file:~/.parley/db.pw. The secret is never taken as an argument, so it stays out of the history.\n"
+			+ "At a terminal a spinner turns as you type (the length doesn't show); set FSH_SECRET_MASK=* to see a * per\n"
+			+ "character, or FSH_SECRET_MASK= (empty) to see nothing.";
 
 	public Cred() {
 		super(name, help);
@@ -96,7 +99,16 @@ public class Cred extends ShellCommand {
 			ctx.stderr.println(name+": set asks for the secret: it needs an interactive shell, or a display for a password dialog");
 			return 1;
 		}
-		char[] first = CredentialPrompts.readSecret(ctx, "Secret for "+ref+": ");
+		// a keystore is unlocked (or its master password chosen) before the secret is typed,
+		// so a mistyped master password doesn't waste it
+		CredentialProvider store = Credentials.get(ref.scheme()).orElse(null);
+		if( store instanceof KeyStoreCredentialProvider && store.isAvailable()) {
+			CredentialPrompts.with(ctx, () -> {
+				((KeyStoreCredentialProvider) store).prepare();
+				return null;
+			});
+		}
+				char[] first = CredentialPrompts.readSecret(ctx, "Secret for "+ref+": ");
 		if( first == null || first.length == 0 ) {
 			ctx.stderr.println(name+": nothing stored");
 			return 1;
