@@ -37,88 +37,88 @@ public class Connect extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
-		if( args.length < 2) {
-			ctx.stdout.println( help);
-			ret = -1;
-		} else {
-			boolean readStdin=false;
-			//put in a list to make it easier to manage
-			List<String> args = new ArrayList<>();
-			for(int idx=0; idx<this.args.length; idx++) {
-				String arg = ""+this.args[idx].getValue(ctx);
-				if( arg.equals("-f")) {
-					// -f file (the property file was dropped here before)
-					args.add("-f="+this.args[++idx].getValue(ctx)); 
-				} else if( arg.startsWith("-f") && !arg.startsWith("-f=")) {
-					// -ffile
-					args.add("-f="+arg.substring(2)); 
-				} else if(arg.equals("-")) {
-					readStdin=true;
-				} else {
-					args.add(arg);
+		boolean readStdin = false;
+		// -f FILE, -fFILE and -f=FILE all become -f=FILE
+		List<String> args = new ArrayList<>();
+		for(int idx = 0; idx < this.args.length; idx++) {
+			String arg = ""+this.args[idx].getValue(ctx);
+			if( arg.equals("-f")) {
+				if( idx+1 >= this.args.length ) {
+					ctx.stderr.println(name+": -f needs a properties file");
+					return 2;
 				}
-			}
-
-			if(args.size()<2) {
-				ctx.stdout.println( help);
-				ret = -1;
-			}
-			
-			String fid = args.remove(0);
-			FileSourceFactory tmp = FileSourceFactory.getFileSourceFactory(fid);
-			if( tmp == null ) {
-				ctx.stdout.println("Unknown factory id="+fid);
-				ret = -1;
+				args.add("-f="+this.args[++idx].getValue(ctx));
+			} else if( arg.startsWith("-f") && !arg.startsWith("-f=")) {
+				args.add("-f="+arg.substring(2));
+			} else if( arg.equals("-")) {
+				readStdin = true;
 			} else {
-				if( !tmp.isConnected()) {
-					String mountPoint = args.remove(args.size()-1).trim();
-					if( mountPoint.isEmpty()) {
-						throw new IOException("No valid mount point");
-					}
-					Properties props = tmp.getConnectProperties();
-					if( props != null && props.size()>0) {
+				args.add(arg);
+			}
+		}
+		if( args.size() < 2 ) {
+			ctx.stderr.println("usage: "+help.split("\n", 2)[0]);
+			return 2;
+		}
 
-						for(String arg : args) {
-							processArg(ctx,arg,props);
-						}
-						if( readStdin) {
-							String line = readLine(ctx.stdin);
-							if( !line.isBlank()) {
-								// (name=value settings separated by any white space)
-								for(String arg: line.trim().split("\\s+")) {
-									processArg(ctx,arg,props);
-								}
-							}
-						}
-						// a setting may name its secret by reference (password=@keychain:...); @prompt:
-						// asks on this shell's terminal
-						if( CredentialPrompts.with(ctx, () -> tmp.connect(props))) {
-							FileSource[] roots =  tmp.listRoots();
-							if( roots.length>1) {
-								throw new IOException("more than one root . factory = "+tmp.getTypeId());
-							}
-
-							if(!ctx.console.mount(roots[0],mountPoint)) {
-								throw new IOException("Can't mount "+tmp.getTypeId()+" to "+mountPoint);
-							}
-							ctx.stdout.println(tmp.getTypeId()+" connected as "+mountPoint);
-						} else {
-							ctx.stdout.println(tmp.getTypeId()+" could not connect.");
-						}
-
-
-					} else {
-						ctx.stdout.println("Already connected");
-						ret = -1;
-					}
+		String fid = args.remove(0);
+		String mountPoint = args.remove(args.size()-1).trim();
+		if( !mountPoint.startsWith("/") || mountPoint.equals("/")) {
+			ctx.stderr.println(name+": the mount point must be a path such as /prod, not '"+mountPoint+"'");
+			return 2;
+		}
+		FileSourceFactory factory = FileSourceFactory.getFileSourceFactory(fid);
+		if( factory == null ) {
+			ctx.stderr.println(name+": unknown file system '"+fid+"'; the known ones are "
+					+String.join(", ", FileSourceFactory.getRegisterdFactories()));
+			return 1;
+		}
+		if( factory.isConnected()) {
+			ctx.stderr.println(name+": "+fid+" is already connected");
+			return 1;
+		}
+		Properties props = factory.getConnectProperties();
+		if( props == null || props.isEmpty()) {
+			ctx.stderr.println(name+": "+fid+" has no connection settings, so it can't be connected");
+			return 1;
+		}
+		for(String arg : args) {
+			processArg(ctx, arg, props);
+		}
+		if( readStdin ) {
+			String line = readLine(ctx.stdin);
+			if( line != null && !line.isBlank()) {
+				// (name=value settings separated by any white space)
+				for(String arg : line.trim().split("\\s+")) {
+					processArg(ctx, arg, props);
 				}
 			}
 		}
-
-
-
-		return ret;
+		// a setting may name its secret by reference (password=@keychain:...); @prompt: asks on
+		// this shell's terminal
+		if( !CredentialPrompts.with(ctx, () -> factory.connect(props))) {
+			ctx.stderr.println(name+": "+fid+" could not connect");
+			return 1;
+		}
+		FileSource[] roots = factory.listRoots();
+		String problem = null;
+		if( roots == null || roots.length != 1 ) {
+			problem = fid+" has "+(roots == null ? 0 : roots.length)+" roots; it can be mounted only with one";
+		} else if( !ctx.console.mount(roots[0], mountPoint)) {
+			problem = "can't mount "+fid+" at "+mountPoint+" (is something already connected there?)";
+		}
+		if( problem != null ) {
+			// (don't leave a connection open that nothing can use)
+			try {
+				factory.disConnect();
+			} catch (IOException e) {
+				// the mount failing is what matters
+			}
+			ctx.stderr.println(name+": "+problem);
+			return 1;
+		}
+		ctx.stdout.println(factory.getTypeId()+" connected as "+mountPoint);
+		return 0;
 	}
 
 	private void processArg(ShellContext ctx,String arg, Properties props) throws IOException {
@@ -134,7 +134,7 @@ public class Connect extends ShellCommand{
 
 			FileSource file = files.remove(0);
 			if( !file.exists() || file.length() <=0 ) {
-				throw new IOException("Can't load properies. "+file+" does not exists or is empty");
+				throw new IOException("can't load settings: "+file+" doesn't exist or is empty");
 			}
 			InputStream pin = file.getInputStream();
 			try {

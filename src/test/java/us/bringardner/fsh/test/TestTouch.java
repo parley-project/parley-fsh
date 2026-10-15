@@ -377,6 +377,13 @@ public void touch_t() throws IOException, ParseException {
 		String dateStr = t_dateConfigs[idx].dateStr;
 		SimpleDateFormat fmt = t_dateConfigs[idx].fmt;
 		long expected = fmt.parse(dateStr).getTime();
+		if( !fmt.toPattern().contains("y")) {
+			// no year given: this year (as POSIX touch does), not 1970
+			java.util.Calendar cal = java.util.Calendar.getInstance();
+			cal.setTimeInMillis(expected);
+			cal.set(java.util.Calendar.YEAR, java.time.LocalDate.now().getYear());
+			expected = cal.getTimeInMillis();
+		}
 
 		String cmd = String.format("touch -t %s %s",dateStr,touchFile.getName());
 		ExecuteResult result = executeCommand(cmd, "");

@@ -3,6 +3,7 @@ package us.bringardner.fsh.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
@@ -160,5 +161,30 @@ public class TestConnect extends AbstractConsoleTest {
 
 		res = executeCommand("disconnect", "");
 		assertEquals(2, res.exitCode);
+	}
+
+	@Test
+	public void mistakesHaveAStatus() throws IOException {
+		ExecuteResult res = executeCommand("connect", "");
+		assertEquals(2, res.exitCode);
+		assertEquals("usage: connect FACTORY [-f FILE] [name=value ...] [-] MOUNT_POINT", res.getStdErr().trim());
+
+		res = executeCommand("connect nosuch /x", "");
+		assertEquals(1, res.exitCode);
+		assertTrue(res.getStdErr().startsWith("connect: unknown file system 'nosuch'; the known ones are "), res.getStdErr());
+
+		res = executeCommand("connect memory relative", "");
+		assertEquals(2, res.exitCode);
+
+		res = executeCommand("connect memory -f", "");
+		assertEquals(2, res.exitCode);
+		assertEquals("connect: -f needs a properties file", res.getStdErr().trim());
+
+		res = executeCommand("connect memory /memtwice", "");
+		assertEquals(0, res.exitCode, res.getStdErr());
+		res = executeCommand("connect memory /memtwice", "");
+		assertEquals(1, res.exitCode, "a mount point already in use");
+		assertTrue(res.getStdErr().contains("can't mount memory at /memtwice"), res.getStdErr());
+		executeCommand("disconnect /memtwice", "");
 	}
 }

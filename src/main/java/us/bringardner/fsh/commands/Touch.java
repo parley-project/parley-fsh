@@ -1,25 +1,25 @@
 package us.bringardner.fsh.commands;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
+import us.bringardner.parley.files.FileSource;
 
+/**
+ * touch: sets files' access and modification times (now, or a time given), creating files that
+ * don't exist.
+ */
 public class Touch extends ShellCommand{
-
-	private enum Arguments {A, a, c, h, m,r,t,d};
 
 	static String name = "touch";
 	static String help = "touch [-acm] [-r FILE | -t TIME | -d DATE | -A OFFSET] FILE ...\n"
@@ -30,405 +30,238 @@ public class Touch extends ShellCommand{
 			+ "\t-c          don't create files that don't exist\n"
 			+ "\t-r FILE     use FILE's times\n"
 			+ "\t-t TIME     [[CC]YY]MMDDhhmm[.SS], local time\n"
-			+ "\t-d DATE     YYYY-MM-DDThh:mm:SS, local time, or UTC with a trailing Z\n"
-			+ "\t-A OFFSET   move the times by [-][[hh]mm]SS";
+			+ "\t-d DATE     YYYY-MM-DD[Thh:mm[:SS[.frac]]], local time; or UTC with a trailing Z, or\n"
+			+ "\t            another zone with +hh:mm or -hh:mm\n"
+			+ "\t-A OFFSET   move the existing times by [-][[hh]mm]SS";
 
-	private static interface ArgumentProcessor {
-		/**
-		 * Process the arguments for a specific option
-		 * 
-		 * @param argument 
-		 * @param ctx
-		 * @param idx the current index into args
-		 * @return the index into args reflecting any changes made by the processor
-		 * @throws IOException 
-		 */
-		int process(TouchArguments argument,ShellContext ctx,int idx) throws IOException ;
-	}
+	/** -t: [[CC]YY]MMDDhhmm[.SS] */
+	private static final Pattern T_TIME = Pattern.compile("(\\d{8}|\\d{10}|\\d{12})(?:\\.(\\d\\d))?");
+	/** -d: YYYY-MM-DD, then optionally a time and a zone */
+	private static final Pattern D_DATE = Pattern.compile(
+			"(\\d{4})-(\\d{1,2})-(\\d{1,2})(?:[T ](\\d{1,2}):(\\d{2})(?::(\\d{2})(?:[.,](\\d{1,9}))?)?)?\\s*(Z|z|[+-]\\d{2}:?\\d{2})?");
+	/** the time part of a -d date given as a second word (2020-07-23 06:30:10Z) */
+	private static final Pattern D_TIME = Pattern.compile("\\d{1,2}:\\d{2}(?::\\d{2}(?:[.,]\\d{1,9})?)?\\s*(Z|z|[+-]\\d{2}:?\\d{2})?");
+	/** -A: [-][[hh]mm]SS */
+	private static final Pattern A_OFFSET = Pattern.compile("(-)?(\\d{2}|\\d{4}|\\d{6})");
 
-	private  class Action_A implements ArgumentProcessor {
-
-		@Override
-		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			//[-A [-][[hh]mm]SS]
-
-			boolean negate = false;
-			String val = ""+args[++idx].getValue(ctx);
-			if( val.length()==7) {
-				String tmp = val.substring(0,1);
-				val = val.substring(1);
-				if( !tmp.equals("-")) {
-					throw new IOException("Invalid char = "+tmp);
-				}
-				negate = true;
-			}
-			int hh = 0, mm = 0;
-			if( val.length()==6) {
-				String tmp = val.substring(0,2);
-				val = val.substring(2);
-				hh = Integer.parseInt(tmp);
-			}
-			if( val.length()==4) {
-				String tmp = val.substring(0,2);
-				val = val.substring(2);
-				mm = Integer.parseInt(tmp);
-			}
-			int SS = Integer.parseInt(val);
-			ret.parameters.put(Arguments.A, Arrays.asList(negate,hh,mm,SS));
-
-			return idx;
+	/** A mistake in the arguments: reported as "touch: ..." with status 1. */
+	static class BadArgument extends Exception {
+		private static final long serialVersionUID = 1L;
+		BadArgument(String message) {
+			super(message);
 		}
-
 	}
 
-
-	private  class Action_r implements ArgumentProcessor {
-
-		@Override
-		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			//[-r file]
-			//Use the access and modifications times from the specified file instead of the current time of day.
-
-			String path = args[++idx].getValue(ctx).toString();
-			List<FileSource> file = getFiles(ctx, path);
-			ret.parameters.put(Arguments.r, Arrays.asList(file));
-			return idx;
-		}
-
-	}
-
-	public  class Action_t implements ArgumentProcessor {
-		//[-t [[CC]YY]MMDDhhmm[.SS]]
-		String dateFormats [] = {
-				"yyyyMMddhhmm.ss" 
-				, "yyMMddhhmm.ss" 
-				, "MMddhhmm.ss"
-				, "yyyyMMddhhmm" 
-				, "yyMMddhhmm" 
-				, "MMddhhmm"
-		}
-		;
-
-		@Override
-		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			String val = args[++idx].getValue(ctx).toString();
-			SimpleDateFormat sdf = null;
-			for(String fmt : dateFormats) {
-				if( val.length()==fmt.length()) {
-					sdf = new SimpleDateFormat(fmt);
-					break;
-				}
-			}
-
-			if( sdf == null ) {
-				throw new IOException("Invalid date format "+val);
-			}
-
-			try {
-				Date date = sdf.parse(val);
-				ret.parameters.put(Arguments.t, Arrays.asList(date.getTime()));
-			} catch (ParseException e) {
-				throw new IOException("Invalid date format = "+val);
-			}
-
-
-			return idx;
-		}
-
-	}
-
-	public  class Action_d implements ArgumentProcessor {
-		//[-d YYYY-MM-DDThh:mm:SS[tz]]
-		
-		@Override
-		public int process(TouchArguments ret, ShellContext ctx, int idx) throws IOException {
-			// the date is one word (2020-07-23T06:30:10Z) or two (2020-07-23 06:30:10Z);
-			// the last argument is the file
-			StringBuilder tmp = new StringBuilder();
-			int idx2 = idx+1;
-			for(;idx2<args.length-1; idx2++) {
-				if( tmp.length() > 0 ) {
-					tmp.append(' ');
-				}
-				tmp.append(args[idx2].getValue(ctx).toString());
-			}
-			
-			String tm2 = tmp.toString();
-			
-			String val = tm2.replace("T"," ");
-			
-			boolean gmt = false;
-			if( val.endsWith("Z")) {
-				gmt = true;
-				val = val.substring(0,val.length()-1);
-			}
-			
-			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			
-			try {
-				if( gmt ) {
-					sdf.setTimeZone(TimeZone.getTimeZone("GMT"));	
-				}
-				Date date = sdf.parse(val);
-				ret.parameters.put(Arguments.d, Arrays.asList(date.getTime()));
-			} catch (ParseException e) {
-				throw new IOException("Invalid date format "+e);
-			}
-
-			return idx2-1;
-		}
-
-	}
-
-
-
-	private static class TouchArguments {		
-		List<Object> options = new ArrayList<>();
-		List<String> paths  = new ArrayList<>();
-		Map<Object,List<Object>> parameters = new HashMap<>();
-	}
-
-	 Map<Object,ArgumentProcessor> actions = new HashMap<>();
-	
 	public Touch() {
 		super(name, help);
-		actions.put(Arguments.A, new Action_A());
-		actions.put(Arguments.r, new Action_r());
-		actions.put(Arguments.t, new Action_t());
-		actions.put(Arguments.d, new Action_d());
 	}
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
+		boolean access = false, modification = false, create = true;
+		String ref = null, tValue = null, dValue = null, aValue = null;
+		List<String> paths = new ArrayList<>();
 
-
-		TouchArguments targs = parserArguments(ctx, Arguments.class, actions);
-
-		List<Arguments> options = new ArrayList<>();
-		for(Object o : targs.options) {
-			if (o instanceof Arguments) {
-				options.add((Arguments) o);				
+		List<String> words = new ArrayList<>();
+		for(int i = 0; i < args.length; i++) {
+			words.add(""+args[i].getValue(ctx));
+		}
+		try {
+			boolean options = true;
+			for(int idx = 0; idx < words.size(); idx++) {
+				String w = words.get(idx);
+				if( !options || !w.startsWith("-") || w.length() == 1 ) {
+					paths.add(w);
+					continue;
+				}
+				if( w.equals("--")) {
+					options = false;
+					continue;
+				}
+				for(int c = 1; c < w.length(); c++) {
+					char o = w.charAt(c);
+					switch (o) {
+					case 'a': access = true; break;
+					case 'm': modification = true; break;
+					case 'c': create = false; break;
+					// -h: the link itself, which isn't created either
+					case 'h': create = false; break;
+					case 'r': case 't': case 'd': case 'A': {
+						// the value: the rest of this word (-t202001010000), or the next word
+						String value;
+						if( c+1 < w.length()) {
+							value = w.substring(c+1);
+						} else if( idx+1 < words.size()) {
+							value = words.get(++idx);
+						} else {
+							throw new BadArgument("option requires an argument -- "+o);
+						}
+						if( o == 'd' && D_DATE.matcher(value).matches() && !value.matches(".*[T ].*")
+								&& idx+2 < words.size() && D_TIME.matcher(words.get(idx+1)).matches()) {
+							// the date and the time as two words (-d 2020-07-23 06:30:10), with a file after them
+							value = value+" "+words.get(++idx);
+						}
+						switch (o) {
+						case 'r': ref = value; break;
+						case 't': tValue = value; break;
+						case 'd': dValue = value; break;
+						default: aValue = value; break;
+						}
+						c = w.length();
+					} break;
+					default:
+						throw new UnsupportedOption("Unknown argument "+o);
+					}
+				}
 			}
-		}
-
-		List<String> paths = targs.paths;
-		if( paths.size() ==0) {
-			ctx.stdout.println(help);
-			return -1;
-		}
-
-		for(String path : paths) {
-			List<FileSource> files = getFiles(ctx, path);
-			for(FileSource file : files) {
-				touch(file,targs);
+			if( paths.isEmpty()) {
+				throw new BadArgument("missing file operand");
 			}
+			int sources = (ref != null ? 1 : 0)+(tValue != null ? 1 : 0)+(dValue != null ? 1 : 0)+(aValue != null ? 1 : 0);
+			if( sources > 1 ) {
+				throw new BadArgument("only one of -r, -t, -d and -A can be given");
+			}
+			if( !access && !modification ) {
+				access = modification = true;
+			}
+
+			// the times to set (null for -A, which moves each file's own times)
+			long[] times = null;
+			long offset = 0;
+			if( ref != null ) {
+				List<FileSource> found = getFiles(ctx, ref);
+				if( found.size() != 1 || !found.get(0).exists()) {
+					throw new BadArgument(ref+": No such file or directory");
+				}
+				FileSource r = found.get(0);
+				times = new long[] {r.lastAccessTime(), r.lastModified()};
+			} else if( tValue != null ) {
+				long t = parseT(tValue);
+				times = new long[] {t, t};
+			} else if( dValue != null ) {
+				long t = parseD(dValue);
+				times = new long[] {t, t};
+			} else if( aValue != null ) {
+				offset = parseA(aValue);
+				// -A moves existing times; a file that doesn't exist has none to move
+				create = false;
+			} else {
+				long now = System.currentTimeMillis();
+				times = new long[] {now, now};
+			}
+
+			int ret = 0;
+			for(String path : paths) {
+				for(FileSource file : getFiles(ctx, path)) {
+					try {
+						touch(file, times, offset, access, modification, create);
+					} catch (IOException e) {
+						ctx.stderr.println(name+": "+path+": "+e.getMessage());
+						ret = 1;
+					}
+				}
+			}
+			return ret;
+		} catch (BadArgument e) {
+			ctx.stderr.println(name+": "+e.getMessage());
+			return 1;
 		}
-
-
-		return ret;
 	}
 
-	@SuppressWarnings("unchecked")
-	private void touch(FileSource file, TouchArguments targs) throws IOException {
+	private static void touch(FileSource file, long[] times, long offset, boolean access, boolean modification,
+			boolean create) throws IOException {
 		if( !file.exists()) {
-			if( targs.options.contains(Arguments.c) || targs.options.contains(Arguments.A) || targs.options.contains(Arguments.h)) {
-				//  don't create file
+			if( !create ) {
 				return;
 			}
 			file.createNewFile();
 			if( !file.exists()) {
-				throw new IOException("Could not create file "+file);
+				throw new IOException("can't create it");
 			}
 		}
-
-		if( targs.options.contains(Arguments.r)) {
-			List<Object> list = targs.parameters.get(Arguments.r);
-			if( list == null ) {
-				throw new IOException("No parameter list");
-			}
-
-			if( list.size() !=1 ) {
-				throw new IOException("One and only one file expected. Got "+list.size());
-			}
-			List<FileSource> fsl = (List<FileSource>) list.get(0);
-			if( fsl.size() !=1 ) {
-				throw new IOException("One and only one file expected. Got "+fsl.size());
-			}
-			FileSource fs = fsl.get(0);
-
-			if( targs.options.contains(Arguments.a) || !targs.options.contains(Arguments.m)) {
-				file.setLastAccessTime(fs.lastAccessTime());
-			}
-			
-			if( targs.options.contains(Arguments.m) || !targs.options.contains(Arguments.a)) {
-				file.setLastModifiedTime(fs.lastModified());
-			}
-
-
-		} else if( targs.options.contains(Arguments.A)) {
-			// adjust by amount
-			List<Object> values = targs.parameters.get(Arguments.A);
-			if( values == null || values.size()!= 4) {
-				throw new IOException("Invalid args for -A="+values);
-			}
-			boolean negate = (boolean) values.get(0);
-			//negate,hh,mm,SS
-			int hh = (int) values.get(1);
-			int mm = (int) values.get(2);
-			int ss = (int) values.get(3);
-			
-			if( targs.options.contains(Arguments.a) || !targs.options.contains(Arguments.m)) {
-				long ad = adjustTimeForA(file.lastAccessTime(),negate,hh,mm,ss);				
-				file.setLastAccessTime(ad);
-			}
-			
-			if( targs.options.contains(Arguments.m) || !targs.options.contains(Arguments.a)) {
-				long md = adjustTimeForA(file.lastModified(),negate,hh,mm,ss);
-				file.setLastModifiedTime(md);
-			}
-			
-
- 		} else if( targs.options.contains(Arguments.d)) {
-			// adjust by amount
-			List<Object> values = targs.parameters.get(Arguments.d);
-			if( values == null || values.size()!= 1) {
-				throw new IOException("Invalid args for -d="+values);
-			}
-			long time  = (long) values.get(0);
-			if( targs.options.contains(Arguments.a) || !targs.options.contains(Arguments.m)) {
-				file.setLastAccessTime(time);
-			}
-			
-			if( targs.options.contains(Arguments.m) || !targs.options.contains(Arguments.a)) {
-				file.setLastModifiedTime(time);
-			}
-			
-
-		} else if( targs.options.contains(Arguments.t)) {
-			// adjust by amount
-			List<Object> values = targs.parameters.get(Arguments.t);
-			if( values == null || values.size()!= 1) {
-				throw new IOException("Invalid args for -t="+values);
-			}
-			long time  = (long) values.get(0);
-			if( targs.options.contains(Arguments.a) || !targs.options.contains(Arguments.m)) {
-				file.setLastAccessTime(time);
-			}
-			
-			if( targs.options.contains(Arguments.m) || !targs.options.contains(Arguments.a)) {
-				file.setLastModifiedTime(time);
-			}
-			
-
+		long a = times != null ? times[0] : file.lastAccessTime()+offset;
+		long m = times != null ? times[1] : file.lastModified()+offset;
+		if( access ) {
+			file.setLastAccessTime(a);
 		}
-
-
-
-
+		if( modification ) {
+			file.setLastModifiedTime(m);
+		}
 	}
 
-	private long adjustTimeForA(long originalTime, boolean negate, int hh, int mm, int ss) {
-		Calendar cal = Calendar.getInstance();
-		cal.setTimeInMillis(originalTime);
-		if( hh !=0 ) {
-			cal.add(Calendar.HOUR, negate?-hh:hh);
+	/** -t [[CC]YY]MMDDhhmm[.SS], local time; the current year when there is none */
+	static long parseT(String value) throws BadArgument {
+		Matcher m = T_TIME.matcher(value);
+		if( !m.matches()) {
+			throw new BadArgument("invalid date format '"+value+"' (expected [[CC]YY]MMDDhhmm[.SS])");
 		}
-		if( mm !=0 ) {
-			cal.add(Calendar.MINUTE, negate?-mm:mm);
+		String d = m.group(1);
+		int year;
+		if( d.length() == 12 ) {
+			year = Integer.parseInt(d.substring(0, 4));
+			d = d.substring(4);
+		} else if( d.length() == 10 ) {
+			int yy = Integer.parseInt(d.substring(0, 2));
+			// as POSIX says: 69-99 are 1969-1999, 00-68 are 2000-2068
+			year = yy >= 69 ? 1900+yy : 2000+yy;
+			d = d.substring(2);
+		} else {
+			year = LocalDate.now().getYear();
 		}
-		if( ss !=0 ) {
-			cal.add(Calendar.SECOND, negate?-ss:ss);
+		// (a leap second, 60, is taken as 59)
+		int ss = m.group(2) == null ? 0 : Math.min(59, Integer.parseInt(m.group(2)));
+		try {
+			LocalDateTime t = LocalDateTime.of(year, Integer.parseInt(d.substring(0, 2)), Integer.parseInt(d.substring(2, 4)),
+					Integer.parseInt(d.substring(4, 6)), Integer.parseInt(d.substring(6, 8)), ss);
+			return t.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+		} catch (DateTimeException e) {
+			throw new BadArgument("invalid date '"+value+"': "+e.getMessage());
 		}
-
-		return cal.getTimeInMillis();
 	}
 
-	protected TouchArguments parserArguments(ShellContext ctx,Class<?> cls,Map<Object,ArgumentProcessor> actions) throws IOException {
-		TouchArguments ret = new TouchArguments();
-		if( args.length>0) {
-			try {
-				Method m = cls.getDeclaredMethod("valueOf", String.class);
-				m.setAccessible(true);
-				for(int idx=0; idx < args.length; idx++ ) {
-					String arg = args[idx].getValue(ctx).toString().trim();
-					if( arg.startsWith("-")) {
-						arg = arg.substring(1);
-						for(char c : arg.toCharArray()) {
-							try {
-								Object a = m.invoke(null, ""+c);
-								ret.options.add(a);
-								ArgumentProcessor action = actions.get(a);
-								if( action != null ) {
-									idx = action.process(ret, ctx, idx);
-								}
-							} catch (Exception e) {
-								throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("Unknown argument "+c);
-							}
-						}
-					} else {
-						ret.paths.add(arg);
-					}
-				}
-			} catch (NoSuchMethodException | SecurityException e) {
-				throw new IOException(e);
+	/** -d YYYY-MM-DD[Thh:mm[:SS[.frac]]][Z|+hh:mm], local time unless a zone is given */
+	static long parseD(String value) throws BadArgument {
+		Matcher m = D_DATE.matcher(value.trim());
+		if( !m.matches()) {
+			throw new BadArgument("invalid date format '"+value+"' (expected YYYY-MM-DDThh:mm:SS)");
+		}
+		try {
+			int nanos = 0;
+			if( m.group(7) != null ) {
+				nanos = Integer.parseInt((m.group(7)+"000000000").substring(0, 9));
 			}
-		}
-		return ret;
-	}
-
-	protected TouchArguments parserArguments1(ShellContext ctx,Class<?> cls) throws IOException {
-		TouchArguments ret = new TouchArguments();
-		if( args.length>0) {
-			try {
-				Method m = cls.getDeclaredMethod("valueOf", String.class);
-				m.setAccessible(true);
-				for(int idx=0; idx < args.length; idx++ ) {
-					String arg = args[idx].getValue(ctx).toString().trim();
-					if( arg.startsWith("-")) {
-						arg = arg.substring(1);
-						for(char c : arg.toCharArray()) {
-							try {
-								Object a = m.invoke(null, ""+c);
-								ret.options.add(a);
-								if( a.equals(Arguments.A)) {
-									//[-A [-][[hh]mm]SS]
-									List<Object> p = new ArrayList<>();
-									String val = args[idx++].getValue(ctx).toString();
-									p.add(val);
-									if( val.equals("-")) {
-										p.add(args[idx++].getValue(ctx).toString());
-									}
-									ret.parameters.put(arg, p);
-								} else if( a.equals(Arguments.r)) {
-									//[-r file]
-									ret.parameters.put(arg, Arrays.asList(args[idx++].getValue(ctx).toString()));
-								} else if( a.equals(Arguments.t)) {
-									//[-t [[CC]YY]MMDDhhmm[.SS]]
-									ret.parameters.put(arg, Arrays.asList(args[idx++].getValue(ctx).toString()));
-								} else if( a.equals(Arguments.d)) {
-									//[-d YYYY-MM-DDThh:mm:SS[.frac][tz]]
-									List<Object> p = new ArrayList<>();
-									String val = args[idx++].getValue(ctx).toString();
-									p.add(val);
-									if( val.equals("Z")) {
-										p.add(args[idx++].getValue(ctx).toString());
-									}
-									ret.parameters.put(arg, p);
-								} 
-							} catch (Exception e) {
-								throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("Unknown argument "+c);
-							}
-						}
-					} else {
-						ret.paths.add(arg);
-					}
-				}
-			} catch (NoSuchMethodException | SecurityException e) {
-				throw new IOException(e);
+			LocalDateTime t = LocalDateTime.of(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
+					Integer.parseInt(m.group(3)), m.group(4) == null ? 0 : Integer.parseInt(m.group(4)),
+					m.group(5) == null ? 0 : Integer.parseInt(m.group(5)),
+					m.group(6) == null ? 0 : Integer.parseInt(m.group(6)), nanos);
+			String zone = m.group(8);
+			ZoneId z;
+			if( zone == null ) {
+				z = ZoneId.systemDefault();
+			} else if( zone.equalsIgnoreCase("Z")) {
+				z = ZoneOffset.UTC;
+			} else {
+				String hhmm = zone.replace(":", "");
+				int sign = hhmm.charAt(0) == '-' ? -1 : 1;
+				z = ZoneOffset.ofHoursMinutes(sign*Integer.parseInt(hhmm.substring(1, 3)), sign*Integer.parseInt(hhmm.substring(3)));
 			}
+			return t.atZone(z).toInstant().toEpochMilli();
+		} catch (DateTimeException e) {
+			throw new BadArgument("invalid date '"+value+"': "+e.getMessage());
 		}
-		return ret;
 	}
 
+	/** -A [-][[hh]mm]SS, in milliseconds */
+	static long parseA(String value) throws BadArgument {
+		Matcher m = A_OFFSET.matcher(value);
+		if( !m.matches()) {
+			throw new BadArgument("invalid time adjustment '"+value+"' (expected [-][[hh]mm]SS)");
+		}
+		String d = m.group(2);
+		long secs = 0;
+		for(int i = 0; i < d.length(); i += 2) {
+			secs = secs*60+Integer.parseInt(d.substring(i, i+2));
+		}
+		return (m.group(1) != null ? -secs : secs)*1000L;
+	}
 }
