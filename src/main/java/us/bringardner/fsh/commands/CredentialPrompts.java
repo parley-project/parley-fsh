@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import us.bringardner.fsh.NativeKeyboard;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.credentials.CredentialRequest;
@@ -93,6 +94,15 @@ public final class CredentialPrompts {
 			// standard input isn't a terminal, so it can't be read without echo: ask in a dialog
 			return askInDialog(prompt.trim().endsWith(":") ? prompt.trim().substring(0, prompt.trim().length()-1) : prompt.trim());
 		}
+		char mask = secretMask(ctx);
+		if( NativeKeyboard.isAvailible() && us.bringardner.fsh.Console.isKeyboard(ctx.stdin) || ctx.stdin instanceof NativeKeyboard ) {
+			// a terminal: a spinner, or a mask (*) for each character typed
+			NativeKeyboard kb = new NativeKeyboard();
+			kb.setLineTerminator('\n');
+			kb.setPrompt(prompt);
+			char[] ret = mask == SPIN ? kb.readSpinning() : mask == 0 ? kb.readSilent() : kb.readMasked(mask);
+			return ret;
+		}
 		List<Read.Options> silent = new ArrayList<>(List.of(Read.Options.s, Read.Options.r));
 		String line;
 		try {
@@ -102,6 +112,27 @@ public final class CredentialPrompts {
 		}
 		ctx.stderr.println();
 		return line == null ? null : line.toCharArray();
+	}
+
+	/** The variable that sets what a secret's characters show as at a terminal. */
+	public static final String MASK_VARIABLE = "FSH_SECRET_MASK";
+
+	/** secretMask's answer for the spinner. */
+	static final char SPIN = '\uFFFF';
+
+	/**
+	 * What a secret shows as while it's typed at a terminal: a spinner that turns with each key
+	 * (SPIN) when FSH_SECRET_MASK isn't set or is "spin", so typing is seen to land without the
+	 * length showing; its first character for each character typed (such as *); or nothing (0)
+	 * when it is set but empty, as sudo, ssh and passwd show nothing.
+	 */
+	static char secretMask(ShellContext ctx) {
+		Object v = ctx.getVariable(MASK_VARIABLE);
+		if( v == null || v.toString().equals("spin")) {
+			return SPIN;
+		}
+		String s = v.toString();
+		return s.isEmpty() ? 0 : s.charAt(0);
 	}
 
 	/** A password dialog; null if it was cancelled. */

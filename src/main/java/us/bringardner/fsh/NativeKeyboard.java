@@ -653,6 +653,143 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	}
 
+	/**
+	 * Reads a secret: each character typed is shown as mask (a password prompt's *), Backspace
+	 * removes the last one and Ctrl-U all of them; arrow and history keys are ignored. Ends at
+	 * the line terminator. Typed bytes are read as UTF-8, so a character of several bytes shows
+	 * one mask and is removed by one Backspace.
+	 *
+	 * @return the secret (the caller zeroes it), or null at end of input or Ctrl-C in a job
+	 * @throws LineCancelled at Ctrl-C
+	 */
+	public char[] readMasked(char mask) throws LineCancelled {
+		return readSecret(mask, false);
+	}
+
+	/**
+	 * Reads a secret showing one spinner character (| / - \) that turns with every key,
+	 * Backspace included: it shows the typing lands without showing how long the secret is.
+	 */
+	public char[] readSpinning() throws LineCancelled {
+		return readSecret('|', true);
+	}
+
+	/** Reads a secret showing nothing, as sudo, ssh and passwd do. */
+	public char[] readSilent() throws LineCancelled {
+		return readSecret('\0', false);
+	}
+
+	private static final char[] SPINNER = {'|', '/', '-', '\\'};
+
+	private char[] readSecret(char mask, boolean spin) throws LineCancelled {
+		int frame = -1;
+		System.out.print(prompt == null ? "" : prompt);
+		System.out.flush();
+		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+		// where each character starts in bytes, so Backspace removes a whole one
+		java.util.ArrayDeque<Integer> starts = new java.util.ArrayDeque<>();
+		try {
+			while( true ) {
+				int key = nextKey();
+				if( key == KEY_EOF || (key == CTRL_D && starts.isEmpty())) {
+					System.out.print('\n');
+					return starts.isEmpty() ? null : decodeSecret(bytes);
+				}
+				if( key == KEY_INTR ) {
+					return null;
+				}
+				if( key == CTRL_C ) {
+					System.out.print("^C\n");
+					System.out.flush();
+					throw new LineCancelled();
+				}
+				if( key == lineTerminator || key == '\r' || key == '\n' ) {
+					if( spin && frame >= 0 ) {
+						System.out.print("\b \b");
+					}
+					System.out.print('\n');
+					System.out.flush();
+					return decodeSecret(bytes);
+				}
+				if( key == 127 || key == 8 ) {
+					if( !starts.isEmpty()) {
+						truncate(bytes, starts.pop());
+						if( !spin && mask != '\0' ) {
+							System.out.print("\b \b");
+						}
+					}
+					frame = turn(spin, frame);
+				} else if( key == 21 ) {
+					// Ctrl-U: erase everything typed
+					if( !spin && mask != '\0' ) {
+						for(int i = starts.size(); i > 0; i-- ) {
+							System.out.print("\b \b");
+						}
+					}
+					starts.clear();
+					truncate(bytes, 0);
+					frame = turn(spin, frame);
+				} else if( key >= UP && key <= END || key < 32 ) {
+					// arrows, Home, End, Delete, and other control keys: nothing to do in a secret
+				} else if( key < 0x80 || (key & 0xC0) == 0xC0 && key < 0x100 ) {
+					// ASCII, or the first byte of a UTF-8 character: one mask
+					starts.push(bytes.size());
+					bytes.write(key);
+					frame = spin ? turn(true, frame) : show(mask);
+				} else if( key < 0x100 ) {
+					// a UTF-8 continuation byte
+					bytes.write(key);
+				} else {
+					// already a character
+					starts.push(bytes.size());
+					byte[] b = new String(Character.toChars(key)).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+					bytes.write(b, 0, b.length);
+					frame = spin ? turn(true, frame) : show(mask);
+				}
+				System.out.flush();
+			}
+		} finally {
+			truncate(bytes, 0);
+		}
+	}
+
+	/** Turns the spinner one step (drawing it the first time); returns the new frame. */
+	private static int turn(boolean spin, int frame) {
+		if( !spin ) {
+			return frame;
+		}
+		if( frame >= 0 ) {
+			System.out.print('\b');
+		}
+		int next = (frame+1) % SPINNER.length;
+		System.out.print(SPINNER[next]);
+		return next;
+	}
+
+	private static int show(char mask) {
+		if( mask != '\0' ) {
+			System.out.print(mask);
+		}
+		return -1;
+	}
+
+	private static char[] decodeSecret(java.io.ByteArrayOutputStream bytes) {
+		byte[] b = bytes.toByteArray();
+		java.nio.CharBuffer cb = java.nio.charset.StandardCharsets.UTF_8.decode(java.nio.ByteBuffer.wrap(b));
+		char[] ret = java.util.Arrays.copyOfRange(cb.array(), cb.position(), cb.limit());
+		java.util.Arrays.fill(cb.array(), '\0');
+		java.util.Arrays.fill(b, (byte) 0);
+		return ret;
+	}
+
+	/** Cuts bytes back to size, zeroing what was cut. */
+	private static void truncate(java.io.ByteArrayOutputStream bytes, int size) {
+		byte[] keep = bytes.toByteArray();
+		bytes.reset();
+		bytes.write(keep, 0, Math.min(size, keep.length));
+		java.util.Arrays.fill(keep, (byte) 0);
+	}
+
 	private void print(char c) {
 		if( echo ) {
 			System.out.print(c);
