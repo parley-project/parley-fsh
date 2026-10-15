@@ -17,12 +17,16 @@ public class Rm extends ShellCommand{
 
 
 	static String name = "rm";
-	static String help = ""
-			+ "USAGE:  rm [-f | -i] [-dIRrvWx] file ...\n"
-
-			+ "\n"
-			+ "     The rm utility attempts to remove the files specified on the command line.  "
-			+ "\t see 'man rm' for more information";
+	static String help = "rm [-f | -i | -I] [-dRrvx] FILE ...\n"
+			+ "\tRemove files, and directories with -r or -d. It refuses /, . and ..\n"
+			+ "\t-d       remove empty directories\n"
+			+ "\t-f       ignore files that don't exist, and never ask\n"
+			+ "\t-i       ask before removing each file\n"
+			+ "\t-I       ask once before removing more than three files, or a directory recursively\n"
+			+ "\t-r, -R   remove directories and everything in them\n"
+			+ "\t-v       show each file as it is removed\n"
+			+ "\t-x       don't go into a mounted file system of a different kind\n"
+			+ "\tA symbolic link is removed itself, never the file it points to.";
 
 	public Rm() {
 		super(name, help);

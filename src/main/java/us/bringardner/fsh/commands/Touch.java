@@ -22,12 +22,16 @@ public class Touch extends ShellCommand{
 	private enum Arguments {A, a, c, h, m,r,t,d};
 
 	static String name = "touch";
-	static String help = "touch [-acm] [-r file] [-t time] [-d date] file ...\n"
-			+ "The touch utility sets the modification and access times of files.\n"
-			+ "If any file does not exist, it is created with default permissions.\n"
-			+ "\n"
-			+ "Usage: touch [-A [-][[hh]mm]SS] [-achm] [-r file] [-t [[CC]YY]MMDDhhmm[.SS]] [-d YYYY-MM-DDThh:mm:SS[.frac][tz]] file ..."
-			+ "\tsee 'man touch' for more information";
+	static String help = "touch [-acm] [-r FILE | -t TIME | -d DATE | -A OFFSET] FILE ...\n"
+			+ "\tSet each file's access and modification times to now, or to the time given; a file that doesn't\n"
+			+ "\texist is created, empty, unless -c is given.\n"
+			+ "\t-a          change only the access time\n"
+			+ "\t-m          change only the modification time\n"
+			+ "\t-c          don't create files that don't exist\n"
+			+ "\t-r FILE     use FILE's times\n"
+			+ "\t-t TIME     [[CC]YY]MMDDhhmm[.SS], local time\n"
+			+ "\t-d DATE     YYYY-MM-DDThh:mm:SS, local time, or UTC with a trailing Z\n"
+			+ "\t-A OFFSET   move the times by [-][[hh]mm]SS";
 
 	private static interface ArgumentProcessor {
 		/**

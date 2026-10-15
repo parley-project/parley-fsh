@@ -24,8 +24,9 @@ import us.bringardner.parley.files.credentials.KeyStoreCredentialProvider;
  */
 public class Cred extends ShellCommand {
 	static String name = "cred";
-	static String help = "Manage secrets that connect settings name by reference, such as password=@keychain:parley/ftp\n"
-			+ "USAGE: cred set REF            store a secret; asks for it twice, without echo\n"
+	static String help = "cred set|get|list|rm|test|providers|enable|disable [ARGUMENTS]\n"
+			+ "Manage secrets that connect settings name by reference, such as password=@keychain:parley/ftp\n"
+			+ "cred set REF            store a secret; asks for it twice, without echo\n"
 			+ "       cred get REF            say whether REF can be resolved (never prints the secret)\n"
 			+ "       cred list [SCHEME]      the references a store holds (where it can list them)\n"
 			+ "       cred rm REF             remove a secret\n"
