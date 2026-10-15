@@ -51,6 +51,7 @@ import us.bringardner.fsh.commands.Clear;
 import us.bringardner.fsh.commands.Connect;
 import us.bringardner.fsh.commands.Cp;
 import us.bringardner.fsh.commands.Dirs;
+import us.bringardner.fsh.commands.Disconnect;
 import us.bringardner.fsh.commands.Disown;
 import us.bringardner.fsh.commands.Echo;
 import us.bringardner.fsh.commands.Eval;
@@ -83,7 +84,6 @@ import us.bringardner.fsh.commands.Touch;
 import us.bringardner.fsh.commands.Trap;
 import us.bringardner.fsh.commands.Unalias;
 import us.bringardner.fsh.commands.Unset;
-import us.bringardner.fsh.commands.Unmount;
 import us.bringardner.fsh.commands.Wait;
 import us.bringardner.fsh.commands.Wc;
 import us.bringardner.fsh.job.ForgroundJob;
@@ -587,7 +587,7 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.CommandCmd());
 		registerCommand(new us.bringardner.fsh.commands.Caller());
 		registerCommand(new us.bringardner.fsh.commands.BracketTest());
-		registerCommand(new Unmount());
+		registerCommand(new Disconnect());
 		registerCommand(new Unset());
 
 		registerCommand(new Wait());
@@ -4127,8 +4127,31 @@ delimiter
 	}
 
 
-	public boolean unmount(String mountPoint) throws IOException {
-		return mountFactory.unmount(mountPoint);		
+	/**
+	 * Removes the file system connect mounted at mountPoint and disconnects its factory (unless
+	 * another mount point still uses that factory).
+	 *
+	 * @throws IOException if nothing is mounted there, or the disconnect fails
+	 */
+	public void disconnect(String mountPoint) throws IOException {
+		String path = mountPoint;
+		while( path.length() > 1 && path.endsWith("/")) {
+			path = path.substring(0, path.length()-1);
+		}
+		if( path.isEmpty() || path.charAt(0) != '/' ) {
+			throw new IOException("a mount point is a path such as /sftp: "+mountPoint);
+		}
+		if( path.equals("/")) {
+			throw new IOException("/ is the shell's own file system, not a connection");
+		}
+		FileSource removed = mountFactory.unmount(path);
+		if( removed == null ) {
+			throw new IOException("nothing is connected at "+path);
+		}
+		FileSourceFactory factory = removed.getFileSourceFactory();
+		if( factory != null && !mountFactory.uses(factory)) {
+			factory.disConnect();
+		}
 	}
 
 	public Object getEvironmentVariables(String name) {		

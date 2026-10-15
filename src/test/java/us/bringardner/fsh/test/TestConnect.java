@@ -138,4 +138,27 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals("", err,"stderr");				
 	}
 	
+
+	@Test
+	public void disconnectRemovesTheMount() throws IOException {
+		ExecuteResult res = executeCommand("connect memory /memdis", "");
+		assertEquals(0, res.exitCode, res.getStdErr());
+
+		res = executeCommand("disconnect /memdis/", "");
+		assertEquals(0, res.exitCode, res.getStdErr());
+		assertEquals("", res.getStdErr().trim());
+
+		res = executeCommand("ls -d /memdis", "");
+		assertNotEquals(0, res.exitCode, "gone after disconnect: "+res.getStdOut());
+
+		res = executeCommand("disconnect /memdis", "");
+		assertEquals(1, res.exitCode);
+		assertEquals("disconnect: nothing is connected at /memdis", res.getStdErr().trim());
+
+		res = executeCommand("disconnect /", "");
+		assertEquals(1, res.exitCode);
+
+		res = executeCommand("disconnect", "");
+		assertEquals(2, res.exitCode);
+	}
 }
