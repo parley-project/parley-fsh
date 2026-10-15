@@ -15,11 +15,11 @@ public class Cp extends ShellCommand{
 	private enum Arguments {R,H,L,P,f,i,n,a,c,l,p,S,s,v,x};
 
 	static String name = "cp";
-	static String help = ""
-			+ "the cp utility copies the contents of the source_file to the target_file.\n"
-			+ "usage: cp [-R [-H | -L | -P]] [-fi | -n] [-aclpSsvXx] source_file target_file\n"
-			+ "       cp [-R [-H | -L | -P]] [-fi | -n] [-aclpSsvXx] source_file ... target_directory"
-			+ "\t see 'man cp' for more information";
+	static String help = "cp [-Rx] SOURCE TARGET   or   cp [-Rx] SOURCE ... DIRECTORY\n"
+			+ "\tCopy files. With two operands SOURCE is copied to TARGET, replacing it; when the last operand is\n"
+			+ "\tan existing directory, each SOURCE is copied into it. Works between any mounted file systems.\n"
+			+ "\t-R   copy directories and their contents; SOURCE/ (a trailing slash) copies only the contents\n"
+			+ "\t-x   when copying recursively, skip directories on a different kind of file system";
 
 	public Cp() {
 		super(name, help);

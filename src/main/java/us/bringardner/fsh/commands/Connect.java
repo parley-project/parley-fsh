@@ -13,9 +13,21 @@ import us.bringardner.fsh.ShellContext;
 
 public class Connect extends ShellCommand{
 	static String name = "connect";
-	static String help = "Open connection to a FileSourceFactory\n"
-			+ "USAGE: connect factory_id [ [-f=property_file]|[name=val ...]] mount_point\n"
-			+ "\targuments may also be provided on stdin.";
+	static String help = "connect FACTORY [-f FILE] [name=value ...] [-] MOUNT_POINT\n"
+			+ "\tConnect to a file system and mount it at MOUNT_POINT (a path such as /prod), where fsh's file\n"
+			+ "\tbuiltins (ls, cp, mv, rm, find, ...) can use it. FACTORY is the file system's id, such as memory,\n"
+			+ "\tsftp, ftp or jdbc (jdbc when fsh is built with it).\n"
+			+ "\tSettings, applied in order (a later one replaces an earlier one):\n"
+			+ "\t-f FILE, -fFILE, -f=FILE   name=value lines from a properties file\n"
+			+ "\tname=value                 one setting\n"
+			+ "\t-                          one line of name=value settings read from standard input\n"
+			+ "\tA secret setting such as password can name its secret instead of holding it: @env:NAME,\n"
+			+ "\t@file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).\n"
+			+ "\tOn success it prints \"FACTORY connected as MOUNT_POINT\"; disconnect undoes it.\n"
+			+ "\tExamples:\n"
+			+ "\tconnect memory /mem\n"
+			+ "\tconnect sftp host=example.com user=deploy password=@keychain:parley/sftp/deploy@example.com /prod\n"
+			+ "\tconnect ftp -f ~/.parley/ftp.properties /ftp";
 
 
 	public Connect() {

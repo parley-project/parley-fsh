@@ -30,19 +30,15 @@ public class Wc extends ShellCommand{
 	}
 
 	static String name = "wc";
-	static String help = "wc [-clmwL] [file ...]\n\tCount the lines, words and bytes (or characters) of the files or the input.\n"
-			+ " -L      Write the length of the line containing the most bytes (default) or characters "
-			+ "	(when -m is provided) to standard output.  When more than one file argument is specified, the longest\n"
-			+ "             input line of all files is reported as the value of the final “total”.\n"
-			+ "\n"
-			+ "     -c      The number of bytes in each input file is written to the standard output.  This will cancel out any prior usage of the -m option.\n"
-			+ "\n"
-			+ "     -l      The number of lines in each input file is written to the standard output.\n"
-			+ "\n"
-			+ "     -m      The number of characters in each input file is written to the standard output.  "
-			+ "This will cancel out any prior usage of the -c option.\n"
-			+ "\n"
-			+ "     -w      The number of words in each input file is written to the standard output.";
+	static String help = "wc [-clmwL] [FILE ...]\n"
+			+ "\tCount the lines, words and bytes in each FILE, or in standard input when there is none; with\n"
+			+ "\tseveral files a total follows.\n"
+			+ "\t-l   lines\n"
+			+ "\t-w   words\n"
+			+ "\t-c   bytes\n"
+			+ "\t-m   characters\n"
+			+ "\t-L   the length of the longest line\n"
+			+ "\tWith no option it counts as -lwc does.";
 
 	public Wc() {
 		super(name, help);
