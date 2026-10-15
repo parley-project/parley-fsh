@@ -240,11 +240,15 @@ native image never tries JNA), `jni`, or `jna`. What every implementation must d
 ## Build and run
 
 ```sh
-mvn package                 # jar in target/
+mvn package                 # target/fsh.jar: fsh and everything it needs, in one jar
 mvn -Pjdbc package          # also bundle the JDBC file system
 mvn -Pnative package        # GraalVM native binary named fsh
-java -cp ... us.bringardner.fsh.Console
+java -jar target/fsh.jar
 ```
+
+Use `target/fsh.jar` rather than an IDE's "export runnable jar": an export packs whatever the
+IDE's classpath held at the time, and can quietly leave out a library the pom added since (the
+OS keychain, say). `cred providers` lists the keychain either way, and says why when it's missing.
 
 On macOS and Linux, `compile.sh` (in `macos/` or `linux/`) builds the native keyboard library,
 and `fsh` there starts the shell (`fsh.sh` starts it with a debugger port on localhost:8001).
