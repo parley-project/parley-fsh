@@ -71,8 +71,8 @@ public abstract class ShellCommand {
 	}
 
 	/**
-	 * An option fsh's own command (ls, cp ...) does not have: the system's program of that name
-	 * runs instead, as scripts written for it expect (ls -di).
+	 * An option fsh's own command (ls, cp ...) does not have: the command fails with "NAME: unknown
+	 * option -X" and its usage, status 2.
 	 */
 	public static final class UnsupportedOption extends IOException {
 		private static final long serialVersionUID = 1L;

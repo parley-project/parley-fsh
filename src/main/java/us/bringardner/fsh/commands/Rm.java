@@ -32,88 +32,85 @@ public class Rm extends ShellCommand{
 		super(name, help);
 	}
 
+	/** The person said no to -I's question: nothing more is removed, and it isn't an error. */
+	private static class Declined extends IOException {
+		private static final long serialVersionUID = 1L;
+	}
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
 		ShellArgument sa = parseArgs(ctx, Arguments.class);
 
+		// -f, -i and -I: the last one given wins
 		List<Arguments> options = new ArrayList<>();
 		for(Object o : sa.options) {
-			if (o instanceof Arguments) {
-				Arguments a = (Arguments) o;
-				if( o == Arguments.R) {
-					a = Arguments.r;
-				} else if( o == Arguments.i) {
-					options.remove(Arguments.f);
-				} else if( o == Arguments.f) {
-					options.remove(Arguments.i);
-					options.remove(Arguments.I);
-				} else if( o == Arguments.I) {
-					// The -R option implies the -d option
-					options.add(Arguments.d);
-					options.remove(Arguments.f);
-				}
-				options.add(a);				
+			Arguments a = (Arguments) o;
+			if( a == Arguments.R ) {
+				a = Arguments.r;
+			}
+			if( a == Arguments.f || a == Arguments.i || a == Arguments.I ) {
+				options.remove(Arguments.f);
+				options.remove(Arguments.i);
+				options.remove(Arguments.I);
+			}
+			if( !options.contains(a)) {
+				options.add(a);
 			}
 		}
-		
+
 		List<String> paths = sa.paths;
-		List<FileSource> files = new ArrayList<>();
-
-		for(String path : paths) {
-			List<FileSource> kids = new ArrayList<>();
-
-			// the shell expanded the patterns already: a * here is a name
-			{
-				FileSource cwd = ctx.console.getCurrentDirectory();
-				if( isRelative(path)) {
-					kids.add(cwd.getChild(path));
-				} else {
-					kids.add(ctx.console.createFileSource(path));					
-				}
-			}
-			//If the source_file ends in a /, the contents of the directory are copied rather than the directory itself.  
-
-			if(path.equals("/") || path.equals(".") || path.equals("..")) {
-				throw new IOException("Can't remove +"+path);
-			}
-
-			files.addAll(kids);
-		}
-
-		if( files.size() < 1) {
+		if( paths.isEmpty()) {
 			if( options.contains(Arguments.f)) {
 				// rm -f with nothing to remove is not an error
 				return 0;
 			}
-			ctx.stdout.println(help);
+			ctx.stderr.println("usage: "+help.split("\n", 2)[0]);
 			return 1;
 		}
 
-		if( files.size() > 3) {
-			if( options.contains(Arguments.I)) {
-				String str = promptAndGetReponse(ctx, "Are you sure you want to delete "+files.size()+" files?");
-				if( !str.trim().toLowerCase().startsWith("y")) {
-					return 1;
-				} else {
-					ctx.setValue(Arguments.I, true);
-				}
+		boolean asked = false;
+		if( options.contains(Arguments.I) && paths.size() > 3 ) {
+			String str = promptAndGetReponse(ctx, "remove "+paths.size()+" arguments?");
+			if( str == null || !str.trim().toLowerCase().startsWith("y")) {
+				return 0;
+			}
+			asked = true;
+		}
+
+		int ret = 0;
+		for(String path : paths) {
+			String p = path;
+			while( p.length() > 1 && p.endsWith("/")) {
+				p = p.substring(0, p.length()-1);
+			}
+			String base = p.substring(p.lastIndexOf('/')+1);
+			if( p.equals("/") || base.equals(".") || base.equals("..")) {
+				ctx.stderr.println(name+": refusing to remove '"+path+"'");
+				ret = 1;
+				continue;
+			}
+			// the shell expanded the patterns already: a * here is a name
+			FileSource file = isRelative(path) ? ctx.console.getCurrentDirectory().getChild(path)
+					: ctx.console.createFileSource(path);
+			try {
+				remove(ctx, options, file, file.getFileSourceFactory().getTypeId(), asked);
+			} catch (Declined e) {
+				return ret;
+			} catch (IOException e) {
+				ctx.stderr.println(name+": "+path+": "+e.getMessage());
+				ret = 1;
 			}
 		}
-
-
-		for(FileSource file : files) {
-			ctx.setValue(ROOT_FACTORY_ID, file.getFileSourceFactory().getTypeId());
-			remove(ctx,options,file);
-		}
-
 		return ret;
 	}
 
-	private void remove(ShellContext ctx, List<Arguments> options, FileSource file) throws IOException {
+	private void remove(ShellContext ctx, List<Arguments> options, FileSource file, String rootType, boolean asked) throws IOException {
 		if( file instanceof us.bringardner.parley.files.fileproxy.FileProxy
 				&& java.nio.file.Files.isSymbolicLink(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath())) {
 			// a link (to a directory too) is removed itself, not what it points to
+			if( !confirm(ctx, options, file)) {
+				return;
+			}
 			java.nio.file.Files.delete(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath());
 			if( options.contains(Arguments.v)) {
 				ctx.stdout.println(file.getAbsolutePath());
@@ -121,60 +118,72 @@ public class Rm extends ShellCommand{
 			return;
 		}
 		if( !file.exists()) {
-			if(options.contains(Arguments.f)) {
-				return;
-			} else {
-				throw new IOException(""+file+" does not exist");
-			}
-		}
-		if( options.contains(Arguments.x)) {
-			if(!file.getFileSourceFactory().getTypeId().equals(ctx.getValue(ROOT_FACTORY_ID, ""))) {
+			if( options.contains(Arguments.f)) {
 				return;
 			}
+			throw new IOException("does not exist");
 		}
-		if(file.isDirectory()) {
-			if( !options.contains(Arguments.r) && !options.contains(Arguments.d)) {
-				throw new IOException(""+file+" is a directory");
-			}
-
-			FileSource [] kids = file.listFiles();
-			if(options.contains(Arguments.d) && kids.length>0) {
-				throw new IOException("the directory, "+file+", is NOT empty.");
+		if( options.contains(Arguments.x) && !file.getFileSourceFactory().getTypeId().equals(rootType)) {
+			// (a mount point of another kind of file system)
+			return;
+		}
+		if( file.isDirectory()) {
+			FileSource[] kids = file.listFiles();
+			if( kids == null ) {
+				kids = new FileSource[0];
 			}
 			if( options.contains(Arguments.r)) {
-				if( options.contains(Arguments.I)) {
-					boolean val =  (boolean) ctx.getValue(Arguments.I, false);
-					if( !val ) {
-						String str = promptAndGetReponse(ctx, "Are you sure you want to delete the entire directory "+file+" ?");
-						if( !str.trim().toLowerCase().startsWith("y")) {
-							throw new IOException("User abort");							
-						} else {
-							ctx.setValue(Arguments.I, true);
+				if( options.contains(Arguments.I) && !asked ) {
+					String str = promptAndGetReponse(ctx, "remove "+file+" and everything in it?");
+					if( str == null || !str.trim().toLowerCase().startsWith("y")) {
+						throw new Declined();
+					}
+					asked = true;
+				}
+				IOException first = null;
+				for(FileSource kid : kids) {
+					try {
+						remove(ctx, options, kid, rootType, asked);
+					} catch (Declined e) {
+						throw e;
+					} catch (IOException e) {
+						if( first == null ) {
+							first = new IOException(kid.getName()+": "+e.getMessage());
 						}
 					}
 				}
-				for(FileSource kid : kids) {
-					remove(ctx, options, kid);
+				if( first != null ) {
+					throw first;
+				}
+				if( file.listFiles() != null && file.listFiles().length > 0 ) {
+					// (some were kept: -i answered no, or -x)
+					return;
+				}
+			} else if( options.contains(Arguments.d)) {
+				if( kids.length > 0 ) {
+					throw new IOException("Directory not empty");
 				}
 			} else {
-				if( kids.length>0) {
-					throw new IOException("the directory, "+file+", is NOT empty.");
-				}
+				throw new IOException("is a directory");
 			}
 		}
-		if(options.contains(Arguments.i)) {
-			String str = promptAndGetReponse(ctx, "remove "+file+"?");
-			if(!str.trim().toLowerCase().startsWith("y")) {
-				return;
-			}
+		if( !confirm(ctx, options, file)) {
+			return;
 		}
-
 		if( !file.delete()) {
-			throw new IOException("Can't delete "+file);
-		} else if( options.contains(Arguments.v)) {
+			throw new IOException("can't remove it");
+		}
+		if( options.contains(Arguments.v)) {
 			ctx.stdout.println(file.getAbsolutePath());
 		}
 	}
 
-
+	/** -i: whether the person says to remove file (always, without -i) */
+	private boolean confirm(ShellContext ctx, List<Arguments> options, FileSource file) throws IOException {
+		if( !options.contains(Arguments.i)) {
+			return true;
+		}
+		String str = promptAndGetReponse(ctx, "remove "+file+"?");
+		return str != null && str.trim().toLowerCase().startsWith("y");
+	}
 }

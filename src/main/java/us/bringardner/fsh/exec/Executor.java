@@ -2776,12 +2776,19 @@ public final class Executor {
 			try {
 				ret = cmd.process(sc);
 			} catch (ShellCommand.UnsupportedOption e) {
-				// an option fsh's own ls, cp ... does not have: the system's program, if there is one
-				if( BASH_BUILTINS.contains(name) || Programs.hashed(name, sc) == null ) {
+				if( BASH_BUILTINS.contains(name)) {
 					throw e;
 				}
-				sc.builtin = outer;
-				return Programs.run(name, strings(args), sc);
+				// an option fsh's own ls, cp ... doesn't have is a mistake, as in any command: running
+				// the system's program instead would quietly work on the local disk only (it still
+				// runs by its path, /bin/cp, or after enable -n cp)
+				String msg = e.getMessage();
+				if( msg.startsWith("Unknown argument ")) {
+					msg = name+": unknown option -"+msg.substring("Unknown argument ".length());
+				}
+				sc.stderr.println(msg);
+				sc.stderr.println("usage: "+cmd.getHelp().strip().split("\n", 2)[0]);
+				return 2;
 			} finally {
 				sc.builtin = outer;
 			}

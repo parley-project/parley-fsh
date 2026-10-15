@@ -45,6 +45,7 @@ public class Mv extends ShellCommand{
 		for(Object o : sa.options) {
 			if (o instanceof MvOptions) {
 				MvOptions op = (MvOptions) o;
+				options.remove(op);
 				options.add(op);
 				switch (op) {
 				case f:
@@ -93,20 +94,21 @@ public class Mv extends ShellCommand{
 			return 1;
 		}
 
+		List<Object> chosen = new ArrayList<>(options);
 		FileSource dest = files.remove(files.size()-1);
 		if(dest.isDirectory()) {
 			for(FileSource file : files) {
 				FileSource dest2= dest.getChild(file.getName());
-				if((ret=mv_or_copy(sc,file, dest2,sa.options))!=0) {
-					break;
+				if( mv_or_copy(sc,file, dest2,chosen) != 0 ) {
+					ret = 1;
 				}
 			}			
 		} else {
 			if(files.size()>1) {
-				sc.stderr.println( USAGE);			
+				sc.stderr.println(name+": "+dest+" is not a directory");
 				return 1;
 			} 
-			ret = mv_or_copy(sc,files.get(0),dest,sa.options);
+			ret = mv_or_copy(sc,files.get(0),dest,chosen);
 		}
 
 		return ret;
@@ -147,20 +149,22 @@ public class Mv extends ShellCommand{
 
 			String str = promptAndGetReponse(sc, "overwrite "+dest+"? (y/n [n])");
 
-			if( !str.trim().toLowerCase().startsWith("y")) {
+			if( str == null || !str.trim().toLowerCase().startsWith("y")) {
 				sc.stdout.println(dest+" not overwritten.");
 				return 1;
 			} 
 		}
 
 
-		if( !source.renameTo(dest)) {
+		boolean renamed = source.renameTo(dest);
+		if( !renamed ) {
+			// (copy lists each file it copies with -v, the source itself last)
 			copy(sc,source,dest,options);
 			// copy worked 
 			ret = deleteIfExists(source);
 		}
 
-		if(ret == 0 && options.contains(MvOptions.v)) {
+		if(ret == 0 && renamed && options.contains(MvOptions.v)) {
 			sc.stdout.println(source.getAbsolutePath()+" -> "+dest);
 		}
 
