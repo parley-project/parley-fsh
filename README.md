@@ -31,7 +31,7 @@ you build**, using the library the same way your own application would. It was c
   options. Scripts written for bash run unchanged; the [measurements below](#how-close-to-bash-it-is-and-how-that-is-tested)
   show how closely.
 - **A shell over any file system.** `connect` mounts a `FileSource` (FTP, SFTP, a database,
-  memory) at a path, and `unmount` removes it. fsh's own file builtins (`ls`, `cp`, `mv`,
+  memory) at a path, and `disconnect` removes it and closes the connection. fsh's own file builtins (`ls`, `cp`, `mv`,
   `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every mounted file system.
 - **No passwords in scripts.** A connect setting can name its secret instead of holding it, and
   `cred` stores and checks those secrets ([below](#passwords-in-startup-scripts)).
@@ -105,7 +105,7 @@ again. The todo file records what each fix involved.
 **Deliberate:**
 
 - **fsh's own file builtins.** `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`,
-  `sleep`, `expr`, `clear`, `connect`, `cred` and `unmount` are builtins (so they work on mounted file
+  `sleep`, `expr`, `clear`, `connect`, `cred` and `disconnect` are builtins (so they work on mounted file
   systems), with their own help texts. Programs of the same names are still reachable by path or
   with `enable -n`.
 - **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and

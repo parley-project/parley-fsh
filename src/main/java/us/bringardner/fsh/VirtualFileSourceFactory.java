@@ -249,18 +249,34 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 		throw new RuntimeException("getURL not implemented");
 	}
 
-	public boolean unmount(String mountPoint) {
+	/**
+	 * Removes the root mounted at mountPoint (never the first, the shell's own file system).
+	 *
+	 * @return the root removed, or null if nothing is mounted there
+	 */
+	public FileSource unmount(String mountPoint) {
 		List<FileSource> tmp = new ArrayList<>();
+		FileSource removed = null;
 		for(FileSource root : roots) {
-			if(!root.getAbsolutePath().equals(mountPoint)) {
+			if( removed == null && root != firstRoot && root.getAbsolutePath().equals(mountPoint)) {
+				removed = root;
+			} else {
 				tmp.add(root);
 			}
 		}
-		if( tmp.size()!=roots.length) {
+		if( removed != null ) {
 			roots = tmp.toArray(new FileSource[tmp.size()]);
-			return true;
 		}
-		
+		return removed;
+	}
+
+	/** Whether a mounted root still uses factory. */
+	public boolean uses(FileSourceFactory factory) {
+		for(FileSource root : roots) {
+			if( root != firstRoot && root.getFileSourceFactory() == factory ) {
+				return true;
+			}
+		}
 		return false;
 	}
 
