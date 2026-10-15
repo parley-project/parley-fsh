@@ -250,8 +250,8 @@ public class Help extends ShellCommand{
 		md.append("## File commands\n\n")
 		.append("These are fsh's own versions, so they work on every mounted file system (see `connect`), and\n")
 		.append("between them: `cp /prod/app.log /mem/` copies a file from one mounted file system to another. They take the options listed for\n")
-		.append("each. Given an option it doesn't know (`cp -r`, say), a file command runs the system's command of\n")
-		.append("the same name instead, if there is one, and that works only on the local disk.\n\n");
+		.append("each; any other option is an error. The system's command of the same name still runs by its path\n")
+		.append("(`/bin/cp`), or after `enable -n cp`, and works only on the local disk.\n\n");
 		for(String n : FILE_COMMANDS) {
 			section(md, n, topics.get(n));
 		}

@@ -289,7 +289,6 @@ public class TestMv extends AbstractConsoleTest{
 					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01def.2 -> /mem4/Folder01/Folder01def.2\n"
 					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Hotel California.txt -> /mem4/Folder01/Hotel California.txt\n"
 					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01 -> /mem4/Folder01\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01 -> /mem4/Folder01\n"
 					;
 			String out = res.getStdOut();
 			String err = res.getStdErr();

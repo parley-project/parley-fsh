@@ -74,8 +74,8 @@ character, or FSH_SECRET_MASK= (empty) to see nothing.
 
 These are fsh's own versions, so they work on every mounted file system (see `connect`), and
 between them: `cp /prod/app.log /mem/` copies a file from one mounted file system to another. They take the options listed for
-each. Given an option it doesn't know (`cp -r`, say), a file command runs the system's command of
-the same name instead, if there is one, and that works only on the local disk.
+each; any other option is an error. The system's command of the same name still runs by its path
+(`/bin/cp`), or after `enable -n cp`, and works only on the local disk.
 
 ### ls
 
@@ -107,14 +107,21 @@ Otherwise names are sorted alphabetically.
 ### cp
 
 ```
-cp [-Rx] SOURCE TARGET   or   cp [-Rx] SOURCE ... DIRECTORY
+cp [-Rafinpvx] SOURCE TARGET   or   cp [-Rafinpvx] SOURCE ... DIRECTORY
 ```
 
 ```text
-Copy files. With two operands SOURCE is copied to TARGET, replacing it; when the last operand is
-an existing directory, each SOURCE is copied into it. Works between any mounted file systems.
--R   copy directories and their contents; SOURCE/ (a trailing slash) copies only the contents
--x   when copying recursively, skip directories on a different kind of file system
+Copy files. With two operands SOURCE is copied to TARGET; when the last operand is an existing
+directory, each SOURCE is copied into it. Works between any mounted file systems.
+-R, -r   copy directories and everything in them; with SOURCE/ (a trailing slash) only what is in it
+-a       the same as -Rp
+-f       replace existing files without asking (the default)
+-i       ask before replacing an existing file
+-n       never replace an existing file
+-p       keep the files' modification and access times
+-v       show each file as it is copied
+-x       when copying recursively, skip directories on a different kind of file system
+The last of -f, -i and -n given wins. -H, -L and -P are accepted; links are followed.
 ```
 
 ### mv
