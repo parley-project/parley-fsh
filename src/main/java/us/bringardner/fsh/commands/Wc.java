@@ -60,35 +60,29 @@ public class Wc extends ShellCommand{
      newline, word, character,  byte,  maximum
 		 */
 		boolean debug = false;
+		boolean optionsEnded = false;
 		for(int idx=0; idx < args.length; idx++ ) {
 			String arg = ""+args[idx].getValue(ctx);
-			if( arg.startsWith("-")) {
-				if( arg.equals("-debug")) {
-					debug = true;
-				}
-				else {
-					if(arg.contains("L")) {
-						options.add(Type.maxLine);
-					} 
-					
-					if(arg.contains("c")) {					
-						if( !debug) options.remove(Type.CharCount);
-						options.add(Type.ByteCount);
-					} 
-					if(arg.contains("l")) {
-						options.add(Type.LineCount);
-					} 
-					if(arg.contains("m")) {
-						if( !debug) options.remove(Type.ByteCount);
-						options.add(Type.CharCount);
-					} 
-					if(arg.contains("w")) {
-						options.add(Type.WordCount);
+			if( optionsEnded || !arg.startsWith("-") || arg.equals("-")) {
+				files.add(arg);
+			} else if( arg.equals("--")) {
+				optionsEnded = true;
+			} else if( arg.equals("-debug")) {
+				debug = true;
+			} else {
+				for(char c : arg.substring(1).toCharArray()) {
+					switch (c) {
+					case 'L': add(options, Type.maxLine); break;
+					case 'l': add(options, Type.LineCount); break;
+					case 'w': add(options, Type.WordCount); break;
+					// -c and -m: the last one given counts
+					case 'c': options.remove(Type.CharCount); add(options, Type.ByteCount); break;
+					case 'm': options.remove(Type.ByteCount); add(options, Type.CharCount); break;
+					default:
+						throw new UnsupportedOption("Unknown argument "+c);
 					}
 				}
-			} else {
-				files.add(arg);
-			}			
+			}
 		}
 
 		if(options.size() ==  0 ) {
@@ -108,10 +102,29 @@ public class Wc extends ShellCommand{
 		} else {
 			Counts totals = new Counts();
 			List<FileSource> processed = new ArrayList<>();
+			int counted = 0;
 			for(String path : files) {
+				if( path.equals("-")) {
+					// - is standard input
+					Counts counts = new Counts();
+					doCount(counts,ctx,options,ctx.stdin);
+					totals.add(counts);
+					print(ctx,"-",options,counts);
+					counted++;
+					continue;
+				}
 				List<FileSource> list = getFiles(ctx, path);
 				for(FileSource file : list) {
-
+					if( !file.exists()) {
+						ctx.stderr.println(name+": "+path+": No such file or directory");
+						ret = 1;
+						continue;
+					}
+					if( file.isDirectory()) {
+						ctx.stderr.println(name+": "+path+": Is a directory");
+						ret = 1;
+						continue;
+					}
 					Counts counts = new Counts();
 					if( useFileSize) {
 						counts.byteCount = file.length();
@@ -123,9 +136,10 @@ public class Wc extends ShellCommand{
 					totals.add(counts);
 					print(ctx,file.getName(),options,counts);
 					processed.add(file);
+					counted++;
 				}
 			}
-			if( processed.size()>1) {
+			if( counted>1) {
 				print(ctx,"total",options,totals);
 			}
 
@@ -174,68 +188,48 @@ public class Wc extends ShellCommand{
 		ctx.stdout.println(buf);
 	}
 
+	private static void add(List<Type> options, Type t) {
+		if( !options.contains(t)) {
+			options.add(t);
+		}
+	}
+
+	/**
+	 * Counts the bytes, the characters (UTF-8: every byte that doesn't continue a character), the
+	 * lines, the words (runs of anything but space, tab, newline, carriage return, vertical tab and
+	 * form feed) and the longest line (in characters with -m, else in bytes; without the line end).
+	 */
 	private void doCount(Counts ret,ShellContext ctx, List<Type> options, InputStream stdin) throws IOException {
 		InputStream in = new BufferedInputStream(stdin);
-
-		int lineSize = 0;
+		boolean chars = options.contains(Type.CharCount);
+		long lineSize = 0;
 		boolean inWord = false;
-		int i = in.read();
-
-		while( i >=0 ) {
-			if( i != 13) {
+		int i;
+		while( (i = in.read()) >= 0 ) {
 			ret.byteCount++;
-			lineSize ++;
-
-			if(i == 10 ) {
-				lineSize--;
+			boolean startsChar = (i & 0xC0) != 0x80;
+			if( startsChar ) {
+				ret.charCount++;
+			}
+			if( i == '\n' ) {
 				ret.lineCount++;
 				ret.maxLine = Math.max(lineSize, ret.maxLine);
-				lineSize=0;
-			} 
-			if( Character.isDefined(i)) {
-
-				ret.charCount++;
-				if( isWhitespace(i)) {
-					if( inWord ) {
-						ret.wordCount++;
-					}
-					inWord = false;
-				} else {
-					inWord=true;
-				}
-			} else {
-				// not defined ???
-				throw new IOException("i="+i+" "+Integer.toBinaryString(i));
-			}			
+				lineSize = 0;
+			} else if( i != '\r' && (startsChar || !chars)) {
+				lineSize++;
 			}
-			i = in.read();
+			if( i == ' ' || (i >= 9 && i <= 13)) {
+				if( inWord ) {
+					ret.wordCount++;
+				}
+				inWord = false;
+			} else {
+				inWord = true;
+			}
 		}
-
 		if( inWord ) {
 			ret.wordCount++;
 		}		
 		ret.maxLine = Math.max(lineSize, ret.maxLine);
-
 	}
-
-
-	private boolean isWhitespace(int i) {
-		boolean ret = false;
-		switch (i) {
-		case 9:
-		case 10:
-		case 11:
-		case 13:		
-		case 32:
-		case 133:
-		case 160:
-			ret = true;
-			break;
-
-		default:
-			break;
-		}
-		return ret;
-	}
-
 }

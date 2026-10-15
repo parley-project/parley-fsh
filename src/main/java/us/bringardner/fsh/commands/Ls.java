@@ -32,7 +32,7 @@ public class Ls extends ShellCommand {
 			+ "\t-l       long format: permissions, links, owner, group, size, date and name\n"
 			+ "\t-g       long format without the owner\n"
 			+ "\t-G       long format without the group\n"
-			+ "\t-h       with -l, sizes in MB and GB\n"
+			+ "\t-h       with -l, sizes such as 1.5K, 234M and 2.0G\n"
 			+ "\t-d       list directories themselves, not their contents\n"
 			+ "\t-L       show the files symbolic links point to, not the links\n"
 			+ "\t-Q       with -l, put names in double quotes\n"
@@ -73,7 +73,10 @@ public class Ls extends ShellCommand {
 
 		List<String> paths = lsArgs.paths;		
 		List<String> output = new ArrayList<>();
-		if(paths.size() == 0) {
+		if(paths.size() == 0 && options.contains(LsArgument.R) && !options.contains(LsArgument.d)) {
+			listTree(ctx, options, ctx.console.getCurrentDirectory(), null, useColumns(ctx, options), true);
+			return ret;
+		} else if(paths.size() == 0) {
 			FileSource cwd = ctx.console.getCurrentDirectory();
 			if(options.contains(LsArgument.d)) {
 				print(ctx,output, options, cwd);
@@ -285,6 +288,42 @@ public class Ls extends ShellCommand {
 		ctx.stdout.println(buf.toString());
 	}
 
+	/**
+	 * ls -R of dir: its contents, then each directory in it under a heading of its path relative to
+	 * where it started (none for the starting directory itself), as ls shows them.
+	 */
+	private void listTree(ShellContext ctx, List<LsArgument> options, FileSource dir, String heading, boolean columns,
+			boolean first) throws IOException {
+		if( !first ) {
+			ctx.stdout.println();
+		}
+		FileSource[] kids = dir.listFiles();
+		if( kids == null ) {
+			kids = new FileSource[0];
+		}
+		sort(options, kids);
+		List<String> out = new ArrayList<>();
+		List<FileSource> subdirs = new ArrayList<>();
+		for(FileSource kid : kids) {
+			if( isHidden(kid) && !options.contains(LsArgument.a)) {
+				continue;
+			}
+			print(ctx, out, options, kid, null);
+			if( kid.isDirectory() && !isLink(kid)) {
+				subdirs.add(kid);
+			}
+		}
+		printBlock(ctx, heading, out, columns);
+		for(FileSource sub : subdirs) {
+			listTree(ctx, options, sub, heading == null ? sub.getName() : heading+"/"+sub.getName(), columns, false);
+		}
+	}
+
+	private static boolean isLink(FileSource file) {
+		return file instanceof us.bringardner.parley.files.fileproxy.FileProxy
+				&& java.nio.file.Files.isSymbolicLink(((us.bringardner.parley.files.fileproxy.FileProxy) file).getTarget().toPath());
+	}
+
 	private void list(ShellContext ctx,List<String> output, List<LsArgument> options, FileSource[] files) throws IOException {
 		sort( options, files);
 		for(FileSource file : files) {
@@ -340,7 +379,8 @@ public class Ls extends ShellCommand {
 				return ret;
 
 			case S:
-				ret = (o1,o2)->{return (int)(length(o1)-length(o2));};
+				// largest first
+				ret = (o1,o2)->Long.compare(length(o2), length(o1));
 				return ret;
 
 			case X:
@@ -466,7 +506,7 @@ public class Ls extends ShellCommand {
 					+" -> "+java.nio.file.Files.readSymbolicLink(link);
 			out.add(String.format("%s %s %s  %s %s  %s %s", "l"+java.nio.file.attribute.PosixFilePermissions.toString(a.permissions()), "1",
 					args.contains(LsArgument.g) ? "" : a.owner().getName(), args.contains(LsArgument.G) ? "" : a.group().getName(),
-					String.valueOf(a.size()), DATE_FORMAT.format(new Date(a.lastModifiedTime().toMillis())), nameStr));
+					String.valueOf(a.size()), formatDate(a.lastModifiedTime().toMillis()), nameStr));
 		} else {
 			String permStr = (file.isDirectory()?"d":"-")+formatPermission(file);
 			String linkStr = formatLink(args,file);
@@ -501,25 +541,37 @@ public class Ls extends ShellCommand {
 		long len = file.length();
 
 		if(args.contains(LsArgument.h)) {
-			long val = len;
-			String post = "";
-
-			if( val > G) {
-				val = val / G;
-				post = "GB";
-			} else if( val > M) {
-				val = val / M;
-				post = "MB";
-			} else if( val > G) {
-				val = val / K;
-				post = "KB";
-			}
-
-			return String.format("% 5d", val)+post;	
+			return String.format("%5s", humanSize(len));
 		} else {
 			return String.format("% 5d", len);
 		}
 
+	}
+
+	/** a size as ls -h shows it: 999, 1.0K, 15K, 2.5M, 120G (rounded up) */
+	static String humanSize(long len) {
+		if( len < K ) {
+			return String.valueOf(len);
+		}
+		String units = "KMGTPE";
+		double v = len;
+		int u = -1;
+		while( v >= K && u < units.length()-1 ) {
+			v /= K;
+			u++;
+		}
+		if( v < 10 ) {
+			double up = Math.ceil(v*10)/10;
+			if( up < 10 ) {
+				return String.format("%.1f%c", up, units.charAt(u));
+			}
+			v = up;
+		}
+		long whole = (long) Math.ceil(v);
+		if( whole >= K && u < units.length()-1 ) {
+			return "1.0"+units.charAt(u+1);
+		}
+		return whole+""+units.charAt(u);
 	}
 
 	private String formatGroup(List<LsArgument> args, FileSource file) throws IOException {
@@ -550,7 +602,6 @@ public class Ls extends ShellCommand {
 		return ""+cnt;
 	}
 
-	public static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MMM dd yyyy");
 
 	private String formatTime(List<LsArgument> args, FileSource file) throws IOException {
 		long time = 0;
@@ -560,7 +611,24 @@ public class Ls extends ShellCommand {
 			time = file.lastModified();
 		}
 
-		return DATE_FORMAT.format(new Date(time));
+		return formatDate(time);
+	}
+
+	/** six months, as ls counts a file as recent */
+	private static final long SIX_MONTHS = 183L*24*60*60*1000;
+
+	/**
+	 * The date as ls -l shows it: "Oct 15 06:29" for a file changed in the last six months (or a
+	 * little in the future), "Jan  2  2020" for an older one; both are 12 characters wide.
+	 */
+	public static String formatDate(long time) {
+		Date d = new Date(time);
+		String monthDay = new SimpleDateFormat("MMM").format(d)+" "+String.format("%2s", new SimpleDateFormat("d").format(d));
+		long age = System.currentTimeMillis()-time;
+		if( age < SIX_MONTHS && age > -60L*60*1000 ) {
+			return monthDay+" "+new SimpleDateFormat("HH:mm").format(d);
+		}
+		return monthDay+"  "+new SimpleDateFormat("yyyy").format(d);
 	}
 
 	private String formatPermission(FileSource file) throws IOException {
@@ -589,7 +657,7 @@ public class Ls extends ShellCommand {
 			perm[5] = 'x';
 		}
 
-		if( jdbc.canGroupRead() ) {
+		if( jdbc.canOtherRead() ) {
 			perm[6] = 'r';
 		}
 
@@ -597,7 +665,7 @@ public class Ls extends ShellCommand {
 			perm[7] = 'w';
 		}
 
-		if( jdbc.canGroupExecute() ) {
+		if( jdbc.canOtherExecute() ) {
 			perm[8] = 'x';
 		}
 
