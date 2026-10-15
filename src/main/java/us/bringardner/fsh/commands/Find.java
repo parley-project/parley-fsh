@@ -27,7 +27,7 @@ public class Find extends ShellCommand{
 			+ "\t-size N[cwbkMG]                     N bytes, 2-byte words, 512-byte blocks (the default),\n"
 			+ "\tKiB, MiB or GiB, rounded up\n"
 			+ "\t+N means more than N, -N less than N, and N exactly N.\n"
-			+ "\tOperators: ! or -not; -a or -and (implied between tests); -o or -or. There are no ( ).\n"
+			+ "\tOperators: ( EXPRESSION ) (quoted, as \\( \\)); ! or -not; -a or -and (implied); -o or -or.\n"
 			+ "\tOptions: -maxdepth N, -mindepth N; -L follows symbolic links (-H and -P don't).\n"
 			+ "\tActions:\n"
 			+ "\t-print           print the path (the default)\n"
@@ -57,8 +57,8 @@ public class Find extends ShellCommand{
 	class FindContext {
 		ShellContext sc;
 		boolean followLinks = false;
-		/** -o separates the groups; a file matches if every test of one group does */
-		List<List<Test>> groups = new ArrayList<>();
+		/** the expression; null when there is none (everything matches) */
+		Test expression;
 		int maxDepth = Integer.MAX_VALUE;
 		int minDepth = 0;
 		/** -print0: a NUL after each path instead of a newline */
@@ -71,23 +71,10 @@ public class Find extends ShellCommand{
 
 		FindContext(ShellContext ctx) {
 			sc = ctx;
-			groups.add(new ArrayList<>());
 		}
 
 		boolean matches(FileSource file, String path, int depth) throws IOException {
-			for(List<Test> group : groups) {
-				boolean all = true;
-				for(Test t : group) {
-					if( !t.test(file, path, depth)) {
-						all = false;
-						break;
-					}
-				}
-				if( all ) {
-					return true;
-				}
-			}
-			return false;
+			return expression == null || expression.test(file, path, depth);
 		}
 
 		void find(FileSource file, String path, int depth) throws IOException {
@@ -184,110 +171,19 @@ public class Find extends ShellCommand{
 			}
 			paths.add(arg);
 		}
-		boolean negate = false;
+		List<String> tokens = new ArrayList<>();
 		for(; idx < args.length; idx++ ) {
-			String arg = ""+args[idx].getValue(ctx);
-			Test test = null;
-			switch (arg) {
-			case "!":
-			case "-not":
-				negate = !negate;
-				continue;
-			case "-a":
-			case "-and":
-				continue;
-			case "-o":
-			case "-or":
-				fctx.groups.add(new ArrayList<>());
-				continue;
-			case "-print":
-				continue;
-			case "-print0":
-				fctx.print0 = true;
-				continue;
-			case "-maxdepth":
-				fctx.maxDepth = Integer.parseInt(""+args[++idx].getValue(ctx));
-				continue;
-			case "-mindepth":
-				fctx.minDepth = Integer.parseInt(""+args[++idx].getValue(ctx));
-				continue;
-			case "-exec": {
-				fctx.exec = new ArrayList<>();
-				for(idx++; idx < args.length; idx++) {
-					String w = ""+args[idx].getValue(ctx);
-					if( w.equals(";") ) {
-						break;
-					}
-					if( w.equals("+") && !fctx.exec.isEmpty() && fctx.exec.get(fctx.exec.size()-1).equals("{}")) {
-						fctx.execAll = true;
-						break;
-					}
-					fctx.exec.add(w);
-				}
-				continue;
-			}
-			case "-name":
-			case "-iname": {
-				Pattern p = Pattern.compile(prepWildCards(""+args[++idx].getValue(ctx)), arg.equals("-iname") ? Pattern.CASE_INSENSITIVE : 0);
-				test = (f, path, d) -> p.matcher(d == 0 ? baseName(path) : f.getName()).matches();
-				break;
-			}
-			case "-path":
-			case "-wholename": {
-				Pattern p = Pattern.compile(prepWildCards(""+args[++idx].getValue(ctx)));
-				test = (f, path, d) -> p.matcher(path).matches();
-				break;
-			}
-			case "-type": {
-				String t = ""+args[++idx].getValue(ctx);
-				// (with -L a link is what it points at; -type l then finds only those that point nowhere)
-				boolean follow = fctx.followLinks;
-				test = (f, path, d) -> {
-					switch (t) {
-					case "f": return f.isFile() && (follow || f.getLinkedTo() == null);
-					case "d": return f.isDirectory() && (follow || d == 0 || f.getLinkedTo() == null);
-					case "l": return f.getLinkedTo() != null && (!follow || !f.exists());
-					default: return false;
-					}
-				};
-				break;
-			}
-			case "-empty":
-				test = (f, path, d) -> f.isDirectory() ? (f.listFiles() == null || f.listFiles().length == 0) : f.length() == 0;
-				break;
-			case "-mmin":
-			case "-amin":
-			case "-mtime":
-			case "-atime": {
-				FindNumber n = parseNumber(""+args[++idx].getValue(ctx));
-				boolean access = arg.startsWith("-a");
-				long unit = arg.endsWith("min") ? 60000 : DAY;
-				test = (f, path, d) -> compare(n, (System.currentTimeMillis() - (access ? f.lastAccessTime() : f.lastModified())) / unit);
-				break;
-			}
-			case "-size": {
-				FindNumber n = parseNumber(""+args[++idx].getValue(ctx));
-				test = (f, path, d) -> {
-					if( f.isDirectory()) {
-						return false;
-					}
-					long units = (f.length() + n.denominator - 1) / n.denominator;
-					return compare(n, units);
-				};
-				break;
-			}
-			default:
-				// (one this find does not have, \( \) and the like: the system's find runs)
-				throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("find: "+arg+": unknown primary or operator");
-			}
-			if( negate ) {
-				Test t = test;
-				test = (f, path, d) -> !t.test(f, path, d);
-				negate = false;
-			}
-			fctx.groups.get(fctx.groups.size()-1).add(test);
+			tokens.add(""+args[idx].getValue(ctx));
+		}
+		try {
+			Parser parser = new Parser(fctx, tokens);
+			fctx.expression = parser.parse();
+		} catch (BadExpression e) {
+			ctx.stderr.println(name+": "+e.getMessage());
+			return 1;
 		}
 		if( paths.size()==0) {
+			// (as macOS find: a path is needed)
 			ctx.stderr.println("usage: find [-P] path ... [expression]");
 			return 1;
 		}
@@ -303,6 +199,189 @@ public class Find extends ShellCommand{
 		}
 		fctx.finish();
 		return ret != 0 ? ret : fctx.status;
+	}
+
+	/** A mistake in the expression: find: MESSAGE, status 1. */
+	private static class BadExpression extends Exception {
+		private static final long serialVersionUID = 1L;
+		BadExpression(String message) {
+			super(message);
+		}
+	}
+
+	/**
+	 * The expression: OR of ANDs of (possibly negated) primaries and ( ) groups, as find reads it.
+	 * -a is implied between primaries. -print, -print0, -exec, -maxdepth and -mindepth are true and
+	 * set how find acts or goes.
+	 */
+	private class Parser {
+		final FindContext fctx;
+		final List<String> tokens;
+		int pos;
+
+		Parser(FindContext fctx, List<String> tokens) {
+			this.fctx = fctx;
+			this.tokens = tokens;
+		}
+
+		Test parse() throws IOException, BadExpression {
+			if( tokens.isEmpty()) {
+				return null;
+			}
+			Test t = or();
+			if( pos < tokens.size()) {
+				throw new BadExpression(tokens.get(pos).equals(")") ? "unbalanced )" : "unexpected "+tokens.get(pos));
+			}
+			return t;
+		}
+
+		private Test or() throws IOException, BadExpression {
+			Test left = and();
+			while( pos < tokens.size() && (tokens.get(pos).equals("-o") || tokens.get(pos).equals("-or"))) {
+				pos++;
+				Test l = left, r = and();
+				left = (f, p, d) -> l.test(f, p, d) || r.test(f, p, d);
+			}
+			return left;
+		}
+
+		private Test and() throws IOException, BadExpression {
+			Test left = unary();
+			while( pos < tokens.size()) {
+				String t = tokens.get(pos);
+				if( t.equals("-o") || t.equals("-or") || t.equals(")")) {
+					break;
+				}
+				if( t.equals("-a") || t.equals("-and")) {
+					pos++;
+				}
+				Test l = left, r = unary();
+				left = (f, p, d) -> l.test(f, p, d) && r.test(f, p, d);
+			}
+			return left;
+		}
+
+		private Test unary() throws IOException, BadExpression {
+			if( pos >= tokens.size()) {
+				throw new BadExpression("the expression ends too soon");
+			}
+			String t = tokens.get(pos++);
+			if( t.equals("!") || t.equals("-not")) {
+				Test inner = unary();
+				return (f, p, d) -> !inner.test(f, p, d);
+			}
+			if( t.equals("(")) {
+				Test inner = or();
+				if( pos >= tokens.size() || !tokens.get(pos).equals(")")) {
+					throw new BadExpression("missing )");
+				}
+				pos++;
+				return inner;
+			}
+			return primary(t);
+		}
+
+		private String value(String primary) throws BadExpression {
+			if( pos >= tokens.size()) {
+				throw new BadExpression(primary+": needs an argument");
+			}
+			return tokens.get(pos++);
+		}
+
+		private int number(String primary) throws BadExpression {
+			String v = value(primary);
+			try {
+				return Integer.parseInt(v);
+			} catch (NumberFormatException e) {
+				throw new BadExpression(primary+": not a number: "+v);
+			}
+		}
+
+		private Test primary(String arg) throws IOException, BadExpression {
+			final Test TRUE = (f, p, d) -> true;
+			switch (arg) {
+			case "-print":
+				return TRUE;
+			case "-print0":
+				fctx.print0 = true;
+				return TRUE;
+			case "-maxdepth":
+				fctx.maxDepth = number(arg);
+				return TRUE;
+			case "-mindepth":
+				fctx.minDepth = number(arg);
+				return TRUE;
+			case "-exec": {
+				fctx.exec = new ArrayList<>();
+				boolean ended = false;
+				while( pos < tokens.size()) {
+					String w = tokens.get(pos++);
+					if( w.equals(";")) {
+						ended = true;
+						break;
+					}
+					if( w.equals("+") && !fctx.exec.isEmpty() && fctx.exec.get(fctx.exec.size()-1).equals("{}")) {
+						fctx.execAll = true;
+						ended = true;
+						break;
+					}
+					fctx.exec.add(w);
+				}
+				if( !ended || fctx.exec.isEmpty()) {
+					throw new BadExpression("-exec: needs a command ending with ; or {} +");
+				}
+				return TRUE;
+			}
+			case "-name":
+			case "-iname": {
+				Pattern p = Pattern.compile(prepWildCards(value(arg)), arg.equals("-iname") ? Pattern.CASE_INSENSITIVE : 0);
+				return (f, path, d) -> p.matcher(d == 0 ? baseName(path) : f.getName()).matches();
+			}
+			case "-path":
+			case "-wholename": {
+				Pattern p = Pattern.compile(prepWildCards(value(arg)));
+				return (f, path, d) -> p.matcher(path).matches();
+			}
+			case "-type": {
+				String t = value(arg);
+				if( !t.equals("f") && !t.equals("d") && !t.equals("l")) {
+					throw new BadExpression("-type: unknown type "+t+" (f, d or l)");
+				}
+				// (with -L a link is what it points at; -type l then finds only those that point nowhere)
+				boolean follow = fctx.followLinks;
+				return (f, path, d) -> {
+					switch (t) {
+					case "f": return f.isFile() && (follow || f.getLinkedTo() == null);
+					case "d": return f.isDirectory() && (follow || d == 0 || f.getLinkedTo() == null);
+					default: return f.getLinkedTo() != null && (!follow || !f.exists());
+					}
+				};
+			}
+			case "-empty":
+				return (f, path, d) -> f.isDirectory() ? (f.listFiles() == null || f.listFiles().length == 0) : f.length() == 0;
+			case "-mmin":
+			case "-amin":
+			case "-mtime":
+			case "-atime": {
+				FindNumber n = parseNumber(value(arg));
+				boolean access = arg.startsWith("-a");
+				long unit = arg.endsWith("min") ? 60000 : DAY;
+				return (f, path, d) -> compare(n, (System.currentTimeMillis() - (access ? f.lastAccessTime() : f.lastModified())) / unit);
+			}
+			case "-size": {
+				FindNumber n = parseNumber(value(arg));
+				return (f, path, d) -> {
+					if( f.isDirectory()) {
+						return false;
+					}
+					long units = (f.length() + n.denominator - 1) / n.denominator;
+					return compare(n, units);
+				};
+			}
+			default:
+				throw new us.bringardner.fsh.ShellCommand.UnsupportedOption("find: "+arg+": unknown primary or operator");
+			}
+		}
 	}
 
 	private static String baseName(String path) {

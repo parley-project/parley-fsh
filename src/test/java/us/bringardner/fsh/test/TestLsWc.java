@@ -33,7 +33,7 @@ public class TestLsWc extends AbstractConsoleTest{
 		fillDir(dir2,1);
 		long time = System.currentTimeMillis();
 		
-		fileDate = Ls.DATE_FORMAT.format(new Date(time));
+		fileDate = Ls.formatDate(time);
 	
 		FileSourceFactory.setDefaultFactory(factory);
 		console = new Console();

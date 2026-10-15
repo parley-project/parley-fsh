@@ -91,7 +91,7 @@ List files: the current directory, or each PATH (files first, then each director
 -l       long format: permissions, links, owner, group, size, date and name
 -g       long format without the owner
 -G       long format without the group
--h       with -l, sizes in MB and GB
+-h       with -l, sizes such as 1.5K, 234M and 2.0G
 -d       list directories themselves, not their contents
 -L       show the files symbolic links point to, not the links
 -Q       with -l, put names in double quotes
@@ -228,7 +228,7 @@ Tests:
 -size N[cwbkMG]                     N bytes, 2-byte words, 512-byte blocks (the default),
 KiB, MiB or GiB, rounded up
 +N means more than N, -N less than N, and N exactly N.
-Operators: ! or -not; -a or -and (implied between tests); -o or -or. There are no ( ).
+Operators: ( EXPRESSION ) (quoted, as \( \)); ! or -not; -a or -and (implied); -o or -or.
 Options: -maxdepth N, -mindepth N; -L follows symbolic links (-H and -P don't).
 Actions:
 -print           print the path (the default)

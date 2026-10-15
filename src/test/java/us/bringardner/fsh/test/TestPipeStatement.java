@@ -26,7 +26,8 @@ public class TestPipeStatement extends AbstractConsoleTest{
 	
 
 	/**
-	 * The output of "ls -l | wc": lines, words and bytes. The bytes include the width of the owner
+	 * The output of "ls -l | wc": lines, words and bytes (the date in each line is 12 characters,
+	 * "Oct 15 06:29" or "Jan  2  2020", as ls shows it). The bytes include the width of the owner
 	 * and group names in every line, so they differ from one machine to the next: on Windows
 	 * (where the owner is the domain, a backslash and the user name) the lines and the words are compared, which are the same.
 	 */
@@ -106,12 +107,12 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String cmd = "ls -l | wc"
 				;
 
-		String expect = "4      36     230";
+		String expect = "4      36     234";
 		
 		if( getOs()==OperatingSystem.Windows) {
-			expect = "4      36     322";
+			expect = "4      36     326";
 		}else if(getOs()==OperatingSystem.Linux) {
-			expect = "4      36     242";
+			expect = "4      36     246";
 		}
 		
 		ExecuteResult res = executeCommand(cmd,"");
@@ -130,12 +131,12 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 
 		String expect = 
-				"4      36     230"
+				"4      36     234"
 				;
 		if( getOs()==OperatingSystem.Windows) {
-			expect = "4      36     322";
+			expect = "4      36     326";
 		}else if(getOs()==OperatingSystem.Linux) {
-			expect = "4      36     242";
+			expect = "4      36     246";
 		}
 		
 		boolean tmp = showError;
@@ -158,12 +159,12 @@ public class TestPipeStatement extends AbstractConsoleTest{
 				;
 
 		String expect = 
-				"4      36     230"
+				"4      36     234"
 				;
 		if( getOs()==OperatingSystem.Windows) {
-			expect = "4      36     322";
+			expect = "4      36     326";
 		}else if(getOs()==OperatingSystem.Linux) {
-			expect = "4      36     242";
+			expect = "4      36     246";
 		}
 		
 		boolean tmp = showError;
