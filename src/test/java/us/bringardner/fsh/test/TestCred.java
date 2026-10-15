@@ -137,6 +137,9 @@ public class TestCred extends AbstractConsoleTest {
 		assertFalse(CredentialPrompts.holdsPlainSecret("connect sftp host=h password= /x"));
 		assertFalse(CredentialPrompts.holdsPlainSecret("connect memory name=password /m"));
 		assertFalse(CredentialPrompts.holdsPlainSecret("cred set keychain:parley/x"));
+		assertFalse(CredentialPrompts.holdsPlainSecret("cred set file:~/x.pw     # a password dialog, twice"), "a comment isn't an argument");
+		assertFalse(CredentialPrompts.holdsPlainSecret("connect sftp password=@keychain:x /m # password=hunter2"));
+		assertTrue(CredentialPrompts.holdsPlainSecret("connect sftp password=a#b /m"), "# inside a word isn't a comment");
 		assertFalse(CredentialPrompts.holdsPlainSecret("echo connect password=x"));
 	}
 }

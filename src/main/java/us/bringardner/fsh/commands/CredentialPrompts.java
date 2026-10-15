@@ -239,6 +239,9 @@ public final class CredentialPrompts {
 			} else if( c == '\'' || c == '"' ) {
 				quote = c;
 				in = true;
+			} else if( c == '#' && !in ) {
+				// a comment runs to the end of the line
+				break;
 			} else if( c == '\\' && i+1 < line.length()) {
 				cur.append(line.charAt(++i));
 				in = true;
