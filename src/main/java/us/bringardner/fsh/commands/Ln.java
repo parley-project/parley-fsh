@@ -14,11 +14,16 @@ public class Ln extends ShellCommand{
 
 
 	static String name = "ln";
-	static String help = "link files."
-			+ "     ln [-L | -P | -s ] [-f | -iw] [-hnv] source_file [target_file]\n"
-			+ "     ln [-L | -P | -s ] [-f | -iw] [-hnv] source_file ... target_dir\n"
-			+ ""
-			+ "\t see 'man ln' for more information";
+	static String help = "ln [-s] [-f | -i] [-hnv] [-L | -P] SOURCE TARGET   or   ln [options] SOURCE ... DIRECTORY\n"
+			+ "\tMake links: hard links, or symbolic links with -s. Works on mounted file systems that support\n"
+			+ "\tlinks.\n"
+			+ "\t-s       make symbolic links; SOURCE is stored as given and need not exist\n"
+			+ "\t-f       replace an existing TARGET\n"
+			+ "\t-i       ask before replacing an existing TARGET\n"
+			+ "\t-v       show each link as it is made\n"
+			+ "\t-h, -n   if TARGET is a symbolic link to a directory, replace it instead of linking inside it\n"
+			+ "\t-L       a hard link to a symbolic link links to the file it points to (the default)\n"
+			+ "\t-P       a hard link to a symbolic link links to the link itself";
 
 	public Ln() {
 		super(name, help);

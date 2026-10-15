@@ -24,27 +24,25 @@ public class Ls extends ShellCommand {
 
 
 	static String name = "ls";
-	static String help = "ls [-1aCdgGhlLQrRStuxX].. [--] [path]..\n"
-			+ "List information about the FILEs (the current directory by default).  Sort entries alphabetically if none of -ctuSUX is specified.\n"
-			+ "\n"
-			+ "       -1	list one entry per line\n"
-			+ "       -a	do not ignore entries starting with .\n"
-			+ "       -C	list entries by columns\n"
-			+ "       -d	list directories themselves, not their contents\n"
-			+ "       -g	like -l, but do not list owner\n"
-			+ "       -G	in a long listing, don't print group names\n"
-			+ "       -h	with -l, print sizes like 1K 234M 2G etc.\n"
-			+ "       -l	use a long listing format\n"
-			+ "       -L	folow symbolic link (show link instead)\n"
-			+ "       -Q	enclose entry names in double quotes"
-			+ "       -r	reverse order while sorting\n"
-			+ "       -R	list subdirectories recursively\n"
-			+ "       -S	sort by file size, largest first\n"
-			+ "       -t	sort by time, newest first\n"
-			+ "       -x	list entries by lines instead of by columns\n"
-			+ "       -X	sort alphabetically by entry extension\n"
-			+ "       --	the arguments after this are paths, even if they start with -\n"
-			;
+	static String help = "ls [-1aCdgGhlLQrRStuxX] [--] [PATH ...]\n"
+			+ "\tList files: the current directory, or each PATH (files first, then each directory's contents).\n"
+			+ "\t-a       include names that start with . and hidden files\n"
+			+ "\t-1       one name per line\n"
+			+ "\t-C, -x   in columns (the default at a terminal)\n"
+			+ "\t-l       long format: permissions, links, owner, group, size, date and name\n"
+			+ "\t-g       long format without the owner\n"
+			+ "\t-G       long format without the group\n"
+			+ "\t-h       with -l, sizes in MB and GB\n"
+			+ "\t-d       list directories themselves, not their contents\n"
+			+ "\t-L       show the files symbolic links point to, not the links\n"
+			+ "\t-Q       with -l, put names in double quotes\n"
+			+ "\t-R       list subdirectories recursively\n"
+			+ "\t-r       reverse the order\n"
+			+ "\t-S       sort by size, largest first\n"
+			+ "\t-t       sort by modification time, newest first\n"
+			+ "\t-u       with -l show access times; sort by them\n"
+			+ "\t-X       sort by extension\n"
+			+ "\tOtherwise names are sorted alphabetically.";
 
 
 

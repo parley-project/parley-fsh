@@ -33,6 +33,8 @@ you build**, using the library the same way your own application would. It was c
 - **A shell over any file system.** `connect` mounts a `FileSource` (FTP, SFTP, a database,
   memory) at a path, and `disconnect` removes it and closes the connection. fsh's own file builtins (`ls`, `cp`, `mv`,
   `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every mounted file system.
+- **Every builtin is described** in [COMMANDS.md](COMMANDS.md), made from the same help text
+  that `help NAME` shows in the shell.
 - **No passwords in scripts.** A connect setting can name its secret instead of holding it, and
   `cred` stores and checks those secrets ([below](#passwords-in-startup-scripts)).
 - **An interactive shell** with a bash-style line editor (emacs keys, history search,
@@ -106,8 +108,8 @@ again. The todo file records what each fix involved.
 
 - **fsh's own file builtins.** `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`,
   `sleep`, `expr`, `clear`, `connect`, `cred` and `disconnect` are builtins (so they work on mounted file
-  systems), with their own help texts. Programs of the same names are still reachable by path or
-  with `enable -n`.
+  systems), with their own help texts, collected in [COMMANDS.md](COMMANDS.md). Programs of the
+  same names are still reachable by path or with `enable -n`.
 - **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and
   no bash identity variables (`BASH_VERSION`, `BASH_VERSINFO`, `BASH`). Scripts that refuse to run
   without them (Homebrew does) can be given them in an `FSH_ENV` file.
