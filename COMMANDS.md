@@ -179,8 +179,9 @@ exist is created, empty, unless -c is given.
 -c          don't create files that don't exist
 -r FILE     use FILE's times
 -t TIME     [[CC]YY]MMDDhhmm[.SS], local time
--d DATE     YYYY-MM-DDThh:mm:SS, local time, or UTC with a trailing Z
--A OFFSET   move the times by [-][[hh]mm]SS
+-d DATE     YYYY-MM-DD[Thh:mm[:SS[.frac]]], local time; or UTC with a trailing Z, or
+another zone with +hh:mm or -hh:mm
+-A OFFSET   move the existing times by [-][[hh]mm]SS
 ```
 
 ### ln
