@@ -67,6 +67,44 @@
 				</plugins>
 			</build>
 		</profile>
+		<!-- The OS keychain for credential references (@keychain:parley/ftp): macOS Keychain, Linux
+		     Secret Service, Windows Credential Manager. Not used by fsh's code: parley-files finds it
+		     through ServiceLoader. In every build except the native image's (-Dfsh.noKeychain, which
+		     the build-native scripts pass): it works through JNA, which the native image isn't set up
+		     for, so there @keychain: is simply not available. Needs Java 17 at run time; on an older
+		     JVM the keychain store is left out. -->
+		<profile>
+			<id>keychain</id>
+			<activation>
+				<property>
+					<name>!fsh.noKeychain</name>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>us.bringardner.parley</groupId>
+					<artifactId>parley-credentials-keychain</artifactId>
+					<version>${parley.version}</version>
+					<scope>runtime</scope>
+				</dependency>
+				<!-- java-keyring brings jna-platform 5.13; JNA's two jars must be the same version as
+				     the jna fsh uses -->
+				<dependency>
+					<groupId>net.java.dev.jna</groupId>
+					<artifactId>jna-platform</artifactId>
+					<version>5.19.1</version>
+					<scope>runtime</scope>
+				</dependency>
+				<!-- java-keyring logs through slf4j: with no backend, slf4j prints a three-line warning
+				     in the shell the first time the keychain is used -->
+				<dependency>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-nop</artifactId>
+					<version>1.7.36</version>
+					<scope>runtime</scope>
+				</dependency>
+			</dependencies>
+		</profile>
 		<!-- Bundles the JDBC file system too: mvn -Pjdbc ... (it isn't in the default build) -->
 		<profile>
 			<id>jdbc</id>
