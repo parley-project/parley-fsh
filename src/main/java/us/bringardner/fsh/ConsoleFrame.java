@@ -1,5 +1,6 @@
 package us.bringardner.fsh;
 
+import us.bringardner.swing.gradient.GradientLook;
 import java.awt.EventQueue;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -80,8 +81,10 @@ public class ConsoleFrame extends JFrame implements KeyboardReader {
 		consolePanel = new ConsolePanel();
 		consolePanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(consolePanel);
-		
-		
+
+		// the gradient look of the other Parley applications, when it is installed (fsh installs it
+		// before opening this window as its own; see Console.getKeyboadReader)
+		GradientLook.follow(this);
 	}
 
 	@Override
