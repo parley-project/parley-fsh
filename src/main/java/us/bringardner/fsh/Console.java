@@ -1,5 +1,6 @@
 package us.bringardner.fsh;
 
+import us.bringardner.swing.gradient.GradientLook;
 import java.awt.GraphicsEnvironment;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -3145,6 +3146,11 @@ delimiter
 			synchronized (this) {
 				if( keyboardReader==null ) {
 					if( !GraphicsEnvironment.isHeadless()) {
+						// fsh opens a window of its own: give it the look of the other Parley
+						// applications. Only here, so a shell in a terminal never loads Swing for it.
+						if( !GradientLook.isInstalled()) {
+							GradientLook.install();
+						}
 						ConsoleFrame ret = new ConsoleFrame(this);
 						ret.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 						if( setVisible) {
