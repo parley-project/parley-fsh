@@ -219,7 +219,7 @@ public class Ls extends ShellCommand {
 		String path = file.getAbsolutePath();
 		if( isRelative(pattern)) {
 			String cwd = ctx.console.getCurrentDirectory().getAbsolutePath();
-			char sep = file.getFileSourceFactory().getSeperatorChar();
+			char sep = file.getFileSourceFactory().getSeparatorChar();
 			if( path.startsWith(cwd+sep)) {
 				return path.substring(cwd.length()+1);
 			}

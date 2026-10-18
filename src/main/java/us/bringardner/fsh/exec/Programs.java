@@ -897,14 +897,14 @@ public final class Programs {
 		String [] exts = new String[0];
 		Object tmpExt = ctx.getEvironmentVariable("PATHEXT");
 		if( tmpExt!=null) {
-			exts = tmpExt.toString().split(""+factory.getPathSeperatorChar());
+			exts = tmpExt.toString().split(""+factory.getPathSeparatorChar());
 		}
 		Object pathVar = ctx.getVariable("PATH");
 		// (as bash: the first one that can run; else the first file of that name, which then says
 		// Permission denied)
 		FileSource notExecutable = null;
 		// (no PATH, or an empty part of it: the current directory, as bash's)
-		for(String path : (pathVar == null ? "" : ""+pathVar).split(""+factory.getPathSeperatorChar(), -1)) {
+		for(String path : (pathVar == null ? "" : ""+pathVar).split(""+factory.getPathSeparatorChar(), -1)) {
 			if( path.isEmpty()) {
 				path = ".";
 			}
