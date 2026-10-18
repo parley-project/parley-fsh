@@ -151,26 +151,23 @@ public class ManageTestFiles {
 			fs.setLastAccessTime(lastAccess);
 			fs.setLastModifiedTime(lastMod);
 			
+			// exactly the permissions recorded, no more: setting them one at a time only ever added
+			// (and OTHERS_READ and OTHERS_WRITE set OTHERS_EXECUTE), so the test files became
+			// executable and git saw them as changed
+			Set<PosixFilePermission> wanted = java.util.EnumSet.noneOf(PosixFilePermission.class);
 			for(String p : perms) {
 				p = p.trim();
-				if( p.isEmpty()) {
-					continue;
+				if( !p.isEmpty()) {
+					wanted.add(PosixFilePermission.valueOf(p));
 				}
-
-				Permissions perm = Permissions.valueOf(p);
-					switch (perm) {
-					case OWNER_READ:fs.setOwnerReadable(true);break;
-					case OWNER_WRITE:fs.setOwnerWritable(true);break;
-					case OWNER_EXECUTE:fs.setOwnerExecutable(true);break;
-					case GROUP_READ:fs.setGroupReadable(true);break;
-					case GROUP_WRITE:fs.setGroupWritable(true);break;
-					case GROUP_EXECUTE:fs.setGroupExecutable(true);break;
-					case OTHERS_READ:fs.setOtherExecutable(true);break;
-					case OTHERS_WRITE:fs.setOtherExecutable(true);break;
-					case OTHERS_EXECUTE:fs.setOtherExecutable(true);break;
-					default:
-						throw new IllegalArgumentException("Unexpected value: " + perm);
-					}
+			}
+			if( Files.getFileAttributeView(file.toPath(), PosixFileAttributeView.class) != null ) {
+				Files.setPosixFilePermissions(file.toPath(), wanted);
+			} else {
+				// Windows: what java.io.File can say
+				fs.setOwnerReadable(wanted.contains(PosixFilePermission.OWNER_READ));
+				fs.setOwnerWritable(wanted.contains(PosixFilePermission.OWNER_WRITE));
+				fs.setOwnerExecutable(wanted.contains(PosixFilePermission.OWNER_EXECUTE));
 			}
 				
 		}
