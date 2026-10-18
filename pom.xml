@@ -36,7 +36,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.release>11</maven.compiler.release>
-		<parley.version>1.0.0-SNAPSHOT</parley.version>
+		<parley.version>1.0.0</parley.version>
 	</properties>
 
 	<profiles>
@@ -84,7 +84,7 @@
 				<dependency>
 					<groupId>us.bringardner.parley</groupId>
 					<artifactId>parley-credentials-keychain</artifactId>
-					<version>${parley.version}</version>
+					<version>1.0.0-SNAPSHOT</version>
 					<scope>runtime</scope>
 				</dependency>
 				<!-- java-keyring brings jna-platform 5.13; JNA's two jars must be the same version as
