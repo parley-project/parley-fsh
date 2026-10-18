@@ -134,7 +134,7 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 		if( !abs) {
 			if(currentDirectory != null ) {
 				String cwd = currentDirectory.getAbsolutePath();
-				char sep = currentDirectory.getFileSourceFactory().getSeperatorChar();
+				char sep = currentDirectory.getFileSourceFactory().getSeparatorChar();
 				if( cwd.endsWith(""+sep)) {
 					realPath=cwd+fullPath;
 				} else {
@@ -211,12 +211,12 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 	}
 
 	@Override
-	public char getPathSeperatorChar() {
+	public char getPathSeparatorChar() {
 		return ';';
 	}
 
 	@Override
-	public char getSeperatorChar() {
+	public char getSeparatorChar() {
 		return '/';
 	}
 

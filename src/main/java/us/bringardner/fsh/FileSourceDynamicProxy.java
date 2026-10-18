@@ -43,7 +43,7 @@ public class FileSourceDynamicProxy implements InvocationHandler {
 		    		tmp5 = tmp5.substring(1);
 		    	}
 		    	String path =null;
-		    	char sep = target.getFileSourceFactory().getSeperatorChar();
+		    	char sep = target.getFileSourceFactory().getSeparatorChar();
 		    	String tmp1 = root.getAbsolutePath();
 		    	if( tmp1.endsWith(""+sep) || tmp5.startsWith(""+sep)) {
 		    		path = tmp1+tmp5;

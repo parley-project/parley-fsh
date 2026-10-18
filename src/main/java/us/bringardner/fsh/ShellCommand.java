@@ -154,7 +154,7 @@ public abstract class ShellCommand {
 			segment = expandTilde(ctx,segment);		
 			String cleanPath = segment;
 			if( !hasWildcard(segment)) {
-				cleanPath = FileSourceFactory.expandDots(segment, dir.getFileSourceFactory().getSeperatorChar());
+				cleanPath = FileSourceFactory.expandDots(segment, dir.getFileSourceFactory().getSeparatorChar());
 			}
 			
 			cleanPath = cleanPath.replaceAll("/./", "/");
@@ -589,7 +589,7 @@ public abstract class ShellCommand {
 			ret.add(cwd.getParentFile());
 			return ret;
 		}
-		String pathSegments [] = path.split("["+cwd.getFileSourceFactory().getSeperatorChar()+"]");
+		String pathSegments [] = path.split("["+cwd.getFileSourceFactory().getSeparatorChar()+"]");
 		//  these are all the files that match this segment
 		globDir(ctx,ret, cwd, pathSegments, 0);
 
@@ -722,7 +722,7 @@ public abstract class ShellCommand {
 			// expand dots
 			String segment = segments[segmentIdx];
 			segment = expandTilde(ctx,segment);
-			String path = FileSourceFactory.expandDots(segment, cwd.getFileSourceFactory().getPathSeperatorChar());
+			String path = FileSourceFactory.expandDots(segment, cwd.getFileSourceFactory().getPathSeparatorChar());
 
 			for (int idx1 = 0; idx1 < posixClass.length; idx1++) {
 				String tmp = replaceAll(path,posixClass[idx1], javaClass[idx1]);
