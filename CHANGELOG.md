@@ -25,6 +25,13 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   `antlr4-runtime`).
 - `DebugControlPanel.DebugController` is now `us.bringardner.fsh.DebugController`.
 
+### Added
+- `tools/build-jlink.sh`: fsh with a Java runtime of its own (`target/jlink/fsh`), cut down by
+  jlink to the modules fsh uses, with a class cache from `tools/aot-training.sh` (AOT cache on
+  JDK 25+, CDS archive before); `--package VERSION` makes a download of it.
+- `tools/build-jpackage.sh`: installers of that build with jpackage (pkg or dmg on macOS, deb or
+  rpm on Linux, or an app image).
+
 ### Changed
 - `macos/fsh` and `linux/fsh` take `FSH_RUNTIME`: `jvm` runs the jar on Java even when there is a
   native image, `native` runs the native image (an error if none is built), and `auto` (or unset)

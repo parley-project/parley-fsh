@@ -267,6 +267,31 @@ FSH_RUNTIME=native macos/fsh              # the native image (an error if none i
 
 `auto`, or leaving it unset, is the default choice above.
 
+### With its own Java runtime (jlink, jpackage)
+
+The JVM build can carry a Java runtime of its own, cut down by `jlink` to the modules fsh uses,
+so it runs where no Java is installed. It is the JVM build in every way: the JIT for long-running
+scripts, and the OS keychain (`@keychain:`), which the native image doesn't have. It starts as
+fast as the jar does on the same JDK, with the class cache made from `tools/aot-training.sh` (an
+AOT cache from JDK 25, a CDS archive before that).
+
+```sh
+tools/build-jlink.sh                     # target/jlink/fsh: run target/jlink/fsh/bin/fsh
+tools/build-jlink.sh --package 1.0.0     # also dist/fsh-1.0.0-PLATFORM-ARCH-jvm.tar.gz
+tools/build-jpackage.sh                  # an installer from it: pkg (macOS), deb (Linux)
+tools/build-jpackage.sh dmg              # or dmg, rpm, app-image
+```
+
+The runtime is the JDK in `JAVA_HOME` (on macOS, else `/usr/libexec/java_home`'s): use 17 or
+later for the keychain, 25 or later for the AOT cache. `target/jlink/fsh` is one folder that can
+be moved; link `bin/fsh` from a directory on `PATH`. `--debug` adds the debugger agent to the
+runtime (`FSH_DEBUG=8001 bin/fsh` listens on localhost:8001).
+
+`tools/build-jpackage.sh` installs the same runtime and jar with jpackage's own launcher
+(`/Applications/fsh.app/Contents/MacOS/fsh`, `/opt/fsh/bin/fsh`). That launcher starts the JVM
+itself, so it can't go through `fshexec -j`: signals the shell's caller ignored aren't reported
+as ignored (`trap -p`) when the JVM takes them first (QUIT, USR2). The packages aren't signed.
+
 ## Passwords in startup scripts
 
 A `connect` setting that holds a secret (an SFTP, FTP or JDBC password) can name where the secret
@@ -313,6 +338,8 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 - `.../fsh/commands` — the builtins
 - `tools/bash-suite`, `tools/real-world`, `tools/interactive` — the comparisons with bash
   described above
+- `tools/build-jlink.sh`, `tools/build-jpackage.sh` — fsh with its own Java runtime, and
+  installers of it
 
 ## The IDE
 
