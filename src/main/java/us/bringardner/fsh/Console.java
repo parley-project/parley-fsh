@@ -4014,8 +4014,8 @@ delimiter
 
 
 
-	public char getSeperatorChar() {
-		return mountFactory.getSeperatorChar();
+	public char getSeparatorChar() {
+		return mountFactory.getSeparatorChar();
 	}
 
 
