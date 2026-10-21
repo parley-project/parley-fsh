@@ -177,8 +177,8 @@ call, `${s#abc}`/`${t%hij}`, `v=$(echo hi)`, `while read -r`, `/usr/bin/true`,
 
 - Java 11 or later, to run it and to build it, like the rest of the Parley library. It starts
   fastest on JDK 25 or later (its AOT cache) or as the native image (built with GraalVM).
-- parley-files (compile), with parley-files-ftp and parley-files-sftp bundled at
-  run time so FTP and SFTP work without any setup. parley-files-jdbc is included
+- parley-files (compile), with parley-files-ftp and parley-files-sftp (and its SSH provider,
+  parley-files-sftp-parley-ssh) bundled at run time so FTP and SFTP work without any setup. parley-files-jdbc is included
   only when you build with `-Pjdbc`.
 
 ## Download

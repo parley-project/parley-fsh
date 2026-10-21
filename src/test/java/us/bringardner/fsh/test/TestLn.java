@@ -1,5 +1,6 @@
 package us.bringardner.fsh.test;
 
+import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,12 +27,33 @@ import us.bringardner.fsh.Console;
 @TestMethodOrder(OrderAnnotation.class)
 public class TestLn extends AbstractConsoleTest{
 
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
+
 	private static File localSymlink;
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
 		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		testFilesDir = new File("LnTestFiles").getCanonicalFile();
+		// a copy of the test files in the scratch folder, with the links' folder (out) beside it: hard
+		// links can't cross file systems, and the tests never change the files in the project
+		testFilesDir = copyTree(new File("LnTestFiles").getCanonicalFile().toPath(), scratchDir().toPath().resolve("LnTestFiles")).toFile();
+		assertTrue(new File(scratchDir(), "out").mkdirs());
 		//  set up linked files
 		File local = new File(testFilesDir,"AbcFileA.js");
 		assertTrue(local.exists());		
@@ -62,9 +84,9 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(1)
 	public void testLn_HardFile2File() throws IOException {
-		String hardLinkPath = "target/HardLinkToAbcFileA.js";
+		String hardLinkPath = "out/HardLinkToAbcFileA.js";
 		
-		File file = new File(hardLinkPath).getCanonicalFile();
+		File file = new File(scratchDir(), hardLinkPath);
 		// (a link left from before is removed too, even one that points at nothing)
 		java.nio.file.Files.deleteIfExists(file.toPath());
 		
@@ -88,9 +110,9 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(2)
 	public void testLn_sFile2File() throws IOException {
-		String linkPath = "target/SymLinkToAbcFileA.js";
+		String linkPath = "out/SymLinkToAbcFileA.js";
 		
-		File file = new File(linkPath).getCanonicalFile();
+		File file = new File(scratchDir(), linkPath);
 		// (a link left from before is removed too, even one that points at nothing)
 		java.nio.file.Files.deleteIfExists(file.toPath());
 		
@@ -121,9 +143,9 @@ public class TestLn extends AbstractConsoleTest{
 			// requires admin  
 			return;
 		}
-		String linkPath = "target/SymLinkTo_P_.js";
+		String linkPath = "out/SymLinkTo_P_.js";
 		
-		File file = new File(linkPath).getCanonicalFile();
+		File file = new File(scratchDir(), linkPath);
 		// (a link left from before is removed too, even one that points at nothing)
 		java.nio.file.Files.deleteIfExists(file.toPath());
 		
@@ -150,9 +172,9 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(4)
 	public void testLn_f_File2File() throws IOException {
-		String linkPath = "target/AbcFileC.txt";
+		String linkPath = "out/AbcFileC.txt";
 		
-		File file = new File(linkPath);
+		File file = new File(scratchDir(), linkPath);
 		// (a link left from before is removed too, even one that points at nothing)
 		java.nio.file.Files.deleteIfExists(file.toPath());
 		
@@ -193,9 +215,9 @@ public class TestLn extends AbstractConsoleTest{
 			// no native server 
 			return;
 		}
-		String linkPath = "target/SymLinkTo_P_.js";
+		String linkPath = "out/SymLinkTo_P_.js";
 		
-		File file = new File(linkPath).getCanonicalFile();
+		File file = new File(scratchDir(), linkPath);
 		// (a link left from before is removed too, even one that points at nothing)
 		java.nio.file.Files.deleteIfExists(file.toPath());
 		
@@ -220,8 +242,8 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(6)
 	public void testLn_Files2Dir() throws IOException {
-		String linkPath = "target";
-		File dir = new File(linkPath).getCanonicalFile();		
+		String linkPath = "out";
+		File dir = new File(scratchDir(), linkPath);		
 		for(File file : dir.listFiles()) {
 			if( file.getName().startsWith("AbcFile")) {
 				assertTrue(file.delete());
@@ -250,8 +272,8 @@ public class TestLn extends AbstractConsoleTest{
 	@Test
 	@Order(7)
 	public void testLn_sv_Files2Dir() throws IOException {
-		String linkPath = "target";
-		File dir = new File(linkPath).getCanonicalFile();		
+		String linkPath = "out";
+		File dir = new File(scratchDir(), linkPath);		
 		for(File file : dir.listFiles()) {
 			if( file.getName().startsWith("AbcFile")) {
 				assertTrue(file.delete());
@@ -308,5 +330,22 @@ public class TestLn extends AbstractConsoleTest{
 		}
 
 		return ret;
+	}
+
+	/** Copy a folder (links copied as links), keeping the files' times; @return the copy */
+	static Path copyTree(Path from, Path to) throws IOException {
+		try (java.util.stream.Stream<Path> all = Files.walk(from)) {
+			for (Path p : (Iterable<Path>) all::iterator) {
+				Path dest = to.resolve(from.relativize(p).toString());
+				if (Files.isSymbolicLink(p)) {
+					Files.createSymbolicLink(dest, Files.readSymbolicLink(p));
+				} else if (Files.isDirectory(p)) {
+					Files.createDirectories(dest);
+				} else {
+					Files.copy(p, dest, java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);
+				}
+			}
+		}
+		return to;
 	}
 }

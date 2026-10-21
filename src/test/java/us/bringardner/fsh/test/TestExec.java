@@ -1,5 +1,7 @@
 package us.bringardner.fsh.test;
 
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -14,12 +16,30 @@ import us.bringardner.parley.files.FileSource;
 
 public class TestExec extends AbstractConsoleTest {
 
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
+
 
 	public static FileSource logDir;
 	@BeforeAll
 	public static void beforeAll() throws IOException {
 		AbstractConsoleTest.setup("LsTestFiles");
-		File file = new File("target/logdir").getCanonicalFile();
+		File file = new File(scratchPath("logdir"));
 		if( !file.exists()) {
 			assertTrue(file.mkdirs());
 		}
