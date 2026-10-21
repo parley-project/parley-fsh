@@ -29,15 +29,19 @@ public final class CredentialPrompts {
 	}
 
 	private static final ThreadLocal<ShellContext> current = new ThreadLocal<>();
-	private static boolean installed;
 
 	private CredentialPrompts() {
 	}
 
-	/** Makes fsh the prompter for references (once), keeping the earlier one for other threads. */
+	/**
+	 * Makes fsh the prompter for references, keeping the earlier one for other threads. It is
+	 * installed again if something has replaced it since (Credentials.restoreDefaults() puts
+	 * parley-files' console prompter back), so a shell that can't ask never falls through to
+	 * that one: on Java 22 and later System.console() isn't null even without a terminal, and
+	 * it would wait for an answer that never comes.
+	 */
 	public static synchronized void install() {
-		if( !installed ) {
-			installed = true;
+		if( !(Credentials.getPrompter() instanceof FshPrompter)) {
 			Credentials.setPrompter(new FshPrompter(Credentials.getPrompter()));
 		}
 	}
