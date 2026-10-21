@@ -138,6 +138,28 @@ public class TestCred extends AbstractConsoleTest {
 	}
 
 	@Test
+	public void aReplacedPrompterIsNotAskedFromAScript() throws IOException {
+		// What Credentials.restoreDefaults() does on Java 22 and later: the default prompter is
+		// the JVM's console, which isn't null there even without a terminal, and would wait for
+		// an answer. fsh puts its own prompter back, so a shell that can't ask fails at once.
+		java.util.concurrent.atomic.AtomicBoolean asked = new java.util.concurrent.atomic.AtomicBoolean();
+		us.bringardner.parley.files.credentials.Credentials.Prompter console = (label, request) -> {
+			asked.set(true);
+			return "typed".toCharArray();
+		};
+		executeCommand("cred providers", "");   // fsh's prompter is installed
+		us.bringardner.parley.files.credentials.Credentials.setPrompter(console);
+		try {
+			ExecuteResult res = executeCommand("cred get prompt:", "");
+			assertEquals(1, res.exitCode);
+			assertTrue(res.getStdErr().contains("no way to ask"), res.getStdErr());
+			assertFalse(asked.get(), "the replaced prompter was asked");
+		} finally {
+			us.bringardner.parley.files.credentials.Credentials.restoreDefaults();
+		}
+	}
+
+	@Test
 	public void linesWithAPlainPasswordAreKeptOutOfTheHistory() {
 		assertTrue(CredentialPrompts.holdsPlainSecret("connect sftp host=h user=u password=hunter2 /x"));
 		assertTrue(CredentialPrompts.holdsPlainSecret("cd /; connect ftp \"password=a b\" /f"));
