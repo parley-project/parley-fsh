@@ -13,7 +13,7 @@ import us.bringardner.fsh.exec.NativeProcess;
 
 /**
  * The parts of NATIVE-CONTRACT.md that can be checked without a terminal, against whichever
- * implementation is loaded: run it with -Dfsh.native=jna, and with -Dfsh.native=jni and
+ * implementation is loaded: run it with -Dparley.fsh.native=jna, and with -Dparley.fsh.native=jni and
  * -Djava.library.path=(macos|linux|windows) to check the JNI library (see the pom's argLine).
  *
  * It does not read the keyboard (the test runner uses standard input itself).
@@ -150,7 +150,7 @@ class NativeKeyboardContractTest {
 		available();
 		if( !NativeProcess.usable() ) {
 			assertTrue(!NativeKeyboard.isJniAvailible() || java.io.File.separatorChar != '/'
-					|| "java".equals(System.getProperty("fsh.spawn")) || probeFails());
+					|| "java".equals(System.getProperty("parley.fsh.spawn")) || probeFails());
 			return;
 		}
 		String text = NativeKeyboard.strerror(2);

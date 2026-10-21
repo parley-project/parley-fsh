@@ -13,7 +13,7 @@ honor it**, whichever it is:
 | JNA, Windows | `src/main/java/us/bringardner/fsh/jna/WindowsOps.java` |
 
 `NativeKeyboardContractTest` checks the parts that can be checked without a terminal, against
-whichever implementation is loaded (`-Dfsh.native=jna` or `jni`, see below).
+whichever implementation is loaded (`-Dparley.fsh.native=jna` or `jni`, see below).
 
 ## Conventions
 
@@ -111,5 +111,5 @@ launcher (`fsh-native.c`, before any runtime exists).
 
 ## Choosing an implementation
 
-`-Dfsh.native=` is `auto` (the default: the JNI library when it is loaded, else JNA, never JNA in
+`-Dparley.fsh.native=` is `auto` (the default: the JNI library when it is loaded, else JNA, never JNA in
 a native image), `jni`, or `jna`.

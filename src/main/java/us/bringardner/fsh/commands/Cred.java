@@ -239,7 +239,7 @@ public class Cred extends ShellCommand {
 		if( Runtime.version().feature() < 17 ) {
 			return "it needs Java 17 or newer, and this is Java "+Runtime.version().feature();
 		}
-		return "parley-credentials-keychain isn't on the classpath; build fsh with Maven (not with -Dfsh.noKeychain),"
+		return "parley-credentials-keychain isn't on the classpath; build fsh with Maven (not with -Dparley.fsh.noKeychain),"
 				+ " or refresh the IDE's Maven dependencies before exporting a jar";
 	}
 

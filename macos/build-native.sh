@@ -28,7 +28,7 @@ fi
 
 mvn -q package -DskipTests || exit 1
 jar=$(ls -t target/fsh-*.jar | head -1)
-mvn -q dependency:build-classpath -Dfsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt || exit 1
+mvn -q dependency:build-classpath -Dparley.fsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt || exit 1
 mkdir -p target/native target/native-tmp target/native-config
 # (all of fsh's and parley's classes for reflection, besides what tools/aot-training.sh used)
 jars=$(printf '%s:%s' "$jar" "$(cat target/runtime-classpath.txt)" | tr ':' '\n' | grep -E 'fsh-|parley' | tr '\n' ' ')
@@ -40,7 +40,7 @@ build() { # output-directory [native-image options]
 	mkdir -p "$out"
 	TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)" \
 		-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config \
-		-Dfsh.libdir="$PROJECT_DIR/$out" "$@" -o "$out/fsh-image" us.bringardner.fsh.Console || exit 1
+		-Dparley.fsh.libdir="$PROJECT_DIR/$out" "$@" -o "$out/fsh-image" us.bringardner.fsh.Console || exit 1
 	cp -f "$LIB_DIR/libnativekeyboard.dylib" "$LIB_DIR/fshexec" "$out/"
 	# (fsh: the image's launcher, which notes the open-files limit the image raises)
 	cc -O2 -DIMAGE_DIR="\"$PROJECT_DIR/$out\"" -o "$out/fsh" "$LIB_DIR/fsh-native.c" || exit 1

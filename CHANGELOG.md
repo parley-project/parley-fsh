@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0 (unreleased)
+
+### Changed (needs a configuration change)
+
+- **Property names** (Parley 2.0.0; the old names are no longer read): `fsh.*` is `parley.fsh.*`:
+  `parley.fsh.native`, `parley.fsh.native.notice`, `parley.fsh.native.debug`, `parley.fsh.exec`,
+  `parley.fsh.libdir`, `parley.fsh.spawn`, `parley.fsh.credentials.dialog`, `parley.fsh.argv0`, and those the
+  native launcher passes, `parley.fsh.ignoredAtStart` and `parley.fsh.cfAbsent` (rebuild `fshexec` with the
+  new `fshexec.c`). The build's `fsh.noKeychain`, `fsh.writeCommandsDoc` and `fsh.test.reportDir` are
+  `parley.fsh.noKeychain`, `parley.fsh.writeCommandsDoc` and `parley.fsh.test.reportDir`.
+- The parley-ssh shell is named with `parley.ssh.shellFactory`.
+
 ## 1.1.0 (unreleased)
 
 Needs swing-widgets 1.1.0.

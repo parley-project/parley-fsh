@@ -13,7 +13,7 @@ import us.bringardner.fsh.commands.Help;
 
 /**
  * COMMANDS.md is made from the builtins' help text. This fails when the file is out of date;
- * -Dfsh.writeCommandsDoc=true writes it instead.
+ * -Dparley.fsh.writeCommandsDoc=true writes it instead.
  */
 public class TestCommandsDoc {
 
@@ -21,12 +21,12 @@ public class TestCommandsDoc {
 	public void commandsDocIsCurrent() throws IOException {
 		Path doc = Path.of("COMMANDS.md");
 		String made = Help.markdown();
-		if( Boolean.getBoolean("fsh.writeCommandsDoc")) {
+		if( Boolean.getBoolean("parley.fsh.writeCommandsDoc")) {
 			Files.writeString(doc, made, StandardCharsets.UTF_8);
 			return;
 		}
 		String have = Files.exists(doc) ? Files.readString(doc, StandardCharsets.UTF_8) : "";
 		assertEquals(made, have.replace("\r\n", "\n"), "COMMANDS.md is out of date; run"
-				+ " mvn test -Dtest=TestCommandsDoc -Dfsh.writeCommandsDoc=true");
+				+ " mvn test -Dtest=TestCommandsDoc -Dparley.fsh.writeCommandsDoc=true");
 	}
 }

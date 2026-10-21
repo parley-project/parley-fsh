@@ -121,7 +121,7 @@ final class UnixOps extends NativeOps {
 			// (without it fsh starts programs with ProcessBuilder)
 			Throwable cause = e.getCause() != null ? e.getCause() : e;
 			problem = cause.getClass().getSimpleName()+": "+cause.getMessage();
-			if( Boolean.getBoolean("fsh.native.debug") ) {
+			if( Boolean.getBoolean("parley.fsh.native.debug") ) {
 				e.printStackTrace();
 			}
 		}

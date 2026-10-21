@@ -24,12 +24,12 @@ public final class NativeProcess extends Process {
 
 	private static volatile Boolean usable;
 
-	/** programs are started by the library (unless the fsh.spawn property is "java") */
+	/** programs are started by the library (unless the parley.fsh.spawn property is "java") */
 	public static boolean usable() {
 		Boolean u = usable;
 		if( u == null ) {
 			// (Unix descriptors, process groups and paths: Windows starts programs with ProcessBuilder)
-			u = NativeKeyboard.canSpawn() && !"java".equals(System.getProperty("fsh.spawn"));
+			u = NativeKeyboard.canSpawn() && !"java".equals(System.getProperty("parley.fsh.spawn"));
 			usable = u;
 		}
 		return u;

@@ -62,7 +62,7 @@ if [ "$major" -lt 17 ]; then
 	echo "$0: note: JDK $major: the keychain needs 17 or later, so @keychain: will not be available" >&2
 fi
 
-# fsh.jar (the keychain profile is on unless -Dfsh.noKeychain, as in every build but the native one)
+# fsh.jar (the keychain profile is on unless -Dparley.fsh.noKeychain, as in every build but the native one)
 mvn -q package -DskipTests
 [ -f target/fsh.jar ] || { echo "$0: mvn package made no target/fsh.jar" >&2; exit 1; }
 

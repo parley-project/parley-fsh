@@ -108,8 +108,8 @@ public class TestBashCompat extends AbstractConsoleTest {
 		System.out.println("bash compatibility: "+passed.get()+" of "+total+" cases match bash"
 				+(skipped.get() > 0 ? " ("+skipped.get()+" not run)" : ""));
 		// one line per case, to update known-failures.txt from
-		// the folder Maven names (fsh.test.reportDir: target/), else this class's scratch folder
-		Path reportDir = Path.of(System.getProperty("fsh.test.reportDir", scratchDir().getPath()));
+		// the folder Maven names (parley.fsh.test.reportDir: target/), else this class's scratch folder
+		Path reportDir = Path.of(System.getProperty("parley.fsh.test.reportDir", scratchDir().getPath()));
 		Files.createDirectories(reportDir);
 		Path report = reportDir.resolve("bash-compat-results.txt");
 		synchronized (results) {

@@ -22,12 +22,12 @@ public class TestSharedInput extends AbstractConsoleTest {
 	@BeforeAll
 	public static void setUp() throws Exception {
 		AbstractConsoleTest.setup("TestFiles");
-		System.setProperty("fsh.exec", HELPER.getAbsolutePath());
+		System.setProperty("parley.fsh.exec", HELPER.getAbsolutePath());
 	}
 
 	@AfterAll
 	public static void tearDown() {
-		System.clearProperty("fsh.exec");
+		System.clearProperty("parley.fsh.exec");
 	}
 
 	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")

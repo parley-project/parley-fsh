@@ -458,8 +458,8 @@ public class TestExternal extends AbstractConsoleTest {
 	public void testExternalDescriptors() throws Exception{
 		java.io.File helper = new java.io.File("macos/fshexec").getAbsoluteFile();
 		org.junit.jupiter.api.Assumptions.assumeTrue(helper.canExecute() && getOs() != OperatingSystem.Windows);
-		String old = System.getProperty("fsh.exec");
-		System.setProperty("fsh.exec", helper.getPath());
+		String old = System.getProperty("parley.fsh.exec");
+		System.setProperty("parley.fsh.exec", helper.getPath());
 		try {
 			setup("ExternalTestFiles");
 			String cmd = "/bin/sh -c 'echo three >&3' 3>&1 | /usr/bin/tr a-z A-Z\n"
@@ -469,9 +469,9 @@ public class TestExternal extends AbstractConsoleTest {
 			executeCommand(cmd, "", 0, "THREE\nerr\nout\nl2\nl1 l3\n", "");
 		} finally {
 			if( old == null ) {
-				System.clearProperty("fsh.exec");
+				System.clearProperty("parley.fsh.exec");
 			} else {
-				System.setProperty("fsh.exec", old);
+				System.setProperty("parley.fsh.exec", old);
 			}
 		}
 	}
@@ -481,8 +481,8 @@ public class TestExternal extends AbstractConsoleTest {
 	public void testSubshellProcess() throws Exception{
 		java.io.File helper = new java.io.File("macos/fshexec").getAbsoluteFile();
 		org.junit.jupiter.api.Assumptions.assumeTrue(helper.canExecute() && getOs() != OperatingSystem.Windows);
-		String old = System.getProperty("fsh.exec");
-		System.setProperty("fsh.exec", helper.getPath());
+		String old = System.getProperty("parley.fsh.exec");
+		System.setProperty("parley.fsh.exec", helper.getPath());
 		try {
 			setup("ExternalTestFiles");
 			String cmd = "( [ $BASHPID != $$ ] && echo own-pid )\n"
@@ -493,9 +493,9 @@ public class TestExternal extends AbstractConsoleTest {
 			executeCommand(cmd, "", 0, "own-pid\nstatus 143\ntrapped\nstatus 3\nend\n", "Terminated: 15 ( kill -TERM $BASHPID; echo not-here )");
 		} finally {
 			if( old == null ) {
-				System.clearProperty("fsh.exec");
+				System.clearProperty("parley.fsh.exec");
 			} else {
-				System.setProperty("fsh.exec", old);
+				System.setProperty("parley.fsh.exec", old);
 			}
 		}
 	}

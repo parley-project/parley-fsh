@@ -51,7 +51,7 @@ public abstract class NativeOps {
 			// (JNA or its native library is not there)
 			Throwable cause = e.getCause() != null ? e.getCause() : e;
 			failure = cause.getClass().getSimpleName()+": "+cause.getMessage();
-			if( Boolean.getBoolean("fsh.native.debug") ) {
+			if( Boolean.getBoolean("parley.fsh.native.debug") ) {
 				e.printStackTrace();
 			}
 		}

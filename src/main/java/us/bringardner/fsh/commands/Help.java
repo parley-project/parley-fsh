@@ -235,7 +235,7 @@ public class Help extends ShellCommand{
 		StringBuilder md = new StringBuilder();
 		md.append("# fsh commands\n\n")
 		.append("<!-- Made from the builtins' help text; don't edit it by hand. After changing a help text, run\n")
-		.append("     mvn test -Dtest=TestCommandsDoc -Dfsh.writeCommandsDoc=true -->\n\n")
+		.append("     mvn test -Dtest=TestCommandsDoc -Dparley.fsh.writeCommandsDoc=true -->\n\n")
 		.append("Everything here is also in the shell: `help NAME` shows a command's text, and `help` lists them all.\n\n")
 		.append("- [fsh's own commands](#fshs-own-commands): connecting file systems and managing their passwords\n")
 		.append("- [File commands](#file-commands): fsh's versions of ls, cp, mv and the rest, which work on every\n")

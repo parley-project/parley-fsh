@@ -248,16 +248,16 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	/** send payload (after its length, 4 bytes in network order) with descriptors fds: 0 or -errno */
 	public static native int sendWithDescriptors0(int sock, byte [] payload, int [] fds);
 
-	/** {the fsh.exec property it was found with, the helper ("" if none)} */
+	/** {the parley.fsh.exec property it was found with, the helper ("" if none)} */
 	private static volatile String [] helper;
 	private static volatile Boolean groups;
 
 	/**
 	 * fshexec, the helper that runs a program as bash would (in a process group, on the shell's
-	 * file): next to this library, or the fsh.exec property. Null if there is none.
+	 * file): next to this library, or the parley.fsh.exec property. Null if there is none.
 	 */
 	public static String helper() {
-		String prop = System.getProperty("fsh.exec");
+		String prop = System.getProperty("parley.fsh.exec");
 		String [] known = helper;
 		if( known == null || !java.util.Objects.equals(prop, known[0])) {
 			String found = "";
@@ -843,7 +843,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * them. Starting programs and passing descriptors (spawn ...) are all JNA's when it has them
 	 * (spawnOps), else all the JNI library's.
 	 *
-	 * The fsh.native property chooses: "jni" never uses JNA; "jna" uses it for what it has;
+	 * The parley.fsh.native property chooses: "jni" never uses JNA; "jna" uses it for what it has;
 	 * "auto" (the default) uses JNA only where the JNI library is not there (and not in a native
 	 * image), so a system the library was not built for still has the keyboard and the terminal, and
 	 * one that has it starts as quickly as before.
@@ -893,14 +893,14 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		}
 		if( NATIVE_IMAGE ) {
 			// (no launcher gives a native image its library path: the library and fshexec are next
-			// to it, or (a copy of it elsewhere) where it was built: fsh.libdir, set as it is built)
+			// to it, or (a copy of it elsewhere) where it was built: parley.fsh.libdir, set as it is built)
 			String exe = ProcessHandle.current().info().command().orElse(null);
 			java.util.List<java.io.File> dirs = new java.util.ArrayList<>();
 			if( exe != null && new java.io.File(exe).getParentFile() != null ) {
 				dirs.add(new java.io.File(exe).getParentFile());
 			}
-			if( System.getProperty("fsh.libdir") != null ) {
-				dirs.add(new java.io.File(System.getProperty("fsh.libdir")));
+			if( System.getProperty("parley.fsh.libdir") != null ) {
+				dirs.add(new java.io.File(System.getProperty("parley.fsh.libdir")));
 			}
 			StringBuilder path = new StringBuilder();
 			for(java.io.File dir : dirs) {
@@ -919,7 +919,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		}
 		jniLoaded = availible;
 		us.bringardner.fsh.jna.NativeOps jna = null;
-		String mode = System.getProperty("fsh.native", "auto");
+		String mode = System.getProperty("parley.fsh.native", "auto");
 		// (a native image has no reflection and JNI metadata for JNA: only if asked for)
 		if( !"jni".equals(mode) && ("jna".equals(mode) || (!jniLoaded && !NATIVE_IMAGE)) ) {
 			try {
