@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 (unreleased)
+
+Needs swing-widgets 1.1.0.
+
+### Changed
+
+- fsh's own window (`ConsoleFrame`, opened when fsh has no terminal) has the gradient look of the
+  other Parley applications, from swing-widgets' `GradientLook`. It is installed only when fsh opens
+  that window, so a shell in a terminal never loads Swing for it.
+
 ## 1.0.0 (2026-10-21)
 
 First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
@@ -33,9 +43,6 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   rpm on Linux, or an app image).
 
 ### Changed
-- fsh's own window (`ConsoleFrame`, opened when fsh has no terminal) has the gradient look of the
-  other Parley applications, from swing-widgets' `GradientLook`. It is installed only when fsh opens
-  that window, so a shell in a terminal never loads Swing for it.
 - `macos/fsh` and `linux/fsh` take `FSH_RUNTIME`: `jvm` runs the jar on Java even when there is a
   native image, `native` runs the native image (an error if none is built), and `auto` (or unset)
   chooses as before: the native image when it is as new as the jar.
