@@ -28,7 +28,7 @@ public class TestCred extends AbstractConsoleTest {
 	@BeforeAll
 	public static void beforeAll() throws IOException {
 		// never wait on a password dialog (these tests run as a non-interactive shell)
-		System.setProperty("fsh.credentials.dialog", "false");
+		System.setProperty("parley.fsh.credentials.dialog", "false");
 		setup("ConnectTestFiles");
 	}
 

@@ -28,7 +28,7 @@ if not exist "%LIB_DIR%\nativekeyboard.dll" (
 )
 
 call mvn -q package -DskipTests || exit /b 1
-call mvn -q dependency:build-classpath -Dfsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target\runtime-classpath.txt || exit /b 1
+call mvn -q dependency:build-classpath -Dparley.fsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target\runtime-classpath.txt || exit /b 1
 
 rem (the jar and its dependencies in one folder, with the class path in an argument file: a Windows
 rem command line is limited, and the dependencies' paths are long. Not a wildcard: native-image
@@ -49,6 +49,6 @@ set TEMP=%TMP%
 powershell -NoProfile -Command "$cp = (Get-ChildItem target\native-libs\*.jar | ForEach-Object { 'target/native-libs/' + $_.Name }) -join ';'; Set-Content -Path target\native-args.txt -Value @('-cp', $cp) -Encoding ascii" || exit /b 1
 call "%graal%\bin\native-image.cmd" @target\native-args.txt ^
 	-H:TempDirectory="%PROJECT_DIR%\target\native-tmp" -H:ConfigurationFileDirectories=target\native-config ^
-	-Dfsh.libdir="%PROJECT_DIR%\target\native" -o target\native\fsh us.bringardner.fsh.Console || exit /b 1
+	-Dparley.fsh.libdir="%PROJECT_DIR%\target\native" -o target\native\fsh us.bringardner.fsh.Console || exit /b 1
 copy /y "%LIB_DIR%\nativekeyboard.dll" target\native\ >nul || exit /b 1
 echo target\native\fsh.exe

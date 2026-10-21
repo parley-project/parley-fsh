@@ -25,8 +25,8 @@
  *     group of its own (a job's, with job control: the job's programs join it, $! is the group).
  *     If its input is a socket (both its input and output), it also starts the subshell's
  *     programs, so that they are its children as in bash: see standIn.
- * -j: run program (java, for fsh) with -Dfsh.ignoredAtStart=SIG,... first: the signals this was
- *     started ignoring (and -Dfsh.cfAbsent=true without __CF_USER_TEXT_ENCODING, which macOS's
+ * -j: run program (java, for fsh) with -Dparley.fsh.ignoredAtStart=SIG,... first: the signals this was
+ *     started ignoring (and -Dparley.fsh.cfAbsent=true without __CF_USER_TEXT_ENCODING, which macOS's
  *     java sets). The JVM takes some signals for itself (QUIT, USR2) before fsh can see that
  *     its caller ignored them, which bash would keep ignored (trap -p shows them).
  * -l: load FILE as bash's enable -f does (dlopen, RTLD_LAZY) and look for each NAME_struct in it,
@@ -454,7 +454,7 @@ int main(int argc, char **argv) {
 		return standIn();
 	}
 	if( argc >= 3 && strcmp(argv[1], "-j") == 0 ) {
-		char ignoring[512] = "-Dfsh.ignoredAtStart=";
+		char ignoring[512] = "-Dparley.fsh.ignoredAtStart=";
 		for(int sig = 1; sig < NSIG; sig++) {
 			struct sigaction old;
 			if( sigaction(sig, NULL, &old) == 0 && old.sa_handler == SIG_IGN ) {
@@ -469,7 +469,7 @@ int main(int argc, char **argv) {
 		args[a++] = ignoring;
 		if( getenv("__CF_USER_TEXT_ENCODING") == NULL ) {
 			// (macOS's java sets it before the JVM starts: not the shell's caller's)
-			args[a++] = (char *) "-Dfsh.cfAbsent=true";
+			args[a++] = (char *) "-Dparley.fsh.cfAbsent=true";
 		}
 		for(int k = 3; k < argc; k++) {
 			args[a++] = argv[k];

@@ -233,9 +233,9 @@ fsh: no native support (fsh --native-status says why): line editing and job cont
 
 `fsh --native-status` prints what was found, where it looked and why something failed to load
 (`--help`'s usage is bash's, and does not list it). To silence the line, set `FSH_NATIVE_NOTICE=0`
-(or `-Dfsh.native.notice=false`).
+(or `-Dparley.fsh.native.notice=false`).
 
-**Choosing.** `-Dfsh.native=` is `auto` (the default: the JNI library when it loads, else JNA; a
+**Choosing.** `-Dparley.fsh.native=` is `auto` (the default: the JNI library when it loads, else JNA; a
 native image never tries JNA), `jni`, or `jna`. What every implementation must do is in
 [NATIVE-CONTRACT.md](NATIVE-CONTRACT.md).
 

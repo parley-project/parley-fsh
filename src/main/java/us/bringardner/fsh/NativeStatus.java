@@ -16,10 +16,10 @@ public final class NativeStatus {
 	private NativeStatus() {
 	}
 
-	/** set FSH_NATIVE_NOTICE=0 (or -Dfsh.native.notice=false) for no notice */
+	/** set FSH_NATIVE_NOTICE=0 (or -Dparley.fsh.native.notice=false) for no notice */
 	private static boolean wanted() {
 		String env = System.getenv("FSH_NATIVE_NOTICE");
-		return !"0".equals(env) && !"false".equals(env) && !"false".equals(System.getProperty("fsh.native.notice"));
+		return !"0".equals(env) && !"false".equals(env) && !"false".equals(System.getProperty("parley.fsh.native.notice"));
 	}
 
 	private static boolean noticed;
@@ -80,7 +80,7 @@ public final class NativeStatus {
 		b.append("fsh native support\n");
 		b.append("  platform         : ").append(System.getProperty("os.name")).append(' ')
 				.append(System.getProperty("os.arch")).append(NativeKeyboard.NATIVE_IMAGE ? " (native image)" : "").append('\n');
-		b.append("  mode             : fsh.native=").append(System.getProperty("fsh.native", "auto")).append('\n');
+		b.append("  mode             : parley.fsh.native=").append(System.getProperty("parley.fsh.native", "auto")).append('\n');
 
 		// the keyboard, the terminal and the process calls
 		b.append("  keyboard, tty    : ");
@@ -105,7 +105,7 @@ public final class NativeStatus {
 			if( NativeKeyboard.jnaProblem() != null ) {
 				b.append("                     JNA: ").append(NativeKeyboard.jnaProblem()).append('\n');
 			} else if( NativeKeyboard.NATIVE_IMAGE ) {
-				b.append("                     JNA: not used in a native image unless -Dfsh.native=jna\n");
+				b.append("                     JNA: not used in a native image unless -Dparley.fsh.native=jna\n");
 			}
 		}
 
@@ -131,7 +131,7 @@ public final class NativeStatus {
 		} else {
 			b.append("not found\n");
 			b.append("                     (looked in java.library.path: ").append(System.getProperty("java.library.path", ""))
-					.append(", and fsh.exec)\n");
+					.append(", and parley.fsh.exec)\n");
 		}
 
 		// what that means

@@ -14,9 +14,9 @@ import us.bringardner.fsh.Console;
  * <pre>
  * server.setShellFactory(new FshShellFactory());
  * </pre>
- * or, with no code, with this jar on the class path and the server's ShellFactory property:
+ * or, with no code, with this jar on the class path and the server's shellFactory property:
  * <pre>
- * us.bringardner.parley.ssh.server.SshServer.ShellFactory=us.bringardner.fsh.ssh.FshShellFactory
+ * parley.ssh.shellFactory=us.bringardner.fsh.ssh.FshShellFactory
  * </pre>
  * Each login gets its own Console on an {@link SshTerminal}.
  * <p>

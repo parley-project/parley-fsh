@@ -74,10 +74,10 @@ public final class CredentialPrompts {
 
 	/**
 	 * Whether a password dialog may be shown: there's a display, and dialogs haven't been
-	 * turned off (-Dfsh.credentials.dialog=false; the tests do, so they never wait on one).
+	 * turned off (-Dparley.fsh.credentials.dialog=false; the tests do, so they never wait on one).
 	 */
 	static boolean dialogAvailable() {
-		if( "false".equalsIgnoreCase(System.getProperty("fsh.credentials.dialog"))) {
+		if( "false".equalsIgnoreCase(System.getProperty("parley.fsh.credentials.dialog"))) {
 			return false;
 		}
 		try {

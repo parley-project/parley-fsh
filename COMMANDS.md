@@ -1,7 +1,7 @@
 # fsh commands
 
 <!-- Made from the builtins' help text; don't edit it by hand. After changing a help text, run
-     mvn test -Dtest=TestCommandsDoc -Dfsh.writeCommandsDoc=true -->
+     mvn test -Dtest=TestCommandsDoc -Dparley.fsh.writeCommandsDoc=true -->
 
 Everything here is also in the shell: `help NAME` shows a command's text, and `help` lists them all.
 

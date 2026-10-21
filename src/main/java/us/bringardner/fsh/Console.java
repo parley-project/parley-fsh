@@ -126,7 +126,7 @@ public class Console extends SignalEnabledThread {
 
 	/** $_: the last argument of the last simple command */
 	/** $_ (at the start, the shell's path from the environment's _, as bash's) */
-	public volatile String lastArgument = System.getenv("_") != null ? System.getenv("_") : System.getProperty("fsh.argv0", "");
+	public volatile String lastArgument = System.getenv("_") != null ? System.getenv("_") : System.getProperty("parley.fsh.argv0", "");
 
 	public static class FileDiscriptor {
 
@@ -661,7 +661,7 @@ delimiter
 		Map<Integer, String> signals = Trap.getLocalSignals();
 		// the signals the launcher saw ignored before the JVM took some for itself (fshexec -j)
 		java.util.Set<Integer> launcherIgnored = new java.util.HashSet<>();
-		for(String n : System.getProperty("fsh.ignoredAtStart", "").split(",")) {
+		for(String n : System.getProperty("parley.fsh.ignoredAtStart", "").split(",")) {
 			if( n.matches("[0-9]{1,3}")) {
 				launcherIgnored.add(Integer.parseInt(n));
 			}
@@ -1045,7 +1045,7 @@ delimiter
 		if( tmpdir != null && !tmpdir.isEmpty() && new java.io.File(tmpdir).isDirectory()) {
 			System.setProperty("java.io.tmpdir", tmpdir);
 		}
-		if( NativeKeyboard.NATIVE_IMAGE && System.getProperty("fsh.argv0") == null ) {
+		if( NativeKeyboard.NATIVE_IMAGE && System.getProperty("parley.fsh.argv0") == null ) {
 			// (as a launcher gives it to the JVM: how the shell was called, such as sh; without the
 			// library, the program's own path)
 			String a0 = null;
@@ -1057,7 +1057,7 @@ delimiter
 				a0 = ProcessHandle.current().info().command().orElse(null);
 			}
 			if( a0 != null ) {
-				System.setProperty("fsh.argv0", a0);
+				System.setProperty("parley.fsh.argv0", a0);
 			}
 		}
 		if( System.getProperty("java.awt.headless") == null && (NativeKeyboard.NATIVE_IMAGE || noWindow(args))) {
@@ -1096,7 +1096,7 @@ delimiter
 			c.importInheritedDescriptors();
 
 			// called as sh (or with POSIXLY_CORRECT in the environment): posix mode, as bash's
-			String argv0 = System.getProperty("fsh.argv0", "");
+			String argv0 = System.getProperty("parley.fsh.argv0", "");
 			String base = argv0.substring(argv0.lastIndexOf('/')+1);
 			if( base.equals("sh") || base.equals("-sh") || System.getenv("POSIXLY_CORRECT") != null ) {
 				c.setOption(Option.Posix, true);
@@ -1342,8 +1342,8 @@ delimiter
 		if( inv.command != null ) {
 			// -c command [name [arguments]]: name is $0
 			readsFrom = 'c';
-			// (with no name: how the shell was called, if the launcher says so (fsh.argv0), as bash's argv[0])
-			params.add(inv.args.isEmpty() ? System.getProperty("fsh.argv0", "fsh") : inv.args.get(0));
+			// (with no name: how the shell was called, if the launcher says so (parley.fsh.argv0), as bash's argv[0])
+			params.add(inv.args.isEmpty() ? System.getProperty("parley.fsh.argv0", "fsh") : inv.args.get(0));
 			for (int i = 1; i < inv.args.size(); i++) {
 				params.add(inv.args.get(i));
 			}
@@ -2026,7 +2026,7 @@ delimiter
 				} catch (UnsatisfiedLinkError e) {
 				}
 			}
-			if( Boolean.getBoolean("fsh.cfAbsent")) {
+			if( Boolean.getBoolean("parley.fsh.cfAbsent")) {
 				// (the launcher saw it was not given: fshexec -j)
 				environmentVariables.remove("__CF_USER_TEXT_ENCODING");
 			} else if( environmentVariables.containsKey("__CF_USER_TEXT_ENCODING") && NativeKeyboard.isAvailible()) {
@@ -2954,7 +2954,7 @@ delimiter
 				// \s	The name of the shell: the base name of $0 (the portion following the final slash).
 				case 's': {
 					// (how the shell was called, not a script's $0, as bash's shell_name)
-					String zero = System.getProperty("fsh.argv0", "fsh");
+					String zero = System.getProperty("parley.fsh.argv0", "fsh");
 					ret.append(zero.substring(zero.lastIndexOf('/')+1).replaceFirst("^-", ""));
 					break;
 				}
