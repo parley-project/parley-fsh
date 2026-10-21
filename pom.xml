@@ -274,6 +274,9 @@
 							<!-- JNA unpacks its library into the user's cache folder, and the tests
 							     point the home folder at the test files: keep it under target -->
 							<jna.tmpdir>${project.build.directory}/jna</jna.tmpdir>
+							<!-- TestBashCompat writes its results (one line per case) here; everything else
+							     the tests write goes into JUnit @TempDir folders -->
+							<fsh.test.reportDir>${project.build.directory}</fsh.test.reportDir>
 						</systemPropertyVariables>
 					</configuration>
 				</plugin>

@@ -1,5 +1,7 @@
 package us.bringardner.fsh.test;
 
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -16,6 +18,24 @@ import org.junit.jupiter.api.TestMethodOrder;
 @TestMethodOrder(OrderAnnotation.class)
 public class TestCpRm extends AbstractConsoleTest{
 
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
+
 	public static String fileDate;
 	
 	@BeforeAll
@@ -27,13 +47,13 @@ public class TestCpRm extends AbstractConsoleTest{
 	@Test
 	@Order(1)
 	public void testCp_File2File() throws IOException {
-		File file = new File("target/Co01.txt").getCanonicalFile();
+		File file = new File(scratchPath("Co01.txt"));
 		if( file.exists()) {
 			assertTrue(file.delete(),"Can't delete existing file");
 		}
 		
 		String source = "AbcFile.txt";
-		String dest = "../target/Co01.txt";
+		String dest = scratchPath("Co01.txt");
 		String cmd = "cp "+source+" "+dest;
 		ExecuteResult res = executeCommand(cmd, "");
 		
@@ -45,7 +65,7 @@ public class TestCpRm extends AbstractConsoleTest{
 		res = executeCommand(cmd, "");
 		
 		assertEquals(0, res.exitCode,"Rm exit code");		
-		//file = new File("target/Co01.txt").getCanonicalFile();		
+		//file = new File(scratchPath("Co01.txt"));		
 		assertFalse(file.exists(),"File still exist after rm");
 		
 	}
@@ -53,7 +73,7 @@ public class TestCpRm extends AbstractConsoleTest{
 	@Test
 	@Order(2)
 	public void testCp_File2Dir() throws IOException {
-		File dir = new File("target/CpTestDir").getCanonicalFile();
+		File dir = new File(scratchPath("CpTestDir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs(),"Can't create "+dir);
 		}
@@ -64,7 +84,7 @@ public class TestCpRm extends AbstractConsoleTest{
 		}
 		
 		String source = "AbcFile.txt";
-		String dest = "../target/CpTestDir/Co01.txt";
+		String dest = scratchPath("CpTestDir/Co01.txt");
 		String cmd = "cp "+source+" "+dest;
 		ExecuteResult res = executeCommand(cmd, "");
 		
@@ -84,7 +104,7 @@ public class TestCpRm extends AbstractConsoleTest{
 	@Test
 	@Order(3)
 	public void testCp_MultiByWildcardFile2Dir() throws IOException {
-		File dir = new File("target/CpTestDir").getCanonicalFile();
+		File dir = new File(scratchPath("CpTestDir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs(),"Can't create "+dir);
 		}
@@ -96,7 +116,7 @@ public class TestCpRm extends AbstractConsoleTest{
 		}
 		
 		String source = "Abc*";
-		String dest = "../target/CpTestDir";
+		String dest = scratchPath("CpTestDir");
 		String cmd = "cp "+source+" "+dest;
 
 		ExecuteResult res = executeCommand(cmd, "");
@@ -116,7 +136,7 @@ public class TestCpRm extends AbstractConsoleTest{
 	@Test
 	@Order(4)
 	public void testCp_MultiByListFile2Dir() throws IOException {
-		File dir = new File("target/CpTestDir").getCanonicalFile();
+		File dir = new File(scratchPath("CpTestDir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs(),"Can't create "+dir);
 		}
@@ -128,7 +148,7 @@ public class TestCpRm extends AbstractConsoleTest{
 		}
 		
 		String source = "AbcFile.js AbcFile.txt AbcFile.php";
-		String dest = "../target/CpTestDir";
+		String dest = scratchPath("CpTestDir");
 		String cmd = "cp "+source+" "+dest;
 		ExecuteResult res = executeCommand(cmd, "");
 		assertEquals(0, res.exitCode,"Cp exit code");		
@@ -147,7 +167,7 @@ public class TestCpRm extends AbstractConsoleTest{
 	@Test
 	@Order(4)
 	public void testCp_MultiByListFile2DirRm1by1() throws IOException {
-		File dir = new File("target/CpTestDir").getCanonicalFile();
+		File dir = new File(scratchPath("CpTestDir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs(),"Can't create "+dir);
 		}
@@ -159,7 +179,7 @@ public class TestCpRm extends AbstractConsoleTest{
 		}
 		
 		String source = "AbcFile.js AbcFile.txt AbcFile.php";
-		String dest = "../target/CpTestDir";
+		String dest = scratchPath("CpTestDir");
 		String cmd = "cp "+source+" "+dest;
 
 		ExecuteResult res = executeCommand(cmd, "");
@@ -168,15 +188,15 @@ public class TestCpRm extends AbstractConsoleTest{
 		assertEquals(3, dir.listFiles().length,"child count after cp");
 		
 		
-		cmd = "rm  ../target/CpTestDir/AbcFile.txt";
+		cmd = "rm  "+scratchPath("CpTestDir/AbcFile.txt");
 		res = executeCommand(cmd, "");		
 		assertEquals(0, res.exitCode,"Rm 01 exit code only txt should NOT fail");
 		
-		cmd = "rm  ../target/CpTestDir/AbcFile.php";
+		cmd = "rm  "+scratchPath("CpTestDir/AbcFile.php");
 		res = executeCommand(cmd, "");		
 		assertEquals(0, res.exitCode,"Rm 02 exit code only php should NOT fail");
 		
-		cmd = "rm  ../target/CpTestDir/AbcFile.js";
+		cmd = "rm  "+scratchPath("CpTestDir/AbcFile.js");
 		res = executeCommand(cmd, "");		
 		assertEquals(0, res.exitCode,"Rm 03 exit code only js should NOT fail");
 
@@ -192,13 +212,13 @@ public class TestCpRm extends AbstractConsoleTest{
 	@Test
 	@Order(5)
 	public void testCp_rm_i() throws IOException {
-		File file = new File("target/Co01.txt").getCanonicalFile();
+		File file = new File(scratchPath("Co01.txt"));
 		if( file.exists()) {
 			assertTrue(file.delete(),"Can't delete existing file");
 		}
 		
 		String source = "AbcFile.txt";
-		String dest = "../target/Co01.txt";
+		String dest = scratchPath("Co01.txt");
 		String cmd = "cp "+source+" "+dest;
 
 		ExecuteResult res = executeCommand(cmd, "");
@@ -216,9 +236,9 @@ public class TestCpRm extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode,"Rm exit code");
 		assertTrue(out.startsWith("remove"),"First part of the prompt is wrong");
 		if( getOs()!=OperatingSystem.Windows) {
-			assertTrue(out.endsWith("CpTestFiles/../target/Co01.txt?"),"Last part of the prompt is wrong");
+			assertTrue(out.endsWith(scratchPath("Co01.txt")+"?"),"Last part of the prompt is wrong");
 		} else {
-			assertTrue(out.endsWith("CpTestFiles\\..\\target\\Co01.txt?"));
+			assertTrue(out.endsWith(scratchPath("Co01.txt")+"?"));
 		}
 		assertEquals("", err,"Err should be empty");
 		assertTrue(file.exists(),"File should exist after rm");
@@ -229,9 +249,9 @@ public class TestCpRm extends AbstractConsoleTest{
 		assertEquals(0, res.exitCode,"Rm exit code");		
 		assertTrue(out.startsWith("remove"),"First part of the prompt is wrong");
 		if( getOs()!=OperatingSystem.Windows) {
-			assertTrue(out.endsWith("CpTestFiles/../target/Co01.txt?"),"Last part of the prompt is wrong");
+			assertTrue(out.endsWith(scratchPath("Co01.txt")+"?"),"Last part of the prompt is wrong");
 		} else {
-			assertTrue(out.endsWith("CpTestFiles\\..\\target\\Co01.txt?"));
+			assertTrue(out.endsWith(scratchPath("Co01.txt")+"?"));
 		}
 		assertEquals("", err,"Err should be empty");
 		assertEquals(0, res.exitCode,"Rm exit code");		

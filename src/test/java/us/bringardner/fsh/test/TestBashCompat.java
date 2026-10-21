@@ -1,5 +1,6 @@
 package us.bringardner.fsh.test;
 
+import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -40,6 +41,24 @@ import us.bringardner.fsh.Console;
  * stays honest: remove it from the list. "NAME hang" marks a case that does not finish; it is not run.
  */
 public class TestBashCompat extends AbstractConsoleTest {
+
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
 
 	private static final Path DIR = Path.of("src/test/resources/bash-compat");
 	private static final long TIMEOUT_SECONDS = 10;
@@ -89,11 +108,15 @@ public class TestBashCompat extends AbstractConsoleTest {
 		System.out.println("bash compatibility: "+passed.get()+" of "+total+" cases match bash"
 				+(skipped.get() > 0 ? " ("+skipped.get()+" not run)" : ""));
 		// one line per case, to update known-failures.txt from
-		Files.createDirectories(Path.of("target"));
+		// the folder Maven names (fsh.test.reportDir: target/), else this class's scratch folder
+		Path reportDir = Path.of(System.getProperty("fsh.test.reportDir", scratchDir().getPath()));
+		Files.createDirectories(reportDir);
+		Path report = reportDir.resolve("bash-compat-results.txt");
 		synchronized (results) {
 			results.sort(Comparator.naturalOrder());
-			Files.write(Path.of("target/bash-compat-results.txt"), results);
+			Files.write(report, results);
 		}
+		System.out.println("bash compatibility results: "+report);
 	}
 
 	@TestFactory
