@@ -6,7 +6,7 @@
 	<!-- fsh, the FileSource Shell. Built on Parley (parley-files) but not part of it. -->
 	<groupId>us.bringardner</groupId>
 	<artifactId>fsh</artifactId>
-	<version>1.1.0-SNAPSHOT</version>
+	<version>2.0.0-SNAPSHOT</version>
 	<name>fsh - the FileSource Shell</name>
 	<description>A bash-like shell whose file system is any parley-files FileSource: the local disk,
 		memory, FTP, SFTP or a database. Formerly us.bringardner:bjl_shell (BjlShell).</description>
@@ -36,7 +36,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.release>11</maven.compiler.release>
-		<parley.version>1.0.0</parley.version>
+		<parley.version>2.0.0-SNAPSHOT</parley.version>
 	</properties>
 
 	<profiles>
@@ -84,7 +84,7 @@
 				<dependency>
 					<groupId>us.bringardner.parley</groupId>
 					<artifactId>parley-credentials-keychain</artifactId>
-					<version>1.0.0</version>
+					<version>2.0.0-SNAPSHOT</version>
 					<scope>runtime</scope>
 				</dependency>
 				<!-- java-keyring brings jna-platform 5.13; JNA's two jars must be the same version as
