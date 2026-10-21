@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 1.0.0 (2026-10-21)
 
 First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
 

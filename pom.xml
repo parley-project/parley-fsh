@@ -6,7 +6,7 @@
 	<!-- fsh, the FileSource Shell. Built on Parley (parley-files) but not part of it. -->
 	<groupId>us.bringardner</groupId>
 	<artifactId>fsh</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>fsh - the FileSource Shell</name>
 	<description>A bash-like shell whose file system is any parley-files FileSource: the local disk,
 		memory, FTP, SFTP or a database. Formerly us.bringardner:bjl_shell (BjlShell).</description>
