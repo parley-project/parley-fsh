@@ -1,5 +1,7 @@
 package us.bringardner.fsh.test;
 
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -17,6 +19,24 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestRedirect extends AbstractConsoleTest {
+
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
@@ -204,7 +224,7 @@ public class TestRedirect extends AbstractConsoleTest {
 
 	@Test
 	public void testRedirect04() throws Exception{
-		File dir = new File("target/logdir").getCanonicalFile();
+		File dir = new File(scratchPath("logdir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs());
 		}
@@ -239,7 +259,7 @@ public class TestRedirect extends AbstractConsoleTest {
 
 	@Test
 	public void testRedirect04_01() throws Exception{
-		File dir = new File("target/logdir").getCanonicalFile();
+		File dir = new File(scratchPath("logdir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs());
 		}
@@ -283,7 +303,7 @@ exec 3>&- #close fd 3.
 		int exitCode = 0;
 		String expectErr="";
 		
-		File dir = new File("target/logdir").getCanonicalFile();
+		File dir = new File(scratchPath("logdir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs());
 		}
@@ -398,7 +418,7 @@ exec 3>&- #close fd 3.
 	@Test
 	public void testRedirect04_03() throws Exception{
 		setup("TestFiles");
-		File dir = new File("target/logdir").getCanonicalFile();
+		File dir = new File(scratchPath("logdir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs());
 		}
@@ -435,11 +455,11 @@ exec 3>&- #close fd 3.
 				+ "step3\n").split("\n");
 		
 		if( getOs()==OperatingSystem.Windows) {
-			expectErr = "'C:\\Git\\fsh\\target\\logdir\\output.txt' is not recognized as an internal or external command,\n"
+			expectErr = "'"+file.getPath()+"' is not recognized as an internal or external command,\n"
 					+ "operable program or batch file.\n";
 		} else {
-			expectErr = "external command failed. cmd=[/Volumes/Data/eclipse-git/fsh/target/logdir/output.txt] exit=1\n"
-					+ "	stderr=Cannot run program \"/Volumes/Data/eclipse-git/fsh/target/logdir/output.txt\" (in directory \"/Volumes/Data/eclipse-git/fsh/TestFiles\"): Exec failed, error: 2 (No such file or directory) ";
+			expectErr = "external command failed. cmd=["+file.getPath()+"] exit=1\n"
+					+ "	stderr=Cannot run program \""+file.getPath()+"\" (in directory \""+new File("TestFiles").getCanonicalPath()+"\"): Exec failed, error: 2 (No such file or directory) ";
 		}
 		
 		try (InputStream in = new FileInputStream(file)) {
@@ -456,7 +476,7 @@ exec 3>&- #close fd 3.
 
 	@Test
 	public void testRedirect04_04() throws Exception{
-		File dir = new File("target/logdir").getCanonicalFile();
+		File dir = new File(scratchPath("logdir"));
 		if( !dir.exists()) {
 			assertTrue(dir.mkdirs());
 		}
