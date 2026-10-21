@@ -1,6 +1,9 @@
 package us.bringardner.fsh.test;
 
 
+import java.io.File;
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,6 +23,24 @@ import us.bringardner.parley.files.FileSource;
 @TestMethodOrder(OrderAnnotation.class)
 public class TestMv extends AbstractConsoleTest{
 
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
+
 	static FileSource srcDir;
 	static FileSource dstDir;
 	
@@ -27,13 +48,13 @@ public class TestMv extends AbstractConsoleTest{
 	public static void beforeAll() throws IOException {
 		AbstractConsoleTest.setup("TestFiles");
 		
-		dstDir = console.createFileSource("../target/mvdst");
+		dstDir = console.createFileSource(scratchPath("mvdst"));
 		deleteIfExists(dstDir);
 		if( !dstDir.exists()) {
 			assertTrue(dstDir.mkdirs(),"Can't create "+dstDir);
 		} 
 		
-		srcDir = console.createFileSource("../target/mvsrc");
+		srcDir = console.createFileSource(scratchPath("mvsrc"));
 		
 		if( !srcDir.exists()) {
 			assertTrue(srcDir.mkdirs(),"Can't create "+srcDir);
@@ -268,27 +289,28 @@ public class TestMv extends AbstractConsoleTest{
 			
 			ExecuteResult res = executeCommand(code,"");
 			
+			String m = srcDir.getAbsolutePath();
 			String expect = "memory connected as /mem4\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/AbcFile.php -> /mem4/Folder01/AbcFile.php\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/AbcFile.properties -> /mem4/Folder01/AbcFile.properties\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/AbcFile.php -> /mem4/Folder01/Folder01abc.1/AbcFile.php\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/AbcFile.properties\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php -> /mem4/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01ghi -> /mem4/Folder01/Folder01abc.1/Folder01ghi\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php -> /mem4/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Folder01jkl -> /mem4/Folder01/Folder01abc.1/Folder01jkl\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Hotel California.txt\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01abc.1 -> /mem4/Folder01/Folder01abc.1\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01def.2/AbcFile.php -> /mem4/Folder01/Folder01def.2/AbcFile.php\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01def.2/AbcFile.properties -> /mem4/Folder01/Folder01def.2/AbcFile.properties\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01def.2/Hotel California.txt -> /mem4/Folder01/Folder01def.2/Hotel California.txt\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Folder01def.2 -> /mem4/Folder01/Folder01def.2\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01/Hotel California.txt -> /mem4/Folder01/Hotel California.txt\n"
-					+ "/Volumes/Data/eclipse-git/fsh/target/mvsrc/Folder01 -> /mem4/Folder01\n"
+					+ m+"/Folder01/AbcFile.php -> /mem4/Folder01/AbcFile.php\n"
+					+ m+"/Folder01/AbcFile.properties -> /mem4/Folder01/AbcFile.properties\n"
+					+ m+"/Folder01/Folder01abc.1/AbcFile.php -> /mem4/Folder01/Folder01abc.1/AbcFile.php\n"
+					+ m+"/Folder01/Folder01abc.1/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/AbcFile.properties\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php -> /mem4/Folder01/Folder01abc.1/Folder01ghi/AbcFile.php\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01ghi -> /mem4/Folder01/Folder01abc.1/Folder01ghi\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php -> /mem4/Folder01/Folder01abc.1/Folder01jkl/AbcFile.php\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties -> /mem4/Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt\n"
+					+ m+"/Folder01/Folder01abc.1/Folder01jkl -> /mem4/Folder01/Folder01abc.1/Folder01jkl\n"
+					+ m+"/Folder01/Folder01abc.1/Hotel California.txt -> /mem4/Folder01/Folder01abc.1/Hotel California.txt\n"
+					+ m+"/Folder01/Folder01abc.1 -> /mem4/Folder01/Folder01abc.1\n"
+					+ m+"/Folder01/Folder01def.2/AbcFile.php -> /mem4/Folder01/Folder01def.2/AbcFile.php\n"
+					+ m+"/Folder01/Folder01def.2/AbcFile.properties -> /mem4/Folder01/Folder01def.2/AbcFile.properties\n"
+					+ m+"/Folder01/Folder01def.2/Hotel California.txt -> /mem4/Folder01/Folder01def.2/Hotel California.txt\n"
+					+ m+"/Folder01/Folder01def.2 -> /mem4/Folder01/Folder01def.2\n"
+					+ m+"/Folder01/Hotel California.txt -> /mem4/Folder01/Hotel California.txt\n"
+					+ m+"/Folder01 -> /mem4/Folder01\n"
 					;
 			String out = res.getStdOut();
 			String err = res.getStdErr();

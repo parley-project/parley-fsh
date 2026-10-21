@@ -1,5 +1,7 @@
 package us.bringardner.fsh.test;
 
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,6 +19,24 @@ import org.junit.jupiter.api.Test;
 
 public class TestTouch extends AbstractConsoleTest {
 
+	/** This class's scratch folder: everything the tests write goes here, not into target/ */
+	@TempDir
+	static Path scratch;
+
+	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
+	static File scratchDir() {
+		try {
+			return scratch.toFile().getCanonicalFile();
+		} catch (IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	/** @return the path of a file in the scratch folder */
+	static String scratchPath(String name) {
+		return new File(scratchDir(), name).getPath();
+	}
+
 	enum TimeType {Access,Modification,Both}
 
 	static File targetDir;
@@ -24,7 +44,7 @@ public class TestTouch extends AbstractConsoleTest {
 	@BeforeAll
 	public static void beforeAll() throws IOException {
 
-	targetDir = new File("target").getCanonicalFile();
+	targetDir = scratchDir();
 	setup(targetDir.getAbsolutePath());
 }
 
@@ -73,7 +93,7 @@ public void touch_r_then_A() throws IOException {
 		}
 	}
 
-	String cmd = "touch -r ../TouchTestFiles/AbcFileA.js "+touchFile.getName();
+	String cmd = "touch -r "+sourceFile.getPath()+" "+touchFile.getName();
 	ExecuteResult result = executeCommand(cmd, "");
 	int exitCode = result.exitCode;
 	if( exitCode!=0) {
@@ -204,7 +224,7 @@ public void touch_r_a() throws IOException {
 		}
 	}
 
-	String cmd = "touch -ar ../TouchTestFiles/AbcFileA.js "+touchFile.getName();
+	String cmd = "touch -ar "+sourceFile.getPath()+" "+touchFile.getName();
 	ExecuteResult result = executeCommand(cmd, "");
 	int exitCode = result.exitCode;
 	if( exitCode!=0) {
@@ -245,7 +265,7 @@ public void touch_r_m() throws IOException {
 		}
 	}
 
-	String cmd = "touch -mr ../TouchTestFiles/AbcFileA.js "+touchFile.getName();
+	String cmd = "touch -mr "+sourceFile.getPath()+" "+touchFile.getName();
 	ExecuteResult result = executeCommand(cmd, "");
 	int exitCode = result.exitCode;
 	if( exitCode!=0) {
