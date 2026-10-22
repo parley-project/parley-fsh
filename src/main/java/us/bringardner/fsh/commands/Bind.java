@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import us.bringardner.fsh.LineEditor;
+import us.bringardner.parley.term.line.LineEditor;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 

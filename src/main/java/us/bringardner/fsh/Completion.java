@@ -13,6 +13,9 @@ import us.bringardner.fsh.commands.Trap;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobState;
 import us.bringardner.parley.files.FileSource;
+import us.bringardner.parley.term.line.Completions.Candidate;
+import us.bringardner.parley.term.line.Completions.Result;
+import us.bringardner.parley.term.line.LineEditor;
 
 /**
  * Tab completion, as bash's: the word at the cursor is a command (an alias, function, builtin,
@@ -20,52 +23,6 @@ import us.bringardner.parley.files.FileSource;
  * what the command's complete spec gives (complete -F, -W, -A ...), or else a file name.
  */
 public class Completion implements LineEditor.Completer {
-
-	/** a possibility: the text that replaces the word, how a list shows it, and what follows it alone */
-	public static final class Candidate {
-		public final String text;
-		public final String display;
-		public final String suffix;
-
-		public Candidate(String text, String display, String suffix) {
-			this.text = text;
-			this.display = display;
-			this.suffix = suffix;
-		}
-
-		@Override
-		public String toString() {
-			return text+suffix;
-		}
-	}
-
-	/** what the word starting at start can become */
-	public static final class Result {
-		public final int start;
-		public final List<Candidate> candidates;
-
-		public Result(int start, List<Candidate> candidates) {
-			this.start = start;
-			this.candidates = candidates;
-		}
-
-		/** the start all the candidates have */
-		public String commonPrefix() {
-			String ret = null;
-			for(Candidate c : candidates) {
-				if( ret == null ) {
-					ret = c.text;
-				} else {
-					int n = 0;
-					while( n < ret.length() && n < c.text.length() && ret.charAt(n) == c.text.charAt(n)) {
-						n++;
-					}
-					ret = ret.substring(0, n);
-				}
-			}
-			return ret == null ? "" : ret;
-		}
-	}
 
 	/** in bash's order (its word_token_alist) */
 	private static final String [] KEYWORDS = {"if", "then", "else", "elif", "fi", "case", "esac", "for", "select", "while",

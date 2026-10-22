@@ -2,13 +2,23 @@ package us.bringardner.fsh;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.io.PrintStream;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NativeKeyboard extends InputStream implements KeyboardReader, InteractiveInput 	{
+import us.bringardner.parley.term.line.LineEditor;
+import us.bringardner.parley.term.tty.Keyboard;
+import us.bringardner.parley.term.tty.TtyOps;
+import us.bringardner.parley.term.tty.jna.JnaTty;
+
+/**
+ * fsh's keyboard and native functions. The keyboard and the terminal are parley-term's
+ * {@link Keyboard} (raw mode, keys, Ctrl-C and Ctrl-Z, lending the terminal, the size); this
+ * class gives it fsh's JNI library (libnativekeyboard) when that is loaded, adds the shell's line
+ * reading (the line editor with history and completion, read's own reader), and starts programs,
+ * passes descriptors and works process groups, through the JNI library or JNA.
+ */
+public class NativeKeyboard extends Keyboard implements KeyboardReader, InteractiveInput 	{
 	/**
 	 * @return the next byte (0-255), a special key (UP ...), KEY_NONE if nothing was typed within a second, or KEY_EOF.
 	 */
@@ -37,17 +47,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	/** the terminal's name without /dev/ (ttys003), as \\l shows it; "tty" if there is none */
 	public static String ttyName() {
-		if( availible ) {
-			try {
-				String name = new NativeKeyboard().opsTtyName0();
-				if( name != null ) {
-					return name.substring(name.lastIndexOf('/')+1);
-				}
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
-			}
-		}
-		return "tty";
+		return Keyboard.ttyName();
 	}
 
 	/** standard input: 1 a pipe or socket, 2 a file, 0 something else */
@@ -136,38 +136,21 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * and shared with the programs. (Without this library: there is no console and no screen.)
 	 */
 	public static boolean inputIsPipeOrFile() {
-		if( availible ) {
-			try {
-				return new NativeKeyboard().opsInputKind0() != 0;
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
-			}
+		int kind = inputKind();
+		if( kind >= 0 ) {
+			return kind != 0;
 		}
 		return System.console() == null && java.awt.GraphicsEnvironment.isHeadless();
 	}
 
 	/** standard input: 1 a pipe or socket, 2 a file, 0 something else, -1 not known */
 	public static int inputKind() {
-		if( availible ) {
-			try {
-				return new NativeKeyboard().opsInputKind0();
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
-			}
-		}
-		return -1;
+		return Keyboard.inputKind();
 	}
 
-	/** the process's standard input is a terminal (without this library: there is a console) */
+	/** the process's standard input is a terminal (without a terminal library: there is a console) */
 	public static boolean inputIsTerminal() {
-		if( availible ) {
-			try {
-				return new NativeKeyboard().opsIsInputTerminal0();
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
-			}
-		}
-		return System.console() != null;
+		return Keyboard.inputIsTerminal();
 	}
 
 	private native void giveTerminalTo(long group);
@@ -213,16 +196,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	/** descriptor fd of this process is a terminal (false where that cannot be told) */
 	public static boolean isatty(int fd) {
-		if( !availible ) {
-			return false;
-		}
-		try {
-			return ops != null ? ops.isatty(fd) : isatty0(fd);
-		} catch (UnsatisfiedLinkError e) {
-			// (a library from before it had it: as before, input and output together)
-			return terminal();
-		}
+		return Keyboard.isatty(fd);
 	}
+
 
 	/** set the open-files soft limit (-1: unlimited): 0 or -errno */
 	public static native int setOpenFilesLimit0(long limit);
@@ -315,24 +291,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		return new NativeKeyboard().opsStoppedBy(pid);
 	}
 
-	/** the programs that have the terminal now (see lendTerminal) */
-	private static final java.util.Set<Object> terminalUsers = new java.util.HashSet<>();
-	private static Boolean terminal;
-
 	/** standard input and output are a terminal (and this class can work it) */
 	public static boolean terminal() {
-		if( terminal == null ) {
-			boolean t = false;
-			if( availible ) {
-				try {
-					t = new NativeKeyboard().opsIsTerminal();
-				} catch (UnsatisfiedLinkError e) {
-					// an older library
-				}
-			}
-			terminal = t;
-		}
-		return terminal;
+		return Keyboard.terminal();
 	}
 
 	/**
@@ -341,87 +302,22 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * has given it back.
 	 */
 	public static void lendTerminal(Object user) {
-		synchronized (terminalUsers) {
-			if( terminalUsers.add(user) && terminalUsers.size() == 1 ) {
-				programMode(true);
-			}
-		}
+		Keyboard.lendTerminal(user);
 	}
 
 	/** user is done with the terminal (it ended, or was stopped) */
 	public static void reclaimTerminal(Object user) {
-		synchronized (terminalUsers) {
-			if( terminalUsers.remove(user) && terminalUsers.isEmpty()) {
-				programMode(false);
-			}
-		}
+		Keyboard.reclaimTerminal(user);
 	}
 
 	/** a program has the terminal now */
 	public static boolean isTerminalLent() {
-		synchronized (terminalUsers) {
-			return !terminalUsers.isEmpty();
-		}
+		return Keyboard.isTerminalLent();
 	}
 
-	private static void programMode(boolean on) {
-		if( availible ) {
-			try {
-				new NativeKeyboard().opsSetProgramMode(on);
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
-			}
-		}
-	}
-
-	/** what a key that stops or interrupts a job is read as when the shell has taken it */
-	public static final int KEY_INTR = -3;
-	public static final int CTRL_C = 3;
-	public static final int CTRL_Z = 26;
-	public static final int CTRL_BACKSLASH = 28;
-
-	/** told of Ctrl-C, Ctrl-Z and Ctrl-\; true if it took the key */
-	public interface ControlKeys {
-		boolean typed(int key);
-	}
-
-	/** set by the interactive shell while a job runs in the foreground */
-	public static volatile ControlKeys controlKeys;
-
-	/** keys read while a job ran (to find Ctrl-C and Ctrl-Z) that a reader has not had yet */
-	private static final ArrayDeque<Integer> typedAhead = new ArrayDeque<>();
-	private static final Object keyLock = new Object();
-	private static NativeKeyboard poller;
-
-	/** Ctrl-C, Ctrl-Z and Ctrl-\ as keys (on) or as signals (off, as without a shell) */
+	/** Ctrl-C, Ctrl-Z and Ctrl-\\ as keys (on) or as signals (off, as without a shell) */
 	public static void signalKeys(boolean on) {
-		if( availible ) {
-			try {
-				new NativeKeyboard().opsSetSignalKeys(on);
-			} catch (UnsatisfiedLinkError e) {
-				// an older library: they stay signals
-			}
-		}
-	}
-
-	/** the next key: what was typed ahead first; one the shell took is KEY_INTR (Ctrl-C) or KEY_NONE */
-	private int key() {
-		synchronized (keyLock) {
-			Integer k = typedAhead.poll();
-			if( k != null ) {
-				return k;
-			}
-			int key = opsGetChar();
-			if( taken(key)) {
-				return key == CTRL_C ? KEY_INTR : KEY_NONE;
-			}
-			return key;
-		}
-	}
-
-	private static boolean taken(int key) {
-		ControlKeys ck = controlKeys;
-		return (key == CTRL_C || key == CTRL_Z || key == CTRL_BACKSLASH) && ck != null && ck.typed(key);
+		Keyboard.signalKeys(on);
 	}
 
 	/**
@@ -429,50 +325,17 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * job that does not read the keyboard runs; the other keys are kept for whoever reads next.
 	 */
 	public static void pollTyped() {
-		if( !availible || isTerminalLent()) {
-			// a program reads the terminal itself
-			return;
-		}
-		synchronized (keyLock) {
-			if( poller == null ) {
-				poller = new NativeKeyboard();
-			}
-			while( poller.opsReady() > 0 ) {
-				int key = poller.opsGetChar();
-				if( key == KEY_EOF || key == KEY_NONE ) {
-					break;
-				}
-				if( !taken(key)) {
-					typedAhead.add(key);
-				}
-			}
-		}
+		Keyboard.pollTyped();
 	}
-
-	/** getChar() result at the end of input */
-	public static final int KEY_EOF = -1;
-	/** getChar() result when nothing was typed (yet) */
-	public static final int KEY_NONE = -2;
-	private static final int CTRL_D = 4;
-
-	/** bytes of a special key's escape sequence still to be returned by read() */
-	private final ArrayDeque<Integer> pending = new ArrayDeque<>();
-
 
 	// https://espterm.github.io/docs/VT100%20escape%20codes.html
 
-
-	/** Ctrl-C at the prompt: the line typed so far is dropped */
-	public static class LineCancelled extends InterruptedIOException {
-		private static final long serialVersionUID = 1L;
-	}
-
 	private  String readLineNative(Console console) throws LineCancelled {
-		if( prompt == null ) {
-			prompt = "";
+		if( getPrompt() == null ) {
+			setPrompt("");
 		}
 
-		System.out.print(prompt);
+		System.out.print(getPrompt());
 		System.out.flush();
 		int line = console.history.size();
 		List<String> lines = new ArrayList<>();
@@ -512,7 +375,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					continue;
 				}
 
-				if(key>=0 && maxBytes_N<0 && (!escaped && key == lineTerminator)) {
+				if(key>=0 && maxBytes_N<0 && (!escaped && key == getLineTerminator())) {
 					StringBuilder tmp = new StringBuilder();
 					for(String l : lines) {
 						tmp.append(l);
@@ -549,7 +412,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 							buf = new StringBuilder(tmp);
 
 							print(CLEAR_LINE);
-							print(prompt);
+							print(getPrompt());
 							print(tmp);
 							pos = tmp.length();
 						}
@@ -577,7 +440,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 						pos--;
 						buf.deleteCharAt(target);
 						print(CLEAR_LINE);
-						print(prompt);
+						print(getPrompt());
 						print(buf.toString());
 						for(int i = buf.length(); i > pos; i-- ) {
 							print(CURSOR_LEFT);
@@ -588,7 +451,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					if( pos < buf.length()) {
 						buf.deleteCharAt(pos);
 						print(CLEAR_LINE);
-						print(prompt);
+						print(getPrompt());
 						print(buf.toString());
 						for(int i = buf.length(); i > pos; i-- ) {
 							print(CURSOR_LEFT);
@@ -596,7 +459,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					}
 					break;
 				case END:print(CLEAR_LINE);
-				print(prompt);
+				print(getPrompt());
 				print(buf.toString());
 				pos = buf.length();
 				break;
@@ -612,7 +475,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 							return join(lines, buf);
 						}
 
-						if( key == lineTerminator) {
+						if( key == getLineTerminator()) {
 							print(CLEAR_LINE);
 							print(buf.toString());					
 							lines.add(buf.toString());
@@ -641,9 +504,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 					}
 				}
 				if(timeout>0 && (System.currentTimeMillis()-start)>=timeout ) {
-					key = lineTerminator;
+					key = getLineTerminator();
 				} else if(maxBytes_N>0 && maxBytes_N== buf.length() || maxBytes_n>0 && buf.length()>= maxBytes_n) {
-					key = lineTerminator;
+					key = getLineTerminator();
 				} else {
 
 					key = key();
@@ -651,143 +514,6 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			}
 		
 
-	}
-
-	/**
-	 * Reads a secret: each character typed is shown as mask (a password prompt's *), Backspace
-	 * removes the last one and Ctrl-U all of them; arrow and history keys are ignored. Ends at
-	 * the line terminator. Typed bytes are read as UTF-8, so a character of several bytes shows
-	 * one mask and is removed by one Backspace.
-	 *
-	 * @return the secret (the caller zeroes it), or null at end of input or Ctrl-C in a job
-	 * @throws LineCancelled at Ctrl-C
-	 */
-	public char[] readMasked(char mask) throws LineCancelled {
-		return readSecret(mask, false);
-	}
-
-	/**
-	 * Reads a secret showing one spinner character (| / - \) that turns with every key,
-	 * Backspace included: it shows the typing lands without showing how long the secret is.
-	 */
-	public char[] readSpinning() throws LineCancelled {
-		return readSecret('|', true);
-	}
-
-	/** Reads a secret showing nothing, as sudo, ssh and passwd do. */
-	public char[] readSilent() throws LineCancelled {
-		return readSecret('\0', false);
-	}
-
-	private static final char[] SPINNER = {'|', '/', '-', '\\'};
-
-	private char[] readSecret(char mask, boolean spin) throws LineCancelled {
-		int frame = -1;
-		System.out.print(prompt == null ? "" : prompt);
-		System.out.flush();
-		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-		// where each character starts in bytes, so Backspace removes a whole one
-		java.util.ArrayDeque<Integer> starts = new java.util.ArrayDeque<>();
-		try {
-			while( true ) {
-				int key = nextKey();
-				if( key == KEY_EOF || (key == CTRL_D && starts.isEmpty())) {
-					System.out.print('\n');
-					return starts.isEmpty() ? null : decodeSecret(bytes);
-				}
-				if( key == KEY_INTR ) {
-					return null;
-				}
-				if( key == CTRL_C ) {
-					System.out.print("^C\n");
-					System.out.flush();
-					throw new LineCancelled();
-				}
-				if( key == lineTerminator || key == '\r' || key == '\n' ) {
-					if( spin && frame >= 0 ) {
-						System.out.print("\b \b");
-					}
-					System.out.print('\n');
-					System.out.flush();
-					return decodeSecret(bytes);
-				}
-				if( key == 127 || key == 8 ) {
-					if( !starts.isEmpty()) {
-						truncate(bytes, starts.pop());
-						if( !spin && mask != '\0' ) {
-							System.out.print("\b \b");
-						}
-					}
-					frame = turn(spin, frame);
-				} else if( key == 21 ) {
-					// Ctrl-U: erase everything typed
-					if( !spin && mask != '\0' ) {
-						for(int i = starts.size(); i > 0; i-- ) {
-							System.out.print("\b \b");
-						}
-					}
-					starts.clear();
-					truncate(bytes, 0);
-					frame = turn(spin, frame);
-				} else if( key >= UP && key <= END || key < 32 ) {
-					// arrows, Home, End, Delete, and other control keys: nothing to do in a secret
-				} else if( key < 0x80 || (key & 0xC0) == 0xC0 && key < 0x100 ) {
-					// ASCII, or the first byte of a UTF-8 character: one mask
-					starts.push(bytes.size());
-					bytes.write(key);
-					frame = spin ? turn(true, frame) : show(mask);
-				} else if( key < 0x100 ) {
-					// a UTF-8 continuation byte
-					bytes.write(key);
-				} else {
-					// already a character
-					starts.push(bytes.size());
-					byte[] b = new String(Character.toChars(key)).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-					bytes.write(b, 0, b.length);
-					frame = spin ? turn(true, frame) : show(mask);
-				}
-				System.out.flush();
-			}
-		} finally {
-			truncate(bytes, 0);
-		}
-	}
-
-	/** Turns the spinner one step (drawing it the first time); returns the new frame. */
-	private static int turn(boolean spin, int frame) {
-		if( !spin ) {
-			return frame;
-		}
-		if( frame >= 0 ) {
-			System.out.print('\b');
-		}
-		int next = (frame+1) % SPINNER.length;
-		System.out.print(SPINNER[next]);
-		return next;
-	}
-
-	private static int show(char mask) {
-		if( mask != '\0' ) {
-			System.out.print(mask);
-		}
-		return -1;
-	}
-
-	private static char[] decodeSecret(java.io.ByteArrayOutputStream bytes) {
-		byte[] b = bytes.toByteArray();
-		java.nio.CharBuffer cb = java.nio.charset.StandardCharsets.UTF_8.decode(java.nio.ByteBuffer.wrap(b));
-		char[] ret = java.util.Arrays.copyOfRange(cb.array(), cb.position(), cb.limit());
-		java.util.Arrays.fill(cb.array(), '\0');
-		java.util.Arrays.fill(b, (byte) 0);
-		return ret;
-	}
-
-	/** Cuts bytes back to size, zeroing what was cut. */
-	private static void truncate(java.io.ByteArrayOutputStream bytes, int size) {
-		byte[] keep = bytes.toByteArray();
-		bytes.reset();
-		bytes.write(keep, 0, Math.min(size, keep.length));
-		java.util.Arrays.fill(keep, (byte) 0);
 	}
 
 	private void print(char c) {
@@ -819,17 +545,6 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		return tmp.toString();
 	}
 
-	/**
-	 * @return the next key, waiting until one is typed (or KEY_EOF)
-	 */
-	private int nextKey() {
-		int key = key();
-		while( key == KEY_NONE ) {
-			key = key();
-		}
-		return key;
-	}
-
 	private static Boolean availible=false;
 
 	/** the JNI library (libnativekeyboard) was loaded */
@@ -850,6 +565,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 */
 	private static final us.bringardner.fsh.jna.NativeOps ops;
 
+	/** the keyboard and terminal are done through parley-term's JNA (not the JNI library) */
+	private static final boolean ttyJna;
+
 	public static boolean isAvailible() {
 		return availible;
 	}
@@ -866,7 +584,8 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	/** why JNA is not in use although it was asked for or the library is missing, or null */
 	public static String jnaProblem() {
-		return us.bringardner.fsh.jna.NativeOps.failure;
+		String p = us.bringardner.fsh.jna.NativeOps.failure;
+		return p != null ? p : JnaTty.failure;
 	}
 
 	/** why JNA cannot start programs although it does the rest, or null */
@@ -876,7 +595,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	/** the keyboard and terminal are done through JNA (not the JNI library) */
 	public static boolean usesJna() {
-		return ops != null;
+		return ttyJna;
 	}
 
 
@@ -884,6 +603,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static final boolean NATIVE_IMAGE = "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"));
 
 	static {
+		if( Boolean.getBoolean("parley.fsh.native.debug") && System.getProperty("parley.term.native.debug") == null ) {
+			System.setProperty("parley.term.native.debug", "true");
+		}
 		try {
 			System.loadLibrary("nativekeyboard");
 			availible = true;
@@ -919,6 +641,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		}
 		jniLoaded = availible;
 		us.bringardner.fsh.jna.NativeOps jna = null;
+		TtyOps tty = null;
 		String mode = System.getProperty("parley.fsh.native", "auto");
 		// (a native image has no reflection and JNI metadata for JNA: only if asked for)
 		if( !"jni".equals(mode) && ("jna".equals(mode) || (!jniLoaded && !NATIVE_IMAGE)) ) {
@@ -927,52 +650,96 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			} catch (Throwable e) {
 				// (no JNA, or its library: as without it)
 			}
+			try {
+				tty = JnaTty.create();
+			} catch (Throwable e) {
+				// (no JNA, or its library: as without it)
+			}
 		}
 		ops = jna;
-		availible = jniLoaded || ops != null;
+		ttyJna = tty != null;
+		if( tty == null && jniLoaded ) {
+			tty = new Jni();
+		}
+		Keyboard.install(tty);
+		availible = jniLoaded || ops != null || tty != null;
 	}
 
-	// the functions that JNA does when it can, and the JNI library's otherwise
+	/** The keyboard and the terminal through the JNI library, for parley-term's Keyboard. */
+	private static final class Jni implements TtyOps {
+		private final NativeKeyboard kb = new NativeKeyboard();
+		/** (for rows(), which the JNI library has no call for: JNA's, where it works) */
+		private TtyOps size;
+		private boolean sizeTried;
 
-	private int opsGetChar() {
-		return ops != null ? ops.getChar() : getChar();
-	}
+		@Override
+		public int getChar() {
+			return kb.getChar();
+		}
 
-	private int opsReady() {
-		return ops != null ? ops.ready() : ready();
-	}
+		@Override
+		public int ready() {
+			return kb.ready();
+		}
 
-	private void opsSetSignalKeys(boolean on) {
-		if( ops != null ) {
-			ops.setSignalKeys(on);
-		} else {
-			setSignalKeys(on);
+		@Override
+		public void setSignalKeys(boolean on) {
+			kb.setSignalKeys(on);
+		}
+
+		@Override
+		public void setProgramMode(boolean on) {
+			kb.setProgramMode(on);
+		}
+
+		@Override
+		public boolean isTerminal() {
+			return kb.isTerminal();
+		}
+
+		@Override
+		public boolean isInputTerminal() {
+			return kb.isInputTerminal0();
+		}
+
+		@Override
+		public String ttyName() {
+			return kb.ttyName0();
+		}
+
+		@Override
+		public int inputKind() {
+			return kb.inputKind0();
+		}
+
+		@Override
+		public int columns() {
+			return kb.columns0();
+		}
+
+		@Override
+		public synchronized int rows() {
+			if( !sizeTried ) {
+				sizeTried = true;
+				// (not on Windows, where making JNA's console changes the console's modes too)
+				if( !NATIVE_IMAGE && java.io.File.separatorChar == '/' ) {
+					try {
+						size = JnaTty.create();
+					} catch (Throwable e) {
+						// (no JNA)
+					}
+				}
+			}
+			return size == null ? 0 : size.rows();
+		}
+
+		@Override
+		public boolean isatty(int fd) {
+			return isatty0(fd);
 		}
 	}
 
-	private void opsSetProgramMode(boolean on) {
-		if( ops != null ) {
-			ops.setProgramMode(on);
-		} else {
-			setProgramMode(on);
-		}
-	}
-
-	private boolean opsIsTerminal() {
-		return ops != null ? ops.isTerminal() : isTerminal();
-	}
-
-	private boolean opsIsInputTerminal0() {
-		return ops != null ? ops.isInputTerminal() : isInputTerminal0();
-	}
-
-	private String opsTtyName0() {
-		return ops != null ? ops.ttyName() : ttyName0();
-	}
-
-	private int opsInputKind0() {
-		return ops != null ? ops.inputKind() : inputKind0();
-	}
+	// the process functions that JNA does when it can, and the JNI library's otherwise
 
 	private String [] opsOpenDescriptors0() {
 		return ops != null ? ops.openDescriptors() : openDescriptors0();
@@ -1000,10 +767,6 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	private int opsStoppedBy(long pid) {
 		return ops != null ? ops.stoppedBy(pid) : stoppedBy(pid);
-	}
-
-	private int opsColumns0() {
-		return ops != null ? ops.columns() : columns0();
 	}
 
 	/** this process's process group */
@@ -1180,33 +943,13 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public static final char [] CURSOR_RIGHT = {27,'[','C'};
 	public static final char [] DEL_CH = {27,'[','3'};
 
-
-	public static final int UP = 500;
-	public static final int DN = 501;
-	public static final int RT = 502;
-	public static final int LF = 503;
-	public static final int HOME = 504;
-	public static final int PAGE_UP = 505;
-	public static final int PAGE_DOWN = 506;
-	public static final int DELETE = 507;
-	public static final int END = 508;
 	private long timeout = 0;
 	private boolean echo = true;
 	private boolean honorEscape = true;
-	private char lineTerminator = '\n';
 	private int maxBytes_N = -1;
 	private int maxBytes_n = -1;
 	private String editLineText ;
-	private String prompt = "prompt";
 
-
-
-	public String getPrompt() {
-		return prompt;
-	}
-	public void setPrompt(String prompt) {
-		this.prompt = prompt;
-	}
 	public String getEditLineText() {
 		return editLineText;
 	}
@@ -1244,12 +987,6 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	public void setTimeout(long timeout) {
 		this.timeout = timeout;
 	}
-	public char getLineTerminator() {
-		return lineTerminator;
-	}
-	public void setLineTerminator(char lineTerminator) {
-		this.lineTerminator = lineTerminator;
-	}
 	
 
 	/** the interactive shell's prompt: read with the line editor (else the plain reader, as read uses) */
@@ -1263,58 +1000,13 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 
 	/** the terminal's width (else $COLUMNS, else 80) */
 	public static int columns() {
-		if( availible ) {
-			try {
-				int c = new NativeKeyboard().opsColumns0();
-				if( c > 0 ) {
-					return c;
-				}
-			} catch (UnsatisfiedLinkError e) {
-				// an older library
-			}
-		}
-		try {
-			return Integer.parseInt(System.getenv().getOrDefault("COLUMNS", "80"));
-		} catch (NumberFormatException e) {
-			return 80;
-		}
+		return Keyboard.columns();
 	}
 
-	/** the keys typed, for the line editor */
-	private final LineEditor.Keys editorKeys = new LineEditor.Keys() {
-		@Override
-		public int next() {
-			int k = key();
-			while( k == KEY_NONE ) {
-				k = key();
-			}
-			return k;
-		}
-
-		@Override
-		public int nextWithin(long millis) {
-			long until = System.currentTimeMillis()+millis;
-			while( true ) {
-				synchronized (keyLock) {
-					Integer k = typedAhead.poll();
-					if( k != null ) {
-						return k;
-					}
-					if( opsReady() > 0 ) {
-						return getChar();
-					}
-				}
-				if( System.currentTimeMillis() >= until ) {
-					return KEY_NONE;
-				}
-				try {
-					Thread.sleep(2);
-				} catch (InterruptedException e) {
-					return KEY_NONE;
-				}
-			}
-		}
-	};
+	/** the terminal's height (else $LINES, else 24), for a full-screen program */
+	public static int rows() {
+		return Keyboard.rows();
+	}
 
 	public  String readLine(Console console) throws IOException {
 		if( lineEditing && availible && System.in == Console.System_in) {
@@ -1322,7 +1014,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			for(Console.HistoryEntry e : console.history) {
 				history.add(e.command);
 			}
-			LineEditor editor = new LineEditor(editorKeys, System.out, history);
+			LineEditor editor = new LineEditor(editorKeys(), System.out, history);
 			editor.setColumns(columns());
 			editor.setCompleter(new Completion(console));
 			// set -o vi: vi's keys
@@ -1331,7 +1023,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			LineEditor.setCommandRunner(console::runBindCommand);
 			String text = editLineText;
 			editLineText = null;
-			String ret = editor.readLine(prompt == null ? "" : prompt);
+			String ret = editor.readLine(getPrompt() == null ? "" : getPrompt());
 			return text == null || ret == null ? ret : ret;
 		}
 		if( availible && System.in == Console.System_in) {
@@ -1350,9 +1042,9 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 	 * @throws IOException
 	 */
 	private String readLineConsole(Console console) throws IOException {
-		if( prompt !=null) {
+		if( getPrompt() !=null) {
 			// (on standard error, as bash writes its prompts)
-			console.getStdErr().print(prompt);
+			console.getStdErr().print(getPrompt());
 			console.getStdErr().flush();
 		}
 
@@ -1388,7 +1080,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 			LineEditor editor = new LineEditor(keys, new PrintStream(java.io.OutputStream.nullOutputStream()), history);
 			editor.setCompleter(new Completion(console));
 			editor.setViMode(console.isOptionEnabled(Console.Option.Vi));
-			String text = editor.readLine(prompt == null ? "" : prompt);
+			String text = editor.readLine(getPrompt() == null ? "" : getPrompt());
 			if( text == null ) {
 				return null;
 			}
@@ -1421,7 +1113,7 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 						ret.append(c);
 						escape = false;
 					} else {
-						if( c == lineTerminator) {
+						if( c == getLineTerminator()) {
 							done = true;
 						} else {
 							ret.append(c);
@@ -1439,105 +1131,6 @@ public class NativeKeyboard extends InputStream implements KeyboardReader, Inter
 		return ret.toString();
 	}
 
-	@Override
-	public int read() throws IOException {
-		if( !pending.isEmpty()) {
-			return pending.poll();
-		}
-		if( !availible ) {
-			return System.in.read();
-		}
-		while(true) {
-			int key = key();
-			if( key == KEY_INTR ) {
-				return -1;
-			} else if( key == KEY_NONE ) {
-				if( Thread.currentThread().isInterrupted()) {
-					throw new InterruptedIOException();
-				}
-			} else if( key == KEY_EOF ) {
-				return -1;
-			} else if( key > 255 ) {
-				// give the program the escape sequence the terminal sent
-				byte [] seq = escapeSequence(key);
-				for(int idx=1; idx < seq.length; idx++ ) {
-					pending.add(seq[idx] & 0xff);
-				}
-				return seq[0];
-			} else {
-				return key;
-			}
-		}
-	}	
-
-	/**
-	 * A byte that was typed, without waiting: KEY_NONE if there is none (or the shell took it,
-	 * Ctrl-Z), KEY_EOF at the end of input. For a program's input, so a job that is stopped
-	 * meanwhile does not wait in here for the next key.
-	 */
-	public int readTyped() {
-		if( !pending.isEmpty()) {
-			return pending.poll();
-		}
-		if( !availible ) {
-			return KEY_NONE;
-		}
-		int key;
-		synchronized (keyLock) {
-			Integer k = typedAhead.poll();
-			if( k != null ) {
-				key = k;
-			} else if( opsReady() <= 0 ) {
-				return KEY_NONE;
-			} else {
-				key = opsGetChar();
-				if( taken(key)) {
-					return KEY_NONE;
-				}
-			}
-		}
-		if( key > 255 ) {
-			byte [] seq = escapeSequence(key);
-			for(int idx=1; idx < seq.length; idx++ ) {
-				pending.add(seq[idx] & 0xff);
-			}
-			return seq[0];
-		}
-		return key;
-	}
-
-	@Override
-	public int available() throws IOException {
-		if( !availible ) {
-			return pending.size()+System.in.available();
-		}
-		synchronized (keyLock) {
-			return pending.size()+typedAhead.size()+opsReady();
-		}
-	}
-
-	private static byte [] escapeSequence(int key) {
-		String seq;
-		switch (key) {
-		case UP: seq = "\033[A"; break;
-		case DN: seq = "\033[B"; break;
-		case RT: seq = "\033[C"; break;
-		case LF: seq = "\033[D"; break;
-		case HOME: seq = "\033[H"; break;
-		case END: seq = "\033[F"; break;
-		case DELETE: seq = "\033[3~"; break;
-		case PAGE_UP: seq = "\033[5~"; break;
-		case PAGE_DOWN: seq = "\033[6~"; break;
-		default: seq = ""+((char)(key & 0xff));
-		}
-		return seq.getBytes();
-	}
-
-	@Override
-	public void close() throws IOException {
-		//  do nothing...
-
-	}
 	@Override
 	public PrintStream getStdErr() {
 		return System.err;

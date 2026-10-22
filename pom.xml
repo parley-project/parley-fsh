@@ -294,10 +294,16 @@
 	</distributionManagement>
 
 	<dependencies>
-		<!-- The FileSource API: the only Parley module fsh's code uses -->
+		<!-- The FileSource API -->
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
 			<artifactId>parley-files</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+		<!-- The keyboard and terminal (raw mode, keys, size, lending the terminal) and the line editor -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-term</artifactId>
 			<version>${parley.version}</version>
 		</dependency>
 		<!-- The look of fsh's own window (ConsoleFrame), shared with the other Parley applications -->
@@ -338,9 +344,10 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- Optional at run time: the keyboard and terminal calls (NativeKeyboard) through libc and
-		     kernel32 where the JNI library (macos/, linux/, windows/) is not built. Without it fsh
-		     works as before; with the library, JNA is not loaded (-Dparley.fsh.native=jna to use it). -->
+		<!-- Optional at run time: the keyboard and terminal (parley-term) and starting programs
+		     (NativeKeyboard) through libc and kernel32 where the JNI library (macos/, linux/, windows/)
+		     is not built. Without it fsh works as before; with the library, JNA is not loaded
+		     (-Dparley.fsh.native=jna to use it). -->
 		<dependency>
 			<groupId>net.java.dev.jna</groupId>
 			<artifactId>jna</artifactId>
