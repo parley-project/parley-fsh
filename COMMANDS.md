@@ -315,6 +315,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `bg` | `bg [jobspec ...]` | Resume each suspended job jobspec in the background, as if it had been started with ‘&’. |
 | `bind` | `bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command]` | Set what the line editor's keys do, or show it. |
 | `break` | `break [n]` | Leave the innermost loop, or the n enclosing loops. |
+| `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (mounts included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in the browser a plugin provides: a window when there is a display, else a full-screen one in the terminal. |
 | `builtin` | `builtin name [args]` | Run the shell builtin name (not a function or program with that name). |
 | `caller` | `caller [n]` | In a function, print where it was called from: with n, "line function file" for the call n frames up (0 is the current function's caller); without, "line file". |
 | `cd` | `cd [-L\|-P] [dir]` | Change the current directory (to $HOME without dir). |
@@ -345,6 +346,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `local` | `local [option] name[=value] ...` | Make each name a variable of the function it is used in (and of the functions it calls), with declare's options. |
 | `logout` | `logout [n]` | Exit a login shell with status n (the last command's if n is not given). |
 | `mapfile` | `mapfile [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]` | Read lines from standard input (or fd with -u) into the indexed array (MAPFILE if none is named). |
+| `plugins` | `plugins` | List fsh's plugin folders, in the order they are searched, and each jar in them: loaded (a plugin or a library), skipped and why, or shadowed by a jar of the same name found first. |
 | `popd` | `popd [-n] [+N \| -N]` | Take the top directory off the stack and go to the new top, or take off entry N (counted from the left or right of dirs' list). |
 | `printf` | `printf [-v var] format [arguments]` | Write the arguments under control of format: %s %b (with backslash escapes) %q (quoted) %c %d %i %u %o %x %X %f %e %E %g %G %%, with flags - + space 0 #, a width and a precision (* takes them from the arguments). |
 | `pushd` | `pushd [-n] [+N \| -N \| dir]` | Add dir to the top of the directory stack (going there), or rotate the stack (+N, -N, counted from the left or right of dirs' list) so that entry is on top. |

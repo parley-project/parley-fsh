@@ -292,6 +292,37 @@ runtime (`FSH_DEBUG=8001 bin/fsh` listens on localhost:8001).
 itself, so it can't go through `fshexec -j`: signals the shell's caller ignored aren't reported
 as ignored (`trap -p`) when the JVM takes them first (QUIT, USR2). The packages aren't signed.
 
+## Plugins
+
+fsh loads the jars in its plugin folders as it starts, so a command, a file system or a browser is
+added by dropping its jar in a folder rather than by rebuilding fsh. The folders, searched in this
+order:
+
+1. `/usr/local/lib/parley/fsh/plugins` (Windows: `%ProgramData%\Parley\fsh\plugins`), installed by an administrator
+2. `/usr/local/lib/parley/plugins`, shared by every Parley application
+3. `~/.parley/fsh/plugins`, the user's
+4. `~/.parley/plugins`, the user's, shared
+
+A jar found first wins over one of the same name later, and a builtin keeps its name, so a user
+can add commands but not replace the administrator's or fsh's own. `fsh -r` (restricted) leaves
+out the user's folders. The settings that move the folders (`parley.plugins.systemRoot`,
+`parley.plugins.userRoot`, `parley.plugins.path`, `parley.fsh.plugins.path`, which an
+administrator sets in `/etc/parley/parley.properties`) are described in parley-core's README.
+`plugins` lists what was loaded, from where, and what was skipped or shadowed.
+
+What a plugin can provide:
+
+| Service | |
+|---|---|
+| `us.bringardner.fsh.spi.CommandProvider` | Commands (`ShellCommand`s) |
+| `us.bringardner.fsh.spi.BrowserProvider` | A file browser for `browse`: it uses the one of the highest priority that can run here (a window when there is a display, else a terminal one); `browse --with NAME` picks one, `browse --list` lists them |
+| `us.bringardner.parley.files.FileSourceFactory` | A file system for `connect` (parley-files-sftp, -ftp, -jdbc) |
+| `us.bringardner.parley.files.credentials.CredentialProvider` | A credential store |
+| `java.sql.Driver` | A JDBC driver |
+
+A plugin jar lists its providers in `META-INF/services/` and has `Parley-Plugin-Api: 1` in its
+manifest. The native image (GraalVM) cannot load jars: it has only what was built into it.
+
 ## Passwords in startup scripts
 
 A `connect` setting that holds a secret (an SFTP, FTP or JDBC password) can name where the secret
