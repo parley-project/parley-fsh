@@ -621,8 +621,70 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.Umask());
 		registerCommand(new us.bringardner.fsh.commands.Ulimit());
 		registerCommand(new Wc());
+		registerCommand(new us.bringardner.fsh.commands.PluginsCommand());
+		registerCommand(new us.bringardner.fsh.commands.Browse());
 
 		registerSignals();
+	}
+
+	/** the commands plugins added: name -> the jar it came from */
+	public static final Map<String, String> pluginCommands = new java.util.concurrent.ConcurrentSkipListMap<>();
+	/** what went wrong adding plugins' commands, and the commands not added (a builtin has the name) */
+	public static final List<String> pluginNotes = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+	/**
+	 * Load fsh's plugins (parley-core's Plugins: the jars in fsh's plugin folders) and add the
+	 * commands they provide (us.bringardner.fsh.spi.CommandProvider). A builtin, or a command an
+	 * earlier plugin added, keeps its name. Once per JVM; restricted leaves out the user's folders.
+	 */
+	public static synchronized void loadPlugins(boolean restricted) {
+		if( us.bringardner.parley.plugin.Plugins.report() != null ) {
+			return;
+		}
+		us.bringardner.parley.plugin.Plugins.load("fsh", restricted);
+		addPluginCommands();
+	}
+
+	/** add the commands the loaded plugins provide (see loadPlugins) */
+	public static synchronized void addPluginCommands() {
+		for(us.bringardner.fsh.spi.CommandProvider p : us.bringardner.parley.plugin.Plugins.providers(
+				us.bringardner.fsh.spi.CommandProvider.class, e -> pluginNotes.add("a command provider cannot be loaded: "+e))) {
+			String from = pluginSource(p.getClass());
+			List<ShellCommand> added;
+			try {
+				added = p.commands();
+			} catch (RuntimeException | LinkageError e) {
+				pluginNotes.add(from+": its commands cannot be made: "+e);
+				continue;
+			}
+			for(ShellCommand cmd : added) {
+				String name = cmd.getName();
+				if( commands.containsKey(name)) {
+					String other = pluginCommands.get(name);
+					pluginNotes.add(name+" from "+from+": not added, "+(other == null ? "a builtin" : other+"'s "+name)+" has the name");
+					continue;
+				}
+				try {
+					commands.put(name, cmd.getClass().getConstructor());
+					pluginCommands.put(name, from);
+				} catch (NoSuchMethodException e) {
+					pluginNotes.add(name+" from "+from+": not added, it has no public constructor without arguments");
+				}
+			}
+		}
+	}
+
+	/** the jar (file name) a plugin's class came from, or its class name */
+	public static String pluginSource(Class<?> cls) {
+		try {
+			java.security.CodeSource cs = cls.getProtectionDomain().getCodeSource();
+			if( cs != null && cs.getLocation() != null ) {
+				return new java.io.File(cs.getLocation().toURI()).getName();
+			}
+		} catch (java.net.URISyntaxException | RuntimeException e) {
+			// (as below)
+		}
+		return cls.getName();
 	}
 
 
@@ -1041,6 +1103,14 @@ delimiter
 	public static void main(String args[]) throws IOException {
 		// (what the shell was given, before the runtime and the shell open their own)
 		NativeKeyboard.noteOpenAtStart();
+		// the plugins, before anything looks up the file systems (fsh -r: not the user's)
+		boolean restricted = false;
+		try {
+			restricted = Invocation.parse(args).restricted;
+		} catch (Invocation.Bad e) {
+			// (execute reports it)
+		}
+		loadPlugins(restricted);
 		// temporary files (here-documents, fifos) in $TMPDIR, as bash's
 		String tmpdir = System.getenv("TMPDIR");
 		if( tmpdir != null && !tmpdir.isEmpty() && new java.io.File(tmpdir).isDirectory()) {

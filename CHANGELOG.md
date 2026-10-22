@@ -12,6 +12,17 @@
   `parley.fsh.noKeychain`, `parley.fsh.writeCommandsDoc` and `parley.fsh.test.reportDir`.
 - The parley-ssh shell is named with `parley.ssh.shellFactory`.
 
+### Added
+
+- **Plugins**: fsh loads the jars in its plugin folders as it starts (`/usr/local/lib/parley/fsh/plugins`,
+  `/usr/local/lib/parley/plugins`, `~/.parley/fsh/plugins`, `~/.parley/plugins`, in that order; `fsh -r`
+  leaves out the user's), with parley-core's `Plugins`. A plugin adds commands
+  (`us.bringardner.fsh.spi.CommandProvider`; a builtin or an earlier plugin keeps its name), a browser
+  (`us.bringardner.fsh.spi.BrowserProvider`), file systems, credential stores and JDBC drivers.
+- `plugins`: the plugin folders, what was loaded from them, skipped or shadowed, and what that added.
+- `browse [-1] [-c] [--with NAME] [DIR [DIR2]]`, `browse --list`: a file browser from a plugin, the one
+  of the highest priority that can run here (a window when there is a display, else a terminal one).
+
 ### Changed
 
 - The keyboard, the terminal and the line editor are in **parley-term**, a new Parley module that fsh

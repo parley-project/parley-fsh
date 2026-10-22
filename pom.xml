@@ -294,6 +294,12 @@
 	</distributionManagement>
 
 	<dependencies>
+		<!-- Plugins (and what parley-files is built on) -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-core</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
 		<!-- The FileSource API -->
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
