@@ -199,7 +199,9 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		for(Method method : methods) {
 			String name = method.getName();
 
-			if( method.getParameterCount()==0) {
+			//  lock() and tryLock() take a lock (and keep it): a second one on the same file is
+			//  refused, as with NIO's FileChannel (OverlappingFileLockException), so they can't be compared
+			if( method.getParameterCount()==0 && !name.equals("lock") && !name.equals("tryLock")) {
 				if( !name.startsWith("getParent")) {
 					if( !name.startsWith("list")) {
 						if( !name.endsWith("Stream")) {
