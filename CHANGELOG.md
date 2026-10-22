@@ -12,6 +12,20 @@
   `parley.fsh.noKeychain`, `parley.fsh.writeCommandsDoc` and `parley.fsh.test.reportDir`.
 - The parley-ssh shell is named with `parley.ssh.shellFactory`.
 
+### Changed
+
+- The keyboard, the terminal and the line editor are in **parley-term**, a new Parley module that fsh
+  now depends on, so other Parley applications (the console file browser) share them:
+  `us.bringardner.fsh.LineEditor` is `us.bringardner.parley.term.line.LineEditor`, Tab completion's
+  `Completion.Result` and `Completion.Candidate` are parley-term's `Completions.Result` and
+  `Completions.Candidate`, and the JNA terminal code (`jna.UnixOps` and `jna.WindowsOps`' keyboard
+  and console part) is parley-term's `tty.jna`. `NativeKeyboard` keeps its methods and extends
+  parley-term's `Keyboard`; the JNI library (`libnativekeyboard`) is unchanged and still the
+  default, given to parley-term as its terminal. `parley.fsh.native.debug` also turns on
+  `parley.term.native.debug`.
+- `NativeKeyboard.rows()`: the terminal's height (with the JNI library, through JNA where it loads;
+  else `$LINES`, else 24).
+
 ## 1.1.0 (unreleased)
 
 Needs swing-widgets 1.1.0.

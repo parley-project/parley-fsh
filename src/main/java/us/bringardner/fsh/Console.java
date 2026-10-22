@@ -38,6 +38,7 @@ import javax.swing.SwingUtilities;
 import sun.misc.Signal;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
+import us.bringardner.parley.term.line.LineEditor;
 import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.parley.files.fileproxy.FileProxy;
 import us.bringardner.fsh.ShellContext.LoopControl;
