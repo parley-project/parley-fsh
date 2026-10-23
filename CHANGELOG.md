@@ -114,6 +114,10 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   its status labels are gone.
 
 ### Fixed
+- On Linux a pipeline of programs could hang (`printf 'b\na\n' | sort | head -n 1`, about one
+  time in 300): a program got the named pipe the next program's input was being opened on, so
+  that program never saw the end of its input. A program now gets only its own descriptors, as
+  on macOS (with glibc 2.34 or later; with an older one, as before).
 - Code run as a string (`Console.executeScript(ShellContext, code)`, as fsh-ide, fshdb and jobs
   run scripts) lost its leading blank lines, so `$LINENO`, `BASH_LINENO` and error messages
   were too low by that many lines in a script that starts with blank lines. They're kept now.
