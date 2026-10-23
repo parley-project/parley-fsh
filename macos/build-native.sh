@@ -70,6 +70,9 @@ case "$1" in
 		"$graal/bin/java" "$PROJECT_DIR/tools/CremaPluginConfig.java" target/native-crema-config/reflect-config.json \
 			"$jar:$(cat target/runtime-classpath.txt)" $plugins || exit 1
 	fi
+	# (the keyboard library binds its methods with RegisterNatives as it loads, since a Crema image
+	# does not find them by name: it needs the class)
+	echo '[{"name": "us.bringardner.fsh.NativeKeyboard"}]' > target/native-crema-config/jni-config.json
 	keep="package=java.lang,package=java.lang.invoke${CREMA_PRESERVE:+,$CREMA_PRESERVE}"
 	out=target/native-crema
 	jit=""
@@ -77,7 +80,7 @@ case "$1" in
 		out=target/native-crema-jit
 		jit="-H:+GraalJITCompileAtRuntime"
 	fi
-	build $out -H:+UnlockExperimentalVMOptions -H:+RuntimeClassLoading $jit -H:Preserve="$keep" \
+	build $out -H:+UnlockExperimentalVMOptions -H:+RuntimeClassLoading $jit -H:Preserve="$keep" --enable-native-access=ALL-UNNAMED \
 		-H:ConfigurationFileDirectories=target/native-crema-config ;;
 "")
 	build target/native ;;
