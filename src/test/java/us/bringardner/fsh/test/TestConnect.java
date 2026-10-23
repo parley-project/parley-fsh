@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -165,7 +166,8 @@ public class TestConnect extends AbstractConsoleTest {
 
 	@Test
 	public void mistakesHaveAStatus() throws IOException {
-		ExecuteResult res = executeCommand("connect", "");
+		// (connect alone lists the connections; one argument is a mistake)
+		ExecuteResult res = executeCommand("connect memory", "");
 		assertEquals(2, res.exitCode);
 		assertEquals("usage: connect FACTORY [-f FILE] [name=value ...] [-] MOUNT_POINT", res.getStdErr().trim());
 
@@ -186,5 +188,26 @@ public class TestConnect extends AbstractConsoleTest {
 		assertEquals(1, res.exitCode, "a mount point already in use");
 		assertTrue(res.getStdErr().contains("can't mount memory at /memtwice"), res.getStdErr());
 		executeCommand("disconnect /memtwice", "");
+	}
+
+	/** A connected file system is listed in the folder it's connected at (ls /, globs, cd ..); disconnect takes it out. */
+	@Test
+	public void mountPointsAreListed() throws Exception {
+		File deep = new File(testFilesDir, "mountparent");
+		deep.mkdirs();
+		String dir = deep.getAbsolutePath().replace('\\', '/');
+		ExecuteResult res = executeCommand("connect memory /mplist >/dev/null; ls / | grep -x mplist;"
+				+ " connect memory '"+dir+"/inner' >/dev/null; ls '"+dir+"'; cd '"+dir+"/inner'; cd ..; ls;"
+				+ " echo '"+dir+"'/*; disconnect /mplist >/dev/null; ls / | grep -c -x mplist;"
+				+ " disconnect '"+dir+"/inner' >/dev/null", "");
+		assertEquals("mplist\ninner\ninner\n"+dir+"/inner\n0\n", res.getStdOut(), res.getStdErr());
+	}
+
+	/** connect with no arguments lists the connections; ls -l shows what is connected at one, as a link's target */
+	@Test
+	public void connectionsAreDescribed() throws Exception {
+		ExecuteResult res = executeCommand("connect memory /mdesc >/dev/null; connect | grep mdesc; ls -ld /mdesc | sed 's/.* \\//\\//';"
+				+ " disconnect /mdesc >/dev/null; connect | grep -c mdesc", "");
+		assertEquals("/mdesc -> memory\n/mdesc -> memory\n0\n", res.getStdOut(), res.getStdErr());
 	}
 }

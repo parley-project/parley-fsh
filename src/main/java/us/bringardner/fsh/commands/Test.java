@@ -469,8 +469,8 @@ public class Test extends ShellCommand{
 	static java.nio.file.Path path(ShellContext ctx, String val) {
 		try {
 			FileSource f = ctx.getFileSource(val);
-			if( f instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
-				return ((us.bringardner.parley.files.fileproxy.FileProxy) f).getTarget().toPath();
+			if( us.bringardner.fsh.LocalFiles.isLocal(f) ) {
+				return us.bringardner.fsh.LocalFiles.of(f).toPath();
 			}
 		} catch (IOException e) {
 		}

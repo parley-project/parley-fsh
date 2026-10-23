@@ -281,18 +281,18 @@ final class Redirects {
 			}
 			// a file (not a device or a named pipe, where a read can wait) is shared with the programs
 			InputStream in;
-			if( file instanceof FileProxy && ((FileProxy) file).getTarget().isFile()) {
-				FileProxy proxy = (FileProxy) file;
+			java.io.File localFile = us.bringardner.fsh.LocalFiles.of(file);
+			if( localFile != null && localFile.isFile()) {
 				// a local file: a program reads it itself, from where the shell is
-				if( !proxy.getTarget().canRead()) {
+				if( !localFile.canRead()) {
 					throw new IOException(word+": Permission denied");
 				}
-				in = new ReadBack(proxy.getTarget());
+				in = new ReadBack(localFile);
 			} else {
 				in = file.getInputStream();
 				if( file.isFile()) {
 					in = new ReadBack(in);
-				} else if( file instanceof FileProxy ) {
+				} else if( us.bringardner.fsh.LocalFiles.isLocal(file) ) {
 					// a named pipe or a device: shared with programs, as the file is in bash (one that
 					// does not read it takes nothing: BASHPID=$(sh -c 'echo $PPID') in a loop reading it)
 					in = new PipeInput(in);
@@ -557,9 +557,9 @@ final class Redirects {
 
 	private static void openReadWrite(ShellContext sc, int n, String path) throws IOException {
 		FileSource file = sc.getFileSource(path);
-		if( file instanceof FileProxy && ((FileProxy) file).getTarget().exists() && !((FileProxy) file).getTarget().isFile() && !((FileProxy) file).getTarget().isDirectory()) {
+		if( us.bringardner.fsh.LocalFiles.isLocal(file) && us.bringardner.fsh.LocalFiles.of(file).exists() && !us.bringardner.fsh.LocalFiles.of(file).isFile() && !us.bringardner.fsh.LocalFiles.of(file).isDirectory()) {
 			// a named pipe or a device (exec 9<> fifo): opened for reading and writing at once
-			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(((FileProxy) file).getTarget(), "rw");
+			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(us.bringardner.fsh.LocalFiles.of(file), "rw");
 			InputStream in = new PipeInput(raf);
 			OutputStream out = new OutputStream() {
 				@Override

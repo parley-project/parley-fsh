@@ -505,9 +505,9 @@ public final class Programs {
 				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
-				if (dir instanceof FileProxy) {
-					FileProxy cwd = (FileProxy) dir;
-					builder.directory(cwd.getTarget());
+				java.io.File cwd = us.bringardner.fsh.LocalFiles.of(dir);
+				if( cwd != null ) {
+					builder.directory(cwd);
 				}
 				if( inheritIn ) {
 					builder.redirectInput(ProcessBuilder.Redirect.INHERIT);

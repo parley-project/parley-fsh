@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
-import us.bringardner.fsh.RootFile;
+import us.bringardner.fsh.TreeFile;
 import us.bringardner.fsh.VirtualFileSourceFactory;
 
 public class TestMountedFactory extends AbstractConsoleTest {
@@ -70,7 +70,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 		String expectName = "/mem";
 		FileSource data = factory.createFileSource(expectName);
-		assertEquals(RootFile.class, data.getClass());
+		assertEquals(TreeFile.class, data.getClass());
 		assertEquals(expectName, data.getAbsolutePath());
 		assertTrue(data.exists(),expectName+" does not exists");
 
@@ -115,7 +115,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		FileSource root1 = factory.createFileSource(rootName1);
 		FileSource dir1 = root1;
 
-		assertEquals(RootFile.class, dir1.getClass());
+		assertEquals(TreeFile.class, dir1.getClass());
 		assertEquals(rootName1, dir1.getAbsolutePath());
 		assertTrue(dir1.exists(),rootName1+" does not exists");
 		int levels = 20;
@@ -139,7 +139,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 		}
 
 		FileSource dir = factory.createFileSource(rootName1);
-		assertEquals(RootFile.class, dir.getClass());
+		assertEquals(TreeFile.class, dir.getClass());
 		assertEquals(rootName1, dir.getAbsolutePath());
 		assertTrue(dir.exists(),rootName1+" does not exists");
 
@@ -205,7 +205,8 @@ public class TestMountedFactory extends AbstractConsoleTest {
 				if( !name.startsWith("getParent")) {
 					if( !name.startsWith("list")) {
 						if( !name.endsWith("Stream")) {
-							if( !name.endsWith("Path")) {
+							// (getAbsoluteFile: the file at the shell's path, /mem/..., as the path is)
+							if( !name.endsWith("Path") && !name.equals("getAbsoluteFile")) {
 								method.setAccessible(true);
 								Object r1 = method.invoke(child1);
 								Object r2 = method.invoke(child2);

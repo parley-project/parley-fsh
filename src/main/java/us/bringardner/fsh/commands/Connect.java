@@ -24,6 +24,7 @@ public class Connect extends ShellCommand{
 			+ "\tA secret setting such as password can name its secret instead of holding it: @env:NAME,\n"
 			+ "\t@file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).\n"
 			+ "\tOn success it prints \"FACTORY connected as MOUNT_POINT\"; disconnect undoes it.\n"
+			+ "\tWith no arguments it lists the shell's connections: PATH -> FILE SYSTEM.\n"
 			+ "\tExamples:\n"
 			+ "\tconnect memory /mem\n"
 			+ "\tconnect sftp host=example.com user=deploy password=@keychain:parley/sftp/deploy@example.com /prod\n"
@@ -55,6 +56,13 @@ public class Connect extends ShellCommand{
 			} else {
 				args.add(arg);
 			}
+		}
+		if( args.isEmpty() && !readStdin ) {
+			// the shell's connections, as mount with no arguments lists mounts
+			for(java.util.Map.Entry<String, FileSource> e : ctx.console.connections().entrySet()) {
+				ctx.stdout.println(e.getKey()+" -> "+us.bringardner.fsh.Console.describeConnection(e.getValue()));
+			}
+			return 0;
 		}
 		if( args.size() < 2 ) {
 			ctx.stderr.println("usage: "+help.split("\n", 2)[0]);

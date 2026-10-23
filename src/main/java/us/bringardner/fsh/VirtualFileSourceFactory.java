@@ -2,70 +2,210 @@ package us.bringardner.fsh;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
+import java.util.Set;
+import java.util.TreeSet;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import java.util.ArrayDeque;
-import java.util.Deque;
 
+/**
+ * The shell's file tree: the local file system, and the file systems connected into it (connect
+ * memory /mem). A path is the connection's whose path is the longest that it is in or under; a
+ * path no connection has is local.
+ *
+ * The connections are a table from the path each is at to the folder connected there. The table
+ * is never changed, only replaced (mount and disconnect make a new one), so a thread that reads
+ * it (listing a folder, completing a name) sees one table whole, and never takes a lock.
+ *
+ * The files of a connection, its folder, and the local folders a connection is under, are
+ * TreeFiles (their path and their parent, children and files under them are this tree's); the
+ * other local files are the local file system's own.
+ */
 public class VirtualFileSourceFactory extends FileSourceFactory {
-	/**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 1L;
 	private static final String TYPE_ID = "virtual";
-	FileSource [] roots;
-	FileSource firstRoot;
-	FileSource currentDirectory;
+
+	/** the local file system's roots (/, or C:\ D:\ ...) */
+	private final FileSource [] localRoots;
+	/** where / is */
+	private final FileSource firstRoot;
+	private final FileSourceFactory local;
+	private volatile FileSource currentDirectory;
+	/** path -> the folder connected there, longest path first (never changed: replaced) */
+	private volatile Map<String, FileSource> connections = Collections.emptyMap();
 
 	public VirtualFileSourceFactory() throws IOException {
-		FileSourceFactory factory = FileSourceFactory.getDefaultFactory();
-		roots = factory.listRoots();
-		firstRoot = roots[0];
-		currentDirectory = factory.getCurrentDirectory();
-	}
-	
-	public VirtualFileSourceFactory(FileSource primary) throws IOException {
-		firstRoot = primary;
-		roots=new FileSource[1];
-		roots[0] = primary;
-		currentDirectory = primary.getFileSourceFactory().getCurrentDirectory();
+		local = FileSourceFactory.getDefaultFactory();
+		localRoots = local.listRoots();
+		firstRoot = localRoots[0];
+		currentDirectory = local.getCurrentDirectory();
 	}
 
-	public boolean mount(String mountPoint,FileSource dir) throws IOException {
-		if( !dir.exists() || !dir.isDirectory()) {
+	/** a tree with primary as / (tests) */
+	public VirtualFileSourceFactory(FileSource primary) throws IOException {
+		local = primary.getFileSourceFactory();
+		firstRoot = primary;
+		localRoots = new FileSource[] {primary};
+		currentDirectory = local.getCurrentDirectory();
+	}
+
+	/**
+	 * Connect dir at path: an absolute path ("mem" is /mem), in a local folder or in another
+	 * connection, not / and not where a connection is already.
+	 *
+	 * @return false if dir is not a folder, or path can't have a connection
+	 */
+	public synchronized boolean mount(String path, FileSource dir) throws IOException {
+		if( dir == null || !dir.exists() || !dir.isDirectory()) {
 			return false;
 		}
-		
-		RootFile newRoot = new RootFile(mountPoint, dir, firstRoot);
-		FileSource [] tmp = new FileSource[roots.length+1];
-		String path = newRoot.getAbsolutePath();
-		for (int idx = 0; idx < roots.length; idx++) {
-			if( path.equals(roots[idx].getAbsolutePath())) {
-				return false;
-			}
-			tmp[idx]=roots[idx];			
+		String at = connectionPath(path);
+		if( at == null || connections.containsKey(at)) {
+			return false;
 		}
-		tmp[roots.length] = newRoot;
-		// sort the roots so the longest paths are first
-		Arrays.sort(tmp, new Comparator<FileSource>() {
-			@Override
-			public int compare(FileSource o1, FileSource o2) {
-				return o2.getAbsolutePath().length()-o1.getAbsolutePath().length();
-			}
-		});
-		roots = tmp;
+		List<String> paths = new ArrayList<>(connections.keySet());
+		paths.add(at);
+		paths.sort((a, b)->a.length() != b.length() ? b.length()-a.length() : a.compareTo(b));
+		Map<String, FileSource> next = new LinkedHashMap<>();
+		for(String p : paths) {
+			next.put(p, p.equals(at) ? dir : connections.get(p));
+		}
+		connections = Collections.unmodifiableMap(next);
 		return true;
+	}
+
+	/**
+	 * Takes away the connection at path (never /, the local file system).
+	 *
+	 * @return the folder that was connected there, or null if none was
+	 */
+	public synchronized FileSource unmount(String path) {
+		String at = connectionPath(path);
+		if( at == null || !connections.containsKey(at)) {
+			return null;
+		}
+		Map<String, FileSource> next = new LinkedHashMap<>(connections);
+		FileSource ret = next.remove(at);
+		connections = Collections.unmodifiableMap(next);
+		return ret;
+	}
+
+	/** Whether a connection still uses factory. */
+	public boolean uses(FileSourceFactory factory) {
+		for(FileSource top : connections.values()) {
+			if( top.getFileSourceFactory() == factory ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** the connections: the path each is at, and the folder connected there, by path */
+	public Map<String, FileSource> connections() {
+		return Collections.unmodifiableMap(new TreeMap<>(connections));
+	}
+
+	/** the folder connected at path, or null */
+	public FileSource connectionAt(String path) {
+		String at = connectionPath(path);
+		return at == null ? null : connections.get(at);
+	}
+
+	/** path as a connection's: absolute, logical, without the / at the end; null for / */
+	static String connectionPath(String path) {
+		if( path == null || path.trim().isEmpty()) {
+			return null;
+		}
+		String ret = logicalPath(path.startsWith("/") ? path : "/"+path);
+		return ret.equals("/") ? null : ret;
+	}
+
+	/** the names of the connections directly in folder (a path of this tree) */
+	Set<String> connectionsIn(String folder) {
+		Set<String> ret = new TreeSet<>();
+		for(String p : connections.keySet()) {
+			if( folder.equals(parentPath(p))) {
+				ret.add(p.substring(p.lastIndexOf('/')+1));
+			}
+		}
+		return ret;
+	}
+
+	/** a connection is under path (not at it) */
+	private boolean connectionsUnder(String path, Map<String, FileSource> table) {
+		for(String p : table.keySet()) {
+			if( !p.equals(path) && FileSourceFactory.isSameOrDescendant(path, p)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** the parent of path ("/a" for "/a/b", "/" for "/a"), or null for / */
+	static String parentPath(String path) {
+		if( path.equals("/")) {
+			return null;
+		}
+		int slash = path.lastIndexOf('/');
+		return slash <= 0 ? "/" : path.substring(0, slash);
+	}
+
+	/** name in folder */
+	static String join(String folder, String name) {
+		return folder.endsWith("/") ? folder+name : folder+"/"+name;
+	}
+
+	/**
+	 * The file at path, which a folder of this tree listed as file: the tree's if a connection is
+	 * at path or under it, or path is in one; else file itself.
+	 */
+	FileSource inTree(String path, FileSource file) throws IOException {
+		Map<String, FileSource> table = connections;
+		FileSource top = table.get(path);
+		if( top != null ) {
+			return new TreeFile(this, path, top, true);
+		}
+		if( file instanceof TreeFile ) {
+			return file;
+		}
+		if( connectionOf(path, table) != null || connectionsUnder(path, table)) {
+			return new TreeFile(this, path, file, false);
+		}
+		return file;
+	}
+
+	/** the path of the connection path is at or in, or null (it is local) */
+	private static String connectionOf(String path, Map<String, FileSource> table) {
+		// (longest first: a connection at /data/x is inside the one at /data)
+		for(String p : table.keySet()) {
+			if( FileSourceFactory.isSameOrDescendant(p, path)) {
+				return p;
+			}
+		}
+		return null;
 	}
 
 	@Override
 	public FileSource[] listRoots() throws IOException {
-		return roots;
+		// (the local ones first: [0] is /)
+		List<FileSource> ret = new ArrayList<>();
+		for(FileSource root : localRoots) {
+			ret.add(inTree(root.getAbsolutePath().replace('\\', '/'), root));
+		}
+		for(Map.Entry<String, FileSource> e : connections.entrySet()) {
+			ret.add(new TreeFile(this, e.getKey(), e.getValue(), true));
+		}
+		return ret.toArray(new FileSource[ret.size()]);
 	}
 
 	@Override
@@ -125,59 +265,40 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 
 	@Override
 	public FileSource createFileSource(String fullPath) throws IOException {
-
 		boolean abs = fullPath.startsWith("/");
 		if( isWindows()) {
 			abs = fullPath.startsWith("/") || ( fullPath.length()>1 && Character.isAlphabetic(fullPath.charAt(0)) && fullPath.charAt(1) == ':');
 		}
-		String realPath = fullPath;
-		if( !abs) {
-			if(currentDirectory != null ) {
-				String cwd = currentDirectory.getAbsolutePath();
-				char sep = currentDirectory.getFileSourceFactory().getSeparatorChar();
-				if( cwd.endsWith(""+sep)) {
-					realPath=cwd+fullPath;
-				} else {
-					realPath=cwd+sep+fullPath;
-				}
+		String path = fullPath;
+		FileSource cwd = currentDirectory;
+		if( !abs && cwd != null ) {
+			String dir = cwd.getAbsolutePath();
+			char sep = cwd instanceof TreeFile ? '/' : cwd.getFileSourceFactory().getSeparatorChar();
+			path = dir.endsWith(""+sep) ? dir+fullPath : dir+sep+fullPath;
+		}
+		// "." and ".." are resolved by name, as a shell's cd does (logical paths), so ".." can't
+		// be mistaken for part of a name or run past the start of a connection
+		path = logicalPath(path);
+
+		Map<String, FileSource> table = connections;
+		String at = path.startsWith("/") ? connectionOf(path, table) : null;
+		if( at != null ) {
+			FileSource top = table.get(at);
+			String rest = path.substring(at.length());
+			while( rest.startsWith("/")) {
+				rest = rest.substring(1);
 			}
-		}
-
-		// "." and ".." are resolved by name, as a shell's cd does (logical paths), so
-		// ".." can't be mistaken for part of a name or run past the start of a mount
-		realPath = logicalPath(realPath);
-
-		FileSource root=null;
-		FileSource ret=null;
-
-		// roots are sorted longest first; a mount at /data must not claim /database
-		for(FileSource tmp: listRoots()) {
-			String rootPath =tmp.getAbsolutePath();
-			if( FileSourceFactory.isSameOrDescendant(rootPath, realPath)) {
-				ret=root = tmp;
-				realPath = realPath.substring(rootPath.length());
-				while( realPath.startsWith("/") || isWindows() && realPath.startsWith("\\")) {
-					realPath=realPath.substring(1);
-				}
-
-				break;
+			if( rest.isEmpty()) {
+				return new TreeFile(this, at, top, true);
 			}
+			return new TreeFile(this, path, top.getChild(rest), false);
 		}
-
-		if(root !=null &&  !realPath.isEmpty()) {
-
-			ret = root.getChild(realPath);
+		FileSource ret = path.equals("/") ? firstRoot : local.createFileSource(path);
+		if( !table.isEmpty() && path.startsWith("/") && connectionsUnder(path, table)
+				&& ret.getAbsolutePath().replace('\\', '/').equals(path)) {
+			// (a local folder with a connection in it or under it)
+			return new TreeFile(this, path, ret, false);
 		}
-
-		if( ret == null ) {
-			if(realPath.equals("/")) {
-				ret = firstRoot;
-			} else {
-				FileSourceFactory f = firstRoot.getFileSourceFactory();
-				ret = f.createFileSource(realPath);
-			}
-		}
-
 		return ret;
 	}
 
@@ -247,37 +368,6 @@ public class VirtualFileSourceFactory extends FileSourceFactory {
 	@Override
 	public String getURL()  {
 		throw new RuntimeException("getURL not implemented");
-	}
-
-	/**
-	 * Removes the root mounted at mountPoint (never the first, the shell's own file system).
-	 *
-	 * @return the root removed, or null if nothing is mounted there
-	 */
-	public FileSource unmount(String mountPoint) {
-		List<FileSource> tmp = new ArrayList<>();
-		FileSource removed = null;
-		for(FileSource root : roots) {
-			if( removed == null && root != firstRoot && root.getAbsolutePath().equals(mountPoint)) {
-				removed = root;
-			} else {
-				tmp.add(root);
-			}
-		}
-		if( removed != null ) {
-			roots = tmp.toArray(new FileSource[tmp.size()]);
-		}
-		return removed;
-	}
-
-	/** Whether a mounted root still uses factory. */
-	public boolean uses(FileSourceFactory factory) {
-		for(FileSource root : roots) {
-			if( root != firstRoot && root.getFileSourceFactory() == factory ) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 }

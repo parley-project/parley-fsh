@@ -2342,24 +2342,22 @@ delimiter
 	}
 
 
+	/**
+	 * Connects the folder f at mountPoint, an absolute path: in a local folder or in another
+	 * connection, not / and not where a connection is already.
+	 *
+	 * @return false if it can't be connected there
+	 */
 	public boolean mount(FileSource f, String mountPoint) throws IOException {
 		if(mountPoint == null || mountPoint.isEmpty() || mountPoint.charAt(0) != '/'){
 			throw new IOException("Invalid mountpoint");
 		}
-		String name = mountPoint.substring(1);
-		return mountFactory.mount(name,f);
+		return mountFactory.mount(mountPoint, TreeFile.unwrap(f));
 	}
 
-	/** the shell's connections: the path each is at, and the top folder connected there */
+	/** the shell's connections: the path each is at, and the folder connected there, by path */
 	public Map<String, FileSource> connections() throws IOException {
-		Map<String, FileSource> ret = new java.util.TreeMap<>();
-		FileSource[] roots = mountFactory.listRoots();
-		for(int idx = 0; idx < roots.length; idx++) {
-			if( roots[idx] instanceof RootFile ) {
-				ret.put(roots[idx].getAbsolutePath(), ((RootFile) roots[idx]).target);
-			}
-		}
-		return ret;
+		return mountFactory.connections();
 	}
 
 	public FileSourceFactory getMountFactory() {
@@ -3005,7 +3003,7 @@ delimiter
 					try {
 						String host = getLocalHostName();
 						FileSource cwd = getCurrentDirectory();
-						if (!(cwd instanceof FileProxy)) {
+						if (!us.bringardner.fsh.LocalFiles.isLocal(cwd)) {
 							Properties prop = cwd.getFileSourceFactory().getConnectProperties();
 							String tmp = prop.getProperty("Host");
 							if( tmp == null ) {
@@ -4120,7 +4118,11 @@ delimiter
 			return getCurrentDirectory();
 		}
 		if( path.equals("..")) {
-			return getCurrentDirectory().getParentFile();			
+			// (the tree's parent: from a connection's folder, the folder it is connected in)
+			FileSource cwd = getCurrentDirectory();
+			String parent = VirtualFileSourceFactory.parentPath(cwd.getAbsolutePath().replace('\\', '/'));
+			return parent == null || !parent.startsWith("/") || cwd.getAbsolutePath().indexOf('\\') >= 0
+					? cwd.getParentFile() : mountFactory.createFileSource(parent);
 		}
 		StageState s = stage.get();
 		if( s != null && !path.isEmpty() && !path.startsWith("/") && !path.startsWith("~") && !(path.length() > 1 && path.charAt(1) == ':')) {
@@ -4263,6 +4265,32 @@ delimiter
 		if( factory != null && !mountFactory.uses(factory)) {
 			factory.disConnect();
 		}
+	}
+
+	/** what is connected at path, as connect and ls -l describe it (memory, sftp tony@build:/home), or null */
+	public String connectionAt(String path) throws IOException {
+		FileSource top = mountFactory.connectionAt(path);
+		return top == null ? null : describeConnection(top);
+	}
+
+	/** a connection as connect and ls -l show it: the file system, and user@host:folder when it has a host */
+	public static String describeConnection(FileSource top) {
+		FileSourceFactory f = top.getFileSourceFactory();
+		java.util.Properties p = f.getConnectProperties();
+		String host = p == null ? null : p.getProperty("host");
+		String user = p == null ? null : p.getProperty("user");
+		String folder = top.getAbsolutePath();
+		StringBuilder b = new StringBuilder(f.getTypeId());
+		if( host != null && !host.trim().isEmpty()) {
+			b.append(' ');
+			if( user != null && !user.trim().isEmpty()) {
+				b.append(user.trim()).append('@');
+			}
+			b.append(host.trim()).append(':').append(folder);
+		} else if( !folder.equals("/") ) {
+			b.append(' ').append(folder);
+		}
+		return b.toString();
 	}
 
 	public Object getEvironmentVariables(String name) {		
