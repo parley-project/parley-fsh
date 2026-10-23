@@ -221,7 +221,7 @@ public class Help extends ShellCommand{
 
 	/** fsh's own commands, in the order COMMANDS.md lists them */
 	static final List<String> FSH_COMMANDS = List.of("connect", "disconnect", "cred");
-	/** the file builtins: fsh's own versions, which work on every mounted file system */
+	/** the file builtins: fsh's own versions, which work on every connected file system */
 	static final List<String> FILE_COMMANDS = List.of("ls", "cp", "mv", "rm", "mkdir", "touch", "ln", "find", "wc");
 	/** builtins that are separate programs in bash */
 	static final List<String> OTHER_COMMANDS = List.of("sleep", "expr", "clear");
@@ -239,7 +239,7 @@ public class Help extends ShellCommand{
 		.append("Everything here is also in the shell: `help NAME` shows a command's text, and `help` lists them all.\n\n")
 		.append("- [fsh's own commands](#fshs-own-commands): connecting file systems and managing their passwords\n")
 		.append("- [File commands](#file-commands): fsh's versions of ls, cp, mv and the rest, which work on every\n")
-		.append("  mounted file system\n")
+		.append("  connected file system\n")
 		.append("- [Other commands](#other-commands): commands that are separate programs in bash\n")
 		.append("- [Bash builtins](#bash-builtins): the builtins that work as they do in bash\n\n");
 
@@ -248,8 +248,8 @@ public class Help extends ShellCommand{
 			section(md, n, topics.get(n));
 		}
 		md.append("## File commands\n\n")
-		.append("These are fsh's own versions, so they work on every mounted file system (see `connect`), and\n")
-		.append("between them: `cp /prod/app.log /mem/` copies a file from one mounted file system to another. They take the options listed for\n")
+		.append("These are fsh's own versions, so they work on every connected file system (see `connect`), and\n")
+		.append("between them: `cp /prod/app.log /mem/` copies a file from one connected file system to another. They take the options listed for\n")
 		.append("each; any other option is an error. The system's command of the same name still runs by its path\n")
 		.append("(`/bin/cp`), or after `enable -n cp`, and works only on the local disk.\n\n");
 		for(String n : FILE_COMMANDS) {

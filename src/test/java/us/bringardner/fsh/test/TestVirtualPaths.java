@@ -16,7 +16,7 @@ import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 import us.bringardner.fsh.Console;
 
-/** BJL-25: mount lookup, ".." and "~" work on whole path elements. */
+/** BJL-25: finding a connection, ".." and "~" work on whole path elements. */
 public class TestVirtualPaths {
 
 	@Test
@@ -48,29 +48,29 @@ public class TestVirtualPaths {
 		FileSource primary = dir(mem, "/primary", "p.txt");
 		VirtualFileSourceFactory vfs = new VirtualFileSourceFactory(primary);
 		vfs.setCurrentDirectory(primary);
-		assertTrue(vfs.mount("data", dir(mem, "/stores/data", "d.txt")));
-		assertTrue(vfs.mount("database", dir(mem, "/stores/database", "db.txt")));
+		assertTrue(vfs.connectAt("data", dir(mem, "/stores/data", "d.txt")));
+		assertTrue(vfs.connectAt("database", dir(mem, "/stores/database", "db.txt")));
 
-		// /database is its own mount, not a child of /data
+		// /database is its own connection, not a child of /data
 		assertTrue(vfs.createFileSource("/database/db.txt").exists());
 		assertTrue(vfs.createFileSource("/data/d.txt").exists());
 		assertFalse(vfs.createFileSource("/data/db.txt").exists());
 		assertEquals(mem.createFileSource("/stores/database/db.txt").getCanonicalPath(),
 				vfs.createFileSource("/database/db.txt").getCanonicalPath());
-		// ".." is resolved before the mount is chosen
+		// ".." is resolved before the connection is chosen
 		assertTrue(vfs.createFileSource("/data/../database/db.txt").exists());
 		assertTrue(vfs.createFileSource("/data/sub/../d.txt").exists());
 	}
 
 	@Test
-	public void mountedRootsUseTheSharedIsChildOfMine() throws IOException {
+	public void connectedRootsUseTheSharedIsChildOfMine() throws IOException {
 		assertThrows(NoSuchMethodException.class,
 				() -> TreeFile.class.getDeclaredMethod("isChildOfMine", FileSource.class));
 
 		MemoryFileSourceFactory mem = new MemoryFileSourceFactory();
 		FileSource primary = dir(mem, "/primary", "p.txt");
 		VirtualFileSourceFactory vfs = new VirtualFileSourceFactory(primary);
-		assertTrue(vfs.mount("data", dir(mem, "/stores/data", "d.txt")));
+		assertTrue(vfs.connectAt("data", dir(mem, "/stores/data", "d.txt")));
 		dir(mem, "/stores/dataX", "x.txt");
 		FileSource data = vfs.createFileSource("/data");
 		assertTrue(data.isChildOfMine(vfs.createFileSource("/data/d.txt")));

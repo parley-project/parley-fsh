@@ -3,7 +3,7 @@
 fsh is a bash-compatible shell written in Java. It runs bash scripts and works as an
 interactive shell, and its file system is any
 [parley-files](https://github.com/tony-bringardner/parley-files) `FileSource`: the local
-disk, memory, FTP, SFTP or a database. A remote server can be mounted into the shell's
+disk, memory, FTP, SFTP or a database. A remote server can be connected into the shell's
 directory tree, and from then on `cd`, globbing, redirection and fsh's file builtins work
 there as they do on the local disk.
 
@@ -30,9 +30,9 @@ you build**, using the library the same way your own application would. It was c
   expansion, programmable completion (`complete`, `compgen`), and bash's builtins and `shopt`
   options. Scripts written for bash run unchanged; the [measurements below](#how-close-to-bash-it-is-and-how-that-is-tested)
   show how closely.
-- **A shell over any file system.** `connect` mounts a `FileSource` (FTP, SFTP, a database,
+- **A shell over any file system.** `connect` connects a `FileSource` (FTP, SFTP, a database,
   memory) at a path, and `disconnect` removes it and closes the connection. fsh's own file builtins (`ls`, `cp`, `mv`,
-  `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every mounted file system.
+  `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every connected file system.
 - **Every builtin is described** in [COMMANDS.md](COMMANDS.md), made from the same help text
   that `help NAME` shows in the shell.
 - **No passwords in scripts.** A connect setting can name its secret instead of holding it, and
@@ -107,7 +107,7 @@ again. The todo file records what each fix involved.
 **Deliberate:**
 
 - **fsh's own file builtins.** `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`,
-  `sleep`, `expr`, `clear`, `connect`, `cred` and `disconnect` are builtins (so they work on mounted file
+  `sleep`, `expr`, `clear`, `connect`, `cred` and `disconnect` are builtins (so they work on connected file
   systems), with their own help texts, collected in [COMMANDS.md](COMMANDS.md). Programs of the
   same names are still reachable by path or with `enable -n`.
 - **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and

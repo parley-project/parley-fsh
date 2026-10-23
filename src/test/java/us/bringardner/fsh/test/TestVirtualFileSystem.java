@@ -44,9 +44,9 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 		MemoryFileSourceFactory memFactory = new MemoryFileSourceFactory();
 		FileSource tmp = memFactory.createFileSource("/level1/level2");
 		tmp.mkdirs();
-		factory.mount("mem",tmp);
+		factory.connectAt("mem",tmp);
 
-		//  returns the first root unless something is mounted to /.
+		//  returns the first root unless something is connected at /.
 		tmp = factory.createFileSource("/");
 		String expect = localRoot.getAbsolutePath();
 		String path = tmp.getAbsolutePath();
@@ -76,7 +76,7 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 		assertTrue(tmp.isDirectory());
 
 		// (nothing is connected at /: it is the local file system)
-		assertFalse(factory.mount("/", localRoot));
+		assertFalse(factory.connectAt("/", localRoot));
 		tmp = factory.createFileSource("/");
 		path = tmp.getAbsolutePath();
 		assertEquals(localRoot.getAbsolutePath(), path);

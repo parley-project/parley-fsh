@@ -70,7 +70,7 @@ public class TestGlob extends ShellCommand {
 		tmp = expandTilde(ctx,"~fred/foo"); 
 		assertTrue(tmp.endsWith("fred/foo"));
 		
-		String pwd = ctx.console.getMountFactory().getCurrentDirectory().getAbsolutePath();
+		String pwd = ctx.console.getTree().getCurrentDirectory().getAbsolutePath();
 		//~+/foo  $PWD/foo
 		tmp = expandTilde(ctx,"~+/foo"); 
 		assertEquals(pwd+"/foo", tmp);

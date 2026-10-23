@@ -25,6 +25,10 @@
 
 ### Changed
 
+- **No "mount" in fsh's words or code** (fsh connects, as Linux mounts): `connect` and `disconnect` take a
+  `PATH` (was `MOUNT_POINT`) and their messages say "connect"; `Console.mount` is `connectAt`,
+  `getMountFactory` / `setMountFactory` are `getTree` / `setTree`, and the tree's `mount` / `unmount`
+  are `connectAt` / `disconnectAt`. `TestMountedFactory` is `TestConnectionTree`.
 - **The shell's file tree is parley-files'** (`us.bringardner.parley.files.tree`: `VirtualFileSourceFactory`,
   `TreeFile`, `LocalFiles`, moved there from `us.bringardner.fsh`), so the console browser on its own
   (pfv) has the same tree. Nothing else changes.
@@ -154,7 +158,7 @@ First release as fsh. Formerly BjlShell (`us.bringardner:bjl_shell`).
   `declare -p`, `${!prefix*}`, completion and debuggers (fsh-ide's variables view, fshdb) didn't
   see them. `ShellContext.getVariables()` now includes them as names are looked up: the innermost
   function's local wins and an unset local hides the variable outside, as in bash.
-- `connect FACTORY - MOUNT` reads its `name=value` settings from standard input separated by any
+- `connect FACTORY - PATH` reads its `name=value` settings from standard input separated by any
   white space; it split on single spaces, so two spaces or a tab between settings was an error
   (`Invalid arg =`).
 

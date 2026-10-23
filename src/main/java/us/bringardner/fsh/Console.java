@@ -433,7 +433,7 @@ delimiter
 	boolean eof = false;
 	Map<String,Object> alias = new ConcurrentSkipListMap<>();
 
-	private VirtualFileSourceFactory mountFactory;
+	private VirtualFileSourceFactory tree;
 	public boolean forceHeadless=true;
 	public boolean isInteractive=false;
 	/** said once per shell: a line with a plain password was kept out of the history */
@@ -770,9 +770,9 @@ delimiter
 			String home = System.getenv("HOME");
 			if( home != null && !home.isEmpty()) {
 				environmentVariables.put("HOME", home);
-				homeDir = mountFactory.createFileSource(home);
+				homeDir = tree.createFileSource(home);
 			}
-			FileSource start = mountFactory.createFileSource(System.getProperty("user.dir"));
+			FileSource start = tree.createFileSource(System.getProperty("user.dir"));
 			if( start.isDirectory()) {
 				setCurrentDirectory(start);
 			}
@@ -2132,17 +2132,17 @@ delimiter
 			environmentVariables.putIfAbsent(VARIABLE_HISTFILE, "~/.fsh_history");
 
 
-			mountFactory = new VirtualFileSourceFactory();			
+			tree = new VirtualFileSourceFactory();			
 			String home = System.getProperty("user.home");
 			//  the java environment HOME does not match the java property user.home
 			environmentVariables.put("HOME", home);
 			
-			FileSource tmp = mountFactory.createFileSource(home);
+			FileSource tmp = tree.createFileSource(home);
 			homeDir=tmp;
 			if( homeDir.exists()) {
-				mountFactory.setCurrentDirectory(homeDir);
+				tree.setCurrentDirectory(homeDir);
 			}
-			variables.put(VARIABLE_PWD, mountFactory.getCurrentDirectory().getAbsolutePath());
+			variables.put(VARIABLE_PWD, tree.getCurrentDirectory().getAbsolutePath());
 			// (OLDPWD is unset until cd, as in bash)
 			variables.put(IFS, " \t\n");
 			// getopts starts at 1 and says what is wrong, as bash's (OPTIND is an integer)
@@ -2346,25 +2346,25 @@ delimiter
 
 
 	/**
-	 * Connects the folder f at mountPoint, an absolute path: in a local folder or in another
+	 * Connects the folder f at at, an absolute path: in a local folder or in another
 	 * connection, not / and not where a connection is already.
 	 *
 	 * @return false if it can't be connected there
 	 */
-	public boolean mount(FileSource f, String mountPoint) throws IOException {
-		if(mountPoint == null || mountPoint.isEmpty() || mountPoint.charAt(0) != '/'){
-			throw new IOException("Invalid mountpoint");
+	public boolean connectAt(FileSource f, String at) throws IOException {
+		if(at == null || at.isEmpty() || at.charAt(0) != '/'){
+			throw new IOException("a connection is at a path such as /sftp: "+at);
 		}
-		return mountFactory.mount(mountPoint, TreeFile.unwrap(f));
+		return tree.connectAt(at, TreeFile.unwrap(f));
 	}
 
 	/** the shell's connections: the path each is at, and the folder connected there, by path */
 	public Map<String, FileSource> connections() throws IOException {
-		return mountFactory.connections();
+		return tree.connections();
 	}
 
-	public FileSourceFactory getMountFactory() {
-		return mountFactory;
+	public FileSourceFactory getTree() {
+		return tree;
 	}
 
 	public FshList getPositionalParameters() {
@@ -3780,7 +3780,7 @@ delimiter
 
 
 	public InputStream getInputStream(String path) throws IOException {
-		FileSource file = mountFactory.createFileSource(path);
+		FileSource file = tree.createFileSource(path);
 		return file.getInputStream();
 	}
 
@@ -3789,7 +3789,7 @@ delimiter
 	}
 
 	public OutputStream getOutputStream(String path, boolean append) throws IOException {
-		FileSource file = mountFactory.createFileSource(path);
+		FileSource file = tree.createFileSource(path);
 		return file.getOutputStream(append);
 	}
 
@@ -4089,7 +4089,7 @@ delimiter
 
 	public FileSource getCurrentDirectory() throws IOException {
 		StageState s = stage.get();
-		return s != null ? s.cwd : mountFactory.getCurrentDirectory();
+		return s != null ? s.cwd : tree.getCurrentDirectory();
 	}
 
 	/** set the directory without PWD and OLDPWD (a stage's, or the shell's) */
@@ -4098,20 +4098,20 @@ delimiter
 		if( s != null ) {
 			s.cwd = dir;
 		} else {
-			mountFactory.setCurrentDirectory(dir);
+			tree.setCurrentDirectory(dir);
 		}
 	}
 
 
 
 	public char getSeparatorChar() {
-		return mountFactory.getSeparatorChar();
+		return tree.getSeparatorChar();
 	}
 
 
 
 	public FileSource[] listRoots() throws IOException {		
-		return mountFactory.listRoots();
+		return tree.listRoots();
 	}
 
 
@@ -4125,15 +4125,15 @@ delimiter
 			FileSource cwd = getCurrentDirectory();
 			String parent = VirtualFileSourceFactory.parentPath(cwd.getAbsolutePath().replace('\\', '/'));
 			return parent == null || !parent.startsWith("/") || cwd.getAbsolutePath().indexOf('\\') >= 0
-					? cwd.getParentFile() : mountFactory.createFileSource(parent);
+					? cwd.getParentFile() : tree.createFileSource(parent);
 		}
 		StageState s = stage.get();
 		if( s != null && !path.isEmpty() && !path.startsWith("/") && !path.startsWith("~") && !(path.length() > 1 && path.charAt(1) == ':')) {
 			// relative to the stage's own directory
 			String dir = s.cwd.getAbsolutePath();
-			return mountFactory.createFileSource(dir.endsWith("/") ? dir+path : dir+"/"+path);
+			return tree.createFileSource(dir.endsWith("/") ? dir+path : dir+"/"+path);
 		}
-		return mountFactory.createFileSource(path);
+		return tree.createFileSource(path);
 	}
 
 
@@ -4244,35 +4244,35 @@ delimiter
 
 
 	/**
-	 * Removes the file system connect mounted at mountPoint and disconnects its factory (unless
-	 * another mount point still uses that factory).
+	 * Removes the file system connected at at and disconnects its factory (unless another
+	 * connection still uses that factory).
 	 *
-	 * @throws IOException if nothing is mounted there, or the disconnect fails
+	 * @throws IOException if nothing is connected there, or the disconnect fails
 	 */
-	public void disconnect(String mountPoint) throws IOException {
-		String path = mountPoint;
+	public void disconnect(String at) throws IOException {
+		String path = at;
 		while( path.length() > 1 && path.endsWith("/")) {
 			path = path.substring(0, path.length()-1);
 		}
 		if( path.isEmpty() || path.charAt(0) != '/' ) {
-			throw new IOException("a mount point is a path such as /sftp: "+mountPoint);
+			throw new IOException("a connection is at a path such as /sftp: "+at);
 		}
 		if( path.equals("/")) {
 			throw new IOException("/ is the shell's own file system, not a connection");
 		}
-		FileSource removed = mountFactory.unmount(path);
+		FileSource removed = tree.disconnectAt(path);
 		if( removed == null ) {
 			throw new IOException("nothing is connected at "+path);
 		}
 		FileSourceFactory factory = removed.getFileSourceFactory();
-		if( factory != null && !mountFactory.uses(factory)) {
+		if( factory != null && !tree.uses(factory)) {
 			factory.disConnect();
 		}
 	}
 
 	/** what is connected at path, as connect and ls -l describe it (memory, sftp tony@build:/home), or null */
 	public String connectionAt(String path) throws IOException {
-		FileSource top = mountFactory.connectionAt(path);
+		FileSource top = tree.connectionAt(path);
 		return top == null ? null : describeConnection(top);
 	}
 
@@ -4602,8 +4602,8 @@ delimiter
 		return "~"+pwd.substring(home.length());
 	}
 
-	public void setMountFactory(VirtualFileSourceFactory mount) {
-		mountFactory = mount;		
+	public void setTree(VirtualFileSourceFactory tree) {
+		this.tree = tree;		
 	}
 
 	private Map<ConsoleMetaSignal,List<String>> signalHandlers = new ConcurrentSkipListMap<>();

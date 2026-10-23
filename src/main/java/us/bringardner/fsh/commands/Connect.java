@@ -13,8 +13,8 @@ import us.bringardner.fsh.ShellContext;
 
 public class Connect extends ShellCommand{
 	static String name = "connect";
-	static String help = "connect FACTORY [-f FILE] [name=value ...] [-] MOUNT_POINT\n"
-			+ "\tConnect to a file system and mount it at MOUNT_POINT (a path such as /prod), where fsh's file\n"
+	static String help = "connect FACTORY [-f FILE] [name=value ...] [-] PATH\n"
+			+ "\tConnect to a file system at PATH (a path such as /prod), where fsh's file\n"
 			+ "\tbuiltins (ls, cp, mv, rm, find, ...) can use it. FACTORY is the file system's id, such as memory,\n"
 			+ "\tsftp, ftp or jdbc (jdbc when fsh is built with it).\n"
 			+ "\tSettings, applied in order (a later one replaces an earlier one):\n"
@@ -23,7 +23,7 @@ public class Connect extends ShellCommand{
 			+ "\t-                          one line of name=value settings read from standard input\n"
 			+ "\tA secret setting such as password can name its secret instead of holding it: @env:NAME,\n"
 			+ "\t@file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).\n"
-			+ "\tOn success it prints \"FACTORY connected as MOUNT_POINT\"; disconnect undoes it.\n"
+			+ "\tOn success it prints \"FACTORY connected as PATH\"; disconnect undoes it.\n"
 			+ "\tWith no arguments it lists the shell's connections: PATH -> FILE SYSTEM.\n"
 			+ "\tExamples:\n"
 			+ "\tconnect memory /mem\n"
@@ -58,7 +58,7 @@ public class Connect extends ShellCommand{
 			}
 		}
 		if( args.isEmpty() && !readStdin ) {
-			// the shell's connections, as mount with no arguments lists mounts
+			// the shell's connections (as mount with no arguments lists a system's mounts)
 			for(java.util.Map.Entry<String, FileSource> e : ctx.console.connections().entrySet()) {
 				ctx.stdout.println(e.getKey()+" -> "+us.bringardner.fsh.Console.describeConnection(e.getValue()));
 			}
@@ -70,9 +70,9 @@ public class Connect extends ShellCommand{
 		}
 
 		String fid = args.remove(0);
-		String mountPoint = args.remove(args.size()-1).trim();
-		if( !mountPoint.startsWith("/") || mountPoint.equals("/")) {
-			ctx.stderr.println(name+": the mount point must be a path such as /prod, not '"+mountPoint+"'");
+		String at = args.remove(args.size()-1).trim();
+		if( !at.startsWith("/") || at.equals("/")) {
+			ctx.stderr.println(name+": PATH must be a path such as /prod, not '"+at+"'");
 			return 2;
 		}
 		FileSourceFactory factory = FileSourceFactory.getFileSourceFactory(fid);
@@ -111,21 +111,21 @@ public class Connect extends ShellCommand{
 		FileSource[] roots = factory.listRoots();
 		String problem = null;
 		if( roots == null || roots.length != 1 ) {
-			problem = fid+" has "+(roots == null ? 0 : roots.length)+" roots; it can be mounted only with one";
-		} else if( !ctx.console.mount(roots[0], mountPoint)) {
-			problem = "can't mount "+fid+" at "+mountPoint+" (is something already connected there?)";
+			problem = fid+" has "+(roots == null ? 0 : roots.length)+" roots; it can be connected only with one";
+		} else if( !ctx.console.connectAt(roots[0], at)) {
+			problem = "can't connect "+fid+" at "+at+" (is something already connected there?)";
 		}
 		if( problem != null ) {
 			// (don't leave a connection open that nothing can use)
 			try {
 				factory.disConnect();
 			} catch (IOException e) {
-				// the mount failing is what matters
+				// connecting it failing is what matters
 			}
 			ctx.stderr.println(name+": "+problem);
 			return 1;
 		}
-		ctx.stdout.println(factory.getTypeId()+" connected as "+mountPoint);
+		ctx.stdout.println(factory.getTypeId()+" connected as "+at);
 		return 0;
 	}
 
