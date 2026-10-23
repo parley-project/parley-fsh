@@ -7,9 +7,11 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.sun.jna.Function;
 import com.sun.jna.Library;
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
+import com.sun.jna.NativeLibrary;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
@@ -89,6 +91,14 @@ final class UnixSpawn {
 	private final int oAppend;
 	private final long fionread;
 	private final int msgNosignal;
+	/**
+	 * posix_spawn_file_actions_addclosefrom_np (glibc 2.34 and later), or null: what macOS's
+	 * POSIX_SPAWN_CLOEXEC_DEFAULT does, in the child. Without it the descriptors to close are
+	 * those open when the program is started, and one another thread opens in the meantime (the
+	 * named pipe of the next program in a pipeline) reaches the program: it then holds the pipe
+	 * open and the reader never sees its end.
+	 */
+	private final Function closeFrom;
 
 	UnixSpawn(boolean mac) {
 		// (fails here if the C library lacks one of the functions)
@@ -103,6 +113,15 @@ final class UnixSpawn {
 		fionread = mac ? 0x4004667fL : 0x541BL;
 		// (macOS sets SO_NOSIGPIPE on the socket; Linux sends with MSG_NOSIGNAL)
 		msgNosignal = mac ? 0 : 0x4000;
+		Function f = null;
+		if( !mac ) {
+			try {
+				f = NativeLibrary.getInstance("c").getFunction("posix_spawn_file_actions_addclosefrom_np");
+			} catch (UnsatisfiedLinkError e) {
+				// (an older C library: closed one by one)
+			}
+		}
+		closeFrom = f;
 	}
 
 	private static int errno() {
@@ -128,6 +147,16 @@ final class UnixSpawn {
 		}
 		keep.add(arr);
 		return arr;
+	}
+
+	/** fd is one of the program's (fds: pairs of its number and the shell's) */
+	private static boolean isTarget(int [] fds, int fd) {
+		for(int i = 0; fds != null && i + 1 < fds.length; i += 2) {
+			if( fds[i] == fd ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** the descriptors open here without close-on-exec, which a program must not get (Linux) */
@@ -217,8 +246,18 @@ final class UnixSpawn {
 				for(int i = 0; i + 1 < nfds; i += 2) {
 					L.posix_spawn_file_actions_adddup2(fa, temps[i/2], fds[i]);
 				}
-				if( !mac ) {
-					// (no CLOEXEC_DEFAULT: the others are closed one by one)
+				if( !mac && closeFrom != null ) {
+					// (no CLOEXEC_DEFAULT: in the child, after the copies, every descriptor that
+					// isn't one of the program's is closed, those opened since too; a close of one
+					// that isn't open is not an error)
+					for(int fd = 3; fd <= top; fd++) {
+						if( !isTarget(fds, fd)) {
+							L.posix_spawn_file_actions_addclose(fa, fd);
+						}
+					}
+					closeFrom.invokeInt(new Object[] {fa, top + 1});
+				} else if( !mac ) {
+					// (the others open now, one by one)
 					for(int fd : othersOpen(fds)) {
 						L.posix_spawn_file_actions_addclose(fa, fd);
 					}

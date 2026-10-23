@@ -456,8 +456,8 @@ public class TestExternal extends AbstractConsoleTest {
 	/** the shell's descriptors above 2 reach programs (through the helper), as in bash */
 	@Test
 	public void testExternalDescriptors() throws Exception{
-		java.io.File helper = new java.io.File("macos/fshexec").getAbsoluteFile();
-		org.junit.jupiter.api.Assumptions.assumeTrue(helper.canExecute() && getOs() != OperatingSystem.Windows);
+		org.junit.jupiter.api.Assumptions.assumeTrue(hasFshexec(), "no fshexec for this system");
+		java.io.File helper = fshexec();
 		String old = System.getProperty("parley.fsh.exec");
 		System.setProperty("parley.fsh.exec", helper.getPath());
 		try {
@@ -479,8 +479,8 @@ public class TestExternal extends AbstractConsoleTest {
 	/** a subshell has a process id of its own, and the signals for it are its own, as in bash */
 	@Test
 	public void testSubshellProcess() throws Exception{
-		java.io.File helper = new java.io.File("macos/fshexec").getAbsoluteFile();
-		org.junit.jupiter.api.Assumptions.assumeTrue(helper.canExecute() && getOs() != OperatingSystem.Windows);
+		org.junit.jupiter.api.Assumptions.assumeTrue(hasFshexec(), "no fshexec for this system");
+		java.io.File helper = fshexec();
 		String old = System.getProperty("parley.fsh.exec");
 		System.setProperty("parley.fsh.exec", helper.getPath());
 		try {
@@ -490,7 +490,9 @@ public class TestExternal extends AbstractConsoleTest {
 					+ "( trap 'echo trapped; exit 3' USR1; while :; do sleep 0.05; done ) & p=$!\n"
 					+ "sleep 0.3; kill -USR1 $p; wait $p; echo \"status $?\"\n"
 					+ "( trap 'echo leaked' USR2; sleep 0.1 ) & wait; trap -p USR2; echo end\n";
-			executeCommand(cmd, "", 0, "own-pid\nstatus 143\ntrapped\nstatus 3\nend\n", "Terminated: 15 ( kill -TERM $BASHPID; echo not-here )");
+			executeCommand(cmd, "", 0, "own-pid\nstatus 143\ntrapped\nstatus 3\nend\n",
+					// (as strsignal gives it: with the number on macOS)
+					(getOs() == OperatingSystem.Mac ? "Terminated: 15" : "Terminated")+" ( kill -TERM $BASHPID; echo not-here )");
 		} finally {
 			if( old == null ) {
 				System.clearProperty("parley.fsh.exec");
