@@ -12,8 +12,9 @@
 #
 # --crema (GraalVM 25.1 or later, experimental): an image that loads classes at run time
 # (-H:+RuntimeClassLoading), so it loads plugin jars as the JVM build does: target/native-crema.
-# A plugin's bytecode is interpreted, and it can call only methods compiled into the image, so the
-# jars and JDK packages plugins use are kept whole (-H:Preserve; CREMA_PRESERVE adds more).
+# A plugin's bytecode is interpreted, and it can call only methods compiled into the image: the
+# methods the plugin jars found at build time use are listed for the image (CREMA_PLUGINS names the
+# jars; else those in the plugin folders), and java.lang and java.lang.invoke are kept whole.
 # --crema --jit: the same, with Ristretto compiling the plugins' hot methods at run time
 # (-H:+GraalJITCompileAtRuntime): target/native-crema-jit.
 
@@ -59,24 +60,25 @@ case "$1" in
 	(cd target/native-instrumented && rm -f default.iprof && TMPDIR="$PROJECT_DIR/target/native-tmp" ./fsh-image "$PROJECT_DIR/tools/aot-training.sh" > /dev/null) || exit 1
 	build target/native --pgo="$PROJECT_DIR/target/native-instrumented/default.iprof" ;;
 --crema)
-	# (the class-path entries a plugin links against: fsh, its spi, and the Parley modules it
-	# uses; and the JDK packages its code is likely to call)
-	keep=""
-	for j in $(printf '%s:%s' "$jar" "$(cat target/runtime-classpath.txt)" | tr ':' '\n' | grep -E '/(fsh|parley-core|parley-io|parley-files|parley-term)-[0-9]'); do
-		keep="$keep,path=$j"
-	done
-	for p in java.lang java.lang.invoke java.lang.reflect java.util java.util.concurrent java.util.concurrent.atomic \
-			java.util.function java.util.regex java.util.stream java.io java.nio java.nio.charset java.nio.file \
-			java.nio.file.attribute java.text java.time java.time.format ${CREMA_PRESERVE:-}; do
-		keep="$keep,package=$p"
-	done
+	# (interpreted plugin code can call only methods compiled into the image: those the plugin
+	# jars use are listed for it (tools/CremaPluginConfig.java), and java.lang and
+	# java.lang.invoke are kept whole, for lambdas and string concatenation, whose generated
+	# classes run interpreted too; CREMA_PRESERVE adds more, e.g. package=java.util)
+	plugins=${CREMA_PLUGINS:-$(ls "$HOME"/.parley/fsh/plugins/*.jar /usr/local/lib/parley/fsh/plugins/*.jar 2>/dev/null)}
+	mkdir -p target/native-crema-config
+	if [ -n "$plugins" ]; then
+		"$graal/bin/java" "$PROJECT_DIR/tools/CremaPluginConfig.java" target/native-crema-config/reflect-config.json \
+			"$jar:$(cat target/runtime-classpath.txt)" $plugins || exit 1
+	fi
+	keep="package=java.lang,package=java.lang.invoke${CREMA_PRESERVE:+,$CREMA_PRESERVE}"
 	out=target/native-crema
 	jit=""
 	if [ "$2" = "--jit" ]; then
 		out=target/native-crema-jit
 		jit="-H:+GraalJITCompileAtRuntime"
 	fi
-	build $out -H:+UnlockExperimentalVMOptions -H:+RuntimeClassLoading $jit -H:Preserve="${keep#,}" ;;
+	build $out -H:+UnlockExperimentalVMOptions -H:+RuntimeClassLoading $jit -H:Preserve="$keep" \
+		-H:ConfigurationFileDirectories=target/native-crema-config ;;
 "")
 	build target/native ;;
 *)
