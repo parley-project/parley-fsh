@@ -9,6 +9,7 @@ import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.spi.BrowseRequest;
 import us.bringardner.fsh.spi.BrowserProvider;
+import us.bringardner.fsh.spi.ShellConnections;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.plugin.Plugins;
 
@@ -39,6 +40,35 @@ public class Browse extends ShellCommand {
 				e -> ctx.error(NAME+": a browser cannot be loaded: "+e)));
 		ret.sort(Comparator.comparingInt(BrowserProvider::priority).reversed());
 		return ret;
+	}
+
+	/** the shell's connections, for the browser (connect and disconnect, as the commands do) */
+	static ShellConnections connections(ShellContext ctx) {
+		return new ShellConnections() {
+			@Override
+			public java.util.Map<String, FileSource> list() {
+				try {
+					return ctx.console.connections();
+				} catch (IOException e) {
+					return java.util.Collections.emptyMap();
+				}
+			}
+
+			@Override
+			public boolean connect(String path, FileSource top) throws IOException {
+				return ctx.console.mount(top, path);
+			}
+
+			@Override
+			public void disconnect(String path) throws IOException {
+				ctx.console.disconnect(path);
+			}
+
+			@Override
+			public FileSource file(String path) throws IOException {
+				return ctx.console.createFileSource(path);
+			}
+		};
 	}
 
 	@Override
@@ -125,7 +155,7 @@ public class Browse extends ShellCommand {
 		}
 		ctx.stdout.flush();
 		ctx.stderr.flush();
-		FileSource end = use.browse(ctx, new BrowseRequest(left, right, onePane));
+		FileSource end = use.browse(ctx, new BrowseRequest(left, right, onePane, connections(ctx)));
 		if( cd && end != null ) {
 			FileSource dir = ctx.console.createFileSource(end.getAbsolutePath());
 			if( dir.isDirectory() && dir.getFileSourceFactory().isSameFileSystem(end.getFileSourceFactory())) {

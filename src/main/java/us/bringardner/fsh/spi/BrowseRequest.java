@@ -11,10 +11,17 @@ public final class BrowseRequest {
 	public final FileSource right;
 	/** start with one pane (browse -1) */
 	public final boolean onePane;
+	/** the shell's connections: a file system connected in the browser is connected here (null: none) */
+	public final ShellConnections connections;
 
 	public BrowseRequest(FileSource left, FileSource right, boolean onePane) {
+		this(left, right, onePane, null);
+	}
+
+	public BrowseRequest(FileSource left, FileSource right, boolean onePane, ShellConnections connections) {
 		this.left = left;
 		this.right = right;
 		this.onePane = onePane;
+		this.connections = connections;
 	}
 }
