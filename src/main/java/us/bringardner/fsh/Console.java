@@ -2350,6 +2350,18 @@ delimiter
 		return mountFactory.mount(name,f);
 	}
 
+	/** the shell's connections: the path each is at, and the top folder connected there */
+	public Map<String, FileSource> connections() throws IOException {
+		Map<String, FileSource> ret = new java.util.TreeMap<>();
+		FileSource[] roots = mountFactory.listRoots();
+		for(int idx = 0; idx < roots.length; idx++) {
+			if( roots[idx] instanceof RootFile ) {
+				ret.put(roots[idx].getAbsolutePath(), ((RootFile) roots[idx]).target);
+			}
+		}
+		return ret;
+	}
+
 	public FileSourceFactory getMountFactory() {
 		return mountFactory;
 	}

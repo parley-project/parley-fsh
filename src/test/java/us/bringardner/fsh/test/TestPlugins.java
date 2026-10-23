@@ -53,7 +53,14 @@ public class TestPlugins extends AbstractConsoleTest {
 					+ " public int priority() { return 10; }"
 					+ " public boolean available(us.bringardner.fsh.ShellContext ctx) { return true; }"
 					+ " public us.bringardner.parley.files.FileSource browse(us.bringardner.fsh.ShellContext ctx, BrowseRequest r) {"
-					+ "  ctx.stdout.println(\"browsing \"+r.left.getName()+\" \"+r.right.getName()+\" \"+r.onePane); return r.right; } }");
+					+ "  ctx.stdout.println(\"browsing \"+r.left.getName()+\" \"+r.right.getName()+\" \"+r.onePane);"
+					+ "  if( r.left.getName().equals(\"conn\") ) { try {"
+					+ "   us.bringardner.parley.files.memory.MemoryFileSourceFactory m = new us.bringardner.parley.files.memory.MemoryFileSourceFactory();"
+					+ "   m.connect(new java.util.Properties());"
+					+ "   ctx.stdout.println(\"connected \"+r.connections.connect(\"/plugmem\", m.listRoots()[0])+\" \"+r.connections.list().keySet()"
+					+ "    +\" \"+r.connections.file(\"/plugmem\").isDirectory());"
+					+ "  } catch (java.io.IOException e) { throw new RuntimeException(e); } }"
+					+ "  return r.right; } }");
 
 	@BeforeAll
 	public static void plugin() throws Exception {
@@ -139,5 +146,11 @@ public class TestPlugins extends AbstractConsoleTest {
 		assertEquals("fsh: line 1: browse: nosuch: no such browser (browse --list lists them)\n", res.getStdErr());
 		res = executeCommand("browse '"+l+"/none'", "");
 		assertEquals(1, res.exitCode);
+		// the browser connects a file system in the shell (ShellConnections): it stays after browse
+		File conn = tmp.resolve("conn").toFile();
+		conn.mkdirs();
+		res = executeCommand("browse '"+conn.getPath().replace('\\', '/')+"' '"+r+"'; ls -d /plugmem; disconnect /plugmem; ls -d /plugmem", "");
+		assertEquals("browsing conn right false\nconnected true [/plugmem] true\n/plugmem\n", res.getStdOut());
+		assertTrue(res.getStdErr().contains("/plugmem"), res.getStdErr());
 	}
 }
