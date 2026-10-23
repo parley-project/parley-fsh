@@ -25,6 +25,10 @@
 
 ### Changed
 
+- **Raw mode turns IEXTEN off** in the keyboard library (`NativeKeyboard.cpp`, as `cfmakeraw`
+  does): on macOS the terminal driver kept Ctrl-V and Ctrl-O for itself even in raw mode, so the
+  line editor's Ctrl-V (the next key as it is) and Ctrl-O never worked there, nor Ctrl-V in the
+  browser. Rebuild `libnativekeyboard` (`macos/compile.sh`, `linux/compile.sh`).
 - **Connections** (connect, disconnect) are new code: a table of the shell's connections that
   is replaced, never changed, so a listing or a Tab completion that runs while a browser
   connects or disconnects sees it whole; and one kind of file for the shell's tree (`TreeFile`,
