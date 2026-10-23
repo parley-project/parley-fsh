@@ -22,7 +22,6 @@ Python 3 only, no packages: runs on macOS and Linux.
 import argparse
 import os
 import pty
-import resource
 import select
 import shlex
 import shutil
@@ -35,11 +34,6 @@ import time
 
 ROWS, COLS = 40, 120
 DOWN, ENTER, LEFT = b"\x1b[B", b"\r", b"\x1b[D"
-
-
-def maxrss_children_kb():
-	r = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-	return r // 1024 if sys.platform == "darwin" else r  # (bytes on macOS, KB on Linux)
 
 
 def tree_rss_kb(pid):
@@ -63,18 +57,20 @@ def tree_rss_kb(pid):
 
 
 def startup(cmd, runs, script):
-	times = []
-	before = maxrss_children_kb()
+	times, rss = [], []
 	for _ in range(runs):
 		t = time.perf_counter()
-		r = subprocess.run(cmd + [script], capture_output=True, text=True)
+		pr = subprocess.Popen(cmd + [script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		out = pr.stdout.read()
+		# (wait4: this run's own peak resident size, the largest of the process and its children
+		# that it waited for; a launcher that execs counts as the process)
+		_, status, ru = os.wait4(pr.pid, 0)
 		times.append(time.perf_counter() - t)
-		if r.returncode != 0 or "started" not in r.stdout:
-			return {"error": (r.stdout + r.stderr).strip()[-400:]}
-	# (getrusage keeps the largest child so far: only meaningful when it grew)
-	after = maxrss_children_kb()
+		rss.append(ru.ru_maxrss // 1024 if sys.platform == "darwin" else ru.ru_maxrss)
+		if status != 0 or b"started" not in out:
+			return {"error": out.decode("utf8", "replace").strip()[-400:]}
 	return {"median_ms": round(statistics.median(times) * 1000, 1), "best_ms": round(min(times) * 1000, 1),
-			"max_rss_mb": round(after / 1024, 1) if after > before else None}
+			"max_rss_mb": round(max(rss) / 1024, 1)}
 
 
 def plugins(cmd):
@@ -160,6 +156,8 @@ def browse(cmd, folder, keys):
 			first, last, d = p.read(0.25, 60)
 			if first is None:
 				return {"error": "browse drew nothing"}
+			if b"o browser is installed" in d:
+				return {"error": "no browser: the plugins did not load"}
 			r = {"first_screen_ms": round((last - t) * 1000, 1)}
 			lat = []
 			for _ in range(keys):
