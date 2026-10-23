@@ -567,7 +567,7 @@ public abstract class ShellCommand {
 		path = expandTilde(ctx, path);
 		if( !hasWildcard(path)) {
 			System.out.println("Here");
-			FileSource tmpf = ctx.console.getMountFactory().
+			FileSource tmpf = ctx.console.getTree().
 					createFileSource(path);
 			ret.add(tmpf);
 			return ret;
@@ -577,7 +577,7 @@ public abstract class ShellCommand {
 		if( isRelative(path)) {
 			cwd = ctx.console.getCurrentDirectory();
 		} else {
-			cwd = ctx.console.getMountFactory().listRoots()[0];
+			cwd = ctx.console.getTree().listRoots()[0];
 			path = path.substring(1);
 		}
 

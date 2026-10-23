@@ -7,7 +7,7 @@ Everything here is also in the shell: `help NAME` shows a command's text, and `h
 
 - [fsh's own commands](#fshs-own-commands): connecting file systems and managing their passwords
 - [File commands](#file-commands): fsh's versions of ls, cp, mv and the rest, which work on every
-  mounted file system
+  connected file system
 - [Other commands](#other-commands): commands that are separate programs in bash
 - [Bash builtins](#bash-builtins): the builtins that work as they do in bash
 
@@ -16,11 +16,11 @@ Everything here is also in the shell: `help NAME` shows a command's text, and `h
 ### connect
 
 ```
-connect FACTORY [-f FILE] [name=value ...] [-] MOUNT_POINT
+connect FACTORY [-f FILE] [name=value ...] [-] PATH
 ```
 
 ```text
-Connect to a file system and mount it at MOUNT_POINT (a path such as /prod), where fsh's file
+Connect to a file system at PATH (a path such as /prod), where fsh's file
 builtins (ls, cp, mv, rm, find, ...) can use it. FACTORY is the file system's id, such as memory,
 sftp, ftp or jdbc (jdbc when fsh is built with it).
 Settings, applied in order (a later one replaces an earlier one):
@@ -29,7 +29,7 @@ name=value                 one setting
 -                          one line of name=value settings read from standard input
 A secret setting such as password can name its secret instead of holding it: @env:NAME,
 @file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).
-On success it prints "FACTORY connected as MOUNT_POINT"; disconnect undoes it.
+On success it prints "FACTORY connected as PATH"; disconnect undoes it.
 With no arguments it lists the shell's connections: PATH -> FILE SYSTEM.
 Examples:
 connect memory /mem
@@ -40,12 +40,12 @@ connect ftp -f ~/.parley/ftp.properties /ftp
 ### disconnect
 
 ```
-disconnect MOUNT_POINT
+disconnect PATH
 ```
 
 ```text
-Remove a file system that connect mounted at MOUNT_POINT, and close its connection (unless
-another mount point uses the same connection). The status is 1 if nothing is connected there.
+Remove the file system connected at PATH, and close its connection (unless
+another path uses the same connection). The status is 1 if nothing is connected there.
 Example:
 disconnect /prod
 ```
@@ -73,8 +73,8 @@ character, or FSH_SECRET_MASK= (empty) to see nothing.
 
 ## File commands
 
-These are fsh's own versions, so they work on every mounted file system (see `connect`), and
-between them: `cp /prod/app.log /mem/` copies a file from one mounted file system to another. They take the options listed for
+These are fsh's own versions, so they work on every connected file system (see `connect`), and
+between them: `cp /prod/app.log /mem/` copies a file from one connected file system to another. They take the options listed for
 each; any other option is an error. The system's command of the same name still runs by its path
 (`/bin/cp`), or after `enable -n cp`, and works only on the local disk.
 
@@ -113,7 +113,7 @@ cp [-Rafinpvx] SOURCE TARGET   or   cp [-Rafinpvx] SOURCE ... DIRECTORY
 
 ```text
 Copy files. With two operands SOURCE is copied to TARGET; when the last operand is an existing
-directory, each SOURCE is copied into it. Works between any mounted file systems.
+directory, each SOURCE is copied into it. Works between any connected file systems.
 -R, -r   copy directories and everything in them; with SOURCE/ (a trailing slash) only what is in it
 -a       the same as -Rp
 -f       replace existing files without asking (the default)
@@ -155,7 +155,7 @@ Remove files, and directories with -r or -d. It refuses /, . and ..
 -I       ask once before removing more than three files, or a directory recursively
 -r, -R   remove directories and everything in them
 -v       show each file as it is removed
--x       don't go into a mounted file system of a different kind
+-x       don't go into a connected file system of a different kind
 A symbolic link is removed itself, never the file it points to.
 ```
 
@@ -199,7 +199,7 @@ ln [-s] [-f | -i] [-hnv] [-L | -P] SOURCE TARGET   or   ln [options] SOURCE ... 
 ```
 
 ```text
-Make links: hard links, or symbolic links with -s. Works on mounted file systems that support
+Make links: hard links, or symbolic links with -s. Works on connected file systems that support
 links.
 -s       make symbolic links; SOURCE is stored as given and need not exist
 -f       replace an existing TARGET
@@ -218,7 +218,7 @@ find [-H | -L | -P] PATH ... [EXPRESSION]
 
 ```text
 Search the directory trees at each PATH and print the paths that match EXPRESSION (all of them
-when there is none). Works on every mounted file system.
+when there is none). Works on every connected file system.
 Tests:
 -name PATTERN, -iname PATTERN       the name matches a shell pattern (-iname ignores case)
 -path PATTERN, -wholename PATTERN   the path matches a shell pattern (* also matches /)
@@ -316,7 +316,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `bg` | `bg [jobspec ...]` | Resume each suspended job jobspec in the background, as if it had been started with ‘&’. |
 | `bind` | `bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command]` | Set what the line editor's keys do, or show it. |
 | `break` | `break [n]` | Leave the innermost loop, or the n enclosing loops. |
-| `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (mounts included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in the browser a plugin provides: a window when there is a display, else a full-screen one in the terminal. |
+| `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (connections included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in the browser a plugin provides: a window when there is a display, else a full-screen one in the terminal. |
 | `builtin` | `builtin name [args]` | Run the shell builtin name (not a function or program with that name). |
 | `caller` | `caller [n]` | In a function, print where it was called from: with n, "line function file" for the call n frames up (0 is the current function's caller); without, "line file". |
 | `cd` | `cd [-L\|-P] [dir]` | Change the current directory (to $HOME without dir). |

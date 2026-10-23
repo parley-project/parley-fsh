@@ -22,7 +22,7 @@ public class Browse extends ShellCommand {
 	static final String NAME = "browse";
 	static final String USAGE = "browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list";
 	static final String HELP = USAGE+"\n"
-			+ "\tBrowse the shell's file tree (mounts included) with DIR (default .) on the left and DIR2\n"
+			+ "\tBrowse the shell's file tree (connections included) with DIR (default .) on the left and DIR2\n"
 			+ "\t(default $HOME) on the right, in the browser a plugin provides: a window when there is a\n"
 			+ "\tdisplay, else a full-screen one in the terminal.\n"
 			+ "\t-1           start with one pane\n"
@@ -56,7 +56,7 @@ public class Browse extends ShellCommand {
 
 			@Override
 			public boolean connect(String path, FileSource top) throws IOException {
-				return ctx.console.mount(top, path);
+				return ctx.console.connectAt(top, path);
 			}
 
 			@Override

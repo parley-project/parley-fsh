@@ -20,7 +20,7 @@ import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 
-public class TestMountedFactory extends AbstractConsoleTest {
+public class TestConnectionTree extends AbstractConsoleTest {
 
 	/** This class's scratch folder: everything the tests write goes here, not into target/ */
 	@TempDir
@@ -62,11 +62,11 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 
 	@Test
-	public void testMount() throws IOException {
+	public void testConnect() throws IOException {
 		VirtualFileSourceFactory factory = new VirtualFileSourceFactory();
 		MemoryFileSourceFactory memFactory = new MemoryFileSourceFactory();
 		
-		assertTrue(factory.mount( "mem",memFactory.listRoots()[0]),"Failed to mount mem");
+		assertTrue(factory.connectAt( "mem",memFactory.listRoots()[0]),"Failed to connect mem");
 
 		String expectName = "/mem";
 		FileSource data = factory.createFileSource(expectName);
@@ -105,10 +105,10 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 
 	@Test
-	public void testMount2() throws Exception {
+	public void testConnect2() throws Exception {
 		VirtualFileSourceFactory factory = new VirtualFileSourceFactory();
 		MemoryFileSourceFactory memoryFactory = new MemoryFileSourceFactory();
-		assertTrue(factory.mount("mem",memoryFactory.listRoots()[0]),"Failed to mount mem");
+		assertTrue(factory.connectAt("mem",memoryFactory.listRoots()[0]),"Failed to connect mem");
 
 
 		String rootName1 = "/mem";
@@ -222,7 +222,7 @@ public class TestMountedFactory extends AbstractConsoleTest {
 
 
 	@Test
-	public void testMount3() throws Exception {
+	public void testConnect3() throws Exception {
 		String code = "connect memory /mem\n";
 		ExecuteResult res = executeCommand(code, "");
 

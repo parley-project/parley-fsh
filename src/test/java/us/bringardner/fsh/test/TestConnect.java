@@ -169,7 +169,7 @@ public class TestConnect extends AbstractConsoleTest {
 		// (connect alone lists the connections; one argument is a mistake)
 		ExecuteResult res = executeCommand("connect memory", "");
 		assertEquals(2, res.exitCode);
-		assertEquals("usage: connect FACTORY [-f FILE] [name=value ...] [-] MOUNT_POINT", res.getStdErr().trim());
+		assertEquals("usage: connect FACTORY [-f FILE] [name=value ...] [-] PATH", res.getStdErr().trim());
 
 		res = executeCommand("connect nosuch /x", "");
 		assertEquals(1, res.exitCode);
@@ -185,15 +185,15 @@ public class TestConnect extends AbstractConsoleTest {
 		res = executeCommand("connect memory /memtwice", "");
 		assertEquals(0, res.exitCode, res.getStdErr());
 		res = executeCommand("connect memory /memtwice", "");
-		assertEquals(1, res.exitCode, "a mount point already in use");
-		assertTrue(res.getStdErr().contains("can't mount memory at /memtwice"), res.getStdErr());
+		assertEquals(1, res.exitCode, "a path already in use");
+		assertTrue(res.getStdErr().contains("can't connect memory at /memtwice"), res.getStdErr());
 		executeCommand("disconnect /memtwice", "");
 	}
 
 	/** A connected file system is listed in the folder it's connected at (ls /, globs, cd ..); disconnect takes it out. */
 	@Test
-	public void mountPointsAreListed() throws Exception {
-		File deep = new File(testFilesDir, "mountparent");
+	public void connectionsAreListed() throws Exception {
+		File deep = new File(testFilesDir, "connparent");
 		deep.mkdirs();
 		String dir = deep.getAbsolutePath().replace('\\', '/');
 		ExecuteResult res = executeCommand("connect memory /mplist >/dev/null; ls / | grep -x mplist;"

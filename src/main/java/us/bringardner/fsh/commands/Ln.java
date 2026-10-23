@@ -17,7 +17,7 @@ public class Ln extends ShellCommand{
 
 	static String name = "ln";
 	static String help = "ln [-s] [-f | -i] [-hnv] [-L | -P] SOURCE TARGET   or   ln [options] SOURCE ... DIRECTORY\n"
-			+ "\tMake links: hard links, or symbolic links with -s. Works on mounted file systems that support\n"
+			+ "\tMake links: hard links, or symbolic links with -s. Works on connected file systems that support\n"
 			+ "\tlinks.\n"
 			+ "\t-s       make symbolic links; SOURCE is stored as given and need not exist\n"
 			+ "\t-f       replace an existing TARGET\n"

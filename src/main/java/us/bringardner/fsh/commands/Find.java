@@ -16,7 +16,7 @@ public class Find extends ShellCommand{
 	// physical 
 	static String help = "find [-H | -L | -P] PATH ... [EXPRESSION]\n"
 			+ "\tSearch the directory trees at each PATH and print the paths that match EXPRESSION (all of them\n"
-			+ "\twhen there is none). Works on every mounted file system.\n"
+			+ "\twhen there is none). Works on every connected file system.\n"
 			+ "\tTests:\n"
 			+ "\t-name PATTERN, -iname PATTERN       the name matches a shell pattern (-iname ignores case)\n"
 			+ "\t-path PATTERN, -wholename PATTERN   the path matches a shell pattern (* also matches /)\n"

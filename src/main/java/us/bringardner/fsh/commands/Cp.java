@@ -18,7 +18,7 @@ public class Cp extends ShellCommand{
 	static String name = "cp";
 	static String help = "cp [-Rafinpvx] SOURCE TARGET   or   cp [-Rafinpvx] SOURCE ... DIRECTORY\n"
 			+ "\tCopy files. With two operands SOURCE is copied to TARGET; when the last operand is an existing\n"
-			+ "\tdirectory, each SOURCE is copied into it. Works between any mounted file systems.\n"
+			+ "\tdirectory, each SOURCE is copied into it. Works between any connected file systems.\n"
 			+ "\t-R, -r   copy directories and everything in them; with SOURCE/ (a trailing slash) only what is in it\n"
 			+ "\t-a       the same as -Rp\n"
 			+ "\t-f       replace existing files without asking (the default)\n"

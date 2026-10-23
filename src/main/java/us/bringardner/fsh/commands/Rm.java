@@ -26,7 +26,7 @@ public class Rm extends ShellCommand{
 			+ "\t-I       ask once before removing more than three files, or a directory recursively\n"
 			+ "\t-r, -R   remove directories and everything in them\n"
 			+ "\t-v       show each file as it is removed\n"
-			+ "\t-x       don't go into a mounted file system of a different kind\n"
+			+ "\t-x       don't go into a connected file system of a different kind\n"
 			+ "\tA symbolic link is removed itself, never the file it points to.";
 
 	public Rm() {
@@ -125,7 +125,7 @@ public class Rm extends ShellCommand{
 			throw new IOException("does not exist");
 		}
 		if( options.contains(Arguments.x) && !file.getFileSourceFactory().getTypeId().equals(rootType)) {
-			// (a mount point of another kind of file system)
+			// (a connection of another kind of file system)
 			return;
 		}
 		if( file.isDirectory()) {

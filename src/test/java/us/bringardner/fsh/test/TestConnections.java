@@ -41,7 +41,7 @@ public class TestConnections extends AbstractConsoleTest {
 	/** (what the tests made in the test folder) */
 	@AfterAll
 	public static void afterAll() throws Exception {
-		for(String name : new String[] {"hidden-by", "has-connection", "mountparent"}) {
+		for(String name : new String[] {"hidden-by", "has-connection", "connparent"}) {
 			java.nio.file.Path dir = new File(testFilesDir, name).toPath();
 			if( java.nio.file.Files.exists(dir)) {
 				try (java.util.stream.Stream<java.nio.file.Path> all = java.nio.file.Files.walk(dir)) {
@@ -137,16 +137,16 @@ public class TestConnections extends AbstractConsoleTest {
 	public void whereConnectionsCanBe() throws Exception {
 		VirtualFileSourceFactory tree = new VirtualFileSourceFactory();
 		FileSource top = memoryTop();
-		assertFalse(tree.mount("/", top));
-		assertTrue(tree.mount("/w1", top));
-		assertFalse(tree.mount("/w1/", top));
-		assertTrue(tree.mount("w2", top));
+		assertFalse(tree.connectAt("/", top));
+		assertTrue(tree.connectAt("/w1", top));
+		assertFalse(tree.connectAt("/w1/", top));
+		assertTrue(tree.connectAt("w2", top));
 		assertNotNull(tree.connectionAt("/w2"));
-		assertTrue(tree.mount("/w1/x/../in", top));
+		assertTrue(tree.connectAt("/w1/x/../in", top));
 		assertEquals(List.of("/w1", "/w1/in", "/w2"), new ArrayList<>(tree.connections().keySet()));
-		assertNull(tree.unmount("/"));
-		assertNull(tree.unmount("/nothing"));
-		assertEquals(top, tree.unmount("/w1"));
+		assertNull(tree.disconnectAt("/"));
+		assertNull(tree.disconnectAt("/nothing"));
+		assertEquals(top, tree.disconnectAt("/w1"));
 		// (the one in it stays, at its path)
 		assertTrue(tree.createFileSource("/w1/in") instanceof TreeFile);
 		assertEquals("/w1/in", tree.createFileSource("/w1/in").getAbsolutePath());
@@ -161,7 +161,7 @@ public class TestConnections extends AbstractConsoleTest {
 		VirtualFileSourceFactory tree = new VirtualFileSourceFactory();
 		FileSource top = memoryTop();
 		top.getChild("there").mkdir();
-		assertTrue(tree.mount("/stays", top));
+		assertTrue(tree.connectAt("/stays", top));
 		int writers = 4;
 		int readers = 4;
 		CountDownLatch start = new CountDownLatch(1);
@@ -174,8 +174,8 @@ public class TestConnections extends AbstractConsoleTest {
 					start.await();
 					for(int i = 0; i < 300; i++) {
 						String p = "/churn"+n+"-"+(i % 5);
-						tree.mount(p, top);
-						tree.unmount(p);
+						tree.connectAt(p, top);
+						tree.disconnectAt(p);
 					}
 				} catch (Throwable e) {
 					failed.compareAndSet(null, e);
