@@ -64,7 +64,10 @@ static void enableRawMode() {
 		registered = 1;
 	}
 	struct termios raw = orig_termios;
-	raw.c_lflag &= ~(ECHO | ICANON);
+	// IEXTEN off as well (as cfmakeraw): with it, macOS's terminal driver takes Ctrl-V (insert the
+	// next key literally) and Ctrl-O (discard output) for itself even in raw mode, so a program never
+	// gets them (Linux does that only in canonical mode)
+	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 	if( keysNotSignals ) {
 		raw.c_lflag &= ~ISIG;
 	}
