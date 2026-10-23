@@ -17,6 +17,9 @@
 # jars; else those in the plugin folders), and java.lang and java.lang.invoke are kept whole.
 # --crema --jit: the same, with Ristretto compiling the plugins' hot methods at run time
 # (-H:+GraalJITCompileAtRuntime): target/native-crema-jit.
+#
+# --builtin: a closed-world image with the plugin jars built in (CREMA_PLUGINS, else the plugin
+# folders'): target/native-builtin.
 
 LIB_DIR=$(cd "$(dirname "$0")" && pwd)
 PROJECT_DIR=$(dirname "$LIB_DIR")
@@ -42,11 +45,13 @@ mkdir -p target/native target/native-tmp target/native-config
 jars=$(printf '%s:%s' "$jar" "$(cat target/runtime-classpath.txt)" | tr ':' '\n' | grep -E 'fsh-|parley' | tr '\n' ' ')
 python3 -I "$PROJECT_DIR/tools/native-reflect.py" $jars target/native-config/reflect-config.json > /dev/null || exit 1
 # (its work files in target, not the system's temporary directory)
+# (--builtin: the plugin jars, on the image's class path)
+extra_cp=""
 build() { # output-directory [native-image options]
 	out=$1
 	shift
 	mkdir -p "$out"
-	TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)" \
+	TMPDIR="$PROJECT_DIR/target/native-tmp" "$graal/bin/native-image" -cp "$jar:$(cat target/runtime-classpath.txt)$extra_cp" \
 		-H:TempDirectory="$PROJECT_DIR/target/native-tmp" -H:ConfigurationFileDirectories=target/native-config \
 		-Dparley.fsh.libdir="$PROJECT_DIR/$out" "$@" -o "$out/fsh-image" us.bringardner.fsh.Console || exit 1
 	cp -f "$LIB_DIR/libnativekeyboard.dylib" "$LIB_DIR/fshexec" "$out/"
@@ -82,9 +87,23 @@ case "$1" in
 	fi
 	build $out -H:+UnlockExperimentalVMOptions -H:+RuntimeClassLoading $jit -H:Preserve="$keep" --enable-native-access=ALL-UNNAMED \
 		-H:ConfigurationFileDirectories=target/native-crema-config ;;
+--builtin)
+	# (the plugins built into a closed-world image: ServiceLoader finds them as the image is built,
+	# so browse, view, edit and search work, but nothing can be added without building it again)
+	plugins=${CREMA_PLUGINS:-$(ls "$HOME"/.parley/fsh/plugins/*.jar /usr/local/lib/parley/fsh/plugins/*.jar 2>/dev/null)}
+	if [ -z "$plugins" ]; then
+		echo "build-native.sh --builtin: no plugin jars (CREMA_PLUGINS, or the plugin folders)" >&2
+		exit 1
+	fi
+	mkdir -p target/native-builtin-config
+	python3 -I "$PROJECT_DIR/tools/native-reflect.py" $plugins target/native-builtin-config/reflect-config.json > /dev/null || exit 1
+	for j in $plugins; do
+		extra_cp="$extra_cp:$j"
+	done
+	build target/native-builtin -H:ConfigurationFileDirectories=target/native-builtin-config ;;
 "")
 	build target/native ;;
 *)
-	echo "build-native.sh: $1: use --pgo, --crema or --crema --jit" >&2
+	echo "build-native.sh: $1: use --pgo, --crema, --crema --jit or --builtin" >&2
 	exit 2 ;;
 esac
