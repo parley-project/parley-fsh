@@ -58,7 +58,7 @@ public class Ln extends ShellCommand{
 		}
 
 		List<String> paths = sa.paths;
-		if( options.contains(Arguments.s) && paths.size() >= 2 && ctx.getFileSource(".") instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
+		if( options.contains(Arguments.s) && paths.size() >= 2 && us.bringardner.fsh.LocalFiles.isLocal(ctx.getFileSource(".")) ) {
 			// a local symbolic link holds the text given, as the system's ln makes it (ln -s bar
 			// dir/foo points at dir/bar), and its target need not exist
 			return localSymbolicLinks(ctx, options, paths);
@@ -93,7 +93,7 @@ public class Ln extends ShellCommand{
 
 	/** ln -s text ... link_or_dir on the local file system (see process) */
 	private int localSymbolicLinks(ShellContext ctx, List<Arguments> options, List<String> paths) throws IOException {
-		java.nio.file.Path cwd = ((us.bringardner.parley.files.fileproxy.FileProxy) ctx.getFileSource(".")).getTarget().toPath();
+		java.nio.file.Path cwd = us.bringardner.fsh.LocalFiles.of(ctx.getFileSource(".")).toPath();
 		String last = paths.get(paths.size()-1);
 		java.nio.file.Path lastPath = cwd.resolve(last);
 		boolean intoDir = !options.contains(Arguments.n) && !options.contains(Arguments.h) ? java.nio.file.Files.isDirectory(lastPath)
@@ -186,7 +186,7 @@ public class Ln extends ShellCommand{
 	}
 
 	private int createSymbolicLink(ShellContext ctx, List<Arguments> options, FileSource target, FileSource source) throws IOException {
-		FileSource link = source.getFileSourceFactory().createSymbolicLink(target, source);
+		FileSource link = source.getFileSourceFactory().createSymbolicLink(us.bringardner.fsh.TreeFile.unwrap(target), us.bringardner.fsh.TreeFile.unwrap(source));
 		if( link == null || !link.exists()) {
 			return -1;
 		}

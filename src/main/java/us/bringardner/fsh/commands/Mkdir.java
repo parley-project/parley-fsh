@@ -101,9 +101,9 @@ public class Mkdir extends ShellCommand{
 				ret = 1;
 				continue;
 			}
-			if( bits != null && dir instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
+			if( bits != null && us.bringardner.fsh.LocalFiles.isLocal(dir) ) {
 				try {
-					java.nio.file.Files.setPosixFilePermissions(((us.bringardner.parley.files.fileproxy.FileProxy) dir).getTarget().toPath(), permissions(bits));
+					java.nio.file.Files.setPosixFilePermissions(us.bringardner.fsh.LocalFiles.of(dir).toPath(), permissions(bits));
 				} catch (Exception e) {
 					ctx.stderr.println("mkdir: "+path+": "+e.getMessage());
 					ret = 1;

@@ -25,6 +25,21 @@
 
 ### Changed
 
+- **Connections** (connect, disconnect) are new code: a table of the shell's connections that
+  is replaced, never changed, so a listing or a Tab completion that runs while a browser
+  connects or disconnects sees it whole; and one kind of file for the shell's tree (`TreeFile`,
+  in place of `RootFile`, `FileSourceDynamicProxy` and a proxy per file). `LocalFiles.of(file)` is
+  the local file a file of the tree is (null for a connected file system's): what used to be
+  `file instanceof FileProxy`.
+- A connected file system is listed in the folder it's connected at, as a folder there: after
+  `connect memory /mem`, `ls /`, `echo /*`, Tab completion and `cd /mem; cd ..; ls` show `mem` (it
+  hides a local entry of the same name, and gives it back on disconnect). Before, `/mem` could be
+  used but wasn't listed. A file system can be connected in another one (`connect memory
+  /mem/a/more`), and `cd ..` goes back up through both.
+- `connect` with no arguments lists the shell's connections (`/mem -> memory`), and `ls -l` shows
+  what is connected at one, as it shows a link's target (`mem -> memory`,
+  `sftp-build -> sftp tony@build:/home/tony`). A connection's time is its connected folder's (it
+  showed Dec 31 1969).
 - The keyboard, the terminal and the line editor are in **parley-term**, a new Parley module that fsh
   now depends on, so other Parley applications (the console file browser) share them:
   `us.bringardner.fsh.LineEditor` is `us.bringardner.parley.term.line.LineEditor`, Tab completion's

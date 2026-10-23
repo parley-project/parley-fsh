@@ -30,6 +30,7 @@ name=value                 one setting
 A secret setting such as password can name its secret instead of holding it: @env:NAME,
 @file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).
 On success it prints "FACTORY connected as MOUNT_POINT"; disconnect undoes it.
+With no arguments it lists the shell's connections: PATH -> FILE SYSTEM.
 Examples:
 connect memory /mem
 connect sftp host=example.com user=deploy password=@keychain:parley/sftp/deploy@example.com /prod

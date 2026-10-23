@@ -30,7 +30,7 @@ public class Pwd extends ShellCommand{
 				physical = false;
 			}
 		}
-		if( physical && dir instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
+		if( physical && us.bringardner.fsh.LocalFiles.isLocal(dir) ) {
 			// every link in the path resolved (the library's canonical path resolves them on Windows,
 			// where java.io.File's does not; it is written with '/', the platform's own is shown)
 			String real = dir.getCanonicalPath();

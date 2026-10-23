@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 import us.bringardner.fsh.Console;
-import us.bringardner.fsh.RootFile;
+import us.bringardner.fsh.TreeFile;
 import us.bringardner.fsh.VirtualFileSourceFactory;
 
 /** BJL-25: mount lookup, ".." and "~" work on whole path elements. */
@@ -65,7 +65,7 @@ public class TestVirtualPaths {
 	@Test
 	public void mountedRootsUseTheSharedIsChildOfMine() throws IOException {
 		assertThrows(NoSuchMethodException.class,
-				() -> RootFile.class.getDeclaredMethod("isChildOfMine", FileSource.class));
+				() -> TreeFile.class.getDeclaredMethod("isChildOfMine", FileSource.class));
 
 		MemoryFileSourceFactory mem = new MemoryFileSourceFactory();
 		FileSource primary = dir(mem, "/primary", "p.txt");

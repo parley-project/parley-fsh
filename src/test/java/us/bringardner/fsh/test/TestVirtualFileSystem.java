@@ -2,6 +2,7 @@ package us.bringardner.fsh.test;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.IOException;
 
@@ -74,11 +75,11 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 		assertEquals(expect, path);
 		assertTrue(tmp.isDirectory());
 
-		factory.mount("/", localRoot);
-		expect = "/";
-		tmp = factory.createFileSource(expect);
+		// (nothing is connected at /: it is the local file system)
+		assertFalse(factory.mount("/", localRoot));
+		tmp = factory.createFileSource("/");
 		path = tmp.getAbsolutePath();
-		assertEquals(expect, path);
+		assertEquals(localRoot.getAbsolutePath(), path);
 
 		FileSource[] kids = tmp.listFiles();
 		String expectFiles [] = (
@@ -113,7 +114,7 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 
 		if( getOs()==OperatingSystem.Windows) {
 			FileSource[] roots = factory.listRoots();
-			expectFiles = "C:\\Git\\fsh\\TestFiles\n/mem\n/".split("\n");
+			expectFiles = "C:\\Git\\fsh\\TestFiles\n/mem".split("\n");
 			assertEquals(expectFiles.length, roots.length);
 			for (int idx = 0; idx < expectFiles.length; idx++) {
 				FileSource kid = roots[idx];

@@ -186,14 +186,14 @@ public class Cp extends ShellCommand{
 				copyStream(ctx,in,out);
 			}
 		}		
-		if( !existed && from instanceof us.bringardner.parley.files.fileproxy.FileProxy
-				&& to instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
+		if( !existed && us.bringardner.fsh.LocalFiles.isLocal(from)
+				&& us.bringardner.fsh.LocalFiles.isLocal(to) ) {
 			// as cp: a new file gets the source's mode (less group and other write, as umask 022)
 			try {
-				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(((us.bringardner.parley.files.fileproxy.FileProxy) from).getTarget().toPath());
+				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(us.bringardner.fsh.LocalFiles.of(from).toPath());
 				mode.remove(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
 				mode.remove(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
-				java.nio.file.Files.setPosixFilePermissions(((us.bringardner.parley.files.fileproxy.FileProxy) to).getTarget().toPath(), mode);
+				java.nio.file.Files.setPosixFilePermissions(us.bringardner.fsh.LocalFiles.of(to).toPath(), mode);
 			} catch (UnsupportedOperationException e) {
 			}
 		}

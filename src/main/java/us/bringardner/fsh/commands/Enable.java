@@ -142,8 +142,8 @@ public class Enable extends ShellCommand{
 			cmd.addAll(names);
 			ProcessBuilder b = new ProcessBuilder(cmd).redirectErrorStream(true);
 			us.bringardner.parley.files.FileSource dir = ctx.console.getCurrentDirectory();
-			if( dir instanceof us.bringardner.parley.files.fileproxy.FileProxy ) {
-				b.directory(((us.bringardner.parley.files.fileproxy.FileProxy) dir).getTarget());
+			if( us.bringardner.fsh.LocalFiles.isLocal(dir) ) {
+				b.directory(us.bringardner.fsh.LocalFiles.of(dir));
 			}
 			Process p = b.start();
 			try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
