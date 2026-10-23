@@ -1,1 +1,1 @@
-enable -n echo; type -t echo; enable echo; type -t echo; enable -n cd; cd / 2>/dev/null; echo $?
+enable -n echo; type -t echo; enable echo; type -t echo; enable -n pwd; (cd /; pwd); enable pwd

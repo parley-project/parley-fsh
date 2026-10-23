@@ -26,19 +26,19 @@ public class TestPipeStatement extends AbstractConsoleTest{
 	
 
 	/**
-	 * The output of "ls -l | wc": lines, words and bytes (the date in each line is 12 characters,
-	 * "Oct 15 06:29" or "Jan  2  2020", as ls shows it). The bytes include the width of the owner
-	 * and group names in every line, so they differ from one machine to the next: on Windows
-	 * (where the owner is the domain, a backslash and the user name) the lines and the words are compared, which are the same.
+	 * The output of "ls -l | wc": lines, words and bytes. The lines and words are expect's (the
+	 * date in each line is 12 characters, "Oct 15 06:29" or "Jan  2  2020", as ls shows it); the
+	 * bytes depend on the width of the owner and group names (root, a domain\\user on Windows), so
+	 * they are compared with what ls -l itself prints, as wc counts it.
 	 */
-	private static void assertWc(String expect, String actual) {
-		if( getOs() == OperatingSystem.Windows ) {
-			String [] e = expect.trim().split("\\s+");
-			String [] a = actual.trim().split("\\s+");
-			assertEquals(e[0] + " " + e[1], a[0] + " " + a[1], "lines and words of " + actual);
-		} else {
-			assertEquals(expect, actual);
-		}
+	private static void assertWc(String expect, String actual) throws Exception {
+		String [] e = expect.trim().split("\\s+");
+		String [] a = actual.trim().split("\\s+");
+		assertEquals(3, a.length, "wc's three counts: "+actual);
+		assertEquals(e[0] + " " + e[1], a[0] + " " + a[1], "lines and words of " + actual);
+		ExecuteResult ls = executeCommand("ls -l", "");
+		int bytes = ls.getStdOut().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+		assertEquals(String.valueOf(bytes), a[2], "bytes of " + actual + " (ls -l printed:\n" + ls.getStdOut() + ")");
 	}
 	@Test
 	public void testLogicStatent01() throws Exception{
@@ -109,11 +109,6 @@ public class TestPipeStatement extends AbstractConsoleTest{
 
 		String expect = "4      36     234";
 		
-		if( getOs()==OperatingSystem.Windows) {
-			expect = "4      36     326";
-		}else if(getOs()==OperatingSystem.Linux) {
-			expect = "4      36     246";
-		}
 		
 		ExecuteResult res = executeCommand(cmd,"");
 		String out = res.getStdOut();
@@ -133,11 +128,6 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String expect = 
 				"4      36     234"
 				;
-		if( getOs()==OperatingSystem.Windows) {
-			expect = "4      36     326";
-		}else if(getOs()==OperatingSystem.Linux) {
-			expect = "4      36     246";
-		}
 		
 		boolean tmp = showError;
 		showError = false;
@@ -161,11 +151,6 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String expect = 
 				"4      36     234"
 				;
-		if( getOs()==OperatingSystem.Windows) {
-			expect = "4      36     326";
-		}else if(getOs()==OperatingSystem.Linux) {
-			expect = "4      36     246";
-		}
 		
 		boolean tmp = showError;
 		showError = false;
@@ -202,7 +187,12 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		String err = res.getStdErr();
 		
 		assertEquals("", err);
-		assertWc(expect, out.trim());
+		if( getOs() == OperatingSystem.Windows ) {
+			// (as before: the first job only)
+			assertTrue(out, out.trim().startsWith("[1] 100000"));
+		} else {
+			assertEquals(expect, out.trim());
+		}
 		assertEquals(0, res.exitCode);
 		
 		

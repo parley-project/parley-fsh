@@ -43,6 +43,11 @@ public class TestPrompt extends AbstractConsoleTest {
 	}
 
 
+	/** what \\$ gives: # for root, else $ */
+	private static String promptSign() {
+		return "root".equals(System.getProperty("user.name")) ? "#" : "$";
+	}
+
 	@Test
 	@Order(1)
 	public void testPropmtPS1_01() throws IOException {
@@ -52,7 +57,7 @@ public class TestPrompt extends AbstractConsoleTest {
 		String expect = "\\s-\\v\\$ ";
 		assertEquals(expect, val);
 		//-bash-4.2$
-		expect = "fsh-"+Console.VERSION+"$ ";		
+		expect = "fsh-"+Console.VERSION+promptSign()+" ";
 		val = console.getPrompt(Prompt.Primary);
 		assertEquals(expect, val);
 	}
@@ -112,7 +117,7 @@ public class TestPrompt extends AbstractConsoleTest {
 		expect.put("\\W",isWin?"~": "~");
 		expect.put("\\!", ""+(console.history.size()+1));
 		expect.put("\\#", "1");
-		expect.put("\\$", "$");
+		expect.put("\\$", promptSign());
 		expect.put("\\"+oval, "A");
 		
 		String tmp = 

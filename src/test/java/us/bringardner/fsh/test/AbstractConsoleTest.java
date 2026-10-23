@@ -44,6 +44,28 @@ public abstract class AbstractConsoleTest {
 		return ret;
 	}
 
+	/**
+	 * fshexec, the helper that runs programs, built for this system: linux/fshexec (linux/compile.sh
+	 * builds it) or macos/fshexec; null on Windows. The tests that need it are skipped when it
+	 * isn't there.
+	 */
+	public static File fshexec() {
+		switch (getOs()) {
+			case Linux:
+				return new File("linux/fshexec").getAbsoluteFile();
+			case Mac:
+				return new File("macos/fshexec").getAbsoluteFile();
+			default:
+				return null;
+		}
+	}
+
+	/** @return fshexec() can be run here */
+	public static boolean hasFshexec() {
+		File f = fshexec();
+		return f != null && f.canExecute();
+	}
+
 	public static String fileDate;
 	public static Console console;
 	public static File testFilesDir;

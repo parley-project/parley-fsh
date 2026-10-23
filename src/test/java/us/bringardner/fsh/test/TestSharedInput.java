@@ -11,18 +11,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * Programs read the shell's input file themselves (through macos/fshexec), from where the shell
+ * Programs read the shell's input file themselves (through fshexec), from where the shell
  * is, and the shell goes on from where they left it: head -n 1 reads a block and seeks back
  * after its line, as bash's programs do on a file they share with it. (Checked against bash.)
  */
 public class TestSharedInput extends AbstractConsoleTest {
 
-	private static final File HELPER = new File("macos/fshexec");
-
 	@BeforeAll
 	public static void setUp() throws Exception {
 		AbstractConsoleTest.setup("TestFiles");
-		System.setProperty("parley.fsh.exec", HELPER.getAbsolutePath());
+		if( hasFshexec()) {
+			System.setProperty("parley.fsh.exec", fshexec().getPath());
+		}
 	}
 
 	@AfterAll
@@ -33,7 +33,7 @@ public class TestSharedInput extends AbstractConsoleTest {
 	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "the test runs a program Windows does not have (cat, grep, cut, head)")
 	@Test
 	public void programsLeaveTheRestOfTheFile() throws Exception {
-		assumeTrue(HELPER.canExecute(), "no fshexec");
+		assumeTrue(hasFshexec(), "no fshexec for this system");
 		File dir = Files.createTempDirectory("shared").toFile();
 		File f = new File(dir, "f");
 		Files.writeString(f.toPath(), "a\nb\nc\nd\n");
