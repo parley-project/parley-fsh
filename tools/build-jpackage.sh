@@ -1,43 +1,54 @@
 #!/bin/sh
-# Package the jlink build (tools/build-jlink.sh: target/jlink/fsh) with jpackage, as an installer
-# for this platform, in dist/:
+# The macOS installer: dist/fsh-VERSION-macos-ARCH.dmg (and its .sha256), made with jpackage from
+# the jlink build (tools/build-jlink.sh: target/jlink/fsh). The disk image holds fsh.app, to drag
+# to Applications:
 #
-#   macOS:  pkg (default; installs /Applications/fsh.app), dmg, app-image (fsh.app)
-#   Linux:  deb (default; installs /opt/fsh), rpm, app-image (a folder)
+#   fsh.app/Contents/app/fsh        the fsh command (the jlink build's launcher): link it from a
+#                                   directory on PATH (README.txt in the disk image says how)
+#   fsh.app/Contents/MacOS/fsh      jpackage's launcher: opened from the Finder, fsh in its window
+#   fsh.app/Contents/app/fsh.jar    fsh, the keyboard library, fshexec and the class cache
+#   fsh.app/Contents/runtime        the Java runtime
 #
-# Usage: tools/build-jpackage.sh [TYPE] [VERSION]     VERSION: the pom's, without -SNAPSHOT
+# Usage: tools/build-jpackage.sh [TYPE] [VERSION]
+#   TYPE     dmg (the default), pkg (installs /Applications/fsh.app) or app-image (fsh.app only)
+#   VERSION  the pom's, without -SNAPSHOT
 #
-# The command is jpackage's launcher (fsh.app/Contents/MacOS/fsh, /opt/fsh/bin/fsh), with the
-# runtime, fsh.jar, the keyboard library and fshexec in the package. Link it from a directory on
-# PATH. jpackage's launcher starts the JVM in its own process, so unlike target/jlink/fsh/bin/fsh
-# it cannot go through fshexec -j: signals ignored by the shell's caller are not seen as ignored
-# (trap -p) when the JVM takes them first (QUIT, USR2). Everything else is the same.
-#
-# Needs: macOS, Xcode's command line tools; Linux, dpkg-deb and fakeroot (deb) or rpmbuild (rpm).
-# The package is not signed (macOS: --mac-sign and a Developer ID, then notarize, for that).
+# The command in Contents/app starts Java through fshexec -j, as bin/fsh does; jpackage's launcher
+# can't (its JVM is in its own process), so the Finder's fsh doesn't see the signals its caller
+# ignored, which only matters in a terminal. The disk image is not signed or notarized (for that:
+# --mac-sign and a Developer ID, then notarytool). Linux: tools/build-linux-packages.sh; Windows:
+# tools/build-msi.ps1.
 
 set -e
 PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$PROJECT_DIR"
 
-case $(uname -s) in
-Darwin) platform=macos; lib=libnativekeyboard.dylib; type=${1:-pkg} ;;
-Linux) platform=linux; lib=libnativekeyboard.so; type=${1:-deb} ;;
-*) echo "$0: macOS and Linux only" >&2; exit 1 ;;
+if [ "$(uname -s)" != Darwin ]; then
+	echo "$0: macOS only (Linux: tools/build-linux-packages.sh; Windows: tools/build-msi.ps1)" >&2
+	exit 1
+fi
+type=${1:-dmg}
+case $type in
+dmg|pkg|app-image) ;;
+*) echo "usage: $0 [dmg|pkg|app-image] [VERSION]" >&2; exit 2 ;;
 esac
 version=${2:-$(awk -F'[<>]' '/<artifactId>fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)}
 version=${version%-SNAPSHOT}
 version=${version#v}
+case $(uname -m) in
+arm64) arch=aarch64 ;;
+*) arch=$(uname -m) ;;
+esac
 
 image=target/jlink/fsh
 if [ ! -x "$image/bin/fsh" ] || [ pom.xml -nt "$image/bin/fsh" ] \
 		|| [ -n "$(find src resources -newer "$image/bin/fsh" -type f 2>/dev/null | head -1)" ]; then
 	tools/build-jlink.sh
 fi
-if [ -z "$JAVA_HOME" ] && [ -x /usr/libexec/java_home ]; then
+if [ -z "$JAVA_HOME" ]; then
 	JAVA_HOME=$(/usr/libexec/java_home)
 fi
-jpackage=${JAVA_HOME:+$JAVA_HOME/bin/}jpackage
+jpackage=$JAVA_HOME/bin/jpackage
 # (the runtime's version: jpackage must be from the same JDK)
 runtime_major=$(sed -n 's/^JAVA_VERSION="\([0-9]*\).*/\1/p' "$image/runtime/release")
 jpackage_major=$("$jpackage" --version | sed 's/[^0-9].*//')
@@ -46,39 +57,67 @@ if [ "$runtime_major" != "$jpackage_major" ]; then
 	exit 1
 fi
 
-# what goes in the app folder ($APPDIR): the jar, the library and fshexec (no class cache: its
-# class path would not match the installed jar's)
-input=target/jpackage/input
-rm -rf target/jpackage
-mkdir -p "$input" dist
-cp -p "$image/lib/fsh.jar" "$image/lib/$lib" "$image/lib/fshexec" "$input/"
+# what goes in the app folder ($APPDIR, Contents/app): all of the jlink build's lib, and its
+# launcher as the command
+work=target/jpackage
+rm -rf "$work"
+mkdir -p "$work/input" "$work/dmg" dist
+cp -p "$image"/lib/* "$work/input/"
+cp -p "$image/bin/fsh" "$work/input/fsh"
+
+cat > "$work/dmg/README.txt" <<TXT
+fsh $version for macOS ($arch)
+
+Drag fsh.app to Applications. Opened from the Finder, fsh runs in its own window.
+
+To use fsh in a terminal, link its command from a directory on PATH, once:
+
+    sudo mkdir -p /usr/local/bin
+    sudo ln -sf /Applications/fsh.app/Contents/app/fsh /usr/local/bin/fsh
+
+and to use it as your login shell, add it to /etc/shells and choose it:
+
+    echo /usr/local/bin/fsh | sudo tee -a /etc/shells
+    chsh -s /usr/local/bin/fsh
+
+fsh.app is not notarized: macOS asks before opening it the first time (right-click it,
+Open), or, once, in a terminal:
+
+    xattr -dr com.apple.quarantine /Applications/fsh.app
+
+Source and documentation: https://github.com/parley-project/parley-fsh
+TXT
 
 native_access=""
 [ "$runtime_major" -ge 17 ] && native_access=--enable-native-access=ALL-UNNAMED
 
-set -- --type "$type" --dest dist --name fsh --app-version "$version" \
+# (as bin/fsh's options, but with a window: no java.awt.headless, so from the Finder fsh opens
+# its window)
+set -- --type "$type" --dest "$work/out" --name fsh --app-version "$version" \
 	--vendor "Tony Bringardner" --copyright "Copyright 2004-$(date +%Y) Tony Bringardner" \
 	--description "fsh, the FileSource Shell: a bash-like shell on any parley-files file system" \
-	--input "$input" --main-jar fsh.jar --main-class us.bringardner.fsh.Console \
+	--input "$work/input" --main-jar fsh.jar --main-class us.bringardner.fsh.Console \
 	--runtime-image "$image/runtime" \
 	--java-options '-Djava.library.path=$APPDIR' \
 	--java-options -Xss16m --java-options -XX:+UseSerialGC --java-options -Xmn16m \
 	--java-options -XX:MinHeapFreeRatio=10 --java-options -XX:MaxHeapFreeRatio=20 \
-	--java-options -XX:-MaxFDLimit --java-options -Djava.awt.headless=true \
-	--temp target/jpackage/work
+	--java-options -XX:-MaxFDLimit \
+	--mac-package-identifier us.bringardner.fsh --mac-package-name fsh \
+	--temp "$work/temp"
 [ -n "$native_access" ] && set -- "$@" --java-options "$native_access"
-if [ "$type" != app-image ]; then
-	set -- "$@" --license-file LICENSE
-fi
-case $platform-$type in
-macos-*)
-	set -- "$@" --mac-package-identifier us.bringardner.fsh --mac-package-name fsh ;;
-linux-app-image) ;;
-linux-*)
-	set -- "$@" --linux-package-name fsh --install-dir /opt \
-		--linux-app-category utils ;;
-esac
-# (jpackage's work files kept in target: removed again here)
+[ "$type" = dmg ] && set -- "$@" --mac-dmg-content "$work/dmg/README.txt"
+[ "$type" != app-image ] && set -- "$@" --license-file LICENSE
 "$jpackage" "$@"
-rm -rf target/jpackage/work
-echo "dist: $(cd dist && ls -t | head -1)"
+
+case $type in
+app-image)
+	rm -rf dist/fsh.app
+	mv "$work/out/fsh.app" dist/
+	echo "$PROJECT_DIR/dist/fsh.app" ;;
+*)
+	name=fsh-$version-macos-$arch.$type
+	mv "$work/out"/fsh-*."$type" "dist/$name"
+	(cd dist && shasum -a 256 "$name" > "$name.sha256")
+	echo "$PROJECT_DIR/dist/$name" ;;
+esac
+rm -rf "$work"

@@ -1,6 +1,6 @@
 @echo off
 rem Run the shell from its packaged jar (target\fsh-*.jar: mvn package), passing the arguments to it.
-rem (No AOT cache, native image or fshexec here, as macos/fsh has: see compile.cmd.)
+rem (No AOT cache or fshexec here, as macos/fsh has: see compile.cmd.)
 
 setlocal
 for %%i in ("%~dp0.") do set LIB_DIR=%%~fi

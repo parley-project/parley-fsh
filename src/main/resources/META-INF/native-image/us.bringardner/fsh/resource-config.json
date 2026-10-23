@@ -1,9 +1,0 @@
-{
-  "resources":{
-  "includes":[{
-    "pattern":"\\QMETA-INF/services/java.lang.System$LoggerFinder\\E"
-  }, {
-    "pattern":"\\Qus/bringardner/parley/core/BjlLogger.properties\\E"
-  }]},
-  "bundles":[]
-}
