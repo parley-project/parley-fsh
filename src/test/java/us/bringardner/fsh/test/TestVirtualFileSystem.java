@@ -1,5 +1,6 @@
 package us.bringardner.fsh.test;
 
+import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,7 +17,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
-import us.bringardner.fsh.VirtualFileSourceFactory;
 
 @TestMethodOrder(OrderAnnotation.class)
 public class TestVirtualFileSystem extends AbstractConsoleTest{

@@ -1,5 +1,6 @@
 package us.bringardner.fsh;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -123,8 +124,8 @@ public class Glob {
 					String child = join(path, unescape(segment));
 					FileSource file = ctx.console.createFileSource(child);
 					FileSource parent = path.isEmpty() ? null : ctx.console.createFileSource(path);
-					if( us.bringardner.fsh.LocalFiles.isLocal(parent)
-							&& !java.nio.file.Files.isExecutable(us.bringardner.fsh.LocalFiles.of(parent).toPath())) {
+					if( us.bringardner.parley.files.tree.LocalFiles.isLocal(parent)
+							&& !java.nio.file.Files.isExecutable(us.bringardner.parley.files.tree.LocalFiles.of(parent).toPath())) {
 						// nothing in a directory that cannot be searched (readable/. as well)
 						continue;
 					}
@@ -302,10 +303,10 @@ public class Glob {
 	private static long attribute(ShellContext ctx, String path, String key) {
 		try {
 			FileSource f = ctx.console.createFileSource(path);
-			if( !us.bringardner.fsh.LocalFiles.isLocal(f)) {
+			if( !us.bringardner.parley.files.tree.LocalFiles.isLocal(f)) {
 				return 0;
 			}
-			java.nio.file.Path p = us.bringardner.fsh.LocalFiles.of(f).toPath();
+			java.nio.file.Path p = us.bringardner.parley.files.tree.LocalFiles.of(f).toPath();
 			java.nio.file.attribute.BasicFileAttributes a = java.nio.file.Files.readAttributes(p, java.nio.file.attribute.BasicFileAttributes.class);
 			switch (key) {
 			case "size": return a.size();
@@ -341,8 +342,8 @@ public class Glob {
 			String child = join(path, name);
 			if( kid.isDirectory()) {
 				// a link to a directory: listed by a last **, never gone into (as bash's)
-				boolean link = us.bringardner.fsh.LocalFiles.isLocal(kid)
-						&& java.nio.file.Files.isSymbolicLink(us.bringardner.fsh.LocalFiles.of(kid).toPath());
+				boolean link = us.bringardner.parley.files.tree.LocalFiles.isLocal(kid)
+						&& java.nio.file.Files.isSymbolicLink(us.bringardner.parley.files.tree.LocalFiles.of(kid).toPath());
 				if( !link || last ) {
 					out.add(child);
 				}

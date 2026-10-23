@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -469,8 +470,8 @@ public class Test extends ShellCommand{
 	static java.nio.file.Path path(ShellContext ctx, String val) {
 		try {
 			FileSource f = ctx.getFileSource(val);
-			if( us.bringardner.fsh.LocalFiles.isLocal(f) ) {
-				return us.bringardner.fsh.LocalFiles.of(f).toPath();
+			if( us.bringardner.parley.files.tree.LocalFiles.isLocal(f) ) {
+				return us.bringardner.parley.files.tree.LocalFiles.of(f).toPath();
 			}
 		} catch (IOException e) {
 		}

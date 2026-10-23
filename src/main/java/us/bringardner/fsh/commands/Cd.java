@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -127,9 +128,9 @@ public class Cd extends ShellCommand{
 				dir = link;
 				link = dir.getLinkedTo();
 			}
-			if( us.bringardner.fsh.LocalFiles.isLocal(dir) && us.bringardner.fsh.LocalFiles.of(dir).exists()) {
+			if( us.bringardner.parley.files.tree.LocalFiles.isLocal(dir) && us.bringardner.parley.files.tree.LocalFiles.of(dir).exists()) {
 				// (every link in the path resolved, as cd -P does)
-				dir = ctx.console.createFileSource(us.bringardner.fsh.LocalFiles.of(dir).getCanonicalPath());
+				dir = ctx.console.createFileSource(us.bringardner.parley.files.tree.LocalFiles.of(dir).getCanonicalPath());
 			}
 		}
 		if( !dir.isDirectory()) {

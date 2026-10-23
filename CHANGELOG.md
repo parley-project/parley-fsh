@@ -25,6 +25,9 @@
 
 ### Changed
 
+- **The shell's file tree is parley-files'** (`us.bringardner.parley.files.tree`: `VirtualFileSourceFactory`,
+  `TreeFile`, `LocalFiles`, moved there from `us.bringardner.fsh`), so the console browser on its own
+  (pfv) has the same tree. Nothing else changes.
 - **Raw mode turns IEXTEN off** in the keyboard library (`NativeKeyboard.cpp`, as `cfmakeraw`
   does): on macOS the terminal driver kept Ctrl-V and Ctrl-O for itself even in raw mode, so the
   line editor's Ctrl-V (the next key as it is) and Ctrl-O never worked there, nor Ctrl-V in the

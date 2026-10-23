@@ -1,5 +1,7 @@
 package us.bringardner.fsh.test;
 
+import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
+import us.bringardner.parley.files.tree.TreeFile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,8 +15,6 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 import us.bringardner.fsh.Console;
-import us.bringardner.fsh.TreeFile;
-import us.bringardner.fsh.VirtualFileSourceFactory;
 
 /** BJL-25: mount lookup, ".." and "~" work on whole path elements. */
 public class TestVirtualPaths {

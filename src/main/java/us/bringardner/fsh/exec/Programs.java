@@ -1,5 +1,6 @@
 package us.bringardner.fsh.exec;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -505,7 +506,7 @@ public final class Programs {
 				}
 
 				FileSource dir = ctx.console.getCurrentDirectory();
-				java.io.File cwd = us.bringardner.fsh.LocalFiles.of(dir);
+				java.io.File cwd = us.bringardner.parley.files.tree.LocalFiles.of(dir);
 				if( cwd != null ) {
 					builder.directory(cwd);
 				}

@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -142,8 +143,8 @@ public class Enable extends ShellCommand{
 			cmd.addAll(names);
 			ProcessBuilder b = new ProcessBuilder(cmd).redirectErrorStream(true);
 			us.bringardner.parley.files.FileSource dir = ctx.console.getCurrentDirectory();
-			if( us.bringardner.fsh.LocalFiles.isLocal(dir) ) {
-				b.directory(us.bringardner.fsh.LocalFiles.of(dir));
+			if( us.bringardner.parley.files.tree.LocalFiles.isLocal(dir) ) {
+				b.directory(us.bringardner.parley.files.tree.LocalFiles.of(dir));
 			}
 			Process p = b.start();
 			try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {

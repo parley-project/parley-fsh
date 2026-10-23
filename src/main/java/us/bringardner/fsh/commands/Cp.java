@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -186,14 +187,14 @@ public class Cp extends ShellCommand{
 				copyStream(ctx,in,out);
 			}
 		}		
-		if( !existed && us.bringardner.fsh.LocalFiles.isLocal(from)
-				&& us.bringardner.fsh.LocalFiles.isLocal(to) ) {
+		if( !existed && us.bringardner.parley.files.tree.LocalFiles.isLocal(from)
+				&& us.bringardner.parley.files.tree.LocalFiles.isLocal(to) ) {
 			// as cp: a new file gets the source's mode (less group and other write, as umask 022)
 			try {
-				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(us.bringardner.fsh.LocalFiles.of(from).toPath());
+				java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.nio.file.Files.getPosixFilePermissions(us.bringardner.parley.files.tree.LocalFiles.of(from).toPath());
 				mode.remove(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
 				mode.remove(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
-				java.nio.file.Files.setPosixFilePermissions(us.bringardner.fsh.LocalFiles.of(to).toPath(), mode);
+				java.nio.file.Files.setPosixFilePermissions(us.bringardner.parley.files.tree.LocalFiles.of(to).toPath(), mode);
 			} catch (UnsupportedOperationException e) {
 			}
 		}
