@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -105,13 +106,13 @@ public class Rm extends ShellCommand{
 	}
 
 	private void remove(ShellContext ctx, List<Arguments> options, FileSource file, String rootType, boolean asked) throws IOException {
-		if( us.bringardner.fsh.LocalFiles.isLocal(file)
-				&& java.nio.file.Files.isSymbolicLink(us.bringardner.fsh.LocalFiles.of(file).toPath())) {
+		if( us.bringardner.parley.files.tree.LocalFiles.isLocal(file)
+				&& java.nio.file.Files.isSymbolicLink(us.bringardner.parley.files.tree.LocalFiles.of(file).toPath())) {
 			// a link (to a directory too) is removed itself, not what it points to
 			if( !confirm(ctx, options, file)) {
 				return;
 			}
-			java.nio.file.Files.delete(us.bringardner.fsh.LocalFiles.of(file).toPath());
+			java.nio.file.Files.delete(us.bringardner.parley.files.tree.LocalFiles.of(file).toPath());
 			if( options.contains(Arguments.v)) {
 				ctx.stdout.println(file.getAbsolutePath());
 			}

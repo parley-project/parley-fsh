@@ -1,5 +1,8 @@
 package us.bringardner.fsh;
 
+import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
+import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.LocalFiles;
 import us.bringardner.swing.gradient.GradientLook;
 import java.awt.GraphicsEnvironment;
 import java.beans.PropertyChangeEvent;
@@ -3003,7 +3006,7 @@ delimiter
 					try {
 						String host = getLocalHostName();
 						FileSource cwd = getCurrentDirectory();
-						if (!us.bringardner.fsh.LocalFiles.isLocal(cwd)) {
+						if (!us.bringardner.parley.files.tree.LocalFiles.isLocal(cwd)) {
 							Properties prop = cwd.getFileSourceFactory().getConnectProperties();
 							String tmp = prop.getProperty("Host");
 							if( tmp == null ) {

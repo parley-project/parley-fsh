@@ -1,5 +1,7 @@
 package us.bringardner.fsh.test;
 
+import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
+import us.bringardner.parley.files.tree.TreeFile;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,8 +19,6 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
-import us.bringardner.fsh.TreeFile;
-import us.bringardner.fsh.VirtualFileSourceFactory;
 
 public class TestMountedFactory extends AbstractConsoleTest {
 

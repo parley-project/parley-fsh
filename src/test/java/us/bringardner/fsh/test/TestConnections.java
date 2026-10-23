@@ -1,5 +1,8 @@
 package us.bringardner.fsh.test;
 
+import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
+import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.LocalFiles;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -19,9 +22,6 @@ import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import us.bringardner.fsh.Completion;
-import us.bringardner.fsh.LocalFiles;
-import us.bringardner.fsh.TreeFile;
-import us.bringardner.fsh.VirtualFileSourceFactory;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 import us.bringardner.parley.term.line.Completions;

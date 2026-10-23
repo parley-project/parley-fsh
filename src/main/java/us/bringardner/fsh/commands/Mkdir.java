@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.List;
 
@@ -101,9 +102,9 @@ public class Mkdir extends ShellCommand{
 				ret = 1;
 				continue;
 			}
-			if( bits != null && us.bringardner.fsh.LocalFiles.isLocal(dir) ) {
+			if( bits != null && us.bringardner.parley.files.tree.LocalFiles.isLocal(dir) ) {
 				try {
-					java.nio.file.Files.setPosixFilePermissions(us.bringardner.fsh.LocalFiles.of(dir).toPath(), permissions(bits));
+					java.nio.file.Files.setPosixFilePermissions(us.bringardner.parley.files.tree.LocalFiles.of(dir).toPath(), permissions(bits));
 				} catch (Exception e) {
 					ctx.stderr.println("mkdir: "+path+": "+e.getMessage());
 					ret = 1;

@@ -1,5 +1,6 @@
 package us.bringardner.fsh.exec;
 
+import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -281,7 +282,7 @@ final class Redirects {
 			}
 			// a file (not a device or a named pipe, where a read can wait) is shared with the programs
 			InputStream in;
-			java.io.File localFile = us.bringardner.fsh.LocalFiles.of(file);
+			java.io.File localFile = us.bringardner.parley.files.tree.LocalFiles.of(file);
 			if( localFile != null && localFile.isFile()) {
 				// a local file: a program reads it itself, from where the shell is
 				if( !localFile.canRead()) {
@@ -292,7 +293,7 @@ final class Redirects {
 				in = file.getInputStream();
 				if( file.isFile()) {
 					in = new ReadBack(in);
-				} else if( us.bringardner.fsh.LocalFiles.isLocal(file) ) {
+				} else if( us.bringardner.parley.files.tree.LocalFiles.isLocal(file) ) {
 					// a named pipe or a device: shared with programs, as the file is in bash (one that
 					// does not read it takes nothing: BASHPID=$(sh -c 'echo $PPID') in a loop reading it)
 					in = new PipeInput(in);
@@ -557,9 +558,9 @@ final class Redirects {
 
 	private static void openReadWrite(ShellContext sc, int n, String path) throws IOException {
 		FileSource file = sc.getFileSource(path);
-		if( us.bringardner.fsh.LocalFiles.isLocal(file) && us.bringardner.fsh.LocalFiles.of(file).exists() && !us.bringardner.fsh.LocalFiles.of(file).isFile() && !us.bringardner.fsh.LocalFiles.of(file).isDirectory()) {
+		if( us.bringardner.parley.files.tree.LocalFiles.isLocal(file) && us.bringardner.parley.files.tree.LocalFiles.of(file).exists() && !us.bringardner.parley.files.tree.LocalFiles.of(file).isFile() && !us.bringardner.parley.files.tree.LocalFiles.of(file).isDirectory()) {
 			// a named pipe or a device (exec 9<> fifo): opened for reading and writing at once
-			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(us.bringardner.fsh.LocalFiles.of(file), "rw");
+			java.io.RandomAccessFile raf = new java.io.RandomAccessFile(us.bringardner.parley.files.tree.LocalFiles.of(file), "rw");
 			InputStream in = new PipeInput(raf);
 			OutputStream out = new OutputStream() {
 				@Override

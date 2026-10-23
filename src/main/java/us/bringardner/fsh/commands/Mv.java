@@ -1,5 +1,6 @@
 package us.bringardner.fsh.commands;
 
+import us.bringardner.parley.files.tree.TreeFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -156,7 +157,7 @@ public class Mv extends ShellCommand{
 		}
 
 
-		boolean renamed = source.renameTo(us.bringardner.fsh.TreeFile.unwrap(dest));
+		boolean renamed = source.renameTo(us.bringardner.parley.files.tree.TreeFile.unwrap(dest));
 		if( !renamed ) {
 			// (copy lists each file it copies with -v, the source itself last)
 			copy(sc,source,dest,options);
