@@ -83,7 +83,7 @@ public final class CredentialPrompts {
 		try {
 			return !java.awt.GraphicsEnvironment.isHeadless();
 		} catch (Throwable e) {
-			// no AWT (a runtime built without java.desktop, say)
+			// no AWT (a native image built without it, say)
 			return false;
 		}
 	}

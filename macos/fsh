@@ -1,5 +1,8 @@
 #!/bin/sh
-# Run the shell from its packaged jar (target/fsh-*.jar: mvn package), passing the arguments to it.
+# Run the shell from its packaged jar (target/fsh-*.jar: mvn package), passing the arguments to it,
+# or its native image (target/native/fsh: macos/build-native.sh) when that is as new as the jar.
+# FSH_RUNTIME chooses for one run: native (the native image), jvm (the jar on Java), or auto (the
+# default: the native image when it is as new as the jar).
 # With JDK 25 or later it uses an AOT cache (target/fsh.aot), which makes it start and warm up
 # faster; the cache is made the first time (from tools/aot-training.sh) and again when the jar
 # changes.
@@ -8,10 +11,28 @@ LIB_DIR=$(cd "$(dirname "$0")" && pwd)
 PROJECT_DIR=$(dirname "$LIB_DIR")
 cp_file="$PROJECT_DIR/target/runtime-classpath.txt"
 
+native="$PROJECT_DIR/target/native/fsh"
+case "${FSH_RUNTIME:-auto}" in
+native)
+	if [ ! -x "$native" ]; then
+		echo "fsh: FSH_RUNTIME=native, but there is no native image ($native): build it with macos/build-native.sh" >&2
+		exit 1
+	fi
+	exec "$native" "$@" ;;
+jvm|auto) ;;
+*)
+	echo "fsh: FSH_RUNTIME=$FSH_RUNTIME: use native, jvm or auto" >&2
+	exit 2 ;;
+esac
+
 jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar 2>/dev/null | head -1)
 if [ -z "$jar" ]; then
 	(cd "$PROJECT_DIR" && mvn -q package -DskipTests) || exit 1
 	jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar | head -1)
+fi
+# (auto) the native image (macos/build-native.sh), unless the jar was built after it
+if [ "${FSH_RUNTIME:-auto}" = auto ] && [ -x "$native" ] && [ ! "$jar" -nt "$native" ]; then
+	exec "$native" "$@"
 fi
 if [ ! -f "$cp_file" ] || [ "$PROJECT_DIR/pom.xml" -nt "$cp_file" ]; then
 	(cd "$PROJECT_DIR" && mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile="$cp_file") || exit 1

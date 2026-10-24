@@ -106,9 +106,10 @@ and signals, so a platform has all ten or none.
 
 C is **all or none per implementation**. Where it is none, `canSpawn()` is false and
 `ProcessBuilder` starts programs. What cannot be done through either JNI or JNA, and stays C:
-`fshexec` (it runs between `fork` and `exec`, and as a stand-in process).
+`fshexec` (it runs between `fork` and `exec`, and as a stand-in process) and the native image's
+launcher (`fsh-native.c`, before any runtime exists).
 
 ## Choosing an implementation
 
-`-Dparley.fsh.native=` is `auto` (the default: the JNI library when it is loaded, else JNA), `jni`,
-or `jna`.
+`-Dparley.fsh.native=` is `auto` (the default: the JNI library when it is loaded, else JNA, never JNA in
+a native image), `jni`, or `jna`.

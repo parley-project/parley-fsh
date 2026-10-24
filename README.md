@@ -138,29 +138,32 @@ Measured on a 3.3 GHz Intel Core i5-10600 (macOS 26.6), median of three runs (ni
 start-up), in seconds. The scripts are POSIX `sh` so every shell runs the same code;
 lower is better.
 
-| Test | bash 5.3 | bash 3.2 (macOS) | zsh 5.9 | dash | ksh93 | fsh (JVM) |
-|---|---|---|---|---|---|---|
-| Start-up (`-c :`) | 0.016 | 0.004 | 0.007 | 0.003 | 0.004 | 0.141 |
-| Loop, 100,000 iterations | 0.80 | 1.07 | 0.39 | 0.50 | 0.14 | 0.89 |
-| Loop, 1,000,000 iterations | 11.7 | — | 5.0 | 7.2 | 2.0 | **4.9** |
-| 20,000 function calls | 0.34 | 0.38 | 0.32 | 0.18 | 0.06 | 0.59 |
-| 20,000 string trims | 0.39 | 0.45 | 0.13 | 0.23 | 0.08 | 0.67 |
-| 1,000 `$(echo hi)` | 0.91 | 0.62 | 0.64 | 0.49 | 0.03 | 0.38 |
-| `read` loop, 20,000 lines | 0.23 | 0.22 | 0.17 | 0.16 | 0.03 | 0.54 |
-| 200 external programs | 0.53 | 0.48 | 0.50 | 0.47 | 0.50 | 0.74 |
-| 100 three-stage pipelines | 0.37 | 0.32 | 0.37 | 0.30 | 0.34 | 0.98 |
+| Test | bash 5.3 | bash 3.2 (macOS) | zsh 5.9 | dash | ksh93 | fsh (JVM) | fsh (native) |
+|---|---|---|---|---|---|---|---|
+| Start-up (`-c :`) | 0.016 | 0.004 | 0.007 | 0.003 | 0.004 | 0.141 | 0.033 |
+| Loop, 100,000 iterations | 0.80 | 1.07 | 0.39 | 0.50 | 0.14 | 0.89 | 0.86 |
+| Loop, 1,000,000 iterations | 11.7 | — | 5.0 | 7.2 | 2.0 | **4.9** | 11.2 |
+| 20,000 function calls | 0.34 | 0.38 | 0.32 | 0.18 | 0.06 | 0.59 | 0.29 |
+| 20,000 string trims | 0.39 | 0.45 | 0.13 | 0.23 | 0.08 | 0.67 | 0.37 |
+| 1,000 `$(echo hi)` | 0.91 | 0.62 | 0.64 | 0.49 | 0.03 | 0.38 | 0.09 |
+| `read` loop, 20,000 lines | 0.23 | 0.22 | 0.17 | 0.16 | 0.03 | 0.54 | 0.28 |
+| 200 external programs | 0.53 | 0.48 | 0.50 | 0.47 | 0.50 | 0.74 | 0.50 |
+| 100 three-stage pipelines | 0.37 | 0.32 | 0.37 | 0.30 | 0.34 | 0.98 | 0.77 |
 
 What this shows:
 
-- **Start-up:** fsh takes about 0.14 s to start, which shows in short scripts run many times.
-- **Short scripts:** fsh is within about 2× of bash on most tests and faster than
+- **Start-up:** the JVM build takes about 0.14 s to start, which shows in short scripts run
+  many times. The native build (GraalVM) starts in about 0.03 s.
+- **Short scripts:** both builds are within about 2× of bash on most tests and faster than
   bash at command substitution, because fsh runs `$( )` in-process instead of forking.
-- **Long-running scripts:** the JVM's just-in-time compiler pays off; on a million-step loop
-  fsh is more than twice as fast as bash 5.3 and on a par with zsh.
+- **Long-running scripts:** the JVM build's just-in-time compiler pays off; on a million-step
+  loop it is more than twice as fast as bash 5.3 and on a par with zsh. The native build has no
+  JIT and stays at bash's speed.
 - **Starting programs and pipelines** costs fsh more than a native shell: starting a program
   from the JVM is slower than bash's `fork` and `exec`, and fsh moves data between pipeline
   stages itself.
-- **Memory:** bash uses about 4 MB. fsh peaks at about 88 MB on a busy script.
+- **Memory:** bash uses about 4 MB. fsh's JVM build peaks at about 88 MB on a busy script, the
+  native build at about 27 MB.
 
 ksh93 is the fastest shell here at almost everything; among other things it runs `$( )` of
 builtins without forking.
@@ -173,7 +176,8 @@ call, `${s#abc}`/`${t%hij}`, `v=$(echo hi)`, `while read -r`, `/usr/bin/true`,
 ## Requirements
 
 - Java 11 or later, to run it and to build it, like the rest of the Parley library. It starts
-  fastest on JDK 25 or later (its AOT cache). The installers carry their own Java runtime.
+  fastest on JDK 25 or later (its AOT cache) or as the native image (built with GraalVM). The
+  installers carry their own Java runtime.
 - parley-files (compile), with parley-files-ftp and parley-files-sftp (and its SSH provider,
   parley-files-sftp-parley-ssh) bundled at run time so FTP and SFTP work without any setup. parley-files-jdbc is included
   only when you build with `-Pjdbc`.
@@ -202,10 +206,29 @@ nothing else needs to be installed, and each file has a `.sha256` beside it:
 - **Windows:** the installer doesn't change `PATH`; add `C:\Program Files\fsh` to it to run
   `fsh` from any console.
 
+Each release also has the native binary for every platform (a GraalVM native image, which starts
+in about 0.03 s, with its keyboard library, and the file browser built in: `browse`, `view`,
+`edit` and `search`). Nothing else needs to be installed, but it has no JIT (slower on long
+scripts), no OS keychain (`@keychain:`) and can't load plugins:
+
+| Platform | File |
+|---|---|
+| macOS, Apple silicon | `fsh-VERSION-macos-aarch64.tar.gz` |
+| macOS, Intel | `fsh-VERSION-macos-x86_64.tar.gz` |
+| Linux, x86-64 | `fsh-VERSION-linux-x86_64.tar.gz` |
+| Linux, ARM64 | `fsh-VERSION-linux-aarch64.tar.gz` |
+| Windows, x64 | `fsh-VERSION-windows-x86_64.zip` |
+
+Unpack it and run `fsh` (`fsh.exe`); keep the files in the folder together. macOS marks a
+download as quarantined and the files are not notarized: once, after unpacking,
+`xattr -dr com.apple.quarantine .`
+
 The installers are built by `.github/workflows/release-binaries.yml` when a release is
 published: `compile` in `macos/`, `linux/` or `windows/` (the keyboard library and `fshexec`),
 then `tools/build-jlink.sh` and `tools/build-jpackage.sh` (macOS), `tools/build-linux-packages.sh`
-(Linux) or `tools/build-msi.ps1` (Windows). The behaviour of the native library each one carries
+(Linux) or `tools/build-msi.ps1` (Windows). The native binaries need the browser plugin, which is
+built after fsh, so they are made where all of Parley is built: `build-native --builtin` in the
+same folders, packaged by `tools/package-native.sh` (`.ps1` on Windows). The behaviour of the native library each one carries
 is specified in [NATIVE-CONTRACT.md](NATIVE-CONTRACT.md).
 
 ## Native support
@@ -239,8 +262,8 @@ fsh: no native support (fsh --native-status says why): line editing and job cont
 (`--help`'s usage is bash's, and does not list it). To silence the line, set `FSH_NATIVE_NOTICE=0`
 (or `-Dparley.fsh.native.notice=false`).
 
-**Choosing.** `-Dparley.fsh.native=` is `auto` (the default: the JNI library when it loads, else JNA),
-`jni`, or `jna`. What every implementation must do is in
+**Choosing.** `-Dparley.fsh.native=` is `auto` (the default: the JNI library when it loads, else JNA; a
+native image never tries JNA), `jni`, or `jna`. What every implementation must do is in
 [NATIVE-CONTRACT.md](NATIVE-CONTRACT.md).
 
 ## Build and run
@@ -248,6 +271,7 @@ fsh: no native support (fsh --native-status says why): line editing and job cont
 ```sh
 mvn package                 # target/fsh.jar: fsh and everything it needs, in one jar
 mvn -Pjdbc package          # also bundle the JDBC file system
+mvn -Pnative package        # GraalVM native binary named fsh
 java -jar target/fsh.jar
 ```
 
@@ -257,6 +281,23 @@ OS keychain, say). `cred providers` lists the keychain either way, and says why 
 
 On macOS and Linux, `compile.sh` (in `macos/` or `linux/`) builds the native keyboard library,
 and `fsh` there starts the shell (`fsh.sh` starts it with a debugger port on localhost:8001).
+
+`fsh` runs the native image (`build-native.sh`, in `target/native/`) when there is one as new as
+the jar, and otherwise the jar on Java. The native image starts faster (about 0.03 s, against
+0.14 s); the JVM is faster on long-running scripts (see [Performance](#performance)). To choose
+for one run, set `FSH_RUNTIME`:
+
+```sh
+FSH_RUNTIME=jvm macos/fsh long-job.sh     # the jar on Java, even if there is a native image
+FSH_RUNTIME=native macos/fsh              # the native image (an error if none is built)
+```
+
+`auto`, or leaving it unset, is the default choice above.
+
+A native image can't load plugin jars, so `build-native.sh --builtin` (`build-native.cmd
+--builtin` on Windows) builds the plugins into it: the jars `FSH_PLUGINS` names, else those in
+the plugin folders. The release's native binaries are built that way with the terminal file
+browser (parley-files-viewer-tui).
 
 ### With its own Java runtime, and the installers
 
@@ -314,7 +355,8 @@ What a plugin can provide:
 | `java.sql.Driver` | A JDBC driver |
 
 A plugin jar lists its providers in `META-INF/services/` and has `Parley-Plugin-Api: 1` in its
-manifest.
+manifest. The native image (GraalVM) cannot load jars: it has only what was built into it
+(`build-native.sh --builtin`).
 
 ## Passwords in startup scripts
 

@@ -233,6 +233,9 @@ public class Cred extends ShellCommand {
 
 	/** Why this fsh has no @keychain: store, so a build that left it out is easy to spot. */
 	static String whyNoKeychain() {
+		if( System.getProperty("org.graalvm.nativeimage.imagecode") != null ) {
+			return "this is the native fsh, which is built without it; run the Java fsh (fsh.jar) for @keychain:";
+		}
 		if( Runtime.version().feature() < 17 ) {
 			return "it needs Java 17 or newer, and this is Java "+Runtime.version().feature();
 		}

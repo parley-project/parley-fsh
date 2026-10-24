@@ -2,27 +2,23 @@
 
 ## 2.0.0 (unreleased)
 
-### Removed
-
-- The GraalVM native image: `macos/`, `linux/` and `windows/` `build-native`, the launcher
-  `fsh-native.c`, `tools/package-native.sh` and `.ps1`, `tools/native-reflect.py`, the
-  native-image settings in `META-INF/native-image`, the pom's `native` profile, `FSH_RUNTIME`
-  in `macos/fsh` and `linux/fsh`, and the property `parley.fsh.libdir` (only the native image
-  read it). fsh ships as installers instead (below).
-
 ### Added
 
 - Installers, each with fsh's own Java runtime (`tools/build-jlink.sh`): a disk image for macOS
   (`tools/build-jpackage.sh`: `fsh.app`, which opens fsh's window from the Finder, with the
   command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
   (`tools/build-linux-packages.sh`: `/opt/fsh`, `/usr/bin/fsh`, added to `/etc/shells`), and an
-  `.msi` for Windows (`tools/build-msi.ps1`). `release-binaries.yml` builds them for a release.
+  `.msi` for Windows (`tools/build-msi.ps1`). `release-binaries.yml` builds them for a release,
+  besides the native binaries.
+- `build-native --builtin` (`macos/`, `linux/`, `windows/`): the native image with plugin jars
+  built into it (`FSH_PLUGINS`, else the plugin folders' jars), since a native image can't load
+  them at run time. The release's native binaries have the terminal file browser built in.
 
 ### Changed (needs a configuration change)
 
 - **Property names** (Parley 2.0.0; the old names are no longer read): `fsh.*` is `parley.fsh.*`:
   `parley.fsh.native`, `parley.fsh.native.notice`, `parley.fsh.native.debug`, `parley.fsh.exec`,
-  `parley.fsh.spawn`, `parley.fsh.credentials.dialog`, `parley.fsh.argv0`, and those the
+  `parley.fsh.libdir`, `parley.fsh.spawn`, `parley.fsh.credentials.dialog`, `parley.fsh.argv0`, and those the
   native launcher passes, `parley.fsh.ignoredAtStart` and `parley.fsh.cfAbsent` (rebuild `fshexec` with the
   new `fshexec.c`). The build's `fsh.noKeychain`, `fsh.writeCommandsDoc` and `fsh.test.reportDir` are
   `parley.fsh.noKeychain`, `parley.fsh.writeCommandsDoc` and `parley.fsh.test.reportDir`.

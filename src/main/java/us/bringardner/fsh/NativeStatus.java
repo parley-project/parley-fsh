@@ -79,7 +79,7 @@ public final class NativeStatus {
 		StringBuilder b = new StringBuilder();
 		b.append("fsh native support\n");
 		b.append("  platform         : ").append(System.getProperty("os.name")).append(' ')
-				.append(System.getProperty("os.arch")).append('\n');
+				.append(System.getProperty("os.arch")).append(NativeKeyboard.NATIVE_IMAGE ? " (native image)" : "").append('\n');
 		b.append("  mode             : parley.fsh.native=").append(System.getProperty("parley.fsh.native", "auto")).append('\n');
 
 		// the keyboard, the terminal and the process calls
@@ -104,6 +104,8 @@ public final class NativeStatus {
 			}
 			if( NativeKeyboard.jnaProblem() != null ) {
 				b.append("                     JNA: ").append(NativeKeyboard.jnaProblem()).append('\n');
+			} else if( NativeKeyboard.NATIVE_IMAGE ) {
+				b.append("                     JNA: not used in a native image unless -Dparley.fsh.native=jna\n");
 			}
 		}
 
