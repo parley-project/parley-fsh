@@ -900,3 +900,58 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_setOpenFilesLimit0
 JNIEXPORT jboolean JNICALL Java_us_bringardner_fsh_NativeKeyboard_isatty0(JNIEnv *, jclass, jint fd) {
 	return isatty(fd) ? JNI_TRUE : JNI_FALSE;
 }
+
+// Bind the native methods by RegisterNatives as the library loads, besides by their names: a GraalVM
+// native image built with Crema (-H:+RuntimeClassLoading, GraalVM 25.1) does not find a loaded
+// library's symbols for the image's native methods. Where the class cannot be found here (a native
+// image without JNI metadata for it), the methods are linked by name, as before.
+static JNINativeMethod nativeKeyboardMethods[] = {
+	{(char *) "getChar", (char *) "()I", (void *) Java_us_bringardner_fsh_NativeKeyboard_getChar},
+	{(char *) "ready", (char *) "()I", (void *) Java_us_bringardner_fsh_NativeKeyboard_ready},
+	{(char *) "setSignalKeys", (char *) "(Z)V", (void *) Java_us_bringardner_fsh_NativeKeyboard_setSignalKeys},
+	{(char *) "setProgramMode", (char *) "(Z)V", (void *) Java_us_bringardner_fsh_NativeKeyboard_setProgramMode},
+	{(char *) "isTerminal", (char *) "()Z", (void *) Java_us_bringardner_fsh_NativeKeyboard_isTerminal},
+	{(char *) "isInputTerminal0", (char *) "()Z", (void *) Java_us_bringardner_fsh_NativeKeyboard_isInputTerminal0},
+	{(char *) "ttyName0", (char *) "()Ljava/lang/String;", (void *) Java_us_bringardner_fsh_NativeKeyboard_ttyName0},
+	{(char *) "inputKind0", (char *) "()I", (void *) Java_us_bringardner_fsh_NativeKeyboard_inputKind0},
+	{(char *) "openDescriptors0", (char *) "()[Ljava/lang/String;", (void *) Java_us_bringardner_fsh_NativeKeyboard_openDescriptors0},
+	{(char *) "resourceUsage0", (char *) "()[J", (void *) Java_us_bringardner_fsh_NativeKeyboard_resourceUsage0},
+	{(char *) "giveTerminalTo", (char *) "(J)V", (void *) Java_us_bringardner_fsh_NativeKeyboard_giveTerminalTo},
+	{(char *) "setProcessGroup", (char *) "(JJ)V", (void *) Java_us_bringardner_fsh_NativeKeyboard_setProcessGroup},
+	{(char *) "stoppedBy", (char *) "(J)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_stoppedBy},
+	{(char *) "spawn0", (char *) "([B[[B[[B[B[IIZ)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_spawn0},
+	{(char *) "ttyTo0", (char *) "(I)V", (void *) Java_us_bringardner_fsh_NativeKeyboard_ttyTo0},
+	{(char *) "pipe0", (char *) "()[I", (void *) Java_us_bringardner_fsh_NativeKeyboard_pipe0},
+	{(char *) "open0", (char *) "([BI)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_open0},
+	{(char *) "close0", (char *) "(I)V", (void *) Java_us_bringardner_fsh_NativeKeyboard_close0},
+	{(char *) "waitExit0", (char *) "(I)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_waitExit0},
+	{(char *) "fd0", (char *) "(I)Ljava/io/FileDescriptor;", (void *) Java_us_bringardner_fsh_NativeKeyboard_fd0},
+	{(char *) "kill0", (char *) "(II)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_kill0},
+	{(char *) "strerror0", (char *) "(I)Ljava/lang/String;", (void *) Java_us_bringardner_fsh_NativeKeyboard_strerror0},
+	{(char *) "isatty0", (char *) "(I)Z", (void *) Java_us_bringardner_fsh_NativeKeyboard_isatty0},
+	{(char *) "setOpenFilesLimit0", (char *) "(J)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_setOpenFilesLimit0},
+	{(char *) "pgrp0", (char *) "()J", (void *) Java_us_bringardner_fsh_NativeKeyboard_pgrp0},
+	{(char *) "ids0", (char *) "()[J", (void *) Java_us_bringardner_fsh_NativeKeyboard_ids0},
+	{(char *) "startedWith0", (char *) "(Ljava/lang/String;)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_startedWith0},
+	{(char *) "argv0", (char *) "()Ljava/lang/String;", (void *) Java_us_bringardner_fsh_NativeKeyboard_argv0},
+	{(char *) "osRelease0", (char *) "()Ljava/lang/String;", (void *) Java_us_bringardner_fsh_NativeKeyboard_osRelease0},
+	{(char *) "socketPair0", (char *) "()[I", (void *) Java_us_bringardner_fsh_NativeKeyboard_socketPair0},
+	{(char *) "sendWithDescriptors0", (char *) "(I[B[I)I", (void *) Java_us_bringardner_fsh_NativeKeyboard_sendWithDescriptors0},
+	{(char *) "columns0", (char *) "()I", (void *) Java_us_bringardner_fsh_NativeKeyboard_columns0}
+};
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
+	JNIEnv *env;
+	if( vm->GetEnv((void **) &env, JNI_VERSION_1_8) != JNI_OK ) {
+		return JNI_VERSION_1_8;
+	}
+	jclass c = env->FindClass("us/bringardner/fsh/NativeKeyboard");
+	if( c == NULL ) {
+		env->ExceptionClear();
+		return JNI_VERSION_1_8;
+	}
+	if( env->RegisterNatives(c, nativeKeyboardMethods, sizeof(nativeKeyboardMethods) / sizeof(nativeKeyboardMethods[0])) != 0 ) {
+		env->ExceptionClear();
+	}
+	return JNI_VERSION_1_8;
+}

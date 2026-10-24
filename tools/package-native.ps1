@@ -24,15 +24,16 @@ $stage = Join-Path $dist $name
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item (Join-Path $native 'fsh.exe') $stage
-Copy-Item (Join-Path $native 'nativekeyboard.dll') $stage
+Copy-Item (Join-Path $native '*.dll') $stage
+# (nativekeyboard.dll, and the JDK's libraries the image loads when it uses them: AWT's)
 Copy-Item (Join-Path $project 'LICENSE') $stage
 @"
 fsh $Version for Windows ($Arch)
 
 Run fsh.exe from a console (Windows Terminal, or cmd). Keep fsh.exe and
-nativekeyboard.dll together. Put this folder on PATH to run it from anywhere.
+the .dll files together. Put this folder on PATH to run it from anywhere.
 
-Source and documentation: https://github.com/tony-bringardner/fsh
+Source and documentation: https://github.com/parley-project/parley-fsh
 "@ | Set-Content -Encoding ASCII (Join-Path $stage 'README.txt')
 
 $zip = Join-Path $dist "$name.zip"

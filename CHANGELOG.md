@@ -2,6 +2,18 @@
 
 ## 2.0.0 (unreleased)
 
+### Added
+
+- Installers, each with fsh's own Java runtime (`tools/build-jlink.sh`): a disk image for macOS
+  (`tools/build-jpackage.sh`: `fsh.app`, which opens fsh's window from the Finder, with the
+  command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
+  (`tools/build-linux-packages.sh`: `/opt/fsh`, `/usr/bin/fsh`, added to `/etc/shells`), and an
+  `.msi` for Windows (`tools/build-msi.ps1`). `release-binaries.yml` builds them for a release,
+  besides the native binaries.
+- `build-native --builtin` (`macos/`, `linux/`, `windows/`): the native image with plugin jars
+  built into it (`FSH_PLUGINS`, else the plugin folders' jars), since a native image can't load
+  them at run time. The release's native binaries have the terminal file browser built in.
+
 ### Changed (needs a configuration change)
 
 - **Property names** (Parley 2.0.0; the old names are no longer read): `fsh.*` is `parley.fsh.*`:

@@ -1,11 +1,14 @@
-# When a release is published, a native binary of fsh is built on each platform and attached to
-# that release as a separate download:
+# When a release is published, the installers of fsh are built on each platform and attached to
+# that release:
 #
-#   fsh-VERSION-macos-aarch64.tar.gz     fsh-VERSION-linux-x86_64.tar.gz     fsh-VERSION-windows-x86_64.zip
-#   fsh-VERSION-macos-x86_64.tar.gz      fsh-VERSION-linux-aarch64.tar.gz
+#   fsh-VERSION-macos-aarch64.dmg     fsh_VERSION_amd64.deb   fsh-VERSION-1.x86_64.rpm     fsh-VERSION-windows-x86_64.msi
+#   fsh-VERSION-macos-x86_64.dmg      fsh_VERSION_arm64.deb   fsh-VERSION-1.aarch64.rpm
 #
-# each with a .sha256 beside it. Run by hand (Actions > release-binaries > Run workflow) it builds
-# the same and keeps them as workflow artifacts; with a tag it also attaches them to that release.
+# each with a .sha256 beside it: fsh with a Java runtime of its own (tools/build-jlink.sh), made
+# by tools/build-jpackage.sh (macOS), tools/build-linux-packages.sh and tools/build-msi.ps1. Run
+# by hand (Actions > release-binaries > Run workflow) it builds the same and keeps them as workflow
+# artifacts; with a tag it also attaches them to that release. VERSION is the tag's (v2.0.0:
+# 2.0.0), else the pom's without -SNAPSHOT.
 #
 # Needs one secret, PACKAGES_TOKEN: a token that can read the Parley packages
 # (https://maven.pkg.github.com/tony-bringardner/tony-bringardner), which fsh builds against; the
@@ -38,7 +41,8 @@ jobs:
         include:
           - { runner: macos-15,         platform: macos,   arch: aarch64 }
           - { runner: macos-15-intel,   platform: macos,   arch: x86_64 }
-          # (the oldest Ubuntu offered: the binary needs the glibc it was linked with, or later)
+          # (the oldest Ubuntu offered: the keyboard library and fshexec need the glibc they were
+          # linked with, or later)
           - { runner: ubuntu-22.04,     platform: linux,   arch: x86_64 }
           - { runner: ubuntu-22.04-arm, platform: linux,   arch: aarch64 }
           - { runner: windows-2022,     platform: windows, arch: x86_64 }
@@ -49,12 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # GraalVM 25 (Community Edition, the one the native build was tested with), with native-image
-      - uses: graalvm/setup-graalvm@v1
+      # A JDK with jlink and jpackage (25: the AOT cache, the fastest start)
+      - uses: actions/setup-java@v4
         with:
           java-version: '25'
-          distribution: 'graalvm-community'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          distribution: 'temurin'
           cache: maven
 
       # Maven finds the Parley packages through the user's settings, as on the developer's machine
@@ -91,25 +94,48 @@ jobs:
         shell: bash
         run: mvn -B -q compile
 
+      - name: Version
+        shell: bash
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
       # ---- macOS and Linux
       - name: Build the keyboard library and fshexec
         if: matrix.platform != 'windows'
         run: sh ${{ matrix.platform }}/compile.sh
 
-      - name: Build the native image
+      - name: Build fsh with its own runtime
         if: matrix.platform != 'windows'
-        run: sh ${{ matrix.platform }}/build-native.sh
+        run: sh tools/build-jlink.sh
 
-      - name: Smoke test
-        if: matrix.platform != 'windows'
+      - name: The disk image
+        if: matrix.platform == 'macos'
+        run: sh tools/build-jpackage.sh dmg $VERSION
+
+      - name: Smoke test (the disk image)
+        if: matrix.platform == 'macos'
         run: |
-          out=$(printf 'echo smoke-ok\nexit\n' | target/native/fsh)
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -mountpoint "$mnt" dist/fsh-*.dmg
+          out=$("$mnt/fsh.app/Contents/app/fsh" -c 'echo smoke-ok')
+          hdiutil detach "$mnt"
           echo "$out"
           test "$out" = smoke-ok
 
-      - name: Package
-        if: matrix.platform != 'windows'
-        run: sh tools/package-native.sh ${{ matrix.platform }} ${{ matrix.arch }} "${TAG:-${GITHUB_SHA::7}}"
+      - name: The packages
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get install -y rpm
+          sh tools/build-linux-packages.sh all $VERSION
+
+      - name: Smoke test (the .deb)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo dpkg -i dist/fsh_*.deb
+          out=$(/usr/bin/fsh -c 'echo smoke-ok')
+          echo "$out"
+          test "$out" = smoke-ok
+          grep -qx /usr/bin/fsh /etc/shells
+          sudo dpkg -r fsh
 
       # ---- Windows
       - name: MSVC
@@ -121,25 +147,20 @@ jobs:
         shell: cmd
         run: call windows\compile.cmd
 
-      - name: Build the native image
+      - name: The installer
         if: matrix.platform == 'windows'
-        shell: cmd
-        run: call windows\build-native.cmd
+        shell: pwsh
+        run: .\tools\build-msi.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
 
-      - name: Smoke test
+      - name: Smoke test (the installer)
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          $out = ("echo smoke-ok`nexit`n" | .\target\native\fsh.exe) -join "`n"
+          $msi = (Get-ChildItem dist\*.msi)[0].FullName
+          Start-Process msiexec -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', 'msi.log' -Wait
+          $out = (& 'C:\Program Files\fsh\fsh.exe' -c 'echo smoke-ok') -join "`n"
           Write-Output $out
-          if ($out.Trim() -ne 'smoke-ok') { throw "unexpected output: $out" }
-
-      - name: Package
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          $v = if ($env:TAG) { $env:TAG } else { $env:GITHUB_SHA.Substring(0, 7) }
-          .\tools\package-native.ps1 -Arch ${{ matrix.arch }} -Version $v
+          if ($out.Trim() -ne 'smoke-ok') { Get-Content msi.log -Tail 40; throw "unexpected output: $out" }
 
       # ---- every platform
       - uses: actions/upload-artifact@v4

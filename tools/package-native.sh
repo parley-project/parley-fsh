@@ -40,13 +40,17 @@ mkdir -p "$stage"
 for f in fsh fsh-image $lib fshexec; do
 	cp -p "$native/$f" "$stage/"
 done
+# (and the JDK's libraries the image loads, when it uses them: AWT's for the clipboard and fonts)
+for f in "$native"/lib*.so "$native"/lib*.dylib; do
+	[ -f "$f" ] && cp -p "$f" "$stage/"
+done
 cp -p "$project/LICENSE" "$stage/"
 
 cat > "$stage/README.txt" <<TXT
 fsh $version for $platform ($arch)
 
 Run ./fsh. Everything it needs is in this folder; keep the files together
-(fsh starts fsh-image, which loads $lib and uses fshexec).
+(fsh starts fsh-image, which loads $lib and the other libraries, and uses fshexec).
 Put the folder on PATH, or link ./fsh from a directory that is.
 
 TXT
@@ -59,7 +63,7 @@ unpacking:
 
 TXT
 fi
-echo "Source and documentation: https://github.com/tony-bringardner/fsh" >> "$stage/README.txt"
+echo "Source and documentation: https://github.com/parley-project/parley-fsh" >> "$stage/README.txt"
 
 (cd "$dist" && tar -czf "$name.tar.gz" "$name")
 rm -rf "$stage"
