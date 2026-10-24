@@ -533,6 +533,13 @@ delimiter
 	public JobManager jobManager = new JobManager();
 
 
+	/**
+	 * The system property that keeps fsh from taking the process's OS signals (TERM, INT, HUP ...
+	 * for trap): "false" where fsh runs inside another program, such as an SSH server whose
+	 * sessions are fsh, so that program still stops on SIGTERM. Read once, as this class loads.
+	 */
+	public static final String PROP_OS_SIGNALS = "parley.fsh.osSignals";
+
 	static {
 		commands = new TreeMap<>();
 		
@@ -627,7 +634,10 @@ delimiter
 		registerCommand(new us.bringardner.fsh.commands.PluginsCommand());
 		registerCommand(new us.bringardner.fsh.commands.Browse());
 
-		registerSignals();
+		// (not where fsh runs inside another program, whose signals are that program's)
+		if( !"false".equals(System.getProperty(PROP_OS_SIGNALS)) ) {
+			registerSignals();
+		}
 	}
 
 	/** the commands plugins added: name -> the jar it came from */

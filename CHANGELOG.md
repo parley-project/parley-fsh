@@ -63,6 +63,14 @@
 - `NativeKeyboard.rows()`: the terminal's height (with the JNI library, through JNA where it loads;
   else `$LINES`, else 24).
 
+### Fixed
+
+- An SSH server whose sessions are fsh (parley-ssh with `FshShellFactory`) now stops on SIGTERM, as
+  a service manager stops it: fsh took the process's OS signals (TERM, INT, HUP ...) as soon as it
+  loaded, so the server ignored them. The new system property `parley.fsh.osSignals=false` keeps
+  fsh from taking them where it runs inside another program; `FshShellFactory` sets it. A session's
+  `trap` no longer sees the server's signals.
+
 ## 1.1.0 (unreleased)
 
 Needs swing-widgets 1.1.0.

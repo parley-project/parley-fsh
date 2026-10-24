@@ -30,6 +30,12 @@ import us.bringardner.fsh.Console;
 public class FshShellFactory implements IShellFactory {
 
 	public FshShellFactory() {
+		// the server's OS signals (TERM from a service manager, INT, HUP) stay the server's: no
+		// session's shell takes them. Set before Console loads (a compile-time constant, so this
+		// line doesn't load it)
+		if( System.getProperty(Console.PROP_OS_SIGNALS) == null ) {
+			System.setProperty(Console.PROP_OS_SIGNALS, "false");
+		}
 		// "exit" must end the session's console, never the server's JVM
 		Console.exitJvm = false;
 	}
