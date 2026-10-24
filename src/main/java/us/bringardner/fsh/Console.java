@@ -1119,7 +1119,23 @@ delimiter
 		if( tmpdir != null && !tmpdir.isEmpty() && new java.io.File(tmpdir).isDirectory()) {
 			System.setProperty("java.io.tmpdir", tmpdir);
 		}
-		if( System.getProperty("java.awt.headless") == null && noWindow(args)) {
+		if( NativeKeyboard.NATIVE_IMAGE && System.getProperty("parley.fsh.argv0") == null ) {
+			// (as a launcher gives it to the JVM: how the shell was called, such as sh; without the
+			// library, the program's own path)
+			String a0 = null;
+			try {
+				a0 = NativeKeyboard.isAvailible() ? NativeKeyboard.argv() : null;
+			} catch (UnsatisfiedLinkError e) {
+			}
+			if( a0 == null ) {
+				a0 = ProcessHandle.current().info().command().orElse(null);
+			}
+			if( a0 != null ) {
+				System.setProperty("parley.fsh.argv0", a0);
+			}
+		}
+		if( System.getProperty("java.awt.headless") == null && (NativeKeyboard.NATIVE_IMAGE || noWindow(args))) {
+			// (a native image has no AWT, so never a window)
 			// (asking whether there is a display loads AWT, which takes longer than the rest of the
 			// start: with a script, -c or a terminal there is never a window, so it is not asked)
 			System.setProperty("java.awt.headless", "true");
@@ -2072,6 +2088,18 @@ delimiter
 			environmentVariables.putAll(System.getenv());
 			// macOS sets __CF_USER_TEXT_ENCODING in the process (as the JVM starts): only one the
 			// shell was given is the environment's (and its programs')
+			// the open-files limit the shell was given, which a native image raises as it starts
+			// (its launcher, macos/fsh-native.c, notes it): put back, for the shell's programs
+			Object nofile = environmentVariables.remove("FSH_NOFILE");
+			if( nofile != null && NativeKeyboard.isAvailible()) {
+				String n = nofile.toString();
+				try {
+					if( n.equals("unlimited") || n.matches("[0-9]{1,18}")) {
+						NativeKeyboard.setOpenFilesLimit(n.equals("unlimited") ? -1 : Long.parseLong(n));
+					}
+				} catch (UnsatisfiedLinkError e) {
+				}
+			}
 			if( Boolean.getBoolean("parley.fsh.cfAbsent")) {
 				// (the launcher saw it was not given: fshexec -j)
 				environmentVariables.remove("__CF_USER_TEXT_ENCODING");

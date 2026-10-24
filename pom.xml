@@ -40,10 +40,39 @@
 	</properties>
 
 	<profiles>
+		<!-- Native binary named fsh: mvn -Pnative package (add jdbc to include the JDBC file system) -->
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<version>0.11.0</version>
+						<extensions>true</extensions>
+						<executions>
+							<execution>
+								<id>build-native</id>
+								<goals>
+									<goal>compile-no-fork</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<imageName>fsh</imageName>
+							<mainClass>us.bringardner.fsh.Console</mainClass>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<!-- The OS keychain for credential references (@keychain:parley/ftp): macOS Keychain, Linux
 		     Secret Service, Windows Credential Manager. Not used by fsh's code: parley-files finds it
-		     through ServiceLoader. On unless -Dparley.fsh.noKeychain. It works through JNA. Needs
-		     Java 17 at run time; on an older JVM the keychain store is left out. -->
+		     through ServiceLoader. In every build except the native image's (-Dparley.fsh.noKeychain, which
+		     the build-native scripts pass): it works through JNA, which the native image isn't set up
+		     for, so there @keychain: is simply not available. Needs Java 17 at run time; on an older
+		     JVM the keychain store is left out. -->
 		<profile>
 			<id>keychain</id>
 			<activation>

@@ -599,6 +599,9 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 	}
 
 
+	/** fsh runs as a native image (GraalVM), not in a JVM */
+	public static final boolean NATIVE_IMAGE = "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"));
+
 	static {
 		if( Boolean.getBoolean("parley.fsh.native.debug") && System.getProperty("parley.term.native.debug") == null ) {
 			System.setProperty("parley.term.native.debug", "true");
@@ -610,11 +613,38 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 			availible = false;
 			jniProblem = e.getClass().getSimpleName()+": "+e.getMessage();
 		}
+		if( NATIVE_IMAGE ) {
+			// (no launcher gives a native image its library path: the library and fshexec are next
+			// to it, or (a copy of it elsewhere) where it was built: parley.fsh.libdir, set as it is built)
+			String exe = ProcessHandle.current().info().command().orElse(null);
+			java.util.List<java.io.File> dirs = new java.util.ArrayList<>();
+			if( exe != null && new java.io.File(exe).getParentFile() != null ) {
+				dirs.add(new java.io.File(exe).getParentFile());
+			}
+			if( System.getProperty("parley.fsh.libdir") != null ) {
+				dirs.add(new java.io.File(System.getProperty("parley.fsh.libdir")));
+			}
+			StringBuilder path = new StringBuilder();
+			for(java.io.File dir : dirs) {
+				java.io.File lib = new java.io.File(dir, System.mapLibraryName("nativekeyboard"));
+				if( !availible && lib.isFile()) {
+					try {
+						System.load(lib.getPath());
+						availible = true;
+					} catch (Throwable e) {
+					}
+				}
+				path.append(dir.getPath()).append(java.io.File.pathSeparator);
+			}
+			// (where helper() finds fshexec)
+			System.setProperty("java.library.path", path+System.getProperty("java.library.path", ""));
+		}
 		jniLoaded = availible;
 		us.bringardner.fsh.jna.NativeOps jna = null;
 		TtyOps tty = null;
 		String mode = System.getProperty("parley.fsh.native", "auto");
-		if( !"jni".equals(mode) && ("jna".equals(mode) || !jniLoaded) ) {
+		// (a native image has no reflection and JNI metadata for JNA: only if asked for)
+		if( !"jni".equals(mode) && ("jna".equals(mode) || (!jniLoaded && !NATIVE_IMAGE)) ) {
 			try {
 				jna = us.bringardner.fsh.jna.NativeOps.create();
 			} catch (Throwable e) {
@@ -692,7 +722,7 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 			if( !sizeTried ) {
 				sizeTried = true;
 				// (not on Windows, where making JNA's console changes the console's modes too)
-				if( java.io.File.separatorChar == '/' ) {
+				if( !NATIVE_IMAGE && java.io.File.separatorChar == '/' ) {
 					try {
 						size = JnaTty.create();
 					} catch (Throwable e) {
