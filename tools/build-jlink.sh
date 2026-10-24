@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build fsh with a Java runtime of its own (jlink): target/jlink/fsh, a folder that runs on this
-# platform with no Java installed. It is the JVM build (the JIT, and the OS keychain through JNA,
-# which the native image has neither of), started the way macos/fsh starts it.
+# platform with no Java installed, started the way macos/fsh starts it. The installers are made
+# from it: tools/build-jpackage.sh (macOS .dmg), tools/build-linux-packages.sh (.deb, .rpm).
 #
 #   target/jlink/fsh/bin/fsh                    the launcher (link to it from a directory on PATH)
 #   target/jlink/fsh/lib/fsh.jar                fsh and everything it needs (mvn package)
@@ -15,7 +15,7 @@
 #
 # JAVA_HOME names the JDK whose runtime goes in (macOS: else /usr/libexec/java_home). The runtime
 # is that JDK's version: 17 or later for the keychain, 25 or later for the AOT cache (the fastest
-# start). tools/build-jpackage.sh makes installers from this build.
+# start).
 
 set -e
 PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
@@ -62,7 +62,7 @@ if [ "$major" -lt 17 ]; then
 	echo "$0: note: JDK $major: the keychain needs 17 or later, so @keychain: will not be available" >&2
 fi
 
-# fsh.jar (the keychain profile is on unless -Dparley.fsh.noKeychain, as in every build but the native one)
+# fsh.jar (with the keychain: its profile is on unless -Dparley.fsh.noKeychain)
 mvn -q package -DskipTests
 [ -f target/fsh.jar ] || { echo "$0: mvn package made no target/fsh.jar" >&2; exit 1; }
 
@@ -75,7 +75,7 @@ fi
 # The modules: what fsh.jar uses (jdeps), and what is found only at run time:
 #  jdk.crypto.ec       elliptic curves for SSH keys and key exchange (in java.base from JDK 22)
 #  jdk.charsets        the encodings beyond the standard ones (iconv -f, LANG=ja_JP.eucJP ...)
-#  jdk.localedata      every locale, as the JVM and the native image have (LC_TIME, LC_NUMERIC)
+#  jdk.localedata      every locale, as the JDK has them (LC_TIME, LC_NUMERIC)
 #  jdk.zipfs           zip and jar files as file systems
 #  jdk.naming.dns      DNS through JNDI (an SSH or FTP host given by an SRV record)
 #  jdk.jdwp.agent      (--debug) the debugger
@@ -111,7 +111,8 @@ cp -p LICENSE "$out/"
 cat > "$out/bin/fsh" <<'SH'
 #!/bin/sh
 # fsh with its own Java runtime (tools/build-jlink.sh). Keep the folder together; it may be moved,
-# and this file linked from a directory on PATH.
+# and this file linked from a directory on PATH. The same file is the command in the installers:
+# /opt/fsh/bin/fsh (.deb, .rpm), and fsh.app/Contents/app/fsh (macOS), next to fsh.jar.
 # FSH_DEBUG=PORT listens for a debugger on localhost:PORT (a runtime built with --debug).
 self=$0
 while [ -L "$self" ]; do
@@ -121,9 +122,15 @@ while [ -L "$self" ]; do
 	*) self=$(dirname "$self")/$link ;;
 	esac
 done
-home=$(cd "$(dirname "$self")/.." && pwd)
-lib=$home/lib
-java=$home/runtime/bin/java
+here=$(cd "$(dirname "$self")" && pwd)
+# (the jar and libraries: beside this in an app, else in ../lib; the runtime beside those)
+if [ -f "$here/fsh.jar" ]; then
+	lib=$here
+else
+	lib=$(cd "$here/../lib" && pwd)
+fi
+java=$lib/../runtime/bin/java
+[ -x "$java" ] || java=$lib/../runtime/Contents/Home/bin/java
 
 set -- -cp "$lib/fsh.jar" us.bringardner.fsh.Console "$@"
 if [ -n "$FSH_DEBUG" ]; then
