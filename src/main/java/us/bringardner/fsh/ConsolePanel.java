@@ -72,7 +72,19 @@ public class ConsolePanel extends JPanel implements KeyboardReader, ConsoleIO.Vi
 
 		if( e.isControlDown()) {
 			e.consume();
-			if( key == KeyEvent.VK_R) {
+			boolean selected = textArea.getSelectionStart() != textArea.getSelectionEnd();
+			if( key == KeyEvent.VK_V ) {
+				// paste goes on the input line, wherever the caret or selection was
+				if( textArea.getSelectionStart() < inputStart ) {
+					textArea.setCaretPosition(textArea.getDocument().getLength());
+				}
+				textArea.paste();
+			} else if( key == KeyEvent.VK_C && (selected || e.isShiftDown()) ) {
+				// copy when text is selected (Ctrl+Shift+C always); otherwise Ctrl+C is the interrupt
+				textArea.copy();
+			} else if( key == KeyEvent.VK_X && selected && textArea.getSelectionStart() >= inputStart ) {
+				textArea.cut();
+			} else if( key == KeyEvent.VK_R) {
 				Console console = io.getConsole();
 				if( console != null && io.isReadingLine()) {
 					HistorySearchDialog d = new HistorySearchDialog();

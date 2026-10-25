@@ -436,6 +436,8 @@ delimiter
 	private VirtualFileSourceFactory tree;
 	public boolean forceHeadless=true;
 	public boolean isInteractive=false;
+	/** the shell reads typed lines in a window of a program: the history is kept by the line reader, not per command run */
+	public boolean windowShell;
 	/** said once per shell: a line with a plain password was kept out of the history */
 	private boolean warnedPlainSecret;	
 	private Map<String,ShellFunction> functions = new ConcurrentSkipListMap<>();
@@ -2368,6 +2370,36 @@ delimiter
 		return tree.connectAt(at, TreeFile.unwrap(f));
 	}
 
+	/**
+	 * Makes dir the current directory. A folder of another file system (memory, sftp...) is not in
+	 * the shell's tree, where / is the local file system, so that file system is first connected at
+	 * /<type> (/memory, /memory2...) and the shell starts in the same folder there.
+	 */
+	public void startIn(FileSource dir) throws IOException {
+		FileSourceFactory f = dir.getFileSourceFactory();
+		if( dir instanceof TreeFile || f == null || f == FileSourceFactory.getDefaultFactory() || f == tree ) {
+			setCurrentDirectory(dir);
+			return;
+		}
+		FileSource root = dir;
+		for(FileSource p = dir.getParentFile(); p != null; p = p.getParentFile()) {
+			root = p;
+		}
+		String base = "/"+f.getTypeId().replaceAll("[^A-Za-z0-9_.-]", "_");
+		String at = base;
+		for(int n = 2; tree.connectionAt(at) != null && tree.connectionAt(at) != root; n++) {
+			at = base+n;
+		}
+		if( tree.connectionAt(at) == null && !connectAt(root, at) ) {
+			setCurrentDirectory(dir);
+			return;
+		}
+		String rootPath = root.getAbsolutePath().replace('\\', '/');
+		String rel = dir.getAbsolutePath().replace('\\', '/');
+		rel = rel.startsWith(rootPath) ? rel.substring(rootPath.length()) : rel;
+		setCurrentDirectory(tree.createFileSource(at+(rel.startsWith("/") || rel.isEmpty() ? "" : "/")+rel));
+	}
+
 	/** the shell's connections: the path each is at, and the folder connected there, by path */
 	public Map<String, FileSource> connections() throws IOException {
 		return tree.connections();
@@ -2417,6 +2449,15 @@ delimiter
 			// it, and one at the end of a line asks for the next)
 			nk.setHonorEscape(false);
 			nk.setLineEditing(true);
+		}
+		if( !(kb instanceof NativeKeyboard) && !isOptionEnabled(Option.History) ) {
+			// a shell in a window of a program (the viewer's terminal): its standard input is not the
+			// process's, but lines are typed, so it keeps a history for the up arrow
+			windowShell = true;
+			// (Console.main loads them when fsh starts on its own; this shell was started by another program)
+			loadPlugins(restricted);
+			options.add(Option.HistExpand);
+			options.add(Option.History);
 		}
 		stdOut = kb.getStdOut();
 		stdErr = kb.getStdErr();
@@ -3246,7 +3287,20 @@ delimiter
 							GradientLook.install();
 						}
 						ConsoleFrame ret = new ConsoleFrame(this);
-						ret.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+						if( exitJvm ) {
+							ret.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+						} else {
+							// embedded in another program (the viewer): closing the window ends this shell, not the JVM
+							ret.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+							ret.addWindowListener(new java.awt.event.WindowAdapter() {
+								@Override
+								public void windowClosed(java.awt.event.WindowEvent e) {
+									if( isRunning() ) {
+										stop();
+									}
+								}
+							});
+						}
 						if( setVisible) {
 							try {
 								if( SwingUtilities.isEventDispatchThread()) {

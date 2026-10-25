@@ -509,15 +509,16 @@ public class Ls extends ShellCommand {
 					args.contains(LsArgument.g) ? "" : a.owner().getName(), args.contains(LsArgument.G) ? "" : a.group().getName(),
 					String.valueOf(a.size()), formatDate(a.lastModifiedTime().toMillis()), nameStr));
 		} else {
-			String permStr = (file.isDirectory()?"d":"-")+formatPermission(file);
-			String linkStr = formatLink(args,file);
-			String userStr = formatUser(args,file);
-			String groupStr = formatGroup(args,file);
-			String sizeStr = formatSize(args,file);
-			String timeStr = formatTime(args,file);
+			final FileSource lf = file;
+			String permStr = (file.isDirectory()?"d":"-")+orElse(()->formatPermission(lf), "?????????");
+			String linkStr = orElse(()->formatLink(args,lf), "1");
+			String userStr = orElse(()->formatUser(args,lf), "?");
+			String groupStr = orElse(()->formatGroup(args,lf), "?");
+			String sizeStr = orElse(()->formatSize(args,lf), "    ?");
+			String timeStr = orElse(()->formatTime(args,lf), "?           ");
 			String nameStr = label == null ? formatName(args,file) : args.contains(LsArgument.Q) ? "\""+label+"\"" : label;
 			// a connection (connect ... /mem) shows what is connected there, as a link shows its target
-			String connected = ctx.console.connectionAt(file.getAbsolutePath());
+			String connected = orElse(()->ctx.console.connectionAt(lf.getAbsolutePath()), null);
 			if( connected != null ) {
 				nameStr += " -> "+connected;
 			}
@@ -528,6 +529,19 @@ public class Ls extends ShellCommand {
 
 		}		
 
+	}
+
+	private interface IoSupplier<T> {
+		T get() throws IOException;
+	}
+
+	/** one column of ls -l that can not be read (no permission, say) shows a placeholder instead of failing the listing */
+	private static <T> T orElse(IoSupplier<T> s, T fallback) {
+		try {
+			return s.get();
+		} catch (IOException | RuntimeException e) {
+			return fallback;
+		}
 	}
 
 	private String formatName(List<LsArgument> args, FileSource file) {
