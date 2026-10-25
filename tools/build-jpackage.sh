@@ -9,6 +9,9 @@
 #   fsh.app/Contents/app/fsh.jar    fsh, the keyboard library, fshexec and the class cache
 #   fsh.app/Contents/runtime        the Java runtime
 #
+# Its icon is macos/fsh.icns: Parley's tower with the >_ badge, the brand's icon for terminal
+# apps (parley-brand's parley-icon-terminal-16.png ... -512.png, put together as one .icns).
+#
 # Usage: tools/build-jpackage.sh [TYPE] [VERSION]
 #   TYPE     dmg (the default), pkg (installs /Applications/fsh.app) or app-image (fsh.app only)
 #   VERSION  the pom's, without -SNAPSHOT
@@ -102,7 +105,7 @@ set -- --type "$type" --dest "$work/out" --name fsh --app-version "$version" \
 	--java-options -Xss16m --java-options -XX:+UseSerialGC --java-options -Xmn16m \
 	--java-options -XX:MinHeapFreeRatio=10 --java-options -XX:MaxHeapFreeRatio=20 \
 	--java-options -XX:-MaxFDLimit \
-	--mac-package-identifier us.bringardner.fsh --mac-package-name fsh \
+	--mac-package-identifier us.bringardner.fsh --mac-package-name fsh --icon macos/fsh.icns \
 	--temp "$work/temp"
 [ -n "$native_access" ] && set -- "$@" --java-options "$native_access"
 [ "$type" = dmg ] && set -- "$@" --mac-dmg-content "$work/dmg/README.txt"
