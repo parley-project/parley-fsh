@@ -62,7 +62,8 @@ fi
 
 # what goes in the app folder ($APPDIR, Contents/app): all of the jlink build's lib, and its
 # launcher as the command
-work=target/jpackage
+# (absolute: jpackage passes its work folder to hdiutil as -mountroot, which a relative path fails)
+work=$PROJECT_DIR/target/jpackage
 rm -rf "$work"
 mkdir -p "$work/input" "$work/dmg" dist
 cp -p "$image"/lib/* "$work/input/"
