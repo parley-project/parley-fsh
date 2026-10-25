@@ -203,7 +203,11 @@ public class TestBashCompat extends AbstractConsoleTest {
 			// (the cases were recorded from bash running them as script files: FUNCNAME ends in main)
 			console.scriptFile = "";
 
-			Future<Integer> f = runner.submit(() -> console.executeScript(code));
+			// (a Windows home has backslashes, which sed reads as escapes in the cases that cut $HOME out
+			// of their output: the cases get it with /, as bash running under Windows has it; on the
+			// case's first line, so its line numbers stay)
+			String script = getOs() == OperatingSystem.Windows ? "HOME=\"${HOME//\\\\//}\"; "+code : code;
+			Future<Integer> f = runner.submit(() -> console.executeScript(script));
 			try {
 				ret.exitCode = f.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 			} catch (TimeoutException e) {

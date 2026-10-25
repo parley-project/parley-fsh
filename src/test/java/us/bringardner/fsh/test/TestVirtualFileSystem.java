@@ -114,7 +114,8 @@ public class TestVirtualFileSystem extends AbstractConsoleTest{
 
 		if( getOs()==OperatingSystem.Windows) {
 			FileSource[] roots = factory.listRoots();
-			expectFiles = "C:\\Git\\fsh\\TestFiles\n/mem".split("\n");
+			// (the first root is the folder the tree was made with, wherever this checkout is)
+			expectFiles = new String[] {localRoot.getAbsolutePath(), "/mem"};
 			assertEquals(expectFiles.length, roots.length);
 			for (int idx = 0; idx < expectFiles.length; idx++) {
 				FileSource kid = roots[idx];
