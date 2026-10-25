@@ -3,7 +3,7 @@
 # FSH_PLUGINS, then runs build-msi.ps1.
 #
 # Usage: tools\build-msi-with-plugins.ps1 [-PluginsRepo ..\parley-files-viewer-tui] [-Version 2.0.0] [-Arch x86_64]
-#            [-IdeRepo ..\fsh-ide | -NoIde] [-DbRepo ..\fshdb | -NoDb] [-MenuGroup fsh]
+#            [-IdeRepo ..\fsh-ide | -NoIde] [-DbRepo ..\fshdb | -NoDb] [-MenuGroup Parley]
 #   PluginsRepo  a checkout of parley-files-viewer-tui (default: beside this one)
 #   IdeRepo      a checkout of fsh-ide, whose Swing IDE is installed beside fsh (default: beside
 #                this one; -NoIde leaves it out). fsh-loupe, beside this one too, is installed first.
@@ -12,7 +12,7 @@
 #   LoupeRepo    a checkout of fsh-loupe, which fsh-ide needs (default: beside this one)
 #   ViewerRepo   a checkout of parley-files-viewer, the Swing file browser (default: beside this one;
 #                -NoViewer leaves it out)
-#   MenuGroup    the Start menu folder the programs are in (default: fsh)
+#   MenuGroup    the Start menu folder the programs are in (default: Parley)
 #
 # Needs what build-msi.ps1 needs (JAVA_HOME, WiX 3 on the PATH), and Maven. The plugin builds
 # against fsh, so fsh is installed to the local Maven repository first (tests skipped).
@@ -27,7 +27,7 @@ param(
 	[string] $ViewerRepo = '',
 	[switch] $NoDb,
 	[switch] $NoViewer,
-	[string] $MenuGroup = 'fsh'
+	[string] $MenuGroup = 'Parley'
 )
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot

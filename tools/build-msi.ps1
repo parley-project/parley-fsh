@@ -17,7 +17,7 @@
 # FSH_PLUGINS names (separated by ;), else those in %USERPROFILE%\.parley\fsh\plugins and
 # %ProgramData%\Parley\fsh\plugins; with none, fsh is built without.
 # More programs in the same installer, on the same Java runtime, each its own launcher (an .exe) and
-# Start menu entry, all in the Start menu folder MenuGroup (default fsh): -IdeRepo (a checkout of
+# Start menu entry, all in the Start menu folder MenuGroup (default Parley): -IdeRepo (a checkout of
 # fsh-ide: fsh-ide.exe, the Swing IDE, a window program) and -DbRepo (fshdb: fshdb.exe, the console
 # debugger) and -ViewerRepo (parley-files-viewer: parley-files-viewer.exe, the Swing file browser). Their jars (not the JavaFX ones, nor those fsh.jar has inside) go in apps, on the class path.
 param(
@@ -26,7 +26,7 @@ param(
 	[string] $IdeRepo = '',
 	[string] $DbRepo = '',
 	[string] $ViewerRepo = '',
-	[string] $MenuGroup = 'fsh'
+	[string] $MenuGroup = 'Parley'
 )
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
