@@ -59,7 +59,7 @@ public class TestEval  extends AbstractConsoleTest{
 		String cmd = "command=\"echo $(date)\"\n"
 				+ "eval \"$command\""
 				;
-		if(getOs()==OperatingSystem.Windows) {
+		if( windowsDate() ) {
 			 cmd = "command=\"echo $(date /T)\"\n"
 						+ "eval \"$command\""
 						;
@@ -79,11 +79,30 @@ public class TestEval  extends AbstractConsoleTest{
 		}
 		assertEquals("", err);
 		Matcher m = datePattern.matcher(out);
-		if(getOs()==OperatingSystem.Windows) {
+		if( windowsDate() ) {
 			m = winDatePattern.matcher(out);
 		}
-		assertTrue(m.matches());
-		
+		assertTrue(m.matches(), out);
+
+	}
+
+	/**
+	 * Whether date is Windows's own (date /T): not where a Unix date.exe (Git for Windows, Cygwin) is
+	 * on the PATH, which is what the shell runs then.
+	 */
+	private static boolean windowsDate() {
+		if( getOs() != OperatingSystem.Windows ) {
+			return false;
+		}
+		String path = System.getenv("PATH");
+		if( path != null ) {
+			for(String dir : path.split(java.io.File.pathSeparator)) {
+				if( !dir.isEmpty() && new java.io.File(dir, "date.exe").isFile() ) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 	
 	@SuppressWarnings("unused")

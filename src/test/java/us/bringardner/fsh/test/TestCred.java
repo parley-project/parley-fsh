@@ -75,7 +75,8 @@ public class TestCred extends AbstractConsoleTest {
 		Path f = ownerOnlyFile("s3cret-value\n");
 		ExecuteResult res = executeCommand("cred get file:"+f, "");
 		assertEquals(0, res.exitCode, res.getStdErr());
-		assertEquals("@file:"+f+": found", res.getStdOut().trim());
+		// (the shell shows a Windows path with /)
+		assertEquals("@file:"+f.toString().replace('\\', '/')+": found", res.getStdOut().trim());
 		assertFalse((res.getStdOut()+res.getStdErr()).contains("s3cret"));
 
 		res = executeCommand("cred get @file:"+dir.resolve("missing"), "");
