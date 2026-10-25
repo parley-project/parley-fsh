@@ -69,7 +69,7 @@ mvn -q package -DskipTests
 # the keyboard library and fshexec, built from macos/ or linux/ when they are not there
 if [ ! -f "$platform/$lib" ] || [ ! -x "$platform/fshexec" ] \
 		|| [ "src/main/java/us/bringardner/fsh/NativeKeyboard.java" -nt "$platform/$lib" ]; then
-	"$platform/compile.sh"
+	sh "$platform/compile.sh"
 fi
 
 # The modules: what fsh.jar uses (jdeps), and what is found only at run time:
