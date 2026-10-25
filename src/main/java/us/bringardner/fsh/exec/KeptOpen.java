@@ -6,7 +6,7 @@ import java.io.PrintStream;
  * Output a command writes to that is someone else's (the caller's standard output): closing it
  * only flushes. A program writing to it writes to the stream it wraps itself (the terminal).
  */
-final class KeptOpen extends PrintStream {
+final class KeptOpen extends us.bringardner.fsh.LfLines {
 
 	final PrintStream target;
 
