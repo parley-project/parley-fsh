@@ -5,8 +5,8 @@
 ### Added
 
 - Installers, each with fsh's own Java runtime (`tools/build-jlink.sh`): a disk image for macOS
-  (`tools/build-jpackage.sh`: `fsh.app`, which opens fsh's window from the Finder, with the
-  command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
+  (`tools/build-jpackage.sh`: `fsh.app`, which opens a Terminal window running fsh from the
+  Finder, with the command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
   (`tools/build-linux-packages.sh`: `/opt/fsh`, `/usr/bin/fsh`, added to `/etc/shells`), and an
   `.msi` for Windows (`tools/build-msi.ps1`). `release-binaries.yml` builds them for a release,
   besides the native binaries. The installers carry plugins too, on fsh's class path: the jars

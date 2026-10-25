@@ -196,8 +196,8 @@ nothing else needs to be installed, and each file has a `.sha256` beside it:
 | Linux, ARM64 | `fsh_VERSION_arm64.deb`, `fsh-VERSION-1.aarch64.rpm` | the same |
 | Windows, x64 | `fsh-VERSION-windows-x86_64.msi` | `C:\Program Files\fsh\fsh.exe`, and a Start menu entry |
 
-- **macOS:** opened from the Finder, `fsh.app` runs fsh in its own window. For a terminal, link
-  its command from a directory on `PATH`, once:
+- **macOS:** opened from the Finder, `fsh.app` opens a Terminal window running fsh. To run
+  `fsh` in any terminal, link its command from a directory on `PATH`, once:
   `sudo ln -sf /Applications/fsh.app/Contents/app/fsh /usr/local/bin/fsh` (the disk image's
   README.txt says this too). The app isn't notarized: macOS asks before opening it the first
   time (right-click it, Open).
@@ -328,9 +328,11 @@ them. With none, fsh is built without. A plugin built in that is in a plugin fol
 used once.
 
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
-`fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them). Two
-are jpackage's own: the one the Finder opens (`fsh.app/Contents/MacOS/fsh`, which shows fsh's
-window) and `fsh.exe` (Windows has no `fshexec`). None of the installers is signed.
+`fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them).
+What the Finder starts (`fsh.app/Contents/MacOS/fsh`) opens Terminal on that command, so fsh
+runs in a terminal and `browse`'s full-screen browsers work. On Windows the command is
+jpackage's `fsh.exe` (Windows has no `fshexec`). None of the installers is signed (`fsh.app` is
+signed ad hoc only).
 
 ## Plugins
 
