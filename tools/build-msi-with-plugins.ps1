@@ -9,6 +9,7 @@
 #                this one; -NoIde leaves it out). fsh-loupe, beside this one too, is installed first.
 #   DbRepo       a checkout of fshdb, the console debugger (default: beside this one; -NoDb leaves it
 #                out). It builds against fsh-ide, so that is installed first.
+#   LoupeRepo    a checkout of fsh-loupe, which fsh-ide needs (default: beside this one)
 #   ViewerRepo   a checkout of parley-files-viewer, the Swing file browser (default: beside this one;
 #                -NoViewer leaves it out)
 #   MenuGroup    the Start menu folder the programs are in (default: fsh)
@@ -19,6 +20,7 @@ param(
 	[string] $PluginsRepo = '',
 	[string] $Version = '',
 	[string] $Arch = 'x86_64',
+	[string] $LoupeRepo = '',
 	[string] $IdeRepo = '',
 	[switch] $NoIde,
 	[string] $DbRepo = '',
@@ -67,7 +69,7 @@ if (-not $ViewerRepo -and -not $NoViewer) { $ViewerRepo = Join-Path $beside 'par
 if ($NoViewer) { $ViewerRepo = '' }
 if ($IdeRepo -or $DbRepo) {
 	# (fsh-ide's dependency, built against fsh: not in a Maven repository until it is installed)
-	$loupe = Join-Path $beside 'fsh-loupe'
+	$loupe = if ($LoupeRepo) { $LoupeRepo } else { Join-Path $beside 'fsh-loupe' }
 	if (Test-Path (Join-Path $loupe 'pom.xml')) { Install-Module $loupe 'fsh-loupe' }
 }
 if ($DbRepo) {
