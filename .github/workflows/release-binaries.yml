@@ -147,10 +147,18 @@ jobs:
         shell: cmd
         run: call windows\compile.cmd
 
+      # The file browser (browse, view, edit, search) is a plugin built from its own repository
+      - name: Checkout the file browser plugin
+        if: matrix.platform == 'windows'
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-files-viewer-tui
+          path: parley-files-viewer-tui
+
       - name: The installer
         if: matrix.platform == 'windows'
         shell: pwsh
-        run: .\tools\build-msi.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
+        run: .\tools\build-msi-with-plugins.ps1 -PluginsRepo parley-files-viewer-tui -Arch ${{ matrix.arch }} -Version "$env:VERSION"
 
       - name: Smoke test (the installer)
         if: matrix.platform == 'windows'
