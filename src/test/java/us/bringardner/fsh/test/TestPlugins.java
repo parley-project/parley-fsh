@@ -27,6 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 import us.bringardner.fsh.Console;
 import us.bringardner.parley.plugin.PluginFolders;
 import us.bringardner.parley.plugin.Plugins;
+import us.bringardner.parley.plugin.PluginsForTests;
 
 /**
  * A plugin jar in fsh's plugin folder: its commands (one shadowed by a builtin), its browser, and
@@ -95,6 +96,9 @@ public class TestPlugins extends AbstractConsoleTest {
 		Properties sys = new Properties();
 		sys.setProperty(PluginFolders.PROP_PATH, folder.getPath());
 		before = Thread.currentThread().getContextClassLoader();
+		// plugins load once per JVM, and an earlier test's interactive shell (TestJobControl's) has
+		// loaded the default folders: forget them, or this load returns that report
+		PluginsForTests.reset();
 		Plugins.load(new PluginFolders("fsh", false, null, sys, null, false, tmp.toString(), null), before);
 		Console.addPluginCommands();
 		console = new Console();
@@ -109,6 +113,8 @@ public class TestPlugins extends AbstractConsoleTest {
 		}
 		Console.pluginCommands.clear();
 		Console.pluginNotes.clear();
+		// and the test plugin's jar and browser are gone (a later shell loads the default folders)
+		PluginsForTests.reset();
 	}
 
 	@Test
