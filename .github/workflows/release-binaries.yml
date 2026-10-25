@@ -5,7 +5,10 @@
 #   fsh-VERSION-macos-x86_64.dmg      fsh_VERSION_arm64.deb   fsh-VERSION-1.aarch64.rpm
 #
 # each with a .sha256 beside it: fsh with a Java runtime of its own (tools/build-jlink.sh), made
-# by tools/build-jpackage.sh (macOS), tools/build-linux-packages.sh and tools/build-msi.ps1. Run
+# by tools/build-jpackage.sh (macOS), tools/build-linux-packages.sh and tools/build-msi.ps1. Each
+# carries the file browser plugin and, on the same runtime, fsh-ide, fshdb and parley-files-viewer
+# (tools/build-installers-with-plugins.sh on macOS and Linux, tools/build-msi-with-plugins.ps1 on
+# Windows), all in a Parley folder: the disk image's, the application menu's, the Start menu's. Run
 # by hand (Actions > release-binaries > Run workflow) it builds the same and keeps them as workflow
 # artifacts; with a tag it also attaches them to that release. VERSION is the tag's (v2.0.0:
 # 2.0.0), else the pom's without -SNAPSHOT.
@@ -103,29 +106,82 @@ jobs:
         if: matrix.platform != 'windows'
         run: sh ${{ matrix.platform }}/compile.sh
 
-      - name: Build fsh with its own runtime
-        if: matrix.platform != 'windows'
-        run: sh tools/build-jlink.sh
+      # The installers carry more than fsh, each built from its own repository (the default
+      # branch; a tag of the same name in each would pin a release): the file browser plugin
+      # (browse, view, edit, search), and the programs beside fsh: fsh-ide, fshdb and
+      # parley-files-viewer (fsh-loupe is fsh-ide's dependency)
+      - name: Checkout the file browser plugin
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-files-viewer-tui
+          path: parley-files-viewer-tui
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
+      - name: Checkout fsh-loupe
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-fsh-loupe
+          path: fsh-loupe
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout fsh-ide
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-fsh-ide
+          path: fsh-ide
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout fshdb
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-fshdb
+          path: fshdb
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout parley-files-viewer
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-files-viewer
+          path: parley-files-viewer
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      # (fsh with its own runtime, the plugin and the other programs, then the disk image or the
+      # packages)
       - name: The disk image
         if: matrix.platform == 'macos'
-        run: sh tools/build-jpackage.sh dmg $VERSION
+        run: >
+          sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui
+          --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb --viewer-repo parley-files-viewer
+          dmg $VERSION
 
       - name: Smoke test (the disk image)
         if: matrix.platform == 'macos'
         run: |
           mnt=$(mktemp -d)
           hdiutil attach -nobrowse -mountpoint "$mnt" dist/fsh-*.dmg
-          out=$("$mnt/fsh.app/Contents/app/fsh" -c 'echo smoke-ok')
+          app=$mnt/Parley/fsh.app/Contents/app
+          out=$("$app/fsh" -c 'echo smoke-ok')
+          # the other programs are there, and the browser plugin loaded
+          for a in fsh-ide fshdb parley-files-viewer; do
+            test -x "$mnt/Parley/$a.app/Contents/MacOS/$a" || { echo "no $a.app"; exit 1; }
+            test -x "$app/$a" || { echo "no $a command in fsh.app"; exit 1; }
+          done
+          db=$("$app/fshdb" --help 2>&1 || true)
+          browsers=$("$app/fsh" -c 'browse --list')
           hdiutil detach "$mnt"
           echo "$out"
           test "$out" = smoke-ok
+          echo "$db" | grep -q 'Usage: fshdb' || { echo "fshdb: unexpected output: $db"; exit 1; }
+          echo "$browsers"
+          echo "$browsers" | grep -q lanterna || { echo "the file browser plugin is not in the disk image"; exit 1; }
 
       - name: The packages
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get install -y rpm
-          sh tools/build-linux-packages.sh all $VERSION
+          sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui \
+            --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb --viewer-repo parley-files-viewer \
+            all $VERSION
 
       - name: Smoke test (the .deb)
         if: matrix.platform == 'linux'
@@ -135,6 +191,17 @@ jobs:
           echo "$out"
           test "$out" = smoke-ok
           grep -qx /usr/bin/fsh /etc/shells
+          # the other programs are there, in the menu's Parley folder, and the browser plugin loaded
+          for a in fsh-ide fshdb parley-files-viewer; do
+            test -x /usr/bin/$a || { echo "no /usr/bin/$a"; exit 1; }
+          done
+          ls /usr/share/applications/parley-fsh.desktop /usr/share/applications/parley-fsh-ide.desktop \
+            /usr/share/applications/parley-fshdb.desktop /usr/share/applications/parley-files-viewer.desktop \
+            /etc/xdg/menus/applications-merged/parley.menu
+          /usr/bin/fshdb --help 2>&1 | grep -q 'Usage: fshdb'
+          browsers=$(/usr/bin/fsh -c 'browse --list')
+          echo "$browsers"
+          echo "$browsers" | grep -q lanterna
           sudo dpkg -r fsh
 
       # ---- Windows
@@ -146,50 +213,6 @@ jobs:
         if: matrix.platform == 'windows'
         shell: cmd
         run: call windows\compile.cmd
-
-      # The installer carries more than fsh, each built from its own repository (the default
-      # branch; a tag of the same name in each would pin a release): the file browser plugin
-      # (browse, view, edit, search), and the programs beside fsh.exe: fsh-ide, fshdb and
-      # parley-files-viewer (fsh-loupe is fsh-ide's dependency)
-      - name: Checkout the file browser plugin
-        if: matrix.platform == 'windows'
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-files-viewer-tui
-          path: parley-files-viewer-tui
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
-      - name: Checkout fsh-loupe
-        if: matrix.platform == 'windows'
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-fsh-loupe
-          path: fsh-loupe
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
-      - name: Checkout fsh-ide
-        if: matrix.platform == 'windows'
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-fsh-ide
-          path: fsh-ide
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
-      - name: Checkout fshdb
-        if: matrix.platform == 'windows'
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-fshdb
-          path: fshdb
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
-      - name: Checkout parley-files-viewer
-        if: matrix.platform == 'windows'
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-files-viewer
-          path: parley-files-viewer
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
       - name: The installer
         if: matrix.platform == 'windows'
