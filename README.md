@@ -328,6 +328,20 @@ repository (fsh's version; run `mvn install` in parley-files-viewer-tui first), 
 your plugin folders. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
 used once.
 
+To build the Windows installer with the browser in it, from a checkout of
+[parley-files-viewer-tui](https://github.com/parley-project/parley-files-viewer-tui) beside this
+one: install the [WiX Toolset 3.14](https://github.com/wixtoolset/wix3/releases) (the binaries zip
+unpacked and its folder on `PATH` is enough, no administrator needed; `jpackage` in JDK 21 wants
+WiX 3, not 4 or 5), set `JAVA_HOME` to a JDK, and run
+
+```
+tools\build-msi-with-plugins.ps1
+```
+
+It installs fsh to the local Maven repository, builds the plugin's jars, names them in
+`FSH_PLUGINS` and runs `tools\build-msi.ps1`. The output says `plugins built in: ...`; if it says
+`no plugins built in`, the installer has no `browse`.
+
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
 `fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them).
 What the Finder starts (`fsh.app/Contents/MacOS/fsh`) opens Terminal on that command, so fsh
