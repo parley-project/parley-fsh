@@ -321,6 +321,12 @@ JDK such as Temurin (GraalVM's adds its own compiler, about 40 MB), 17 or later 
 (`FSH_DEBUG=8001 bin/fsh` listens on localhost:8001). The `.deb` needs `dpkg-deb` and the `.rpm`
 `rpmbuild` (on Debian and Ubuntu, `apt install rpm`).
 
+The installers carry plugins too (the file browser, for `browse`, `view`, `edit` and `search`),
+on fsh's class path in `lib/plugins`: the jars `FSH_PLUGINS` names (separated by spaces; by `;`
+for `tools\build-msi.ps1`), else those in your plugin folders, as `build-native --builtin` takes
+them. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
+used once.
+
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
 `fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them). Two
 are jpackage's own: the one the Finder opens (`fsh.app/Contents/MacOS/fsh`, which shows fsh's

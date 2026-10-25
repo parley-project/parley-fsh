@@ -7,11 +7,17 @@
 #   target/jlink/fsh/lib/fsh.jar                fsh and everything it needs (mvn package)
 #   target/jlink/fsh/lib/libnativekeyboard.*    the keyboard library and fshexec (compile.sh)
 #   target/jlink/fsh/lib/fsh.aot or fsh.jsa     the class cache made from tools/aot-training.sh
+#   target/jlink/fsh/lib/plugins                the plugin jars built in, on fsh's class path
 #   target/jlink/fsh/runtime                    the Java runtime: only the modules fsh needs
 #
 # Usage: tools/build-jlink.sh [--debug] [--package VERSION]
 #   --debug              also put the debugger agent in the runtime (FSH_DEBUG=8001 bin/fsh)
 #   --package VERSION    also make dist/fsh-VERSION-PLATFORM-ARCH-jvm.tar.gz and its .sha256
+#
+# The plugins built in (the file browser for browse, say) are the jars FSH_PLUGINS names
+# (separated by spaces), else those in ~/.parley/fsh/plugins and /usr/local/lib/parley/fsh/plugins,
+# as build-native --builtin takes them; with none, fsh is built without. fsh finds each plugin
+# class once, so the same plugin in a plugin folder too is not there twice.
 #
 # JAVA_HOME names the JDK whose runtime goes in (macOS: else /usr/libexec/java_home). The runtime
 # is that JDK's version: 17 or later for the keychain, 25 or later for the AOT cache (the fastest
@@ -103,6 +109,16 @@ cds=""
 rm -f "$out/runtime/lib/server/classes_nocoops.jsa"
 
 cp -p target/fsh.jar "$out/lib/"
+plugins=${FSH_PLUGINS:-$(ls "$HOME"/.parley/fsh/plugins/*.jar /usr/local/lib/parley/fsh/plugins/*.jar 2>/dev/null)}
+if [ -n "$plugins" ]; then
+	mkdir -p "$out/lib/plugins"
+	for j in $plugins; do
+		cp -p "$j" "$out/lib/plugins/"
+	done
+	echo "plugins built in: $plugins"
+else
+	echo "no plugins built in (FSH_PLUGINS, or the plugin folders)"
+fi
 cp -p "$platform/$lib" "$platform/fshexec" "$out/lib/"
 cp -p LICENSE "$out/"
 
@@ -132,7 +148,10 @@ fi
 java=$lib/../runtime/bin/java
 [ -x "$java" ] || java=$lib/../runtime/Contents/Home/bin/java
 
-set -- -cp "$lib/fsh.jar" us.bringardner.fsh.Console "$@"
+# (the plugins built in: on the class path after fsh)
+cp=$lib/fsh.jar
+[ -d "$lib/plugins" ] && cp="$cp:$lib/plugins/*"
+set -- -cp "$cp" us.bringardner.fsh.Console "$@"
 if [ -n "$FSH_DEBUG" ]; then
 	set -- "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=localhost:$FSH_DEBUG" "$@"
 fi
@@ -162,13 +181,15 @@ chmod 755 "$out/bin/fsh"
 # The class cache, from a run of tools/aot-training.sh: an AOT cache on JDK 25 or later (classes
 # loaded and linked, and the JIT's profiles), else a CDS archive of fsh's classes (JDK 13 or later)
 java="$out/runtime/bin/java"
+cp=$out/lib/fsh.jar
+[ -d "$out/lib/plugins" ] && cp="$cp:$out/lib/plugins/*"
 opts="$native_access -Djava.library.path=$out/lib -Xss16m -XX:+UseSerialGC -Xmn16m -XX:-MaxFDLimit -Djava.awt.headless=true"
 if [ "$major" -ge 25 ]; then
-	"$java" -XX:AOTCacheOutput="$out/lib/fsh.aot" $opts -cp "$out/lib/fsh.jar" us.bringardner.fsh.Console \
+	"$java" -XX:AOTCacheOutput="$out/lib/fsh.aot" $opts -cp "$cp" us.bringardner.fsh.Console \
 		tools/aot-training.sh > /dev/null 2>&1 || true
 	rm -f "$out/lib/fsh.aot.config"
 elif [ "$major" -ge 13 ]; then
-	"$java" -XX:ArchiveClassesAtExit="$out/lib/fsh.jsa" $opts -cp "$out/lib/fsh.jar" us.bringardner.fsh.Console \
+	"$java" -XX:ArchiveClassesAtExit="$out/lib/fsh.jsa" $opts -cp "$cp" us.bringardner.fsh.Console \
 		tools/aot-training.sh > /dev/null 2>&1 || true
 fi
 
