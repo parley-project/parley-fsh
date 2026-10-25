@@ -109,7 +109,8 @@ cds=""
 rm -f "$out/runtime/lib/server/classes_nocoops.jsa"
 
 cp -p target/fsh.jar "$out/lib/"
-plugins=${FSH_PLUGINS:-$(ls "$HOME"/.parley/fsh/plugins/*.jar /usr/local/lib/parley/fsh/plugins/*.jar 2>/dev/null)}
+# (|| true: ls fails when a folder isn't there, which would end the script, set -e)
+plugins=${FSH_PLUGINS:-$(ls "$HOME"/.parley/fsh/plugins/*.jar /usr/local/lib/parley/fsh/plugins/*.jar 2>/dev/null || true)}
 if [ -n "$plugins" ]; then
 	mkdir -p "$out/lib/plugins"
 	for j in $plugins; do
