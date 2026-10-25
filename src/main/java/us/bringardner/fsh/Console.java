@@ -648,9 +648,25 @@ delimiter
 		addPluginCommands();
 	}
 
+	/**
+	 * The providers of type from the application and its plugins, each class once: a plugin built
+	 * into fsh (the installers carry theirs on fsh's class path) that is in a plugin folder too is
+	 * found twice, as the same class.
+	 */
+	public static <S> List<S> pluginProviders(Class<S> type, java.util.function.Consumer<Throwable> onError) {
+		List<S> ret = new ArrayList<>();
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		for(S p : us.bringardner.parley.plugin.Plugins.providers(type, onError)) {
+			if( seen.add(p.getClass().getName())) {
+				ret.add(p);
+			}
+		}
+		return ret;
+	}
+
 	/** add the commands the loaded plugins provide (see loadPlugins) */
 	public static synchronized void addPluginCommands() {
-		for(us.bringardner.fsh.spi.CommandProvider p : us.bringardner.parley.plugin.Plugins.providers(
+		for(us.bringardner.fsh.spi.CommandProvider p : pluginProviders(
 				us.bringardner.fsh.spi.CommandProvider.class, e -> pluginNotes.add("a command provider cannot be loaded: "+e))) {
 			String from = pluginSource(p.getClass());
 			List<ShellCommand> added;

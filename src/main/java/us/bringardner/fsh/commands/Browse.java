@@ -11,7 +11,6 @@ import us.bringardner.fsh.spi.BrowseRequest;
 import us.bringardner.fsh.spi.BrowserProvider;
 import us.bringardner.fsh.spi.ShellConnections;
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.plugin.Plugins;
 
 /**
  * browse: open a file browser from a plugin (us.bringardner.fsh.spi.BrowserProvider): the one of
@@ -36,7 +35,7 @@ public class Browse extends ShellCommand {
 
 	/** the browsers the application and its plugins provide, the highest priority first */
 	static List<BrowserProvider> providers(ShellContext ctx) {
-		List<BrowserProvider> ret = new ArrayList<>(Plugins.providers(BrowserProvider.class,
+		List<BrowserProvider> ret = new ArrayList<>(us.bringardner.fsh.Console.pluginProviders(BrowserProvider.class,
 				e -> ctx.error(NAME+": a browser cannot be loaded: "+e)));
 		ret.sort(Comparator.comparingInt(BrowserProvider::priority).reversed());
 		return ret;

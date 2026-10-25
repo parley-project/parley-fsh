@@ -6,7 +6,8 @@
 #   fsh.app/Contents/app/fsh        the fsh command (the jlink build's launcher): link it from a
 #                                   directory on PATH (README.txt in the disk image says how)
 #   fsh.app/Contents/MacOS/fsh      jpackage's launcher: opened from the Finder, fsh in its window
-#   fsh.app/Contents/app/fsh.jar    fsh, the keyboard library, fshexec and the class cache
+#   fsh.app/Contents/app/fsh.jar    fsh, the keyboard library, fshexec, the class cache and the
+#                                   plugins built in (plugins/: see tools/build-jlink.sh)
 #   fsh.app/Contents/runtime        the Java runtime
 #
 # Its icon is macos/fsh.icns: Parley's tower with the >_ badge, the brand's icon for terminal
@@ -66,7 +67,8 @@ fi
 work=$PROJECT_DIR/target/jpackage
 rm -rf "$work"
 mkdir -p "$work/input" "$work/dmg" dist
-cp -p "$image"/lib/* "$work/input/"
+# (jpackage puts every jar in the input on the class path: fsh.jar and the plugins built in)
+cp -Rp "$image"/lib/. "$work/input/"
 cp -p "$image/bin/fsh" "$work/input/fsh"
 
 cat > "$work/dmg/README.txt" <<TXT
