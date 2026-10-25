@@ -96,8 +96,11 @@ native_access=""
 [ "$runtime_major" -ge 17 ] && native_access=--enable-native-access=ALL-UNNAMED
 
 # (as bin/fsh's options, but with a window: no java.awt.headless, so from the Finder fsh opens
-# its window)
-set -- --type "$type" --dest "$work/out" --name fsh --app-version "$version" \
+# its window. A dmg: jpackage makes the app, and hdiutil create the disk image from a folder, as
+# jpackage's own dmg needs hdiutil attach, which macOS can refuse)
+jtype=$type
+[ "$type" = dmg ] && jtype=app-image
+set -- --type "$jtype" --dest "$work/out" --name fsh --app-version "$version" \
 	--vendor "Tony Bringardner" --copyright "Copyright 2004-$(date +%Y) Tony Bringardner" \
 	--description "fsh, the FileSource Shell: a bash-like shell on any parley-files file system" \
 	--input "$work/input" --main-jar fsh.jar --main-class us.bringardner.fsh.Console \
@@ -109,11 +112,20 @@ set -- --type "$type" --dest "$work/out" --name fsh --app-version "$version" \
 	--mac-package-identifier us.bringardner.fsh --mac-package-name fsh --icon macos/fsh.icns \
 	--temp "$work/temp"
 [ -n "$native_access" ] && set -- "$@" --java-options "$native_access"
-[ "$type" = dmg ] && set -- "$@" --mac-dmg-content "$work/dmg/README.txt"
-[ "$type" != app-image ] && set -- "$@" --license-file LICENSE
+[ "$type" = pkg ] && set -- "$@" --license-file LICENSE
 "$jpackage" "$@"
 
 case $type in
+dmg)
+	# (the disk image: fsh.app, a link to Applications to drag it to, README.txt and LICENSE)
+	mv "$work/out/fsh.app" "$work/dmg/"
+	ln -s /Applications "$work/dmg/Applications"
+	cp -p LICENSE "$work/dmg/"
+	name=fsh-$version-macos-$arch.dmg
+	rm -f "dist/$name"
+	hdiutil create -quiet -volname "fsh $version" -srcfolder "$work/dmg" -fs HFS+ -format UDZO "dist/$name"
+	(cd dist && shasum -a 256 "$name" > "$name.sha256")
+	echo "$PROJECT_DIR/dist/$name" ;;
 app-image)
 	rm -rf dist/fsh.app
 	mv "$work/out/fsh.app" dist/
