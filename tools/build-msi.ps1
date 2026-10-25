@@ -16,9 +16,17 @@
 # The plugins built in (the file browser for browse, say), on fsh's class path: the jars
 # FSH_PLUGINS names (separated by ;), else those in %USERPROFILE%\.parley\fsh\plugins and
 # %ProgramData%\Parley\fsh\plugins; with none, fsh is built without.
+# More programs in the same installer, on the same Java runtime, each its own launcher (an .exe) and
+# Start menu entry, all in the Start menu folder MenuGroup (default fsh): -IdeRepo (a checkout of
+# fsh-ide: fsh-ide.exe, the Swing IDE, a window program) and -DbRepo (fshdb: fshdb.exe, the console
+# debugger) and -ViewerRepo (parley-files-viewer: parley-files-viewer.exe, the Swing file browser). Their jars (not the JavaFX ones, nor those fsh.jar has inside) go in apps, on the class path.
 param(
 	[string] $Version = '',
-	[string] $Arch = 'x86_64'
+	[string] $Arch = 'x86_64',
+	[string] $IdeRepo = '',
+	[string] $DbRepo = '',
+	[string] $ViewerRepo = '',
+	[string] $MenuGroup = 'fsh'
 )
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
@@ -41,6 +49,37 @@ Write-Output "JDK $major ($jdk), windows $Arch, fsh $Version"
 if ($LASTEXITCODE -ne 0) { throw 'mvn package failed' }
 if (-not (Test-Path target\fsh.jar)) { throw 'mvn package made no target\fsh.jar' }
 
+# the other programs' jars: each one's own, and its dependencies that fsh.jar (and the others) don't have
+$fshCp = @()
+$apps = @()
+foreach ($def in @(
+		@{ Name = 'fsh-ide'; Repo = $IdeRepo; Pattern = 'fsh-ide-*.jar'; Class = 'us.bringardner.fsh.ide.FshIDE'; Console = $false;
+			Description = 'fsh-ide, an editor and debugger for shell scripts' },
+		@{ Name = 'fshdb'; Repo = $DbRepo; Pattern = 'fshdb-*.jar'; Class = 'us.bringardner.fshdb.Fshdb'; Console = $true;
+			Description = 'fshdb, a debugger for shell scripts that runs in a terminal' },
+		@{ Name = 'parley-files-viewer'; Repo = $ViewerRepo; Pattern = 'parley-files-viewer-*.jar'; Class = 'us.bringardner.parley.files.viewer.FileSourceViewer'; Console = $false;
+			Description = 'parley-files-viewer, a file browser for any file system' })) {
+	if (-not $def.Repo) { continue }
+	if (-not $fshCp) {
+		$fshCp = (Get-Content (Join-Path $project 'target\runtime-classpath.txt') -Raw) -split '[;:\r\n]' |
+			Where-Object { $_ } | ForEach-Object { Split-Path -Leaf $_ }
+	}
+	$repo = (Resolve-Path (Join-Path $def.Repo 'pom.xml')).Path | Split-Path -Parent
+	Push-Location $repo
+	& mvn -q package -DskipTests dependency:build-classpath '-Dmdep.includeScope=runtime' '-Dmdep.outputFile=target\app-classpath.txt'
+	if ($LASTEXITCODE -ne 0) { Pop-Location; throw "building $($def.Name) failed" }
+	$cp = (Get-Content 'target\app-classpath.txt' -Raw) -split ';' | Where-Object { $_ }
+	$main = (Get-ChildItem 'target' -Filter $def.Pattern | Where-Object { $_.Name -notmatch '-(sources|javadoc|tests|all)\.jar$' } | Select-Object -First 1).FullName
+	Pop-Location
+	if (-not $main) { throw "no $($def.Name) jar built in $repo" }
+	# (not fsh itself, JavaFX and what only it needs: the programs here are Swing or console)
+	$skip = '^(fsh-\d.*|javafx-.*|richtextfx-.*|flowless-.*|reactfx-.*|undofx-.*|wellbehavedfx-.*|bringardner-fx-widgets-.*|parley-files-fx-.*)\.jar$'
+	$jars = @($main) + @($cp | Where-Object { $leaf = Split-Path -Leaf $_; ($fshCp -notcontains $leaf) -and ($leaf -notmatch $skip) })
+	$apps += @{ Def = $def; Main = $main; Jars = $jars }
+	Write-Output "$($def.Name): $main, and $($jars.Count - 1) more jars"
+}
+$appJars = @($apps | ForEach-Object { $_.Jars } | Sort-Object -Property { Split-Path -Leaf $_ } -Unique)
+
 # the keyboard library
 if (-not (Test-Path windows\nativekeyboard.dll)) {
 	& cmd /c windows\compile.cmd
@@ -50,7 +89,9 @@ if (-not (Test-Path windows\nativekeyboard.dll)) {
 # The modules: what fsh.jar uses (jdeps), and what is found only at run time (as
 # tools/build-jlink.sh: elliptic curves for SSH, more encodings, every locale, zip file systems,
 # DNS through JNDI)
-$modules = (& (Join-Path $jdk 'bin\jdeps.exe') -q --multi-release $major --ignore-missing-deps --print-module-deps target\fsh.jar).Trim()
+$jdepsInputs = @('target\fsh.jar')
+if ($apps) { $jdepsInputs += $appJars }
+$modules = (& (Join-Path $jdk 'bin\jdeps.exe') -q --multi-release $major --ignore-missing-deps --print-module-deps $jdepsInputs).Trim()
 $available = (& (Join-Path $jdk 'bin\java.exe') --list-modules) | ForEach-Object { ($_ -split '@')[0] }
 foreach ($m in 'jdk.crypto.ec', 'jdk.charsets', 'jdk.localedata', 'jdk.zipfs', 'jdk.naming.dns') {
 	if ($available -contains $m) { $modules += ",$m" }
@@ -86,6 +127,23 @@ if ($plugins) {
 $options = @('-Djava.library.path=$APPDIR', '-Xss16m', '-XX:+UseSerialGC', '-Xmn16m',
 	'-XX:MinHeapFreeRatio=10', '-XX:MaxHeapFreeRatio=20', '-Djava.awt.headless=true')
 if ($major -ge 17) { $options += '--enable-native-access=ALL-UNNAMED' }
+$extraLauncher = @()
+if ($apps) {
+	$appDir = Join-Path $work 'input\apps'
+	New-Item -ItemType Directory -Force $appDir | Out-Null
+	Copy-Item $appJars $appDir
+	foreach ($app in $apps) {
+		$def = $app.Def
+		# (not headless for a window program; the same options otherwise. jpackage puts every jar of the input on every launcher's class path)
+		$appOptions = if ($def.Console) { $options } else { $options | Where-Object { $_ -ne '-Djava.awt.headless=true' } }
+		$props = Join-Path $work "$($def.Name).properties"
+		@("main-jar=apps/$(Split-Path -Leaf $app.Main)", "main-class=$($def.Class)", "win-console=$($def.Console.ToString().ToLower())",
+			'win-menu=true', 'win-shortcut=false', "description=$($def.Description)",
+			"icon=$((Join-Path $project 'windows\fsh.ico').Replace('\', '/'))",
+			"java-options=$($appOptions -join ' ')") | Set-Content -Encoding ASCII $props
+		$extraLauncher += @('--add-launcher', "$($def.Name)=$props")
+	}
+}
 $jpackageArgs = @('--type', 'msi', '--dest', (Join-Path $work 'out'), '--name', 'fsh',
 	'--app-version', $Version, '--vendor', 'Tony Bringardner',
 	'--copyright', "Copyright 2004-$((Get-Date).Year) Tony Bringardner",
@@ -94,11 +152,12 @@ $jpackageArgs = @('--type', 'msi', '--dest', (Join-Path $work 'out'), '--name', 
 	'--runtime-image', (Join-Path $work 'runtime'), '--license-file', 'LICENSE',
 	# (Parley's tower with the >_ badge: parley-brand's parley-icon-terminal PNGs, as one .ico)
 	'--icon', 'windows\fsh.ico',
-	'--win-console', '--win-dir-chooser', '--win-menu',
+	'--win-console', '--win-dir-chooser', '--win-menu', '--win-menu-group', $MenuGroup,
 	# (the same for every version, so a newer installer replaces an older one)
 	'--win-upgrade-uuid', '54bf2305-171a-559a-8f13-c0db046304c4',
 	'--temp', (Join-Path $work 'temp'))
 foreach ($o in $options) { $jpackageArgs += @('--java-options', $o) }
+$jpackageArgs += $extraLauncher
 & (Join-Path $jdk 'bin\jpackage.exe') @jpackageArgs
 if ($LASTEXITCODE -ne 0) { throw 'jpackage failed' }
 

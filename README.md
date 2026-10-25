@@ -337,8 +337,12 @@ WiX 3, not 4 or 5), set `JAVA_HOME` to a JDK, and run
 tools\build-msi-with-plugins.ps1
 ```
 
-It installs fsh to the local Maven repository, builds the plugin's jars, names them in
-`FSH_PLUGINS` and runs `tools\build-msi.ps1`. The output says `plugins built in: ...`; if it says
+It installs fsh and fsh-loupe to the local Maven repository, builds the plugin's jars, names them
+in `FSH_PLUGINS` and runs `tools\build-msi.ps1`. The installer carries more programs too, each from a
+checkout beside this one and with its own `.exe` beside `fsh.exe` on the same Java runtime:
+`fsh-ide.exe` (the Swing IDE; `-IdeRepo`, `-NoIde`), `fshdb.exe` (the console debugger; `-DbRepo`,
+`-NoDb`) and `parley-files-viewer.exe` (the Swing file browser; `-ViewerRepo`, `-NoViewer`). They are
+all in one Start menu folder, `fsh` (`-MenuGroup` names another). The output says `plugins built in: ...`; if it says
 `no plugins built in`, the installer has no `browse`.
 
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
