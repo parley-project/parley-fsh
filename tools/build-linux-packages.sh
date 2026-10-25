@@ -48,7 +48,7 @@ for t in $types; do
 done
 
 image=target/jlink/fsh
-if [ ! -x "$image/bin/fsh" ] || [ pom.xml -nt "$image/bin/fsh" ] \
+if [ ! -x "$image/bin/fsh" ] || [ pom.xml -nt "$image/bin/fsh" ] || [ tools/build-jlink.sh -nt "$image/bin/fsh" ] \
 		|| [ -n "$(find src resources -newer "$image/bin/fsh" -type f 2>/dev/null | head -1)" ]; then
 	tools/build-jlink.sh
 fi

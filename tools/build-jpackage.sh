@@ -5,18 +5,24 @@
 #
 #   fsh.app/Contents/app/fsh        the fsh command (the jlink build's launcher): link it from a
 #                                   directory on PATH (README.txt in the disk image says how)
-#   fsh.app/Contents/MacOS/fsh      jpackage's launcher: opened from the Finder, fsh in its window
-#   fsh.app/Contents/app/fsh.jar    fsh, the keyboard library, fshexec and the class cache
+#   fsh.app/Contents/MacOS/fsh      what the Finder starts: opens Terminal running Contents/app/fsh,
+#                                   so fsh runs in a terminal (browse's full-screen browsers too)
+#   fsh.app/Contents/app/fsh.jar    fsh, the keyboard library, fshexec, the class cache and the
+#                                   plugins built in (plugins/: see tools/build-jlink.sh)
 #   fsh.app/Contents/runtime        the Java runtime
+#
+# Its icon is macos/fsh.icns: Parley's tower with the >_ badge, the brand's icon for terminal
+# apps (parley-brand's parley-icon-terminal-16.png ... -512.png, put together as one .icns).
 #
 # Usage: tools/build-jpackage.sh [TYPE] [VERSION]
 #   TYPE     dmg (the default), pkg (installs /Applications/fsh.app) or app-image (fsh.app only)
 #   VERSION  the pom's, without -SNAPSHOT
 #
-# The command in Contents/app starts Java through fshexec -j, as bin/fsh does; jpackage's launcher
-# can't (its JVM is in its own process), so the Finder's fsh doesn't see the signals its caller
-# ignored, which only matters in a terminal. The disk image is not signed or notarized (for that:
-# --mac-sign and a Developer ID, then notarytool). Linux: tools/build-linux-packages.sh; Windows:
+# jpackage makes fsh.app with a launcher of its own in Contents/MacOS, which would run fsh in its
+# own window (not a terminal, where a full-screen browser can't run). That launcher is replaced by
+# a script that opens Terminal on Contents/app/fsh, and the app is signed again (ad hoc), since the
+# change breaks jpackage's signature. The disk image is not signed with a Developer ID or notarized
+# (for that: codesign with a Developer ID, then notarytool). Linux: tools/build-linux-packages.sh; Windows:
 # tools/build-msi.ps1.
 
 set -e
@@ -41,7 +47,7 @@ arm64) arch=aarch64 ;;
 esac
 
 image=target/jlink/fsh
-if [ ! -x "$image/bin/fsh" ] || [ pom.xml -nt "$image/bin/fsh" ] \
+if [ ! -x "$image/bin/fsh" ] || [ pom.xml -nt "$image/bin/fsh" ] || [ tools/build-jlink.sh -nt "$image/bin/fsh" ] \
 		|| [ -n "$(find src resources -newer "$image/bin/fsh" -type f 2>/dev/null | head -1)" ]; then
 	tools/build-jlink.sh
 fi
@@ -59,16 +65,18 @@ fi
 
 # what goes in the app folder ($APPDIR, Contents/app): all of the jlink build's lib, and its
 # launcher as the command
-work=target/jpackage
+# (absolute: jpackage passes its work folder to hdiutil as -mountroot, which a relative path fails)
+work=$PROJECT_DIR/target/jpackage
 rm -rf "$work"
 mkdir -p "$work/input" "$work/dmg" dist
-cp -p "$image"/lib/* "$work/input/"
+# (jpackage puts every jar in the input on the class path: fsh.jar and the plugins built in)
+cp -Rp "$image"/lib/. "$work/input/"
 cp -p "$image/bin/fsh" "$work/input/fsh"
 
 cat > "$work/dmg/README.txt" <<TXT
 fsh $version for macOS ($arch)
 
-Drag fsh.app to Applications. Opened from the Finder, fsh runs in its own window.
+Drag fsh.app to Applications. Opened from the Finder, it opens a Terminal window running fsh.
 
 To use fsh in a terminal, link its command from a directory on PATH, once:
 
@@ -91,9 +99,10 @@ TXT
 native_access=""
 [ "$runtime_major" -ge 17 ] && native_access=--enable-native-access=ALL-UNNAMED
 
-# (as bin/fsh's options, but with a window: no java.awt.headless, so from the Finder fsh opens
-# its window)
-set -- --type "$type" --dest "$work/out" --name fsh --app-version "$version" \
+# (fsh.app first, always: its launcher is replaced (below), then the pkg is made from it, or the
+# dmg by hdiutil create from a folder, as jpackage's own dmg needs hdiutil attach, which macOS can
+# refuse)
+set -- --type app-image --dest "$work/out" --name fsh --app-version "$version" \
 	--vendor "Tony Bringardner" --copyright "Copyright 2004-$(date +%Y) Tony Bringardner" \
 	--description "fsh, the FileSource Shell: a bash-like shell on any parley-files file system" \
 	--input "$work/input" --main-jar fsh.jar --main-class us.bringardner.fsh.Console \
@@ -102,21 +111,42 @@ set -- --type "$type" --dest "$work/out" --name fsh --app-version "$version" \
 	--java-options -Xss16m --java-options -XX:+UseSerialGC --java-options -Xmn16m \
 	--java-options -XX:MinHeapFreeRatio=10 --java-options -XX:MaxHeapFreeRatio=20 \
 	--java-options -XX:-MaxFDLimit \
-	--mac-package-identifier us.bringardner.fsh --mac-package-name fsh \
+	--mac-package-identifier us.bringardner.fsh --mac-package-name fsh --icon macos/fsh.icns \
 	--temp "$work/temp"
 [ -n "$native_access" ] && set -- "$@" --java-options "$native_access"
-[ "$type" = dmg ] && set -- "$@" --mac-dmg-content "$work/dmg/README.txt"
-[ "$type" != app-image ] && set -- "$@" --license-file LICENSE
 "$jpackage" "$@"
 
+# (what the Finder starts: Terminal, running the fsh command in the app)
+app=$work/out/fsh.app
+cat > "$app/Contents/MacOS/fsh" <<'SH'
+#!/bin/sh
+# fsh.app opened from the Finder: fsh in a new Terminal window (the command is Contents/app/fsh)
+exec open -a Terminal "$(cd "$(dirname "$0")/../app" && pwd)/fsh"
+SH
+chmod 755 "$app/Contents/MacOS/fsh"
+codesign --force --deep --sign - "$app"
+
 case $type in
+dmg)
+	# (the disk image: fsh.app, a link to Applications to drag it to, README.txt and LICENSE)
+	mv "$work/out/fsh.app" "$work/dmg/"
+	ln -s /Applications "$work/dmg/Applications"
+	cp -p LICENSE "$work/dmg/"
+	name=fsh-$version-macos-$arch.dmg
+	rm -f "dist/$name"
+	hdiutil create -quiet -volname "fsh $version" -srcfolder "$work/dmg" -fs HFS+ -format UDZO "dist/$name"
+	(cd dist && shasum -a 256 "$name" > "$name.sha256")
+	echo "$PROJECT_DIR/dist/$name" ;;
 app-image)
 	rm -rf dist/fsh.app
 	mv "$work/out/fsh.app" dist/
 	echo "$PROJECT_DIR/dist/fsh.app" ;;
-*)
-	name=fsh-$version-macos-$arch.$type
-	mv "$work/out"/fsh-*."$type" "dist/$name"
+pkg)
+	"$jpackage" --type pkg --app-image "$app" --dest "$work/pkg" --name fsh --app-version "$version" \
+		--vendor "Tony Bringardner" --license-file LICENSE --mac-package-identifier us.bringardner.fsh \
+		--temp "$work/temp-pkg"
+	name=fsh-$version-macos-$arch.pkg
+	mv "$work/pkg"/fsh-*.pkg "dist/$name"
 	(cd dist && shasum -a 256 "$name" > "$name.sha256")
 	echo "$PROJECT_DIR/dist/$name" ;;
 esac
