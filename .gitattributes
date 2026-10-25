@@ -11,3 +11,6 @@
 # Bash's recorded output is compared byte for byte with fsh's, which writes LF: these files
 # are LF in a working copy whatever the checkout's autocrlf
 src/test/resources/bash-compat/** text eol=lf
+
+# The wc/ls/cp/pipe/redirect tests compare byte counts and sizes with LF files (binary ones are left alone)
+*TestFiles/** text=auto eol=lf

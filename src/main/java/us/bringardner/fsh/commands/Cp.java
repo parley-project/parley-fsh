@@ -117,7 +117,8 @@ public class Cp extends ShellCommand{
 		if( dir.getFileSourceFactory() != from.getFileSourceFactory()) {
 			return false;
 		}
-		String d = dir.getAbsolutePath(), f = from.getAbsolutePath();
+		// (Windows paths have backslashes: compare with /, or a folder copied into itself is not seen)
+		String d = dir.getAbsolutePath().replace('\\', '/'), f = from.getAbsolutePath().replace('\\', '/');
 		return d.equals(f) || d.startsWith(f.endsWith("/") ? f : f+"/");
 	}
 
