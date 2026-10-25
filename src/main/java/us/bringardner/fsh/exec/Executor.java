@@ -178,7 +178,7 @@ public final class Executor {
 				return 2;
 			}
 			if( seq == null ) {
-				if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
+				if( !sc.console.isInteractive && !sc.console.windowShell && sc.console.isOptionEnabled(Option.History)) {
 					// (a comment line by itself is kept too)
 					for(String c : reader.comments) {
 						sc.console.rememberCommand(c);
@@ -187,7 +187,7 @@ public final class Executor {
 				return ret;
 			}
 			warnings(sc, seq);
-			if( !sc.console.isInteractive && sc.console.isOptionEnabled(Option.History)) {
+			if( !sc.console.isInteractive && !sc.console.windowShell && sc.console.isOptionEnabled(Option.History)) {
 				// set -o history in a script: each line read is kept (comments too, as bash's)
 				for(String c : reader.comments) {
 					sc.console.rememberCommand(c);
