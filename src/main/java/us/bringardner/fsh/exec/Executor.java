@@ -851,7 +851,7 @@ public final class Executor {
 	 * A pipe stage's output: once no one reads it (while :; do echo y; done | head -1), writing
 	 * ends the stage as SIGPIPE ends bash's (status 141).
 	 */
-	static final class StagePipeOut extends PrintStream {
+	static final class StagePipeOut extends us.bringardner.fsh.LfLines {
 		StagePipeOut(java.io.OutputStream o) {
 			super(o, false, us.bringardner.fsh.RawUtf8.CHARSET);
 		}
