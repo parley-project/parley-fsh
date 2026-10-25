@@ -2407,8 +2407,8 @@ delimiter
 	 * @return false if it can't be connected there
 	 */
 	public boolean connectAt(FileSource f, String at) throws IOException {
-		if(at == null || at.isEmpty() || at.charAt(0) != '/'){
-			throw new IOException("a connection is at a path such as /sftp: "+at);
+		if(at == null || at.isEmpty() || at.charAt(0) != '/' && !VirtualFileSourceFactory.isDrivePath(at)){
+			throw new IOException("a connection is at a path such as /sftp (or C:/sftp on Windows): "+at);
 		}
 		return tree.connectAt(at, TreeFile.unwrap(f));
 	}
@@ -4361,8 +4361,8 @@ delimiter
 		while( path.length() > 1 && path.endsWith("/")) {
 			path = path.substring(0, path.length()-1);
 		}
-		if( path.isEmpty() || path.charAt(0) != '/' ) {
-			throw new IOException("a connection is at a path such as /sftp: "+at);
+		if( path.isEmpty() || path.charAt(0) != '/' && !VirtualFileSourceFactory.isDrivePath(path)) {
+			throw new IOException("a connection is at a path such as /sftp (or C:/sftp on Windows): "+at);
 		}
 		if( path.equals("/")) {
 			throw new IOException("/ is the shell's own file system, not a connection");

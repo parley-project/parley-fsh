@@ -71,8 +71,8 @@ public class Connect extends ShellCommand{
 
 		String fid = args.remove(0);
 		String at = args.remove(args.size()-1).trim();
-		if( !at.startsWith("/") || at.equals("/")) {
-			ctx.stderr.println(name+": PATH must be a path such as /prod, not '"+at+"'");
+		if( !at.startsWith("/") && !us.bringardner.parley.files.tree.VirtualFileSourceFactory.isDrivePath(at) || at.equals("/")) {
+			ctx.stderr.println(name+": PATH must be a path such as /prod (or C:/prod on Windows), not '"+at+"'");
 			return 2;
 		}
 		FileSourceFactory factory = FileSourceFactory.getFileSourceFactory(fid);
