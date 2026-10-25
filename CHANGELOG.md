@@ -10,8 +10,9 @@
   (`tools/build-linux-packages.sh`: `/opt/fsh`, `/usr/bin/fsh`, added to `/etc/shells`), and an
   `.msi` for Windows (`tools/build-msi.ps1`). `release-binaries.yml` builds them for a release,
   besides the native binaries. The installers carry plugins too, on fsh's class path: the jars
-  `FSH_PLUGINS` names, else those in the plugin folders, as for `build-native --builtin` (the
-  file browser, for `browse`, `view`, `edit` and `search`). fsh finds each plugin class once, so
+  `FSH_PLUGINS` names, else the file browser (parley-files-viewer-tui and its Lanterna plugin)
+  from the Maven repository, else those in the plugin folders (for `browse`, `view`, `edit` and
+  `search`). fsh finds each plugin class once, so
   the same plugin in a plugin folder as well isn't there twice.
 - `build-native --builtin` (`macos/`, `linux/`, `windows/`): the native image with plugin jars
   built into it (`FSH_PLUGINS`, else the plugin folders' jars), since a native image can't load

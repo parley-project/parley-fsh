@@ -14,8 +14,10 @@
 # not signed. macOS: tools/build-jpackage.sh; Linux: tools/build-linux-packages.sh.
 #
 # The plugins built in (the file browser for browse, say), on fsh's class path: the jars
-# FSH_PLUGINS names (separated by ;), else those in %USERPROFILE%\.parley\fsh\plugins and
-# %ProgramData%\Parley\fsh\plugins; with none, fsh is built without.
+# FSH_PLUGINS names (separated by ;), else parley-files-viewer-tui and its Lanterna plugin from
+# the Maven repository (fsh's version: mvn install in parley-files-viewer-tui), else those in
+# %USERPROFILE%\.parley\fsh\plugins and %ProgramData%\Parley\fsh\plugins; with none, fsh is
+# built without.
 param(
 	[string] $Version = '',
 	[string] $Arch = 'x86_64'
@@ -30,8 +32,10 @@ foreach ($tool in 'jlink', 'jdeps', 'jpackage', 'java') {
 	if (-not (Test-Path (Join-Path $jdk "bin\$tool.exe"))) { throw "no $tool in JAVA_HOME ($jdk)" }
 }
 $major = [int]((Select-String -Path (Join-Path $jdk 'release') -Pattern '^JAVA_VERSION="(\d+)').Matches[0].Groups[1].Value)
+# (the pom's version: the plugins' too, as Parley's projects share one)
+$fshVersion = ([xml](Get-Content pom.xml)).project.version
 if (-not $Version) {
-	$Version = ([xml](Get-Content pom.xml)).project.version
+	$Version = $fshVersion
 }
 $Version = $Version -replace '-SNAPSHOT$', '' -replace '^v', ''
 Write-Output "JDK $major ($jdk), windows $Arch, fsh $Version"
@@ -69,16 +73,34 @@ if ($LASTEXITCODE -ne 0) { throw 'jlink failed' }
 
 Copy-Item target\fsh.jar, windows\nativekeyboard.dll (Join-Path $work 'input')
 # (jpackage puts every jar in the input on the class path, plugins\ too)
-$plugins = if ($env:FSH_PLUGINS) { $env:FSH_PLUGINS -split ';' | Where-Object { $_ } } else {
-	@((Join-Path $env:USERPROFILE '.parley\fsh\plugins'), (Join-Path $env:ProgramData 'Parley\fsh\plugins')) |
-		Where-Object { Test-Path $_ } | ForEach-Object { Get-ChildItem (Join-Path $_ '*.jar') } | ForEach-Object { $_.FullName }
+# (FSH_PLUGINS, else the file browser from the Maven repository: fsh's version of
+# parley-files-viewer-tui and its Lanterna plugin, mvn install there first; else the plugin
+# folders' jars. Fetched, not dependencies: they depend on fsh)
+$plugins = @()
+if ($env:FSH_PLUGINS) {
+	$plugins = @($env:FSH_PLUGINS -split ';' | Where-Object { $_ })
+} else {
+	if (Test-Path target\plugins) { Remove-Item -Recurse -Force target\plugins }
+	& mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target\plugins "-Dartifact=us.bringardner.parley:parley-files-viewer-tui:$fshVersion" *> $null
+	$ok = $LASTEXITCODE -eq 0
+	if ($ok) {
+		& mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target\plugins "-Dartifact=us.bringardner.parley:parley-files-viewer-tui-lanterna:${fshVersion}:jar:plugin" *> $null
+		$ok = $LASTEXITCODE -eq 0
+	}
+	if ($ok) {
+		$plugins = @(Get-ChildItem target\plugins\*.jar | ForEach-Object { $_.FullName })
+	} else {
+		Write-Output "the file browser $fshVersion is not in the Maven repository (mvn install in parley-files-viewer-tui): the plugin folders' jars instead"
+		$plugins = @(@((Join-Path $env:USERPROFILE '.parley\fsh\plugins'), (Join-Path $env:ProgramData 'Parley\fsh\plugins')) |
+			Where-Object { Test-Path $_ } | ForEach-Object { Get-ChildItem (Join-Path $_ '*.jar') } | ForEach-Object { $_.FullName })
+	}
 }
 if ($plugins) {
 	New-Item -ItemType Directory -Force (Join-Path $work 'input\plugins') | Out-Null
 	Copy-Item $plugins (Join-Path $work 'input\plugins')
 	Write-Output "plugins built in: $($plugins -join ' ')"
 } else {
-	Write-Output 'no plugins built in (FSH_PLUGINS, or the plugin folders)'
+	Write-Output 'no plugins built in (FSH_PLUGINS, the Maven repository, or the plugin folders)'
 }
 
 # (windows\fsh.cmd's options: deep recursion, the serial collector with a small young generation;
