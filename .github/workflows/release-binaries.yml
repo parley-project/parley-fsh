@@ -147,10 +147,57 @@ jobs:
         shell: cmd
         run: call windows\compile.cmd
 
+      # The installer carries more than fsh, each built from its own repository (the default
+      # branch; a tag of the same name in each would pin a release): the file browser plugin
+      # (browse, view, edit, search), and the programs beside fsh.exe: fsh-ide, fshdb and
+      # parley-files-viewer (fsh-loupe is fsh-ide's dependency)
+      - name: Checkout the file browser plugin
+        if: matrix.platform == 'windows'
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-files-viewer-tui
+          path: parley-files-viewer-tui
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout fsh-loupe
+        if: matrix.platform == 'windows'
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-fsh-loupe
+          path: fsh-loupe
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout fsh-ide
+        if: matrix.platform == 'windows'
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-fsh-ide
+          path: fsh-ide
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout fshdb
+        if: matrix.platform == 'windows'
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-fshdb
+          path: fshdb
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Checkout parley-files-viewer
+        if: matrix.platform == 'windows'
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-files-viewer
+          path: parley-files-viewer
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
       - name: The installer
         if: matrix.platform == 'windows'
         shell: pwsh
-        run: .\tools\build-msi.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
+        run: >
+          .\tools\build-msi-with-plugins.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
+          -PluginsRepo parley-files-viewer-tui -LoupeRepo fsh-loupe -IdeRepo fsh-ide
+          -DbRepo fshdb -ViewerRepo parley-files-viewer
 
       - name: Smoke test (the installer)
         if: matrix.platform == 'windows'
@@ -161,6 +208,15 @@ jobs:
           $out = (& 'C:\Program Files\fsh\fsh.exe' -c 'echo smoke-ok') -join "`n"
           Write-Output $out
           if ($out.Trim() -ne 'smoke-ok') { Get-Content msi.log -Tail 40; throw "unexpected output: $out" }
+          # the other programs are there, and the browser plugin loaded
+          foreach ($exe in 'fsh-ide', 'fshdb', 'parley-files-viewer') {
+            if (-not (Test-Path "C:\Program Files\fsh\$exe.exe")) { throw "$exe.exe is not installed" }
+          }
+          $db = (& 'C:\Program Files\fsh\fshdb.exe' --help) -join "`n"
+          if ($db -notmatch 'Usage: fshdb') { throw "fshdb: unexpected output: $db" }
+          $browsers = (& 'C:\Program Files\fsh\fsh.exe' -c 'browse --list') -join "`n"
+          Write-Output $browsers
+          if ($browsers -notmatch 'lanterna') { throw "the file browser plugin is not in the installer: $browsers" }
 
       # ---- every platform
       - uses: actions/upload-artifact@v4

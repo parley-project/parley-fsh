@@ -196,8 +196,8 @@ nothing else needs to be installed, and each file has a `.sha256` beside it:
 | Linux, ARM64 | `fsh_VERSION_arm64.deb`, `fsh-VERSION-1.aarch64.rpm` | the same |
 | Windows, x64 | `fsh-VERSION-windows-x86_64.msi` | `C:\Program Files\fsh\fsh.exe`, and a Start menu entry |
 
-- **macOS:** opened from the Finder, `fsh.app` runs fsh in its own window. For a terminal, link
-  its command from a directory on `PATH`, once:
+- **macOS:** opened from the Finder, `fsh.app` opens a Terminal window running fsh. To run
+  `fsh` in any terminal, link its command from a directory on `PATH`, once:
   `sudo ln -sf /Applications/fsh.app/Contents/app/fsh /usr/local/bin/fsh` (the disk image's
   README.txt says this too). The app isn't notarized: macOS asks before opening it the first
   time (right-click it, Open).
@@ -321,10 +321,37 @@ JDK such as Temurin (GraalVM's adds its own compiler, about 40 MB), 17 or later 
 (`FSH_DEBUG=8001 bin/fsh` listens on localhost:8001). The `.deb` needs `dpkg-deb` and the `.rpm`
 `rpmbuild` (on Debian and Ubuntu, `apt install rpm`).
 
+The installers carry plugins too (the file browser, for `browse`, `view`, `edit` and `search`),
+on fsh's class path in `lib/plugins`: the jars `FSH_PLUGINS` names (separated by spaces; by `;`
+for `tools\build-msi.ps1`), else parley-files-viewer-tui and its Lanterna plugin from the Maven
+repository (fsh's version; run `mvn install` in parley-files-viewer-tui first), else those in
+your plugin folders. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
+used once.
+
+To build the Windows installer with the browser in it, from a checkout of
+[parley-files-viewer-tui](https://github.com/parley-project/parley-files-viewer-tui) beside this
+one: install the [WiX Toolset 3.14](https://github.com/wixtoolset/wix3/releases) (the binaries zip
+unpacked and its folder on `PATH` is enough, no administrator needed; `jpackage` in JDK 21 wants
+WiX 3, not 4 or 5), set `JAVA_HOME` to a JDK, and run
+
+```
+tools\build-msi-with-plugins.ps1
+```
+
+It installs fsh and fsh-loupe to the local Maven repository, builds the plugin's jars, names them
+in `FSH_PLUGINS` and runs `tools\build-msi.ps1`. The installer carries more programs too, each from a
+checkout beside this one and with its own `.exe` beside `fsh.exe` on the same Java runtime:
+`fsh-ide.exe` (the Swing IDE; `-IdeRepo`, `-NoIde`), `fshdb.exe` (the console debugger; `-DbRepo`,
+`-NoDb`) and `parley-files-viewer.exe` (the Swing file browser; `-ViewerRepo`, `-NoViewer`). They are
+all in one Start menu folder, `Parley` (`-MenuGroup` names another). The output says `plugins built in: ...`; if it says
+`no plugins built in`, the installer has no `browse`.
+
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
-`fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them). Two
-are jpackage's own: the one the Finder opens (`fsh.app/Contents/MacOS/fsh`, which shows fsh's
-window) and `fsh.exe` (Windows has no `fshexec`). None of the installers is signed.
+`fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them).
+What the Finder starts (`fsh.app/Contents/MacOS/fsh`) opens Terminal on that command, so fsh
+runs in a terminal and `browse`'s full-screen browsers work. On Windows the command is
+jpackage's `fsh.exe` (Windows has no `fshexec`). None of the installers is signed (`fsh.app` is
+signed ad hoc only).
 
 ## Plugins
 

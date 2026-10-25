@@ -5,11 +5,15 @@
 ### Added
 
 - Installers, each with fsh's own Java runtime (`tools/build-jlink.sh`): a disk image for macOS
-  (`tools/build-jpackage.sh`: `fsh.app`, which opens fsh's window from the Finder, with the
-  command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
+  (`tools/build-jpackage.sh`: `fsh.app`, which opens a Terminal window running fsh from the
+  Finder, with the command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
   (`tools/build-linux-packages.sh`: `/opt/fsh`, `/usr/bin/fsh`, added to `/etc/shells`), and an
   `.msi` for Windows (`tools/build-msi.ps1`). `release-binaries.yml` builds them for a release,
-  besides the native binaries.
+  besides the native binaries. The installers carry plugins too, on fsh's class path: the jars
+  `FSH_PLUGINS` names, else the file browser (parley-files-viewer-tui and its Lanterna plugin)
+  from the Maven repository, else those in the plugin folders (for `browse`, `view`, `edit` and
+  `search`). fsh finds each plugin class once, so
+  the same plugin in a plugin folder as well isn't there twice.
 - `build-native --builtin` (`macos/`, `linux/`, `windows/`): the native image with plugin jars
   built into it (`FSH_PLUGINS`, else the plugin folders' jars), since a native image can't load
   them at run time. The release's native binaries have the terminal file browser built in.

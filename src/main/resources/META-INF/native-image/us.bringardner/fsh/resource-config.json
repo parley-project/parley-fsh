@@ -4,6 +4,8 @@
     "pattern":"\\QMETA-INF/services/java.lang.System$LoggerFinder\\E"
   }, {
     "pattern":"\\Qus/bringardner/parley/core/BjlLogger.properties\\E"
+  }, {
+    "pattern":"\\Qus/bringardner/fsh/version.properties\\E"
   }]},
   "bundles":[]
 }
