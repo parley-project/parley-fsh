@@ -323,8 +323,9 @@ JDK such as Temurin (GraalVM's adds its own compiler, about 40 MB), 17 or later 
 
 The installers carry plugins too (the file browser, for `browse`, `view`, `edit` and `search`),
 on fsh's class path in `lib/plugins`: the jars `FSH_PLUGINS` names (separated by spaces; by `;`
-for `tools\build-msi.ps1`), else those in your plugin folders, as `build-native --builtin` takes
-them. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
+for `tools\build-msi.ps1`), else parley-files-viewer-tui and its Lanterna plugin from the Maven
+repository (fsh's version; run `mvn install` in parley-files-viewer-tui first), else those in
+your plugin folders. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
 used once.
 
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
