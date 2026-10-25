@@ -92,6 +92,8 @@ $jpackageArgs = @('--type', 'msi', '--dest', (Join-Path $work 'out'), '--name', 
 	'--description', 'fsh, the FileSource Shell: a bash-like shell on any parley-files file system',
 	'--input', (Join-Path $work 'input'), '--main-jar', 'fsh.jar', '--main-class', 'us.bringardner.fsh.Console',
 	'--runtime-image', (Join-Path $work 'runtime'), '--license-file', 'LICENSE',
+	# (Parley's tower with the >_ badge: parley-brand's parley-icon-terminal PNGs, as one .ico)
+	'--icon', 'windows\fsh.ico',
 	'--win-console', '--win-dir-chooser', '--win-menu',
 	# (the same for every version, so a newer installer replaces an older one)
 	'--win-upgrade-uuid', '54bf2305-171a-559a-8f13-c0db046304c4',
