@@ -488,9 +488,32 @@ public class Test extends ShellCommand{
 		if( p == null ) {
 			return null;
 		}
+		java.nio.file.LinkOption[] links = follow ? new java.nio.file.LinkOption[0] : new java.nio.file.LinkOption[] {java.nio.file.LinkOption.NOFOLLOW_LINKS};
 		try {
-			return java.nio.file.Files.readAttributes(p, "unix:*", follow ? new java.nio.file.LinkOption[0] : new java.nio.file.LinkOption[] {java.nio.file.LinkOption.NOFOLLOW_LINKS});
-		} catch (IOException | UnsupportedOperationException | IllegalArgumentException e) {
+			return java.nio.file.Files.readAttributes(p, "unix:*", links);
+		} catch (UnsupportedOperationException | IllegalArgumentException e) {
+			// (no unix view, on Windows: what every file system has)
+			return portableStat(p, links);
+		} catch (IOException e) {
+			return null;
+		}
+	}
+
+	/** stat's attributes from what any file system has: the type bits and size, with no owner */
+	private static java.util.Map<String,Object> portableStat(java.nio.file.Path p, java.nio.file.LinkOption[] links) {
+		try {
+			java.nio.file.attribute.BasicFileAttributes a = java.nio.file.Files.readAttributes(p, java.nio.file.attribute.BasicFileAttributes.class, links);
+			java.util.Map<String,Object> ret = new java.util.HashMap<>();
+			int type = a.isSymbolicLink() ? 0120000 : a.isDirectory() ? 0040000 : a.isRegularFile() ? 0100000 : 0;
+			ret.put("mode", type | (a.isDirectory() ? 0755 : 0644));
+			ret.put("size", a.size());
+			ret.put("lastModifiedTime", a.lastModifiedTime());
+			ret.put("lastAccessTime", a.lastAccessTime());
+			// (-ef: the same file has the same real path)
+			ret.put("dev", "0");
+			ret.put("ino", p.toRealPath(links).toString());
+			return ret;
+		} catch (IOException e) {
 			return null;
 		}
 	}
