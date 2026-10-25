@@ -346,7 +346,21 @@ public class Console extends SignalEnabledThread {
 
 	/** HISTSIZE or HISTFILE came from the environment (a shell that is not interactive keeps them) */
 	private boolean historyFromEnvironment;
-	public static final String VERSION = "0.01";
+	/** fsh's version: the pom's, as the build wrote it to version.properties */
+	public static final String VERSION = loadVersion();
+
+	private static String loadVersion() {
+		try (java.io.InputStream in = Console.class.getResourceAsStream("version.properties")) {
+			if( in != null ) {
+				java.util.Properties p = new java.util.Properties();
+				p.load(in);
+				return p.getProperty("version", "unknown");
+			}
+		} catch (IOException e) {
+			// unknown
+		}
+		return "unknown";
+	}
 	/*
 [n]<<[-]word
         here-document
@@ -789,12 +803,25 @@ delimiter
 				homeDir = tree.createFileSource(home);
 			}
 			FileSource start = tree.createFileSource(System.getProperty("user.dir"));
-			if( start.isDirectory()) {
+			if( !startedInInstallDir() && start.isDirectory()) {
 				setCurrentDirectory(start);
 			}
 		} catch (IOException e) {
 			// it stays in HOME
 		}
+	}
+
+	/**
+	 * True when this is an installed (jpackage) fsh started in its own folder, as the Start menu
+	 * shortcut does: that is not a directory anyone chose, so fsh starts in HOME instead.
+	 */
+	private static boolean startedInInstallDir() {
+		String app = System.getProperty("jpackage.app-path");
+		if( app == null || app.isEmpty()) {
+			return false;
+		}
+		java.nio.file.Path dir = java.nio.file.Path.of(app).toAbsolutePath().getParent();
+		return dir != null && dir.equals(java.nio.file.Path.of(System.getProperty("user.dir")).toAbsolutePath());
 	}
 
 	/** the shell this program is (Console.main): signals for the process are its own; null when fsh runs inside another program */
