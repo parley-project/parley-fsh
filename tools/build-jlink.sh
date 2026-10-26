@@ -141,7 +141,13 @@ if [ -n "$apps" ]; then
 			echo "$0: building $a failed" >&2
 			exit 1
 		fi
-		main=$(ls "$repo"/target/$a-*.jar 2>/dev/null | grep -Ev -- '-(sources|javadoc|tests|all|plugin)\.jar$' | head -1 || true)
+		# (the jar this build made: its version from Maven's record of it, as target can hold older
+		# ones, fsh-ide-1.0.0.jar beside fsh-ide-2.0.0-SNAPSHOT.jar; else the newest)
+		v=$(sed -n 's/^version=//p' "$repo/target/maven-archiver/pom.properties" 2>/dev/null | tr -d '\r')
+		main=$repo/target/$a-$v.jar
+		if [ -z "$v" ] || [ ! -f "$main" ]; then
+			main=$(ls -t "$repo"/target/$a-*.jar 2>/dev/null | grep -Ev -- '-(sources|javadoc|tests|all|plugin)\.jar$' | head -1 || true)
+		fi
 		[ -n "$main" ] || { echo "$0: no $a jar built in $repo" >&2; exit 1; }
 		cp -p "$main" "$apps_dir/"
 		basename "$main" > "$apps_dir/$a.main"
