@@ -65,6 +65,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/*
+ * posix_spawn_file_actions_addchdir_np is in glibc only from 2.29 (Amazon Linux 2 and CentOS 7
+ * have 2.26 and 2.17): a weak symbol, null where the C library has none. There, spawnFor goes into
+ * the program's directory itself for posix_spawn and back (this has one thread only).
+ */
+#if defined(__GLIBC__) && (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 29))
+extern int posix_spawn_file_actions_addchdir_np(posix_spawn_file_actions_t *, const char *);
+#endif
+#pragma weak posix_spawn_file_actions_addchdir_np
+
 static const char *argv0 = NULL;
 
 /* the signals -I says the program ignores */
@@ -294,11 +304,27 @@ static void spawnFor(char *p, char *end, int *fds, int nfds) {
 		posix_spawn_file_actions_adddup2(&fa, temps[k], targets[k]);
 	}
 	closeOthers(&fa, targets, ntargets < 16 ? ntargets : 16);
-	if( *dir != '\0' ) {
+	// (here: where the program is to run and back, without posix_spawn_file_actions_addchdir_np)
+	int here = -1;
+	int err = 0;
+	if( *dir != '\0' && posix_spawn_file_actions_addchdir_np != NULL ) {
 		posix_spawn_file_actions_addchdir_np(&fa, dir);
+	} else if( *dir != '\0' ) {
+		here = open(".", O_PATH | O_DIRECTORY | O_CLOEXEC);
+		if( here < 0 || chdir(dir) != 0 ) {
+			err = errno;
+		}
 	}
 	pid_t pid = -1;
-	int err = posix_spawn(&pid, path, &fa, &at, args, envp);
+	if( err == 0 ) {
+		err = posix_spawn(&pid, path, &fa, &at, args, envp);
+	}
+	if( here >= 0 ) {
+		if( fchdir(here) != 0 ) {
+			fprintf(stderr, "fsh: fchdir: %s\n", strerror(errno));
+		}
+		close(here);
+	}
 	posix_spawn_file_actions_destroy(&fa);
 	posix_spawnattr_destroy(&at);
 	for(int k = 0; k < nfds && k < ntargets; k++) {
