@@ -10,10 +10,13 @@
 # about as fast as the JVM's JIT does: an instrumented image runs tools/aot-training.sh, and the
 # image is built again from what it recorded (three times as long to build).
 #
+# The file browser (browse, view, edit and search) is part of fsh, so every image has it.
+#
 # --builtin: the plugin jars built into the image (a native image can't load jars at run time),
-# so browse, view, edit and search work in it as they do with the plugin folders in the JVM fsh:
-# the jars FSH_PLUGINS names (separated by spaces), else those in ~/.parley/fsh/plugins and
-# /usr/local/lib/parley/fsh/plugins. Nothing can be added without building the image again.
+# so their commands and browsers (browse --with lanterna, say) work in it as they do with the
+# plugin folders in the JVM fsh: the jars FSH_PLUGINS names (separated by spaces), else those in
+# ~/.parley/fsh/plugins and /usr/local/lib/parley/fsh/plugins. Nothing can be added without
+# building the image again.
 #
 # --crema (GraalVM 25.1 or later, experimental): an image that loads classes at run time
 # (-H:+RuntimeClassLoading), so it loads plugin jars as the JVM build does: target/native-crema.

@@ -18,6 +18,15 @@
   built into it (`FSH_PLUGINS`, else the plugin folders' jars), since a native image can't load
   them at run time. The release's native binaries have the terminal file browser built in.
 
+### Changed
+
+- The terminal file browser is built into fsh: `browse`, `view`, `edit` and `search` are
+  builtins (from parley-files-viewer-tui, which fsh now depends on; Parley's own terminal code,
+  no UI library), so they work with no plugins installed and in every native image. Browsers from
+  plugins (the Lanterna one, `browse --with lanterna`) are still found at run time; `plugins`
+  lists only what plugins added. The installers carry only the Lanterna plugin, and
+  parley-files-viewer-tui's library is built before fsh.
+
 ### Changed (needs a configuration change)
 
 - **Property names** (Parley 2.0.0; the old names are no longer read): `fsh.*` is `parley.fsh.*`:

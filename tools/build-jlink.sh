@@ -24,9 +24,9 @@
 # first); its jar and the dependencies fsh.jar doesn't have go in lib/apps (not the JavaFX ones:
 # the programs here are Swing or console programs).
 #
-# The plugins built in (the file browser for browse, view, edit and search) are the jars
-# FSH_PLUGINS names (separated by spaces), else parley-files-viewer-tui and its Lanterna plugin
-# from the Maven repository (fsh's version: mvn install in parley-files-viewer-tui), else those in
+# The file browser (browse, view, edit and search) is in fsh.jar itself. The plugins built in are
+# the jars FSH_PLUGINS names (separated by spaces), else the Lanterna browser plugin from the Maven
+# repository (fsh's version: mvn install in parley-files-viewer-tui), else those in
 # ~/.parley/fsh/plugins and /usr/local/lib/parley/fsh/plugins; with none, fsh is built without. fsh finds each plugin
 # class once, so the same plugin in a plugin folder too is not there twice.
 #
@@ -204,20 +204,18 @@ cds=""
 rm -f "$out/runtime/lib/server/classes_nocoops.jsa"
 
 cp -p target/fsh.jar "$out/lib/"
-# The plugins built in: FSH_PLUGINS, else the file browser from the Maven repository (fsh's
-# version of parley-files-viewer-tui and its Lanterna plugin: mvn install there first), else the
-# jars in the plugin folders. (Fetched, not dependencies: they depend on fsh.)
+# The plugins built in: FSH_PLUGINS, else the Lanterna browser from the Maven repository (fsh's
+# version of parley-files-viewer-tui-lanterna: mvn install there first), else the jars in the
+# plugin folders. (Fetched, not dependencies: they depend on fsh.)
 plugins=$FSH_PLUGINS
 if [ -z "$plugins" ]; then
 	v=$(awk -F'[<>]' '/<artifactId>fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)
 	rm -rf target/plugins
 	if mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target/plugins \
-			-Dartifact=us.bringardner.parley:parley-files-viewer-tui:$v > /dev/null 2>&1 \
-			&& mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target/plugins \
 			-Dartifact=us.bringardner.parley:parley-files-viewer-tui-lanterna:$v:jar:plugin > /dev/null 2>&1; then
 		plugins=$(ls target/plugins/*.jar)
 	else
-		echo "the file browser $v is not in the Maven repository (mvn install in parley-files-viewer-tui): the plugin folders' jars instead"
+		echo "the Lanterna browser $v is not in the Maven repository (mvn install in parley-files-viewer-tui): the plugin folders' jars instead"
 	fi
 fi
 # (|| true: ls fails when a folder isn't there, which would end the script, set -e)

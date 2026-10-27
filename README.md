@@ -235,9 +235,9 @@ The installers are built by `.github/workflows/release-binaries.yml` when a rele
 published: `compile` in `macos/`, `linux/` or `windows/` (the keyboard library and `fshexec`),
 then `tools/build-installers-with-plugins.sh` (macOS and Linux: `tools/build-jlink.sh`, then
 `tools/build-jpackage.sh` or `tools/build-linux-packages.sh`) or `tools/build-msi-with-plugins.ps1`
-(Windows: `tools/build-msi.ps1`). The native binaries need the browser plugin, which is
-built after fsh, so they are made where all of Parley is built: `build-native --builtin` in the
-same folders, packaged by `tools/package-native.sh` (`.ps1` on Windows). The behaviour of the native library each one carries
+(Windows: `tools/build-msi.ps1`). The native binaries are made where all of Parley is built
+(the Lanterna browser plugin is built after fsh): `build-native --builtin` in the same folders,
+packaged by `tools/package-native.sh` (`.ps1` on Windows). The behaviour of the native library each one carries
 is specified in [NATIVE-CONTRACT.md](NATIVE-CONTRACT.md).
 
 ## Native support
@@ -303,10 +303,10 @@ FSH_RUNTIME=native macos/fsh              # the native image (an error if none i
 
 `auto`, or leaving it unset, is the default choice above.
 
-A native image can't load plugin jars, so `build-native.sh --builtin` (`build-native.cmd
---builtin` on Windows) builds the plugins into it: the jars `FSH_PLUGINS` names, else those in
-the plugin folders. The release's native binaries are built that way with the terminal file
-browser (parley-files-viewer-tui).
+The terminal file browser (`browse`, `view`, `edit` and `search`, from parley-files-viewer-tui)
+is part of fsh, so every native image has it. A native image can't load plugin jars, so
+`build-native.sh --builtin` (`build-native.cmd --builtin` on Windows) builds plugins into it: the
+jars `FSH_PLUGINS` names, else those in the plugin folders.
 
 ### With its own Java runtime, and the installers
 
@@ -341,14 +341,15 @@ JDK such as Temurin (GraalVM's adds its own compiler, about 40 MB), 17 or later 
 (`FSH_DEBUG=8001 bin/fsh` listens on localhost:8001). The `.deb` needs `dpkg-deb` and the `.rpm`
 `rpmbuild` (on Debian and Ubuntu, `apt install rpm`).
 
-The installers carry plugins too (the file browser, for `browse`, `view`, `edit` and `search`),
-on fsh's class path in `lib/plugins`: the jars `FSH_PLUGINS` names (separated by spaces; by `;`
-for `tools\build-msi.ps1`), else parley-files-viewer-tui and its Lanterna plugin from the Maven
-repository (fsh's version; run `mvn install` in parley-files-viewer-tui first), else those in
-your plugin folders. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
+fsh's own file browser (`browse`, `view`, `edit` and `search`) is in `fsh.jar`. The installers
+carry plugins too (the Lanterna browser, `browse --with lanterna`), on fsh's class path in
+`lib/plugins`: the jars `FSH_PLUGINS` names (separated by spaces; by `;` for
+`tools\build-msi.ps1`), else parley-files-viewer-tui's Lanterna plugin from the Maven repository
+(fsh's version; run `mvn install` in parley-files-viewer-tui first), else those in your plugin
+folders. With none, fsh is built without. A plugin built in that is in a plugin folder as well is
 used once.
 
-To build the Windows installer with the browser in it, from a checkout of
+To build the Windows installer with the Lanterna plugin in it, from a checkout of
 [parley-files-viewer-tui](https://github.com/parley-project/parley-files-viewer-tui) beside this
 one: install the [WiX Toolset 3.14](https://github.com/wixtoolset/wix3/releases) (the binaries zip
 unpacked and its folder on `PATH` is enough, no administrator needed; `jpackage` in JDK 21 wants
@@ -358,13 +359,14 @@ WiX 3, not 4 or 5), set `JAVA_HOME` to a JDK, and run
 tools\build-msi-with-plugins.ps1
 ```
 
-It installs fsh and fsh-loupe to the local Maven repository, builds the plugin's jars, names them
-in `FSH_PLUGINS` and runs `tools\build-msi.ps1`. The installer carries more programs too, each from a
+It installs parley-files-viewer-tui's library (the file browser fsh builds in), fsh and
+fsh-loupe to the local Maven repository, builds the Lanterna plugin, names it in `FSH_PLUGINS`
+and runs `tools\build-msi.ps1`. The installer carries more programs too, each from a
 checkout beside this one and with its own `.exe` beside `fsh.exe` on the same Java runtime:
 `fsh-ide.exe` (the Swing IDE; `-IdeRepo`, `-NoIde`), `fshdb.exe` (the console debugger; `-DbRepo`,
 `-NoDb`) and `parley-files-viewer.exe` (the Swing file browser; `-ViewerRepo`, `-NoViewer`). They are
 all in one Start menu folder, `Parley` (`-MenuGroup` names another). The output says `plugins built in: ...`; if it says
-`no plugins built in`, the installer has no `browse`.
+`no plugins built in`, the installer has only fsh's own browser.
 
 On macOS and Linux, from checkouts of the same projects beside this one, the same is
 
@@ -372,8 +374,8 @@ On macOS and Linux, from checkouts of the same projects beside this one, the sam
 tools/build-installers-with-plugins.sh          # macOS: the .dmg (or pkg, app-image); Linux: the .deb and .rpm (or deb, rpm)
 ```
 
-It installs fsh, fsh-loupe and fsh-ide to the local Maven repository, builds the plugin's jars and
-names them in `FSH_PLUGINS`, runs `tools/build-jlink.sh` with `--ide`, `--db` and `--viewer`, then
+It installs parley-files-viewer-tui's library, fsh, fsh-loupe and fsh-ide to the local Maven
+repository, builds the Lanterna plugin and names it in `FSH_PLUGINS`, runs `tools/build-jlink.sh` with `--ide`, `--db` and `--viewer`, then
 `tools/build-jpackage.sh` or `tools/build-linux-packages.sh`. `--plugins-repo`, `--loupe-repo`,
 `--ide-repo`, `--db-repo` and `--viewer-repo` name other checkouts; `--no-ide`, `--no-db` and
 `--no-viewer` leave a program out; the type `none` stops after the jlink build.
@@ -408,7 +410,7 @@ What a plugin can provide:
 | Service | |
 |---|---|
 | `us.bringardner.fsh.spi.CommandProvider` | Commands (`ShellCommand`s) |
-| `us.bringardner.fsh.spi.BrowserProvider` | A file browser for `browse`: it uses the one of the highest priority that can run here (a window when there is a display, else a terminal one); `browse --with NAME` picks one, `browse --list` lists them |
+| `us.bringardner.fsh.spi.BrowserProvider` | A file browser for `browse`, besides fsh's own terminal browser: it uses the one of the highest priority that can run here (a window when there is a display, else a terminal one; fsh's own before a plugin's of the same priority); `browse --with NAME` picks one, `browse --list` lists them |
 | `us.bringardner.parley.files.FileSourceFactory` | A file system for `connect` (parley-files-sftp, -ftp, -jdbc) |
 | `us.bringardner.parley.files.credentials.CredentialProvider` | A credential store |
 | `java.sql.Driver` | A JDBC driver |

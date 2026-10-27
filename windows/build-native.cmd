@@ -7,6 +7,7 @@ rem
 rem GRAALVM_HOME (or JAVA_HOME) names the GraalVM. Its settings are in
 rem src\main\resources\META-INF\native-image\us.bringardner\fsh.
 rem
+rem The file browser (browse, view, edit, search) is part of fsh, so every image has it.
 rem --builtin: the plugin jars built into the image (a native image can't load jars at run time):
 rem those FSH_PLUGINS names (separated by ;), else those in %USERPROFILE%\.parley\fsh\plugins and
 rem %ProgramData%\Parley\fsh\plugins.

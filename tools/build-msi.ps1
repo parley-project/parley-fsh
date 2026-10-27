@@ -13,9 +13,9 @@
 # starts it. The installer does not put fsh on PATH: add C:\Program Files\fsh to it. The .msi is
 # not signed. macOS: tools/build-jpackage.sh; Linux: tools/build-linux-packages.sh.
 #
-# The plugins built in (the file browser for browse, say), on fsh's class path: the jars
-# FSH_PLUGINS names (separated by ;), else parley-files-viewer-tui and its Lanterna plugin from
-# the Maven repository (fsh's version: mvn install in parley-files-viewer-tui), else those in
+# The file browser (browse, view, edit, search) is in fsh.jar itself. The plugins built in, on
+# fsh's class path: the jars FSH_PLUGINS names (separated by ;), else the Lanterna browser plugin
+# from the Maven repository (fsh's version: mvn install in parley-files-viewer-tui), else those in
 # %USERPROFILE%\.parley\fsh\plugins and %ProgramData%\Parley\fsh\plugins; with none, fsh is
 # built without.
 # More programs in the same installer, on the same Java runtime, each its own launcher (an .exe) and
@@ -125,24 +125,19 @@ if ($LASTEXITCODE -ne 0) { throw 'jlink failed' }
 
 Copy-Item target\fsh.jar, windows\nativekeyboard.dll (Join-Path $work 'input')
 # (jpackage puts every jar in the input on the class path, plugins\ too)
-# (FSH_PLUGINS, else the file browser from the Maven repository: fsh's version of
-# parley-files-viewer-tui and its Lanterna plugin, mvn install there first; else the plugin
-# folders' jars. Fetched, not dependencies: they depend on fsh)
+# (FSH_PLUGINS, else the Lanterna browser from the Maven repository: fsh's version of
+# parley-files-viewer-tui-lanterna, mvn install there first; else the plugin folders' jars.
+# Fetched, not dependencies: they depend on fsh)
 $plugins = @()
 if ($env:FSH_PLUGINS) {
 	$plugins = @($env:FSH_PLUGINS -split ';' | Where-Object { $_ })
 } else {
 	if (Test-Path target\plugins) { Remove-Item -Recurse -Force target\plugins }
-	& mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target\plugins "-Dartifact=us.bringardner.parley:parley-files-viewer-tui:$fshVersion" *> $null
-	$ok = $LASTEXITCODE -eq 0
-	if ($ok) {
-		& mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target\plugins "-Dartifact=us.bringardner.parley:parley-files-viewer-tui-lanterna:${fshVersion}:jar:plugin" *> $null
-		$ok = $LASTEXITCODE -eq 0
-	}
-	if ($ok) {
+	& mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target\plugins "-Dartifact=us.bringardner.parley:parley-files-viewer-tui-lanterna:${fshVersion}:jar:plugin" *> $null
+	if ($LASTEXITCODE -eq 0) {
 		$plugins = @(Get-ChildItem target\plugins\*.jar | ForEach-Object { $_.FullName })
 	} else {
-		Write-Output "the file browser $fshVersion is not in the Maven repository (mvn install in parley-files-viewer-tui): the plugin folders' jars instead"
+		Write-Output "the Lanterna browser $fshVersion is not in the Maven repository (mvn install in parley-files-viewer-tui): the plugin folders' jars instead"
 		$plugins = @(@((Join-Path $env:USERPROFILE '.parley\fsh\plugins'), (Join-Path $env:ProgramData 'Parley\fsh\plugins')) |
 			Where-Object { Test-Path $_ } | ForEach-Object { Get-ChildItem (Join-Path $_ '*.jar') } | ForEach-Object { $_.FullName })
 	}
