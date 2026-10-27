@@ -6,7 +6,8 @@
 #
 # each with a .sha256 beside it: fsh with a Java runtime of its own (tools/build-jlink.sh), made
 # by tools/build-jpackage.sh (macOS), tools/build-linux-packages.sh and tools/build-msi.ps1. Each
-# carries the file browser plugin and, on the same runtime, fsh-ide, fshdb and parley-files-viewer
+# carries the Lanterna browser plugin (fsh has its own file browser built in: browse, view, edit,
+# search, from parley-files-viewer-tui) and, on the same runtime, fsh-ide, fshdb and parley-files-viewer
 # (tools/build-installers-with-plugins.sh on macOS and Linux, tools/build-msi-with-plugins.ps1 on
 # Windows), all in a Parley folder: the disk image's, the application menu's, the Start menu's. Run
 # by hand (Actions > release-binaries > Run workflow) it builds the same and keeps them as workflow
@@ -93,6 +94,20 @@ jobs:
           </settings>
           XML
 
+      # fsh builds the file browser in (browse, view, edit, search): its library first, from its
+      # own repository (the default branch, as the programs below); its Lanterna plugin is built
+      # after fsh, by the installer scripts
+      - name: Checkout the file browser
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-files-viewer-tui
+          path: parley-files-viewer-tui
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: Install the file browser's library
+        shell: bash
+        run: (cd parley-files-viewer-tui && mvn -B -q -DskipTests -pl parley-files-viewer-tui install)
+
       - name: Compile (the JNI header is made from the compiled class)
         shell: bash
         run: mvn -B -q compile
@@ -107,16 +122,9 @@ jobs:
         run: sh ${{ matrix.platform }}/compile.sh
 
       # The installers carry more than fsh, each built from its own repository (the default
-      # branch; a tag of the same name in each would pin a release): the file browser plugin
-      # (browse, view, edit, search), and the programs beside fsh: fsh-ide, fshdb and
-      # parley-files-viewer (fsh-loupe is fsh-ide's dependency)
-      - name: Checkout the file browser plugin
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-files-viewer-tui
-          path: parley-files-viewer-tui
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
+      # branch; a tag of the same name in each would pin a release): the Lanterna browser plugin
+      # (from parley-files-viewer-tui, checked out above), and the programs beside fsh: fsh-ide,
+      # fshdb and parley-files-viewer (fsh-loupe is fsh-ide's dependency)
       - name: Checkout fsh-loupe
         uses: actions/checkout@v4
         with:
@@ -161,7 +169,7 @@ jobs:
           hdiutil attach -nobrowse -mountpoint "$mnt" dist/fsh-*.dmg
           app=$mnt/Parley/fsh.app/Contents/app
           out=$("$app/fsh" -c 'echo smoke-ok')
-          # the other programs are there, and the browser plugin loaded
+          # the other programs are there, and the Lanterna browser plugin loaded
           for a in fsh-ide fshdb parley-files-viewer; do
             test -x "$mnt/Parley/$a.app/Contents/MacOS/$a" || { echo "no $a.app"; exit 1; }
             test -x "$app/$a" || { echo "no $a command in fsh.app"; exit 1; }
@@ -173,7 +181,8 @@ jobs:
           test "$out" = smoke-ok
           echo "$db" | grep -q 'Usage: fshdb' || { echo "fshdb: unexpected output: $db"; exit 1; }
           echo "$browsers"
-          echo "$browsers" | grep -q lanterna || { echo "the file browser plugin is not in the disk image"; exit 1; }
+          echo "$browsers" | grep -q terminal || { echo "fsh's own file browser is not in the disk image"; exit 1; }
+          echo "$browsers" | grep -q lanterna || { echo "the Lanterna browser plugin is not in the disk image"; exit 1; }
 
       - name: The packages
         if: matrix.platform == 'linux'
@@ -191,7 +200,7 @@ jobs:
           echo "$out"
           test "$out" = smoke-ok
           grep -qx /usr/bin/fsh /etc/shells
-          # the other programs are there, in the menu's Parley folder, and the browser plugin loaded
+          # the other programs are there, in the menu's Parley folder, and the Lanterna browser plugin loaded
           for a in fsh-ide fshdb parley-files-viewer; do
             test -x /usr/bin/$a || { echo "no /usr/bin/$a"; exit 1; }
           done
@@ -201,6 +210,7 @@ jobs:
           /usr/bin/fshdb --help 2>&1 | grep -q 'Usage: fshdb'
           browsers=$(/usr/bin/fsh -c 'browse --list')
           echo "$browsers"
+          echo "$browsers" | grep -q terminal
           echo "$browsers" | grep -q lanterna
           sudo dpkg -r fsh
 
@@ -231,7 +241,7 @@ jobs:
           $out = (& 'C:\Program Files\fsh\fsh.exe' -c 'echo smoke-ok') -join "`n"
           Write-Output $out
           if ($out.Trim() -ne 'smoke-ok') { Get-Content msi.log -Tail 40; throw "unexpected output: $out" }
-          # the other programs are there, and the browser plugin loaded
+          # the other programs are there, and the Lanterna browser plugin loaded
           foreach ($exe in 'fsh-ide', 'fshdb', 'parley-files-viewer') {
             if (-not (Test-Path "C:\Program Files\fsh\$exe.exe")) { throw "$exe.exe is not installed" }
           }
@@ -239,7 +249,8 @@ jobs:
           if ($db -notmatch 'Usage: fshdb') { throw "fshdb: unexpected output: $db" }
           $browsers = (& 'C:\Program Files\fsh\fsh.exe' -c 'browse --list') -join "`n"
           Write-Output $browsers
-          if ($browsers -notmatch 'lanterna') { throw "the file browser plugin is not in the installer: $browsers" }
+          if ($browsers -notmatch 'terminal') { throw "fsh's own file browser is not in the installer: $browsers" }
+          if ($browsers -notmatch 'lanterna') { throw "the Lanterna browser plugin is not in the installer: $browsers" }
 
       # ---- every platform
       - uses: actions/upload-artifact@v4

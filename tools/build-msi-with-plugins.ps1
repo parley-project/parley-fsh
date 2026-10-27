@@ -44,19 +44,24 @@ function Install-Module([string] $dir, [string] $what) {
 	if ($code -ne 0) { throw "$what build failed" }
 }
 
+# (fsh builds the file browser in, so the browser's library is installed first; the Lanterna
+# plugin builds against fsh, so it is built after fsh)
+Set-Location $PluginsRepo
+& mvn -B -q -DskipTests -pl parley-files-viewer-tui install
+if ($LASTEXITCODE -ne 0) { throw 'file browser build failed' }
+
 Set-Location $project
 & mvn -B -q -DskipTests install
 if ($LASTEXITCODE -ne 0) { throw 'fsh build failed' }
 
 Set-Location $PluginsRepo
-& mvn -B -q -DskipTests package
+& mvn -B -q -DskipTests -pl parley-files-viewer-tui-lanterna package
 if ($LASTEXITCODE -ne 0) { throw 'plugin build failed' }
 
-# the plain jar and the Lanterna one (browse --with lanterna): not the -all jars, which run alone
-$jars = @(Get-ChildItem (Join-Path $PluginsRepo 'parley-files-viewer-tui\target\parley-files-viewer-tui-*.jar'),
-	(Join-Path $PluginsRepo 'parley-files-viewer-tui-lanterna\target\parley-files-viewer-tui-lanterna-*-plugin.jar') |
+# the Lanterna plugin (browse --with lanterna): not the -all jar, which runs alone
+$jars = @(Get-ChildItem (Join-Path $PluginsRepo 'parley-files-viewer-tui-lanterna\target\parley-files-viewer-tui-lanterna-*-plugin.jar') |
 	Where-Object { $_.Name -notmatch '-(all|sources|javadoc|tests)\.jar$' })
-if ($jars.Count -lt 2) { throw "expected the tui and lanterna plugin jars under $PluginsRepo, found $($jars.Count)" }
+if ($jars.Count -lt 1) { throw "expected the lanterna plugin jar under $PluginsRepo, found none" }
 $env:FSH_PLUGINS = ($jars | ForEach-Object { $_.FullName }) -join ';'
 
 Set-Location $project

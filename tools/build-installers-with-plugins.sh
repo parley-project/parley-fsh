@@ -1,7 +1,8 @@
 #!/bin/sh
-# The macOS and Linux installers with the file browser plugin (browse, view, edit, search) built
-# in, and fsh-ide, fshdb and parley-files-viewer beside fsh, as tools/build-msi-with-plugins.ps1
-# makes the Windows one: builds the jars of parley-files-viewer-tui and names them in FSH_PLUGINS,
+# The macOS and Linux installers with the Lanterna browser plugin built in (fsh has its own file
+# browser: browse, view, edit, search), and fsh-ide, fshdb and parley-files-viewer beside fsh, as
+# tools/build-msi-with-plugins.ps1 makes the Windows one: builds parley-files-viewer-tui (the file
+# browser fsh builds in, then the Lanterna plugin) and names the plugin in FSH_PLUGINS,
 # installs what the other programs build against, then runs tools/build-jlink.sh with them and
 # tools/build-jpackage.sh (macOS) or tools/build-linux-packages.sh (Linux).
 #
@@ -19,8 +20,8 @@
 #                       this one; --no-viewer leaves it out)
 #
 # Needs what those scripts need (a JDK in JAVA_HOME; dpkg-deb and rpmbuild on Linux), and Maven.
-# The plugin and the programs build against fsh, so fsh is installed to the local Maven
-# repository first (tests skipped).
+# fsh builds against the file browser, and the plugin and the programs build against fsh, so each
+# is installed to the local Maven repository first (tests skipped).
 
 set -e
 PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
@@ -106,18 +107,22 @@ install_module() {
 }
 
 cd "$PROJECT_DIR"
+# (the file browser fsh builds in: its library, before fsh)
+if ! (cd "$plugins_repo" && mvn -B -q -DskipTests -pl parley-files-viewer-tui install); then
+	echo "$0: file browser build failed" >&2
+	exit 1
+fi
 install_module "$PROJECT_DIR" fsh
 
-# the plain jar and the Lanterna one (browse --with lanterna): not the -all jars, which run alone
-if ! (cd "$plugins_repo" && mvn -B -q -DskipTests package); then
+# the Lanterna plugin (browse --with lanterna), built against fsh: not the -all jar, which runs alone
+if ! (cd "$plugins_repo" && mvn -B -q -DskipTests -pl parley-files-viewer-tui-lanterna package); then
 	echo "$0: plugin build failed" >&2
 	exit 1
 fi
-FSH_PLUGINS=$(ls "$plugins_repo"/parley-files-viewer-tui/target/parley-files-viewer-tui-*.jar \
-	"$plugins_repo"/parley-files-viewer-tui-lanterna/target/parley-files-viewer-tui-lanterna-*-plugin.jar 2> /dev/null \
+FSH_PLUGINS=$(ls "$plugins_repo"/parley-files-viewer-tui-lanterna/target/parley-files-viewer-tui-lanterna-*-plugin.jar 2> /dev/null \
 	| grep -Ev -- '-(all|sources|javadoc|tests)\.jar$' | tr '\n' ' ' || true)
-if [ "$(echo $FSH_PLUGINS | wc -w)" -lt 2 ]; then
-	echo "$0: expected the tui and lanterna plugin jars under $plugins_repo, found: $FSH_PLUGINS" >&2
+if [ -z "$FSH_PLUGINS" ]; then
+	echo "$0: expected the lanterna plugin jar under $plugins_repo" >&2
 	exit 1
 fi
 export FSH_PLUGINS
