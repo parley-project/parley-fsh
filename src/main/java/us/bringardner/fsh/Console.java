@@ -649,6 +649,10 @@ delimiter
 		registerCommand(new Wc());
 		registerCommand(new us.bringardner.fsh.commands.PluginsCommand());
 		registerCommand(new us.bringardner.fsh.commands.Browse());
+		// (the terminal browser's commands, built in with it: parley-files-viewer-tui)
+		registerCommand(new us.bringardner.fsh.commands.View());
+		registerCommand(new us.bringardner.fsh.commands.Edit());
+		registerCommand(new us.bringardner.fsh.commands.Search());
 
 		// (not where fsh runs inside another program, whose signals are that program's)
 		if( !"false".equals(System.getProperty(PROP_OS_SIGNALS)) ) {

@@ -13,17 +13,17 @@ import us.bringardner.fsh.spi.ShellConnections;
 import us.bringardner.parley.files.FileSource;
 
 /**
- * browse: open a file browser from a plugin (us.bringardner.fsh.spi.BrowserProvider): the one of
- * the highest priority that can run here (a window when there is a display, else a terminal one),
- * or the one --with names.
+ * browse: open a file browser: fsh's own terminal browser ({@link TerminalBrowser}), or one a plugin
+ * provides (us.bringardner.fsh.spi.BrowserProvider): the one of the highest priority that can run
+ * here (a window when there is a display, else a terminal one), or the one --with names.
  */
 public class Browse extends ShellCommand {
 	static final String NAME = "browse";
 	static final String USAGE = "browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list";
 	static final String HELP = USAGE+"\n"
 			+ "\tBrowse the shell's file tree (connections included) with DIR (default .) on the left and DIR2\n"
-			+ "\t(default $HOME) on the right, in the browser a plugin provides: a window when there is a\n"
-			+ "\tdisplay, else a full-screen one in the terminal.\n"
+			+ "\t(default $HOME) on the right, in fsh's own full-screen terminal browser, or in one a plugin\n"
+			+ "\tprovides (a window when there is a display).\n"
 			+ "\t-1           start with one pane\n"
 			+ "\t-c           when it ends, cd to the folder it was showing\n"
 			+ "\t--with NAME  use this browser\n"
@@ -33,10 +33,23 @@ public class Browse extends ShellCommand {
 		super(NAME, HELP);
 	}
 
-	/** the browsers the application and its plugins provide, the highest priority first */
+	/** the browser built into fsh */
+	static final BrowserProvider BUILTIN = new TerminalBrowser();
+
+	/**
+	 * the browsers: fsh's own, then those the application and its plugins provide, the highest
+	 * priority first (fsh's own before a plugin's of the same priority)
+	 */
 	static List<BrowserProvider> providers(ShellContext ctx) {
-		List<BrowserProvider> ret = new ArrayList<>(us.bringardner.fsh.Console.pluginProviders(BrowserProvider.class,
-				e -> ctx.error(NAME+": a browser cannot be loaded: "+e)));
+		List<BrowserProvider> ret = new ArrayList<>();
+		ret.add(BUILTIN);
+		for(BrowserProvider b : us.bringardner.fsh.Console.pluginProviders(BrowserProvider.class,
+				e -> ctx.error(NAME+": a browser cannot be loaded: "+e))) {
+			if( !b.getClass().equals(BUILTIN.getClass())) {
+				ret.add(b);
+			}
+		}
+		// (a stable sort: fsh's own stays first among equals)
 		ret.sort(Comparator.comparingInt(BrowserProvider::priority).reversed());
 		return ret;
 	}
@@ -119,9 +132,6 @@ public class Browse extends ShellCommand {
 			}
 		}
 		if( list ) {
-			if( all.isEmpty()) {
-				ctx.stdout.println("No browser is installed (a plugin provides one: see plugins).");
-			}
 			for(BrowserProvider b : all) {
 				ctx.stdout.println((b == use ? "* " : "  ")+b.name()+" - "+b.description()
 						+(b.available(ctx) ? "" : " (cannot run here)"));
@@ -131,8 +141,6 @@ public class Browse extends ShellCommand {
 		if( use == null ) {
 			if( with != null ) {
 				ctx.error(NAME+": "+with+": no such browser (browse --list lists them)");
-			} else if( all.isEmpty()) {
-				ctx.error(NAME+": no browser is installed (a plugin provides one: see plugins)");
 			} else {
 				ctx.error(NAME+": no browser can run here (browse --list lists them)");
 			}
