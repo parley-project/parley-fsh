@@ -316,7 +316,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `bg` | `bg [jobspec ...]` | Resume each suspended job jobspec in the background, as if it had been started with ‘&’. |
 | `bind` | `bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command]` | Set what the line editor's keys do, or show it. |
 | `break` | `break [n]` | Leave the innermost loop, or the n enclosing loops. |
-| `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (connections included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in the browser a plugin provides: a window when there is a display, else a full-screen one in the terminal. |
+| `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (connections included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in fsh's own full-screen terminal browser, or in one a plugin provides (a window when there is a display). |
 | `builtin` | `builtin name [args]` | Run the shell builtin name (not a function or program with that name). |
 | `caller` | `caller [n]` | In a function, print where it was called from: with n, "line function file" for the call n frames up (0 is the current function's caller); without, "line file". |
 | `cd` | `cd [-L\|-P] [dir]` | Change the current directory (to $HOME without dir). |
@@ -329,6 +329,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `dirs` | `dirs [-clpv] [+N] [-N]` | Print the directory stack, the current directory first: -l without ~, -p one per line, -v numbered, +N or -N one entry (counted from the left or right); -c clears it. |
 | `disown` | `disown [-ar] [-h] [id ...]` | Without options, remove each id from the table of active jobs. |
 | `echo` | `echo [-neE] [string ...]` | Write arguments to the standard output |
+| `edit` | `edit FILE` | Edit FILE with $VISUAL, else $EDITOR, else vi. |
 | `enable` | `enable [-a] [-dnps] [-f filename] [name ...]` | Turn on the builtins named, or turn them off with -n (the name then runs a program of that name). |
 | `eval` | `eval [arguments]` | The arguments are concatenated together into a single command, separated by spaces. |
 | `exec` | `exec [-cl] [-a name] [command [arguments]]` | If command is supplied, it replaces the shell without creating a new process. |
@@ -356,6 +357,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `readarray` | `readarray [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]` | Read lines from standard input (or fd with -u) into the indexed array (MAPFILE if none is named). |
 | `readonly` | `readonly [-aAf] [name[=value] ...] or readonly -p` | Make each name readonly, after setting it to value if one is given (-a an indexed array, -A an associative one, -f functions). |
 | `return` | `return [n]` | End a function or a sourced file, with status n (the last command's status without n). |
+| `search` | `search [-i] [-a] [-l] [-n NAME] [-t TEXT] [DIR ...]` | List the files below each DIR (default .) whose name matches the glob NAME and that contain TEXT; with neither, every file and directory. |
 | `set` | `set [-abCefhmnuvx] [argument...]` | If no options or arguments are supplied, set displays the names and values of all shell variables and functions, sorted according to the current locale, in a format that may be reused as input for setting or resetting the currently-set variables. |
 | `shift` | `shift [n]` | The positional parameters shall be shifted. |
 | `shopt` | `shopt [-s\|-u] [-pq] [optname ...]` | Set (-s) or unset (-u) shell options, or show them (-p as shopt commands). |
@@ -371,4 +373,5 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `umask` | `umask [-p] [-S] [mode]` | Print the file creation mask (-S: as u=rwx,g=rx,o=rx), or set it to mode (octal or symbolic). |
 | `unalias` | `unalias [-a] [name …]` | Remove one or more aliases or all with -a option. |
 | `unset` | `unset [-f] [-v] [name ...]` | Remove each variable or function name. |
+| `view` | `view [-c] [-x] FILE ...` | Show each FILE, on any connected file system, in a full-screen viewer (Esc or q to close). |
 | `wait` | `wait [-fn] [-p varname] [id ...]` | Wait until the child process specified by each id exits and return the exit status of the last id. |

@@ -142,7 +142,9 @@ public class TestPlugins extends AbstractConsoleTest {
 		String l = left.getPath().replace('\\', '/');
 		String r = right.getPath().replace('\\', '/');
 		ExecuteResult res = executeCommand("browse --list", "");
-		assertEquals("* testbrowser - a browser for the tests\n", res.getStdOut());
+		// (fsh's own terminal browser can't run here: the output isn't the terminal)
+		assertEquals("  terminal - the full-screen browser on Parley's own terminal code (cannot run here)\n"
+				+ "* testbrowser - a browser for the tests\n", res.getStdOut());
 		res = executeCommand("browse -1 '"+l+"' '"+r+"'", "");
 		assertEquals("browsing left right true\n", res.getStdOut());
 		res = executeCommand("cd '"+l+"'; browse -c --with testbrowser . '"+r+"'; pwd", "");

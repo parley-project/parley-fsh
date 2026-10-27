@@ -317,6 +317,20 @@
 			<artifactId>parley-term</artifactId>
 			<version>${parley.version}</version>
 		</dependency>
+		<!-- The terminal file browser and its commands (browse, view, edit, search), built in: Parley's
+		     own terminal code, no UI library -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-files-viewer-tui</artifactId>
+			<version>${parley.version}</version>
+			<exclusions>
+				<!-- (as before: the JDBC file system only with -Pjdbc) -->
+				<exclusion>
+					<groupId>us.bringardner.parley</groupId>
+					<artifactId>parley-files-jdbc</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 		<!-- The look of fsh's own window (ConsoleFrame), shared with the other Parley applications -->
 		<dependency>
 			<groupId>us.bringardner</groupId>

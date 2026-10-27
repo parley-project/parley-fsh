@@ -43,6 +43,10 @@ public class PluginsCommand extends ShellCommand {
 		}
 		boolean first = true;
 		for(BrowserProvider b : Browse.providers(ctx)) {
+			if( b == Browse.BUILTIN ) {
+				// (fsh's own: not a plugin's)
+				continue;
+			}
 			if( first ) {
 				ctx.stdout.println("browsers:");
 				first = false;
