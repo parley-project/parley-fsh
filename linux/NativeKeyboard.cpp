@@ -372,9 +372,18 @@ JNIEXPORT jobjectArray JNICALL Java_us_bringardner_fsh_NativeKeyboard_openDescri
  */
 #include <spawn.h>
 
+/*
+ * posix_spawn_file_actions_addchdir_np is in glibc only from 2.29 (Amazon Linux 2 and CentOS 7
+ * have 2.26 and 2.17). It is a weak symbol here, so a library built on an old glibc runs on a new
+ * one too: where the C library has it, it is used; where it does not (null), a program that is to
+ * run in a directory of its own is forked instead (see forkForeground), as a foreground job's
+ * first is. (One built on a new glibc needs that glibc's other versions, so it does not load on an
+ * old one: build it there.)
+ */
 #if defined(__GLIBC__) && (__GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 29))
-#error "posix_spawn_file_actions_addchdir_np needs glibc 2.29 or later"
+extern "C" int posix_spawn_file_actions_addchdir_np(posix_spawn_file_actions_t *, const char *) __THROW;
 #endif
+#pragma weak posix_spawn_file_actions_addchdir_np
 
 /* a byte[] as a NUL-terminated C string (malloc'd) */
 static char *cstring(JNIEnv *env, jbyteArray a) {
@@ -464,10 +473,13 @@ static int *othersOpen(const jint *fds, jsize nfds, int *n) {
  * takes the terminal itself, then runs, as bash's programs do (Linux has no
  * POSIX_SPAWN_START_SUSPENDED for the shell to give it the terminal first). Only what may be done
  * between fork and exec is done in the child; it tells why it did not run on a pipe.
+ * With takeTerminal 0 it is posix_spawn done by hand: for a program that runs in a directory of
+ * its own where the C library has no posix_spawn_file_actions_addchdir_np (glibc before 2.29).
  * @return its process id, or -errno
  */
 static int forkForeground(const char *path, char **argv, char **envp, const char *dir,
-		const jint *fds, const int *temps, jsize nfds, const int *close, int nclose, int pgroup) {
+		const jint *fds, const int *temps, jsize nfds, const int *close, int nclose, int pgroup,
+		int takeTerminal) {
 	int report[2];
 	if( pipe2(report, O_CLOEXEC) != 0 ) {
 		return -errno;
@@ -486,7 +498,7 @@ static int forkForeground(const char *path, char **argv, char **envp, const char
 		if( pgroup >= 0 ) {
 			setpgid(0, pgroup);
 		}
-		int tty = pgroup >= 0 ? open("/dev/tty", O_RDWR | O_CLOEXEC) : -1;
+		int tty = takeTerminal && pgroup >= 0 ? open("/dev/tty", O_RDWR | O_CLOEXEC) : -1;
 		if( tty >= 0 ) {
 			// (a background group may not take the terminal while SIGTTOU stops it)
 			sigset_t block;
@@ -573,8 +585,11 @@ JNIEXPORT jint JNICALL Java_us_bringardner_fsh_NativeKeyboard_spawn0(JNIEnv *env
 	int *close = othersOpen(fds, nfds, &nclose);
 
 	pid_t pid = -1;
-	if( err == 0 && suspended ) {
-		int ret = forkForeground(path, argv, envp, dir, fds, temps, nfds, close, nclose, pgroup);
+	// (no posix_spawn_file_actions_addchdir_np in this C library: forked, as a foreground job's first)
+	int noChdir = dir != NULL && posix_spawn_file_actions_addchdir_np == NULL;
+	if( err == 0 && (suspended || noChdir) ) {
+		int ret = forkForeground(path, argv, envp, dir, fds, temps, nfds, close, nclose, pgroup,
+				suspended);
 		if( ret < 0 ) {
 			err = -ret;
 		} else {
