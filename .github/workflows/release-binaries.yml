@@ -108,6 +108,22 @@ jobs:
         shell: bash
         run: (cd parley-files-viewer-tui && mvn -B -q -DskipTests -pl parley-files-viewer-tui install)
 
+      # parley-launcher-maven-plugin, which fsh's build runs (it writes the launcher list into the
+      # jar; the Lanterna plugin's build runs it too): built from its repository, as the Parley
+      # modules fsh builds against come from the packages above. (release-2.0.0 until 2.0.0 is
+      # released and its default branch has it)
+      - name: Checkout parley-launcher
+        uses: actions/checkout@v4
+        with:
+          repository: parley-project/parley-launcher
+          ref: release-2.0.0
+          path: parley-launcher
+          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
+
+      - name: parley-launcher (its Maven plugin, which fsh's build runs)
+        shell: bash
+        run: mvn -B -q -DskipTests -f parley-launcher/pom.xml install
+
       - name: Compile (the JNI header is made from the compiled class)
         shell: bash
         run: mvn -B -q compile
