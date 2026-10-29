@@ -308,6 +308,23 @@ is part of fsh, so every native image has it. A native image can't load plugin j
 `build-native.sh --builtin` (`build-native.cmd --builtin` on Windows) builds plugins into it: the
 jars `FSH_PLUGINS` names, else those in the plugin folders.
 
+### With parley-launcher, on a Java already installed
+
+[parley-launcher](https://github.com/parley-project/parley-launcher) runs fsh on an installed Java
+(11 or later), with fsh's jars shared with the other Parley programs and with Maven
+(`~/.m2/repository`), fetched from Maven Central when they are missing:
+
+```sh
+parley-launcher add fsh us.bringardner:fsh:2.0.0
+fsh
+```
+
+The build writes what it needs into the jar (`META-INF/parley/launcher.list`: fsh's options, as
+`linux/fsh` has them, and every jar fsh needs, with its SHA-256), and attaches
+`fsh-VERSION-PLATFORM.jar` (`linux-x86_64`, `macos-aarch64` ...) with this platform's keyboard
+library and `fshexec`. It is made only where `compile.sh` (in `linux/` or `macos/`) has built them.
+The launcher unpacks it for fsh; without it, fsh uses JNA (see [Native support](#native-support)).
+
 ### With its own Java runtime, and the installers
 
 `tools/build-jlink.sh` builds fsh with a Java runtime of its own, cut down by `jlink` to the

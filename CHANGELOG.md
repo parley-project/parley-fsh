@@ -4,6 +4,10 @@
 
 ### Added
 
+- Run by parley-launcher: the build writes `META-INF/parley/launcher.list` into the jar (fsh's
+  options and every jar it needs, with its SHA-256, by parley-launcher-maven-plugin) and attaches
+  `fsh-VERSION-PLATFORM.jar`, the platform's keyboard library and `fshexec`, where `compile.sh`
+  has built them.
 - Installers, each with fsh's own Java runtime (`tools/build-jlink.sh`): a disk image for macOS
   (`tools/build-jpackage.sh`: `fsh.app`, which opens a Terminal window running fsh from the
   Finder, with the command for a terminal in `fsh.app/Contents/app/fsh`), a `.deb` and an `.rpm` for Linux
