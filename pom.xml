@@ -37,9 +37,88 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.release>11</maven.compiler.release>
 		<parley.version>2.0.0-SNAPSHOT</parley.version>
+		<!-- set by the native-PLATFORM profile for this machine, when its native files are built -->
+		<fsh.platform>none</fsh.platform>
+		<fsh.native.dir>none</fsh.native.dir>
 	</properties>
 
 	<profiles>
+		<!-- fsh-VERSION-linux-x86_64.jar: this platform's keyboard library and fshexec (linux/compile.sh), which
+		     parley-launcher unpacks for fsh; made only where they have been built -->
+		<profile>
+			<id>native-linux-x86_64</id>
+			<activation>
+				<os>
+					<family>unix</family>
+					<name>linux</name>
+					<arch>amd64</arch>
+				</os>
+				<file>
+					<exists>${basedir}/linux/fshexec</exists>
+				</file>
+			</activation>
+			<properties>
+				<fsh.platform>linux-x86_64</fsh.platform>
+				<fsh.native.dir>linux</fsh.native.dir>
+			</properties>
+		</profile>
+		<!-- fsh-VERSION-linux-aarch64.jar: this platform's keyboard library and fshexec (linux/compile.sh), which
+		     parley-launcher unpacks for fsh; made only where they have been built -->
+		<profile>
+			<id>native-linux-aarch64</id>
+			<activation>
+				<os>
+					<family>unix</family>
+					<name>linux</name>
+					<arch>aarch64</arch>
+				</os>
+				<file>
+					<exists>${basedir}/linux/fshexec</exists>
+				</file>
+			</activation>
+			<properties>
+				<fsh.platform>linux-aarch64</fsh.platform>
+				<fsh.native.dir>linux</fsh.native.dir>
+			</properties>
+		</profile>
+		<!-- fsh-VERSION-macos-x86_64.jar: this platform's keyboard library and fshexec (macos/compile.sh), which
+		     parley-launcher unpacks for fsh; made only where they have been built -->
+		<profile>
+			<id>native-macos-x86_64</id>
+			<activation>
+				<os>
+					<family>mac</family>
+					<name>mac os x</name>
+					<arch>x86_64</arch>
+				</os>
+				<file>
+					<exists>${basedir}/macos/fshexec</exists>
+				</file>
+			</activation>
+			<properties>
+				<fsh.platform>macos-x86_64</fsh.platform>
+				<fsh.native.dir>macos</fsh.native.dir>
+			</properties>
+		</profile>
+		<!-- fsh-VERSION-macos-aarch64.jar: this platform's keyboard library and fshexec (macos/compile.sh), which
+		     parley-launcher unpacks for fsh; made only where they have been built -->
+		<profile>
+			<id>native-macos-aarch64</id>
+			<activation>
+				<os>
+					<family>mac</family>
+					<name>mac os x</name>
+					<arch>aarch64</arch>
+				</os>
+				<file>
+					<exists>${basedir}/macos/fshexec</exists>
+				</file>
+			</activation>
+			<properties>
+				<fsh.platform>macos-aarch64</fsh.platform>
+				<fsh.native.dir>macos</fsh.native.dir>
+			</properties>
+		</profile>
 		<!-- Native binary named fsh: mvn -Pnative package (add jdbc to include the JDBC file system) -->
 		<profile>
 			<id>native</id>
@@ -261,6 +340,104 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<!-- fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of this platform
+			     (compile.sh in linux/ or macos/), which parley-launcher unpacks for fsh. Made only where
+			     they have been built (a native-PLATFORM profile); else there is nothing to put in it. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.3.1</version>
+				<executions>
+					<execution>
+						<id>native-files</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/native/${fsh.platform}</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${basedir}/${fsh.native.dir}</directory>
+									<includes>
+										<include>libnativekeyboard.so</include>
+										<include>libnativekeyboard.dylib</include>
+										<include>fshexec</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.4.2</version>
+				<executions>
+					<execution>
+						<id>native-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classesDirectory>${project.build.directory}/native/${fsh.platform}</classesDirectory>
+							<classifier>${fsh.platform}</classifier>
+							<skipIfEmpty>true</skipIfEmpty>
+							<archive>
+								<addMavenDescriptor>false</addMavenDescriptor>
+								<manifest>
+									<addClasspath>false</addClasspath>
+									<mainClass combine.self="override"/>
+								</manifest>
+								<manifestEntries combine.self="override"/>
+							</archive>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- META-INF/parley/launcher.list in the jar: what parley-launcher needs to run fsh (its
+			     options, as linux/fsh and macos/fsh have them; the platform's native jar, unpacked into
+			     {native}, for the keyboard library and fshexec) and every jar fsh needs, with its SHA-256 -->
+			<plugin>
+				<groupId>us.bringardner.parley</groupId>
+				<artifactId>parley-launcher-maven-plugin</artifactId>
+				<version>${parley.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>list</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<mainClass>us.bringardner.fsh.Console</mainClass>
+					<options>
+						<!-- (deep recursion in scripts, as bash allows it; the serial collector with a
+						     small young generation, its heap given back when it is not used; the
+						     open-files limit as the caller left it; never a window) -->
+						<option>-Xss16m</option>
+						<option>-XX:+UseSerialGC</option>
+						<option>-Xmn16m</option>
+						<option>-XX:MinHeapFreeRatio=10</option>
+						<option>-XX:MaxHeapFreeRatio=20</option>
+						<option>-XX:-MaxFDLimit</option>
+						<option>-Djava.awt.headless=true</option>
+						<option>-Djava.library.path={native}</option>
+						<!-- (Java 24 and later warn about JNI without it; Java 11 doesn't start with it) -->
+						<option>17+:--enable-native-access=ALL-UNNAMED</option>
+					</options>
+					<nativeClassifier>{platform}</nativeClassifier>
+					<!-- (without the native jar fsh uses JNA: see Native support in README.md) -->
+					<nativeOptional>true</nativeOptional>
+					<!-- (through fshexec -j: the signals the shell was started ignoring, which the JVM may take over) -->
+					<wrapper>
+						<part>{native}/fshexec</part>
+						<part>-j</part>
+					</wrapper>
+				</configuration>
 			</plugin>
 		</plugins>
 		<pluginManagement>
