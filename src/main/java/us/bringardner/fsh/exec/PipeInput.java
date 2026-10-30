@@ -10,8 +10,9 @@ import us.bringardner.fsh.SharedInput;
  * for the programs that read it too). What is waiting in a pipe is not known (Java's available
  * may be 0), so available reads one byte in the background: read -t sees it when it comes, and
  * the byte is the next one read. It is shared with programs as a file is (see SharedInput).
+ * Also an ssh session's input, which the shell and its programs share.
  */
-final class PipeInput extends InputStream implements SharedInput {
+public final class PipeInput extends InputStream implements SharedInput {
 	private final InputStream source;
 	/** the byte read ahead, -2 if none (-1 is the end) */
 	private int ahead = -2;
@@ -19,7 +20,7 @@ final class PipeInput extends InputStream implements SharedInput {
 	/** put back (see unread) */
 	private byte [] pushed = new byte[0];
 
-	PipeInput(InputStream source) {
+	public PipeInput(InputStream source) {
 		this.source = source;
 	}
 

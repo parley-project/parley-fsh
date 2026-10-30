@@ -111,4 +111,59 @@ public class FshShellFactoryTest {
 		assertEquals(3, ch.getExitStatus(), "the shell's exit status");
 		s.close();
 	}
+
+	/** Read until the channel closes */
+	private static String readAll(SessionChannel ch) throws Exception {
+		assertTrue(ch.waitForClose(30, TimeUnit.SECONDS), "the session ends");
+		return new String(ch.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+	}
+
+	@Test
+	public void inputQueuedBehindExternalCommandWithoutPty() throws Exception {
+		ClientSession s = login();
+		SessionChannel ch = s.openSession();
+		ch.shell();
+		OutputStream o = ch.getOutputStream();
+		o.write("whoami\nhostname\necho three\necho four\nexit\n".getBytes(StandardCharsets.UTF_8));
+		o.flush();
+		String out = readAll(ch);
+		assertTrue(out.contains(System.getProperty("user.name")), out);
+		assertTrue(out.contains("three"), "a line after an external command is not lost: "+out);
+		assertTrue(out.contains("four"), out);
+		s.close();
+	}
+
+	@Test
+	public void burstBehindExternalCommandWithPty() throws Exception {
+		ClientSession s = login();
+		SessionChannel ch = s.openSession();
+		ch.requestPty("xterm-256color", 100, 30);
+		ch.shell();
+		OutputStream keys = ch.getOutputStream();
+		keys.write("pwd\rwhoami\recho mid-burst\recho after-burst\rexit\r".getBytes(StandardCharsets.UTF_8));
+		keys.flush();
+		String out = readAll(ch);
+		assertTrue(out.contains(System.getProperty("user.name")), out);
+		assertTrue(out.contains("mid-burst\r\n"), "the lines queued behind an external command run: "+out);
+		assertTrue(out.contains("after-burst\r\n"), out);
+		s.close();
+	}
+
+	@Test
+	public void spacedLinesWithPty() throws Exception {
+		ClientSession s = login();
+		SessionChannel ch = s.openSession();
+		ch.requestPty("xterm-256color", 100, 30);
+		ch.shell();
+		OutputStream keys = ch.getOutputStream();
+		for (String line : new String[] {"whoami", "echo right-after", "echo and-more", "exit"}) {
+			keys.write((line+"\r").getBytes(StandardCharsets.UTF_8));
+			keys.flush();
+			Thread.sleep(700);
+		}
+		String out = readAll(ch);
+		assertTrue(out.contains("right-after\r\n"), "the line right after an external command runs: "+out);
+		assertTrue(out.contains("and-more\r\n"), out);
+		s.close();
+	}
 }

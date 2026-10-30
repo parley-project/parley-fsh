@@ -8,6 +8,7 @@ import us.bringardner.parley.ssh.server.CommandEnvironment;
 import us.bringardner.parley.ssh.server.ICommand;
 import us.bringardner.parley.ssh.server.IShellFactory;
 import us.bringardner.fsh.Console;
+import us.bringardner.fsh.exec.PipeInput;
 
 /**
  * fsh, the FileSource Shell, as the interactive shell of a parley-ssh server:
@@ -46,7 +47,11 @@ public class FshShellFactory implements IShellFactory {
 			private volatile Console console;
 
 			@Override
-			protected int run(CommandEnvironment env, InputStream in, OutputStream out, OutputStream err) throws Exception {
+			protected int run(CommandEnvironment env, InputStream channelIn, OutputStream out, OutputStream err) throws Exception {
+				// shared with the programs the shell runs, as bash shares its input with them: a program is
+				// given only what it reads and the rest goes back to the shell (without this, the copier that
+				// feeds a program blocks in read() and takes the lines queued behind it)
+				InputStream in = new PipeInput(channelIn);
 				SshTerminal term = new SshTerminal(in, out, err, env.hasPty());
 				Console c = new Console();
 				console = c;
