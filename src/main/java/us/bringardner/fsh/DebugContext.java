@@ -62,6 +62,27 @@ public class DebugContext  implements DebugController {
 	}
 
 	
+	/**
+	 * The script read a variable (name as the script named it: a nameref's own name, an
+	 * array's name for one of its elements). Called on the script's thread for each read, so it
+	 * must be quick.
+	 * @return true to stop the script here, as at a breakpoint (the statement reading it is the one running)
+	 */
+	public boolean variableRead(String name, ShellContext ctx) {
+		// not watching by default
+		return false;
+	}
+
+	/**
+	 * The script set or unset a variable (see variableRead). Called after the change, so ctx
+	 * has the new value.
+	 * @return true to stop the script here, as at a breakpoint
+	 */
+	public boolean variableWritten(String name, ShellContext ctx) {
+		// not watching by default
+		return false;
+	}
+
 	public void stepToReturn() {
 		// do nothing by default
 		

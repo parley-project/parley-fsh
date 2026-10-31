@@ -3000,7 +3000,8 @@ public final class Executor {
 	 * array literal is associative (declare -A).
 	 */
 	Object value(Ast.Assignment a, ShellContext sc, Expander ex, boolean local, boolean assoc) {
-		Object old = local ? null : sc.getVariable(a.name);
+		// (what name=v replaces is the shell's business; name+=v reads it)
+		Object old = local ? null : a.append ? sc.getVariable(a.name) : sc.peekVariable(a.name);
 		if( a.array != null ) {
 			if( a.index != null ) {
 				throw new ExpansionError(a.name+"["+a.index+"]: cannot assign list to array member");
