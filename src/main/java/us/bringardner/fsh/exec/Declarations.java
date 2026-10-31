@@ -628,7 +628,7 @@ public final class Declarations {
 					sc.setLocalVariable(name, copy(inherited));
 				}
 			}
-			Object existing = local && !sc.isOwnLocal(name) ? null : sc.getVariable(name);
+			Object existing = local && !sc.isOwnLocal(name) ? null : sc.peekVariable(name);
 			// (declare a='(1 2)' of an array that is there: its words, as bash does)
 			boolean arrays = !remove && (o.indexOf('a') >= 0 || o.indexOf('A') >= 0 || existing instanceof List<?> || existing instanceof Map<?,?>);
 			if( arrays && (text != null || assignment != null && assignment.array == null && !assignment.append && assignment.value != null)) {
@@ -711,7 +711,7 @@ public final class Declarations {
 			// declare -g in a function: the global (readonly and export: a local if there is one)
 			boolean toGlobal = o.indexOf('g') >= 0 && sc.isInFunction()
 					&& !((command.equals("readonly") || command.equals("export")) && sc.hasLocal(name));
-			Object old = local ? (sc.isOwnLocal(name) ? sc.getVariable(name) : null) : toGlobal ? sc.globalRaw(name) : sc.getVariable(name);
+			Object old = local ? (sc.isOwnLocal(name) ? sc.peekVariable(name) : null) : toGlobal ? sc.globalRaw(name) : sc.peekVariable(name);
 			String conversion = o.indexOf('a') >= 0 && o.indexOf('A') < 0 && !remove && old instanceof Map<?,?>
 					? "cannot convert associative to indexed array"
 					: o.indexOf('A') >= 0 && !remove && old instanceof FshList ? "cannot convert indexed to associative array" : null;

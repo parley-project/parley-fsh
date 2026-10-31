@@ -159,7 +159,7 @@ public class Unset extends ShellCommand{
 						// as in bash, a name that is no variable may be a function
 						ctx.removeFunction(text);
 					}
-				} else if( ctx.getVariable(text) == null ) {
+				} else if( ctx.peekVariable(text) == null ) {
 					// gone: so are its attributes (-i, -l, -u, -c)
 					ctx.console.setInteger(text, false);
 					ctx.console.setCaseAttribute(text, null);

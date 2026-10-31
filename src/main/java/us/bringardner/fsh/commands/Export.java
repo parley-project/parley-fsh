@@ -102,7 +102,7 @@ public class Export extends ShellCommand{
 						// export name: its value goes to the environment (a local's too); one with no
 						// value is exported when it gets one
 						String name = ctx.resolveName(val);
-						Object v = ctx.getVariable(val);
+						Object v = ctx.peekVariable(val);
 						if( v != null ) {
 							ctx.setEnvironmentVariable(name, ""+ShellContext.firstElement(v));
 						} else if( ctx.getEvironmentVariable(name) == null ) {

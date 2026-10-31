@@ -844,7 +844,8 @@ public class Arithmetic {
 	private void bind(String tok, Number value) {
 		int b = tok.indexOf('[');
 		if( b < 0 ) {
-			Object v = ctx.getVariable(tok);
+			// (what's there is looked at only to know where the value goes: not a read by the script)
+			Object v = ctx.peekVariable(tok);
 			if( v instanceof Map<?,?> ) {
 				// (an array's name is its element 0)
 				ctx.setVariable(tok, "0", value);
