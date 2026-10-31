@@ -486,7 +486,118 @@ $
 		return localScope(name) != null || isolated == null || isolatedOwn.contains(name);
 	}
 
+	/*
+	 * A debugger's watchpoints: the script's reads and writes of variables are told to the
+	 * DebugContext, which may stop the script there (as at a breakpoint). Only the outermost
+	 * read or write is told: the lookups the shell makes inside one (a nameref followed, an
+	 * array read to set an element) are part of it.
+	 */
+	private int variableAccessDepth;
+
+	/** A variable was read or written (by the script, not inside another read or write): a debugger may stop here. */
+	private void variableAccessed(String name, boolean write) {
+		if( console == null || variableAccessDepth != 0 ) {
+			return;
+		}
+		DebugContext debug = console.debugContext;
+		if( write ? debug.variableWritten(name, this) : debug.variableRead(name, this)) {
+			stopForDebugger(debug);
+		}
+	}
+
+	/** Stops the script (the debugger shows where) until the debugger lets it go on. */
+	private void stopForDebugger(DebugContext debug) {
+		debug.setCurrentState(DebugContext.RunState.AtBreakpoint);
+		while( debug.getCurrentState() == DebugContext.RunState.AtBreakpoint ) {
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+			}
+		}
+	}
+
+	/** Sets an element of an array (name[index]=value). */
 	public void setVariable(String name,Object index, Object value) {
+		variableAccessDepth++;
+		try {
+			assignElement(name, index, value);
+		} finally {
+			variableAccessDepth--;
+		}
+		variableAccessed(name, true);
+	}
+
+	public void setVariable(String name, Object value) {
+		variableAccessDepth++;
+		try {
+			assignVariable(name, value);
+		} finally {
+			variableAccessDepth--;
+		}
+		variableAccessed(name, true);
+	}
+
+	/** @param follow false for unset -n: a nameref itself, not the variable it names */
+	public boolean unSetVariable(String name, boolean follow) {
+		boolean ret;
+		variableAccessDepth++;
+		try {
+			ret = removeVariable(name, follow);
+		} finally {
+			variableAccessDepth--;
+		}
+		variableAccessed(name, true);
+		return ret;
+	}
+
+	public Object getVariable(String name) {
+		Object ret;
+		variableAccessDepth++;
+		try {
+			ret = lookUpVariable(name);
+		} finally {
+			variableAccessDepth--;
+		}
+		variableAccessed(name, false);
+		return ret;
+	}
+
+	/**
+	 * A variable's value (as getVariable) for the shell's own use, such as finding what an
+	 * assignment replaces: a debugger watching the variable isn't told of it as a read by the script.
+	 */
+	public Object peekVariable(String name) {
+		variableAccessDepth++;
+		try {
+			return lookUpVariable(name);
+		} finally {
+			variableAccessDepth--;
+		}
+	}
+
+	public Object getLocalVariable(String name) {
+		Object ret;
+		variableAccessDepth++;
+		try {
+			ret = lookUpLocalVariable(name);
+		} finally {
+			variableAccessDepth--;
+		}
+		variableAccessed(name, false);
+		return ret;
+	}
+
+	public void setLocalVariable(String name, Object val) {
+		variableAccessDepth++;
+		try {
+			assignLocalVariable(name, val);
+		} finally {
+			variableAccessDepth--;
+		}
+		variableAccessed(name, true);
+	}
+
+	private void assignElement(String name,Object index, Object value) {
 		name = resolveName(name);
 		if( name.equals("GROUPS") && !console.unsetSpecials.contains(name)) {
 			return;
@@ -624,7 +735,7 @@ $
 		}
 	}
 
-	public void setVariable(String name, Object value) {
+	private void assignVariable(String name, Object value) {
 		if( name.equals("GROUPS") && !console.unsetSpecials.contains(name)) {
 			// (assignments to it are ignored, as bash's)
 			return;
@@ -920,7 +1031,7 @@ $
 	}
 
 	/** @param follow false for unset -n: a nameref itself, not the variable it names */
-	public boolean unSetVariable(String name, boolean follow) {
+	private boolean removeVariable(String name, boolean follow) {
 		if( follow ) {
 			name = resolveName(name);
 		}
@@ -971,7 +1082,7 @@ $
 		return false;
 	}
 
-	public Object getVariable(String name) {
+	private Object lookUpVariable(String name) {
 		Object ret = getVariable0(name);
 		// a nameref stands for the variable it names (a function's that names itself: the global one)
 		String cur = name;
@@ -1536,7 +1647,7 @@ $
 		return !functionStack.isEmpty() && functionStack.peek().local.containsKey(name);
 	}
 
-	public Object getLocalVariable(String name) {
+	private Object lookUpLocalVariable(String name) {
 		FunctionInvocation inv = localScope(name);
 		if( inv != null ) {
 			Object tmp = inv.local.get(name);
@@ -1555,7 +1666,7 @@ $
 		return ret;
 	}
 
-	public void setLocalVariable(String name, Object val) {
+	private void assignLocalVariable(String name, Object val) {
 		val = withCase(name, val);
 		if( name.equals("OPTIND") && val != null ) {
 			optindAssigned(val);
@@ -2657,13 +2768,7 @@ $
 			if( debug.isBreakpoint(new java.awt.Point(node.line, 0), this)
 					|| debug.getCurrentState() == DebugContext.RunState.StepOver
 					|| debug.getCurrentState() == DebugContext.RunState.StepInto ) {
-				debug.setCurrentState(DebugContext.RunState.AtBreakpoint);
-				while( debug.getCurrentState() == DebugContext.RunState.AtBreakpoint ) {
-					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-					}
-				}
+				stopForDebugger(debug);
 			}
 		}
 		if( hasPendingSignal()) {

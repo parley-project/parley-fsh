@@ -4,6 +4,14 @@
 
 ### Added
 
+- Watchpoints for debuggers: `DebugContext.variableRead(name, ctx)` and
+  `variableWritten(name, ctx)` are told of each variable the script reads and each it sets or
+  unsets (an array's name for its elements), and returning true stops the script there, as at a
+  breakpoint, until the debugger lets it go on. Only the script's own reads and writes are told:
+  not the lookups the shell makes to carry one out (what `x=1` replaces, a nameref followed, the
+  attributes `declare` keeps). `ShellContext.peekVariable` reads a variable that way, without
+  telling the debugger. fsh-ide uses them for its watchpoints.
+
 - Run by parley-launcher: the build writes `META-INF/parley/launcher.list` into the jar (fsh's
   options and every jar it needs, with its SHA-256, by parley-launcher-maven-plugin) and attaches
   `fsh-VERSION-PLATFORM.jar`, the platform's keyboard library and `fshexec`, where `compile.sh`
