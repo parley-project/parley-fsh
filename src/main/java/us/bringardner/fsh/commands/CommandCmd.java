@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.exec.Programs;

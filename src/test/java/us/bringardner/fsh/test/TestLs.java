@@ -20,7 +20,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.fsh.Console;
 
 public class TestLs extends AbstractConsoleTest {

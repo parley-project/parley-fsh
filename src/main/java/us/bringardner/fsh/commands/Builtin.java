@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
-import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 

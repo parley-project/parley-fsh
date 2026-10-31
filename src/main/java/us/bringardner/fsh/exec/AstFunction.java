@@ -1,8 +1,6 @@
 package us.bringardner.fsh.exec;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.ShellFunction;
