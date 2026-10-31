@@ -16,7 +16,6 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.expand.Expander;
 import us.bringardner.fsh.syntax.Ast;
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.files.fileproxy.FileProxy;
 import us.bringardner.parley.files.IRandomAccessStream;
 
 /**

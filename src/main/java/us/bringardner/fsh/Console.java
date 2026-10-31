@@ -22,7 +22,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.Stack;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,20 +29,16 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.management.JMRuntimeException;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-
 
 import sun.misc.Signal;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.term.line.LineEditor;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.fileproxy.FileProxy;
 import us.bringardner.fsh.ShellContext.LoopControl;
 import us.bringardner.fsh.signal.ExitException;
 import us.bringardner.fsh.signal.FshException;

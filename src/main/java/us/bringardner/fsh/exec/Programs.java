@@ -18,7 +18,6 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.core.BaseThread;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxy;
 
 /**
  * Programs: a command that is not a function or a builtin, found by its path or on $PATH.

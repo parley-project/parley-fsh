@@ -1,20 +1,11 @@
 package us.bringardner.fsh.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.PrintStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
-
 import us.bringardner.fsh.Completion;
-import us.bringardner.fsh.Console;
-import us.bringardner.parley.term.line.Completions;
 import us.bringardner.parley.term.line.LineEditor;
 
 /**

@@ -9,7 +9,6 @@ import us.bringardner.fsh.Console;
 import us.bringardner.fsh.NativeKeyboard;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.Argument;
 
 public class Read extends ShellCommand{
 	enum Options {e,r,s,a,d,i,n,N,p,t,u};
