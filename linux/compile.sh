@@ -22,5 +22,6 @@ g++ -c -fPIC -I$idir/linux -I$idir $name.cpp -o $name.o || exit 1
 g++ -shared -o libnativekeyboard.so $name.o -lc
 
 # the helper that runs a job's programs in a process group of their own
-# (-ldl: dlopen for -l, in libc itself only from glibc 2.34)
-cc -O2 -o fshexec fshexec.c -ldl
+# (-ldl: dlopen for -l, in libc itself only from glibc 2.34; glibc-compat.h: runs on glibc 2.34 and
+# later, whatever glibc builds it)
+cc -O2 -include glibc-compat.h -o fshexec fshexec.c -ldl
