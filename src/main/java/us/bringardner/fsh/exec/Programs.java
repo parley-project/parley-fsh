@@ -601,6 +601,12 @@ public final class Programs {
 				} else if( onFile != null ) {
 					// the helper gives it the file itself (nothing is copied to it: a write to the pipe
 					// it does not read would end the shell with SIGPIPE once it is gone)
+				} else if( FileSourceFactory.isWindows() && ctx.stdin instanceof PipeInput ) {
+					// an ssh session's input, which is shared with the programs through a named pipe where
+					// there are any (StdinFeeder): not on Windows. A copier would take the lines queued
+					// behind the program and lose them when it ends, so the program gets the end of its
+					// input and the shell keeps what is queued.
+					p.getOutputStream().close();
 				} else if (ctx.stdin instanceof NativeKeyboard) {
 					boolean echo = ctx.console.isOptionEnabled(Option.KeyboardEcho);
 					sc1 = new NativeStreamCopier(ctx,(NativeKeyboard)ctx.stdin,p.getOutputStream(),name+" native",echo);
