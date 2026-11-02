@@ -119,6 +119,24 @@
 				<fsh.native.dir>macos</fsh.native.dir>
 			</properties>
 		</profile>
+		<!-- fsh-VERSION-windows-x86_64.jar: this platform's keyboard library (windows/compile.cmd); there is no
+		     fshexec on Windows. Made only where it has been built -->
+		<profile>
+			<id>native-windows-x86_64</id>
+			<activation>
+				<os>
+					<family>windows</family>
+					<arch>amd64</arch>
+				</os>
+				<file>
+					<exists>${basedir}/windows/nativekeyboard.dll</exists>
+				</file>
+			</activation>
+			<properties>
+				<fsh.platform>windows-x86_64</fsh.platform>
+				<fsh.native.dir>windows</fsh.native.dir>
+			</properties>
+		</profile>
 		<!-- Native binary named fsh: mvn -Pnative package (add jdbc to include the JDBC file system) -->
 		<profile>
 			<id>native</id>
@@ -363,6 +381,7 @@
 									<includes>
 										<include>libnativekeyboard.so</include>
 										<include>libnativekeyboard.dylib</include>
+										<include>nativekeyboard.dll</include>
 										<include>fshexec</include>
 									</includes>
 								</resource>
