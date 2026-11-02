@@ -531,9 +531,48 @@ delimiter
 			set(java.util.EnumSet.noneOf(Option.class));
 		}
 	}
-	// (names differ by case, except on Windows: A and a are two variables)
-	private Map<String,Object> environmentVariables = System.getProperty("os.name", "").toLowerCase().startsWith("windows")
-			? new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER) : new ConcurrentSkipListMap<>();
+	// (names differ by case: A and a are two variables. On Windows, whose environment ignores case, a
+	// name written in capitals, as scripts write PATH, is also the environment's variable of any case, Path
+	// here; any other spelling (path) is its own: see envKey)
+	private final Map<String,Object> environmentVariables = new ConcurrentSkipListMap<>();
+	private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase().startsWith("windows");
+
+	/**
+	 * The key that the environment variable name is stored under: name itself, or on Windows, when name
+	 * is in capitals and the environment has it with other case (PATH for Path), that key.
+	 */
+	private String envKey(String name) {
+		if( !WINDOWS || name == null || environmentVariables.containsKey(name) || !name.equals(name.toUpperCase(java.util.Locale.ROOT))) {
+			return name;
+		}
+		for(String key : environmentVariables.keySet()) {
+			if( key.equalsIgnoreCase(name)) {
+				return key;
+			}
+		}
+		return name;
+	}
+
+	/** name as the shell knows the variable: on Windows PATH is Path when the environment has it so (see envKey) */
+	public String canonicalName(String name) {
+		return envKey(name);
+	}
+
+	private Object envGet(String name) {
+		return environmentVariables.get(envKey(name));
+	}
+
+	private boolean envHas(String name) {
+		return environmentVariables.containsKey(envKey(name));
+	}
+
+	private Object envPut(String name, Object value) {
+		return environmentVariables.put(envKey(name), value);
+	}
+
+	private Object envRemove(String name) {
+		return environmentVariables.remove(envKey(name));
+	}
 	DebugContext debugContext = new DebugContext();
 	private int lastPid = 0;
 
@@ -810,7 +849,7 @@ delimiter
 		try {
 			String home = System.getenv("HOME");
 			if( home != null && !home.isEmpty()) {
-				environmentVariables.put("HOME", home);
+				envPut("HOME", home);
 				homeDir = tree.createFileSource(home);
 			}
 			FileSource start = tree.createFileSource(System.getProperty("user.dir"));
@@ -1425,14 +1464,14 @@ delimiter
 			return 0;
 		}
 		// SHELLOPTS and BASHOPTS in the environment: the options they name are on, as in bash
-		Object inherited = environmentVariables.get("SHELLOPTS");
+		Object inherited = envGet("SHELLOPTS");
 		for(String n : inherited == null ? new String[0] : inherited.toString().split(":")) {
 			Option option = n.isEmpty() ? null : Option.find(n);
 			if( option != null && option != Option.Unsupported && option != Option.Option && n.length() > 1 ) {
 				setOption(option, true);
 			}
 		}
-		inherited = environmentVariables.get("BASHOPTS");
+		inherited = envGet("BASHOPTS");
 		for(String n : inherited == null ? new String[0] : inherited.toString().split(":")) {
 			if( shellOptions.containsKey(n)) {
 				executeQuietly("shopt -s "+n);
@@ -1484,7 +1523,7 @@ delimiter
 			params.add("fsh");
 			params.addAll(inv.args);
 		}
-		Object argv0 = environmentVariables.get("BASH_ARGV0");
+		Object argv0 = envGet("BASH_ARGV0");
 		if( argv0 != null ) {
 			// (BASH_ARGV0 in the environment: it is $0, as assigning it is)
 			params.set(0, argv0.toString());
@@ -1506,7 +1545,7 @@ delimiter
 				stdErr.println(notice);
 			}
 		}
-		if( !environmentVariables.containsKey("SHELL") && !variables.containsKey("SHELL")) {
+		if( !envHas("SHELL") && !variables.containsKey("SHELL")) {
 			// the user's login shell, as bash sets it when the environment has none
 			String shell = loginShell();
 			if( shell != null ) {
@@ -1537,14 +1576,14 @@ delimiter
 		} else {
 			// as bash: a shell that is not interactive has no PS0-PS3, history variables or histchars
 			for(Prompt p : new Prompt[] {Prompt.BeforeExecute, Prompt.Primary, Prompt.Secondary, Prompt.Select}) {
-				if( !environmentVariables.containsKey(p.name)) {
+				if( !envHas(p.name)) {
 					variables.remove(p.name);
 				}
 			}
 			variables.remove(VARIABLE_HISTCHARS);
 			if( !historyFromEnvironment ) {
-				environmentVariables.remove(VARIABLE_HISTSIZE);
-				environmentVariables.remove(VARIABLE_HISTFILE);
+				envRemove(VARIABLE_HISTSIZE);
+				envRemove(VARIABLE_HISTFILE);
 			}
 		}
 		// the shell starts now, set up (the JVM takes a while to): $SECONDS counts from here
@@ -2144,7 +2183,7 @@ delimiter
 			// shell was given is the environment's (and its programs')
 			// the open-files limit the shell was given, which a native image raises as it starts
 			// (its launcher, macos/fsh-native.c, notes it): put back, for the shell's programs
-			Object nofile = environmentVariables.remove("FSH_NOFILE");
+			Object nofile = envRemove("FSH_NOFILE");
 			if( nofile != null && NativeKeyboard.isAvailible()) {
 				String n = nofile.toString();
 				try {
@@ -2156,40 +2195,40 @@ delimiter
 			}
 			if( Boolean.getBoolean("parley.fsh.cfAbsent")) {
 				// (the launcher saw it was not given: fshexec -j)
-				environmentVariables.remove("__CF_USER_TEXT_ENCODING");
-			} else if( environmentVariables.containsKey("__CF_USER_TEXT_ENCODING") && NativeKeyboard.isAvailible()) {
+				envRemove("__CF_USER_TEXT_ENCODING");
+			} else if( envHas("__CF_USER_TEXT_ENCODING") && NativeKeyboard.isAvailible()) {
 				try {
 					if( NativeKeyboard.startedWith("__CF_USER_TEXT_ENCODING") == 0 ) {
-						environmentVariables.remove("__CF_USER_TEXT_ENCODING");
+						envRemove("__CF_USER_TEXT_ENCODING");
 					}
 				} catch (UnsatisfiedLinkError e) {
 					// (a library from before it had it)
 				}
 			}
 			// an inherited OLDPWD stays only if it is a directory, as in bash
-			Object oldpwd = environmentVariables.get(VARIABLE_OLDPWD);
+			Object oldpwd = envGet(VARIABLE_OLDPWD);
 			if( oldpwd != null && !new java.io.File(oldpwd.toString()).isDirectory()) {
-				environmentVariables.remove(VARIABLE_OLDPWD);
+				envRemove(VARIABLE_OLDPWD);
 			}
 			// functions bash exported (export -f): BASH_FUNC_name%%=() { ... }
 			for(String key : new java.util.ArrayList<>(environmentVariables.keySet())) {
 				if( key.startsWith("BASH_FUNC_") && key.endsWith("%%")) {
-					importedFunctions.put(key.substring(10, key.length()-2), ""+environmentVariables.remove(key));
+					importedFunctions.put(key.substring(10, key.length()-2), ""+envRemove(key));
 				}
 			}
 			if( defaultPath !=null) {
-				environmentVariables.put(PATH, getDefaultPath());
+				envPut(PATH, getDefaultPath());
 			}
 			// (the environment's, as bash keeps them)
-			historyFromEnvironment = environmentVariables.containsKey(VARIABLE_HISTSIZE) || environmentVariables.containsKey(VARIABLE_HISTFILE);
-			environmentVariables.putIfAbsent(VARIABLE_HISTSIZE, 500);
-			environmentVariables.putIfAbsent(VARIABLE_HISTFILE, "~/.fsh_history");
+			historyFromEnvironment = envHas(VARIABLE_HISTSIZE) || envHas(VARIABLE_HISTFILE);
+			if( !envHas(VARIABLE_HISTSIZE)) { envPut(VARIABLE_HISTSIZE, 500); }
+			if( !envHas(VARIABLE_HISTFILE)) { envPut(VARIABLE_HISTFILE, "~/.fsh_history"); }
 
 
 			tree = new VirtualFileSourceFactory();			
 			String home = System.getProperty("user.home");
 			//  the java environment HOME does not match the java property user.home
-			environmentVariables.put("HOME", home);
+			envPut("HOME", home);
 			
 			FileSource tmp = tree.createFileSource(home);
 			homeDir=tmp;
@@ -2204,34 +2243,34 @@ delimiter
 			setInteger("OPTIND", true);
 			variables.put("OPTERR", "1");
 			// with no PATH from the environment, bash's own (not exported)
-			if( !environmentVariables.containsKey(PATH)) {
+			if( !envHas(PATH)) {
 				variables.put(PATH, "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:.");
 			}
 			// the characters completion splits a line's words at (bash's default)
-			if( !environmentVariables.containsKey("COMP_WORDBREAKS")) {
+			if( !envHas("COMP_WORDBREAKS")) {
 				variables.put("COMP_WORDBREAKS", " \t\n\"'@><=;|&(:");
 			}
 			////Primary("PS1"),Secondary("PS2"),Select("PS3"),BeforeExecute("PS0"),EchoCommand("PS4");
 
 			variables.put(Prompt.BeforeExecute.name, "");
-			if( !environmentVariables.containsKey(Prompt.Primary.name)) {
+			if( !envHas(Prompt.Primary.name)) {
 				// (one from the environment stays, as in bash)
 				variables.put(Prompt.Primary.name, "\\s-\\v\\$ ");
 			}
-			if( !environmentVariables.containsKey(Prompt.Secondary.name)) {
+			if( !envHas(Prompt.Secondary.name)) {
 				// (one from the environment stays, as in bash)
 				variables.put(Prompt.Secondary.name, "> ");
 			}
-			if( !environmentVariables.containsKey(Prompt.Select.name)) {
+			if( !envHas(Prompt.Select.name)) {
 				// (one from the environment stays, as in bash)
 				variables.put(Prompt.Select.name, "#? ");
 			}
-			if( !environmentVariables.containsKey(Prompt.EchoCommand.name)) {
+			if( !envHas(Prompt.EchoCommand.name)) {
 				// (one from the environment stays, as in bash)
 				variables.put(Prompt.EchoCommand.name, "+ ");
 			}
 			variables.put(VARIABLE_HISTCHARS, "!^#");
-			if( !environmentVariables.containsKey("TERM")) {
+			if( !envHas("TERM")) {
 				// (as bash: dumb when the environment has none)
 				variables.put("TERM", "dumb");
 			}
@@ -2240,14 +2279,14 @@ delimiter
 			variables.put("OSTYPE", system[0]);
 			variables.put("HOSTTYPE", system[1]);
 			variables.put("MACHTYPE", system[2]);
-			if( !environmentVariables.containsKey("BASH_LOADABLES_PATH")) {
+			if( !envHas("BASH_LOADABLES_PATH")) {
 				// bash's default (one from the environment stays, as in bash)
 				variables.put("BASH_LOADABLES_PATH", "/usr/local/lib/bash:/usr/lib/bash:/opt/local/lib/bash:/usr/pkg/lib/bash:/opt/pkg/lib/bash:.");
 			}
 			// SHLVL: one more than the environment's, exported (bash's adjust_shell_level)
 			long level = 0;
 			try {
-				level = Long.parseLong(String.valueOf(environmentVariables.get("SHLVL")).trim());
+				level = Long.parseLong(String.valueOf(envGet("SHLVL")).trim());
 			} catch (NumberFormatException e) {
 			}
 			level = level < 0 ? 0 : level+1;
@@ -2255,7 +2294,7 @@ delimiter
 				System.err.println("fsh: warning: shell level ("+level+") too high, resetting to 1");
 				level = 1;
 			}
-			environmentVariables.put("SHLVL", String.valueOf(level));
+			envPut("SHLVL", String.valueOf(level));
 			positionalParameters.add("fsh");
 			options.add(Option.DoBraceExpantion);
 			options.add(Option.Hashall);
@@ -2838,7 +2877,7 @@ delimiter
 		Object val = getVariable(prompt.name);
 		if( val == null ) {
 			// (exported: PS1='$ ' fsh -i)
-			val = environmentVariables.get(prompt.name);
+			val = envGet(prompt.name);
 		}
 		if( val !=null ) {
 			try {
@@ -3551,7 +3590,7 @@ delimiter
 	private int historySize() {
 		Object v = getVariable(VARIABLE_HISTSIZE);
 		if( v == null ) {
-			v = environmentVariables.get(VARIABLE_HISTSIZE);
+			v = envGet(VARIABLE_HISTSIZE);
 		}
 		if( v == null ) {
 			return -1;
@@ -3575,14 +3614,14 @@ delimiter
 	/** a variable of the shell, or else of its environment (an exported one a parent gave) */
 	public Object shellOrEnvironment(String name) {
 		Object v = getVariable(name);
-		return v != null ? v : environmentVariables.get(name);
+		return v != null ? v : envGet(name);
 	}
 
 	/** $HISTFILE (a shell variable, or the environment's), or null */
 	public String historyFile() {
 		Object v = getVariable(VARIABLE_HISTFILE);
 		if( v == null ) {
-			v = environmentVariables.get(VARIABLE_HISTFILE);
+			v = envGet(VARIABLE_HISTFILE);
 		}
 		return v == null || v.toString().isEmpty() ? null : v.toString();
 	}
@@ -3758,7 +3797,7 @@ delimiter
 	 */
 	private String expandHome(String fileName) {
 		if( fileName.equals("~") || fileName.startsWith("~/") || fileName.startsWith("~\\")) {
-			Object home = environmentVariables.get("HOME");
+			Object home = envGet("HOME");
 			if( home == null ) {
 				home = System.getProperty("user.home");
 			}
@@ -4403,14 +4442,14 @@ delimiter
 	}
 
 	public Object getEvironmentVariables(String name) {		
-		return environmentVariables.get(name);
+		return envGet(name);
 	}
 
 	public void setEnvironmentVariable(String name,Object value) {
 		if( value == null ) {
-			environmentVariables.remove(name);
+			envRemove(name);
 		} else {
-			environmentVariables.put(name, value);
+			envPut(name, value);
 		}
 	}
 
@@ -4659,7 +4698,7 @@ delimiter
 
 
 	public Object removeEnvironmentVariables(String name) {
-		return environmentVariables.remove(name);
+		return envRemove(name);
 	}
 
 	/**
