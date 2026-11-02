@@ -518,6 +518,7 @@ $
 
 	/** Sets an element of an array (name[index]=value). */
 	public void setVariable(String name,Object index, Object value) {
+		name = console.canonicalName(name);
 		variableAccessDepth++;
 		try {
 			assignElement(name, index, value);
@@ -528,6 +529,7 @@ $
 	}
 
 	public void setVariable(String name, Object value) {
+		name = console.canonicalName(name);
 		variableAccessDepth++;
 		try {
 			assignVariable(name, value);
@@ -539,6 +541,7 @@ $
 
 	/** @param follow false for unset -n: a nameref itself, not the variable it names */
 	public boolean unSetVariable(String name, boolean follow) {
+		name = console.canonicalName(name);
 		boolean ret;
 		variableAccessDepth++;
 		try {
@@ -551,6 +554,7 @@ $
 	}
 
 	public Object getVariable(String name) {
+		name = console.canonicalName(name);
 		Object ret;
 		variableAccessDepth++;
 		try {
