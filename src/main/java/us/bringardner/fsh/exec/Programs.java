@@ -81,7 +81,7 @@ public final class Programs {
 				// (where it was found, as bash says it)
 				throw new NotExecutable(onPath ? exec.getAbsolutePath() : name);
 			}
-			if( isFshScript(exec)) {
+			if( !isWindowsBatchFile(exec) && isFshScript(exec)) {
 				Argument [] all = new Argument[args.size()+1];
 				// ($0: the name it was run by, as bash)
 				all[0] = new Argument(name);
@@ -170,6 +170,18 @@ public final class Programs {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * A .cmd or .bat file on Windows: cmd.exe's script, which Windows runs (a text file with no #! line is
+	 * otherwise taken for a script of this shell, as bash does for one it can't exec)
+	 */
+	static boolean isWindowsBatchFile(FileSource exec) {
+		if( !FileSourceFactory.isWindows()) {
+			return false;
+		}
+		String name = exec.getName().toLowerCase(java.util.Locale.ROOT);
+		return name.endsWith(".cmd") || name.endsWith(".bat");
 	}
 
 	/** #!fsh (or #!fssh, the name before): a script for this shell */
