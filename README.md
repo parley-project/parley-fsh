@@ -322,7 +322,7 @@ fsh
 The build writes what it needs into the jar (`META-INF/parley/launcher.list`: fsh's options, as
 `linux/fsh` has them, and every jar fsh needs, with its SHA-256), and attaches
 `fsh-VERSION-PLATFORM.jar` (`linux-x86_64`, `macos-aarch64` ...) with this platform's keyboard
-library and `fshexec`. It is made only where `compile.sh` (in `linux/` or `macos/`) has built them.
+library and `fshexec` (on Windows `nativekeyboard.dll` alone: there is no `fshexec`). It is made only where `compile.sh` (in `linux/` or `macos/`) or `windowsmpile.cmd` has built them.
 The launcher unpacks it for fsh; without it, fsh uses JNA (see [Native support](#native-support)).
 
 ### With its own Java runtime, and the installers
