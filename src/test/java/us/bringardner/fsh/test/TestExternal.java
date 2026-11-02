@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,6 +31,32 @@ public class TestExternal extends AbstractConsoleTest {
 	public static void setup(String home) throws IOException {
 		AbstractConsoleTest.setup(home);
 
+	}
+
+	/** A .cmd or .bat file is run by Windows, not read as a script of this shell. */
+	@Test
+	public void aBatchFileIsRunByWindows() throws Exception {
+		assumeTrue(getOs()==OperatingSystem.Windows);
+		setup("ExternalTestFiles");
+		File dir = new File(testFilesDir, "batch");
+		dir.mkdirs();
+		File cmd = new File(dir, "hello.cmd");
+		java.nio.file.Files.writeString(cmd.toPath(), "@echo off\r\necho hello from cmd %~1 %~2\r\nexit /b 7\r\n");
+		File bat = new File(dir, "bye.bat");
+		java.nio.file.Files.writeString(bat.toPath(), "@echo bye\r\n");
+		try {
+			ExecuteResult r = executeCommand("\""+cmd.getAbsolutePath().replace('\\', '/')+"\" one two\n", "");
+			assertEquals("hello from cmd one two", r.getBao().toString().trim());
+			assertEquals("", r.getBae().toString().trim());
+			assertEquals(7, r.getExitCode());
+			r = executeCommand("\""+bat.getAbsolutePath().replace('\\', '/')+"\"\n", "");
+			assertTrue(r.getBao().toString().contains("bye"), r.getBao().toString());
+			assertEquals(0, r.getExitCode());
+		} finally {
+			cmd.delete();
+			bat.delete();
+			dir.delete();
+		}
 	}
 
 
