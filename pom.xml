@@ -10,7 +10,7 @@
 	<name>fsh - the FileSource Shell</name>
 	<description>A bash-like shell whose file system is any parley-files FileSource: the local disk,
 		memory, FTP, SFTP or a database. Formerly us.bringardner:bjl_shell (BjlShell).</description>
-	<url>https://github.com/tony-bringardner/fsh</url>
+	<url>https://github.com/parley-project/parley-fsh</url>
 	<inceptionYear>2004</inceptionYear>
 
 	<licenses>
@@ -28,9 +28,9 @@
 		</developer>
 	</developers>
 	<scm>
-		<connection>scm:git:https://github.com/tony-bringardner/fsh.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/tony-bringardner/fsh.git</developerConnection>
-		<url>https://github.com/tony-bringardner/fsh/tree/master</url>
+		<connection>scm:git:https://github.com/parley-project/parley-fsh.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/parley-project/parley-fsh.git</developerConnection>
+		<url>https://github.com/parley-project/parley-fsh/tree/master</url>
 	</scm>
 
 	<properties>
@@ -489,8 +489,8 @@
 	<distributionManagement>
 		<repository>
 			<id>github</id>
-			<name>tony-bringardner</name>
-			<url>https://maven.pkg.github.com/tony-bringardner/fsh</url>
+			<name>parley-project</name>
+			<url>https://maven.pkg.github.com/parley-project/parley-fsh</url>
 		</repository>
 	</distributionManagement>
 
