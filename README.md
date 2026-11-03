@@ -40,7 +40,7 @@ you build**, using the library the same way your own application would. It was c
 - **An interactive shell** with a bash-style line editor (emacs keys, history search,
   completion, the "Display all N possibilities?" pager).
 - **Embeddable.** It is a Java library: a program can run scripts in it, and the
-  [fsh-ide](https://github.com/tony-bringardner/fsh-ide) script editor and debugger use its
+  [fsh-ide](https://github.com/parley-project/parley-fsh-ide) script editor and debugger use its
   debugger hooks.
 
 ## Why a shell in Java
@@ -489,7 +489,7 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 ## The IDE
 
 The script editor and debugger is a separate project,
-[fsh-ide](https://github.com/tony-bringardner/fsh-ide). fsh exposes the debugger
+[fsh-ide](https://github.com/parley-project/parley-fsh-ide). fsh exposes the debugger
 hooks it uses (`DebugContext`, `DebugController`).
 
 ## License
