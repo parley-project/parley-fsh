@@ -15,7 +15,16 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.files.FileSource;
 
 public class Ls extends ShellCommand {
-	private enum LsArgument {a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X,ONE};
+	private enum LsArgument {a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X,ONE;
+		/**
+		 * -1 (an enum name can't be a digit). Not called here: ShellCommand.parseArgs looks it up by
+		 * reflection and uses it instead of valueOf when there is one, so it must stay.
+		 */
+		@SuppressWarnings("unused")
+		static LsArgument find(String name) {
+			return name.equals("1") ? ONE : valueOf(name);
+		}
+	};
 
 
 	static String name = "ls";
