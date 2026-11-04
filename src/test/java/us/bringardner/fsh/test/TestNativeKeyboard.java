@@ -22,11 +22,12 @@ public class TestNativeKeyboard {
 		assumeFalse(NativeKeyboard.isAvailible());
 		Console console = new Console();
 		console.setStdIn(new ByteArrayInputStream("echo one\n".getBytes()));
-		NativeKeyboard kb = new NativeKeyboard();
-		kb.setPrompt("");
+		try (NativeKeyboard kb = new NativeKeyboard()) {
+			kb.setPrompt("");
 
-		assertEquals("echo one", kb.readLine(console));
-		assertNull(kb.readLine(console));
+			assertEquals("echo one", kb.readLine(console));
+			assertNull(kb.readLine(console));
+		}
 	}
 
 	@Test
