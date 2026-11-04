@@ -74,7 +74,7 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 	public static void noteOpenAtStart() {
 		if( availible && openAtStart == null ) {
 			try {
-				openAtStart = new NativeKeyboard().opsOpenDescriptors0();
+				openAtStart = Calls.KB.opsOpenDescriptors0();
 			} catch (UnsatisfiedLinkError e) {
 			}
 		}
@@ -87,7 +87,7 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 		String [] open = openAtStart;
 		if( open == null ) {
 			try {
-				open = new NativeKeyboard().opsOpenDescriptors0();
+				open = Calls.KB.opsOpenDescriptors0();
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 				return new int[0];
@@ -123,7 +123,7 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 	public static long [] resourceUsage() {
 		if( availible ) {
 			try {
-				return new NativeKeyboard().opsResourceUsage0();
+				return Calls.KB.opsResourceUsage0();
 			} catch (UnsatisfiedLinkError e) {
 				// an older library
 			}
@@ -266,7 +266,7 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 			boolean ok = terminal() && helper() != null;
 			if( ok ) {
 				try {
-					new NativeKeyboard().opsStoppedBy(-1);
+					Calls.KB.opsStoppedBy(-1);
 				} catch (UnsatisfiedLinkError e) {
 					ok = false;
 				}
@@ -278,17 +278,17 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 
 	/** a job's process group gets the terminal (fg) */
 	public static void giveTerminal(long group) {
-		new NativeKeyboard().opsGiveTerminalTo(group);
+		Calls.KB.opsGiveTerminalTo(group);
 	}
 
 	/** put child pid in process group (as the child does itself) */
 	public static void processGroup(long pid, long group) {
-		new NativeKeyboard().opsSetProcessGroup(pid, group);
+		Calls.KB.opsSetProcessGroup(pid, group);
 	}
 
 	/** the signal that stopped child pid since the last call, or 0 */
 	public static int stopSignal(long pid) {
-		return new NativeKeyboard().opsStoppedBy(pid);
+		return Calls.KB.opsStoppedBy(pid);
 	}
 
 	/** standard input and output are a terminal (and this class can work it) */
@@ -740,6 +740,14 @@ public class NativeKeyboard extends Keyboard implements KeyboardReader, Interact
 	}
 
 	// the process functions that JNA does when it can, and the JNI library's otherwise
+
+	/**
+	 * The instance the static process functions call them on: the JNI library's are instance
+	 * methods. A NativeKeyboard holds no resource (the terminal is the process's), so one does.
+	 */
+	private static final class Calls {
+		static final NativeKeyboard KB = new NativeKeyboard();
+	}
 
 	private String [] opsOpenDescriptors0() {
 		return ops != null ? ops.openDescriptors() : openDescriptors0();
