@@ -586,16 +586,6 @@ public class Printf extends ShellCommand{
 		return " ".repeat(fill)+sign+digits;
 	}
 
-	/** %.5d: at least precision digits */
-	private static String pad(String s, int precision) {
-		boolean neg = s.trim().startsWith("-");
-		String digits = s.trim().replaceFirst("^[-+]", "");
-		while( digits.length() < precision ) {
-			digits = "0"+digits;
-		}
-		return (neg ? "-" : "")+digits;
-	}
-
 	/** a number argument: decimal, 0x hex, 0 octal, or 'c / "c (the character's code) */
 	private long number(String arg, ShellContext ctx) {
 		if( arg == null ) {

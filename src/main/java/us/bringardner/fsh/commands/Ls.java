@@ -1,6 +1,5 @@
 package us.bringardner.fsh.commands;
 
-import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -11,17 +10,12 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
+import us.bringardner.parley.files.FileSource;
 
 public class Ls extends ShellCommand {
-	private enum LsArgument {a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X,ONE;
-		// -1 (an enum name can't be a digit); parseArgs uses find when there is one
-		static LsArgument find(String name) {
-			return name.equals("1") ? ONE : valueOf(name);
-		}
-	};
+	private enum LsArgument {a,C,d,g,G,h,l,L,Q,r,R,S,t,u,x,X,ONE};
 
 
 	static String name = "ls";
@@ -323,14 +317,6 @@ public class Ls extends ShellCommand {
 	private static boolean isLink(FileSource file) {
 		return us.bringardner.parley.files.tree.LocalFiles.isLocal(file)
 				&& java.nio.file.Files.isSymbolicLink(us.bringardner.parley.files.tree.LocalFiles.of(file).toPath());
-	}
-
-	private void list(ShellContext ctx,List<String> output, List<LsArgument> options, FileSource[] files) throws IOException {
-		sort( options, files);
-		for(FileSource file : files) {
-			print(ctx,output, options, file);			 
-		}
-
 	}
 
 	private void listRecursive(ShellContext ctx,List<String> output,List<LsArgument> options, FileSource [] files1) throws IOException {

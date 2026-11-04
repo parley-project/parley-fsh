@@ -1,15 +1,14 @@
 package us.bringardner.fsh.commands;
 
-import us.bringardner.parley.files.tree.TreeFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
+import us.bringardner.parley.files.FileSource;
 
 public class Mv extends ShellCommand{
 

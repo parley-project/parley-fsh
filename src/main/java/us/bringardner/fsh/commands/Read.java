@@ -48,7 +48,6 @@ public class Read extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		int ret = 0;
 		List<Options> options = new ArrayList<>();
 		String editLineText="";
 		String prompt= "";
@@ -320,10 +319,7 @@ public class Read extends ShellCommand{
 		return ret;
 	}
 
-	private static boolean isIfsSpace(char c, String ifs) {
-		return ifs.indexOf(c) >= 0 && Character.isWhitespace(c);
-	}
-
+	
 	/** the characters of the line read that came after a \ (no IFS character then) */
 	private final java.util.BitSet escaped = new java.util.BitSet();
 

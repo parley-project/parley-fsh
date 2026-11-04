@@ -52,10 +52,7 @@ public final class NativeStatus {
 		return null;
 	}
 
-	private static String mark(boolean ok) {
-		return ok ? "yes" : "NO";
-	}
-
+	
 	/** the JNI library's file in java.library.path, or null */
 	private static String jniLibrary() {
 		String name = System.mapLibraryName("nativekeyboard");

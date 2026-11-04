@@ -1,9 +1,5 @@
 package us.bringardner.fsh;
 
-import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
-import us.bringardner.parley.files.tree.TreeFile;
-import us.bringardner.parley.files.tree.LocalFiles;
-import us.bringardner.swing.gradient.GradientLook;
 import java.awt.GraphicsEnvironment;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -29,21 +25,12 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Pattern;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import sun.misc.Signal;
-import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.term.line.LineEditor;
-import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.fsh.ShellContext.LoopControl;
-import us.bringardner.fsh.signal.ExitException;
-import us.bringardner.fsh.signal.FshException;
-import us.bringardner.fsh.exec.Programs;
-import us.bringardner.fsh.signal.LoopControlException;
 import us.bringardner.fsh.commands.Alias;
 import us.bringardner.fsh.commands.Bg;
 import us.bringardner.fsh.commands.Cd;
@@ -91,6 +78,16 @@ import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.job.JobManager;
 import us.bringardner.fsh.job.JobState;
 import us.bringardner.fsh.job.ProcessSignals;
+import us.bringardner.fsh.signal.ExitException;
+import us.bringardner.fsh.signal.FshException;
+import us.bringardner.fsh.signal.LoopControlException;
+import us.bringardner.parley.files.FileSource;
+import us.bringardner.parley.files.FileSourceFactory;
+import us.bringardner.parley.files.IRandomAccessStream;
+import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
+import us.bringardner.parley.term.line.LineEditor;
+import us.bringardner.swing.gradient.GradientLook;
 
 public class Console extends SignalEnabledThread {
 
@@ -772,33 +769,7 @@ delimiter
 
 
 
-	private void raiseSignal(Integer signum) {
-
-		new Thread(()->{
-			//System_out.println("Signal fired "+signum);
-			List<ConsoleSignalHandler> tmp = osSignalHandlers.get(signum);
-
-			if( tmp != null) {
-				List<ConsoleSignalHandler> tmp2 = new ArrayList<>();
-				for(int idx=0,sz=tmp.size(); idx < sz; idx++) {
-					tmp2.add(tmp.get(idx));
-				}
-				for(ConsoleSignalHandler h : tmp2) {
-					try {
-						int ec = h.ctx.console.executeScript(h.action);
-						if( ec !=0) {
-							h.ctx.stderr.println("Signal handler "+h.action+" exit code="+ec);
-						}
-					} catch (Exception e) {
-						h.ctx.stderr.println("Signal "+signum+" "+e.getLocalizedMessage());
-					}
-				}
-			}
-
-		}).start();
-
-
-	}
+	
 
 	/**
 	 * Handle all OS signals to prevent default behavior
@@ -2525,11 +2496,15 @@ delimiter
 	public void run() {
 		KeyboardReader kb = getKeyboadReader(true);
 		if( kb instanceof NativeKeyboard ) {
-			NativeKeyboard nk = (NativeKeyboard) kb;
-			// a typed backslash stays in the command, as in bash's line editor (the parser reads
-			// it, and one at the end of a line asks for the next)
-			nk.setHonorEscape(false);
-			nk.setLineEditing(true);
+			try (NativeKeyboard nk = (NativeKeyboard) kb) {
+				// a typed backslash stays in the command, as in bash's line editor (the parser reads
+				// it, and one at the end of a line asks for the next)
+				nk.setHonorEscape(false);
+				nk.setLineEditing(true);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		if( !(kb instanceof NativeKeyboard) && !isOptionEnabled(Option.History) ) {
 			// a shell in a window of a program (the viewer's terminal): its standard input is not the
@@ -3870,18 +3845,6 @@ delimiter
 
 
 
-
-
-	/**
-	 * The # that are operators: ${#x}, ${x#pat} ${x##pat}, ${x/#pat/r}, ${!#}. A # in a pattern
-	 * or a word (${k%%#*}, ${v//#/X}, ${x:-#}) is text. (The first # of ## is | by then.)
-	 * @param before the text between ${ and the #
-	 */
-	private static final Pattern HASH_OPERATOR = Pattern.compile("!?|!?([a-zA-Z_][a-zA-Z_0-9]*|[0-9]+|[@*?$!-])(\\[[^\\]]*\\])?([#|]|/)?");
-
-	private static boolean isHashOperator(String before) {
-		return HASH_OPERATOR.matcher(before).matches();
-	}
 
 
 	public static String [] splitForArgs(String line) {

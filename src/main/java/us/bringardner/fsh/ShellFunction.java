@@ -2,8 +2,6 @@ package us.bringardner.fsh;
 
 import java.io.IOException;
 
-import us.bringardner.fsh.Argument;
-
 /**
  * A shell function, however it was read: what the shell keeps in its function table and calls.
  */

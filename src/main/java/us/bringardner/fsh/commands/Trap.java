@@ -5,11 +5,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import sun.misc.Signal;
-import us.bringardner.fsh.Console;
+import sun.misc.SignalHandler;
 import us.bringardner.fsh.Console.ConsoleMetaSignal;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
-import sun.misc.SignalHandler;
 
 public class Trap extends ShellCommand implements SignalHandler {
 	static String name = "trap";
@@ -35,7 +34,6 @@ public class Trap extends ShellCommand implements SignalHandler {
 		super(name, help);
 	}
 	
-	private enum Args{l,p,P};
 	
 	
 	private static final String [] COMMON_NAMES = {"HUP","INT","QUIT","ILL","TRAP","ABRT","EMT","FPE","KILL","BUS","SEGV","SYS","PIPE","ALRM","TERM","URG","STOP","TSTP","CONT","CHLD","TTIN","TTOU","IO","XCPU","XFSZ","VTALRM","PROF","WINCH","INFO","USR1","USR2","STKFLT","PWR"};

@@ -1,14 +1,13 @@
 package us.bringardner.fsh.commands;
 
-import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.files.FileSource;
-import java.util.regex.Pattern;
 
 /**
  * test expr (and [ expr ]), as in bash: the words are already expanded, and how they are read
@@ -38,8 +37,7 @@ public class Test extends ShellCommand{
 	}
 
 	private static final String BINARY = " = == != < > =~ !~ -eq -ne -lt -le -gt -ge -nt -ot -ef ";
-	private static final String UNARY = " -n -z -v -o -e -a -f -d -s -r -w -x -h -L -b -c -p -S -g -u -k -t -G -O -N ";
-
+	
 	private List<String> words;
 	private int pos;
 	private ShellContext ctx;

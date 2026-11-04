@@ -13,11 +13,9 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.Console.Option;
-import us.bringardner.fsh.Argument;
 import us.bringardner.fsh.signal.FshException;
-import us.bringardner.fsh.exec.Programs;
+import us.bringardner.parley.files.FileSource;
 
 public class ShellContext {
 
@@ -476,7 +474,7 @@ $
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	
 	/**
 	 * name's array may be changed in place (a[i]=v and a+=(v) do so): a global one this context
 	 * has (not a function's local, which subshells share, nor the shell's seen from a pipe stage)
@@ -601,6 +599,7 @@ $
 		variableAccessed(name, true);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void assignElement(String name,Object index, Object value) {
 		name = resolveName(name);
 		if( name.equals("GROUPS") && !console.unsetSpecials.contains(name)) {
@@ -634,7 +633,7 @@ $
 			}
 		}
 		if( (name.equals("BASH_ALIASES") || name.equals("BASH_CMDS")) && !console.unsetSpecials.contains(name)) {
-			@SuppressWarnings("unchecked")
+			
 			Map<String,Object> m = (Map<String, Object>) getVariable(name);
 			m.put(String.valueOf(index), value);
 			setVariable(name, m);
@@ -1531,7 +1530,7 @@ $
 		return "";
 	}
 
-	@SuppressWarnings("unchecked")
+	
 	/** the innermost running function with a local variable name, or null */
 	/** typeset +x name (false) or -x (true) of a function's local: whether it is exported */
 	public void setLocalExported(String name, boolean exported) {
@@ -1665,6 +1664,7 @@ $
 
 		Map<Object, Object> map = commandStack.peek();
 
+		@SuppressWarnings("unchecked")
 		Map<String,Object> l = (Map<String, Object>) map.get(LOCAL_VARIABLES);		
 		Object ret = l.get(name);		
 		return ret;
