@@ -25,13 +25,7 @@ public final class Braces {
 			this.part = part;
 		}
 
-		public int c() {
-			return c;
-		}
-
-		public Word.Part part() {
-			return part;
-		}
+	
 
 		@Override public boolean equals(Object x) {
 			if (this == x) return true;

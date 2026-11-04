@@ -1,6 +1,5 @@
 package us.bringardner.fsh;
 
-import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;

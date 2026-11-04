@@ -15,7 +15,6 @@ import us.bringardner.fsh.FshList;
 import us.bringardner.fsh.Glob;
 import us.bringardner.fsh.GlobPattern;
 import us.bringardner.fsh.ShellContext;
-import us.bringardner.fsh.expand.Arithmetic;
 import us.bringardner.fsh.syntax.Ast;
 import us.bringardner.fsh.syntax.Parser;
 import us.bringardner.fsh.syntax.Parser.Fragment;
@@ -81,13 +80,7 @@ public final class Expander {
 			this.text = text;
 		}
 
-		public int kind() {
-			return kind;
-		}
-
-		public String text() {
-			return text;
-		}
+		
 
 		@Override public boolean equals(Object x) {
 			if (this == x) return true;

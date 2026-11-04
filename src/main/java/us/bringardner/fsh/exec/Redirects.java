@@ -1,6 +1,5 @@
 package us.bringardner.fsh.exec;
 
-import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;

@@ -15,6 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import us.bringardner.fsh.Argument;
+import us.bringardner.fsh.ClosedStream;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.Console.CommandThread;
 import us.bringardner.fsh.Console.ConsoleMetaSignal;
@@ -27,19 +29,16 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.ShellContext.LoopControl;
 import us.bringardner.fsh.ShellFunction;
 import us.bringardner.fsh.ShellTask;
-import us.bringardner.fsh.Argument;
-import us.bringardner.fsh.expand.Arithmetic;
-import us.bringardner.fsh.ClosedStream;
-import us.bringardner.fsh.signal.ExitException;
-import us.bringardner.fsh.signal.FshException;
-import us.bringardner.fsh.signal.ReturnException;
-import us.bringardner.fsh.exec.Programs;
-import us.bringardner.fsh.signal.LoopControlException;
 import us.bringardner.fsh.commands.Read;
-import us.bringardner.fsh.expand.ExpansionError;
+import us.bringardner.fsh.expand.Arithmetic;
 import us.bringardner.fsh.expand.Expander;
+import us.bringardner.fsh.expand.ExpansionError;
 import us.bringardner.fsh.job.BackgroundJob;
 import us.bringardner.fsh.job.JobState;
+import us.bringardner.fsh.signal.ExitException;
+import us.bringardner.fsh.signal.FshException;
+import us.bringardner.fsh.signal.LoopControlException;
+import us.bringardner.fsh.signal.ReturnException;
 import us.bringardner.fsh.syntax.Ast;
 import us.bringardner.fsh.syntax.Parser;
 import us.bringardner.fsh.syntax.SyntaxError;
@@ -1903,7 +1902,6 @@ public final class Executor {
 			out.append('^');
 			k++;
 		}
-		boolean first = true;
 		while( k < n ) {
 			char c = body.charAt(k);
 			String item = null;
@@ -1926,7 +1924,6 @@ public final class Executor {
 							throw new PatternSyntaxException("Invalid character class", body, -1);
 						}
 						out.append(java);
-						first = false;
 						continue;
 					}
 					// [=c=] and [.c.]: the character
@@ -1947,7 +1944,6 @@ public final class Executor {
 					out.append(classChar(ch));
 				}
 			}
-			first = false;
 		}
 		return out.append(']').toString();
 	}

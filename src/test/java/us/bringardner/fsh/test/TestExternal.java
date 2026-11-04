@@ -434,16 +434,17 @@ public class TestExternal extends AbstractConsoleTest {
 		c.setStdOut(new PrintStream(out, true));
 		c.setStdErr(new PrintStream(out, true));
 		ShellContext sc = new ShellContext(c);
-		TypedInput typed = new TypedInput();
-		sc.stdin = typed;
+		try (TypedInput typed = new TypedInput()) {
+			sc.stdin = typed;
 
-		assertEquals(0, c.executeScript(sc, "/bin/echo hi"));
-		assertEquals("hi\n", out.toString());
+			assertEquals(0, c.executeScript(sc, "/bin/echo hi"));
+			assertEquals("hi\n", out.toString());
 
-		// the next line belongs to the shell, not to the finished command
-		typed.type("next\n");
-		Thread.sleep(300);
-		assertEquals(5, typed.available());
+			// the next line belongs to the shell, not to the finished command
+			typed.type("next\n");
+			Thread.sleep(300);
+			assertEquals(5, typed.available());
+		}
 	}
 
 	@Test

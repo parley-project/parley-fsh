@@ -1,14 +1,13 @@
 package us.bringardner.fsh.commands;
 
-import us.bringardner.parley.files.tree.LocalFiles;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import us.bringardner.parley.files.FileSource;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
+import us.bringardner.parley.files.FileSource;
 
 public class Cd extends ShellCommand{
 	static String name = "cd";
@@ -27,7 +26,6 @@ public class Cd extends ShellCommand{
 			ctx.error(getName()+": restricted");
 			return 1;
 		}
-		int ret = 0;
 		// (set -P: physically, unless -L)
 		boolean follow = ctx.console.isOptionEnabled(us.bringardner.fsh.Console.Option.DontFollowLinks);
 		List<String> sargs = new ArrayList<>();
