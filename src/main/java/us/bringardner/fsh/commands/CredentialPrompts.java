@@ -101,11 +101,11 @@ public final class CredentialPrompts {
 		char mask = secretMask(ctx);
 		if( NativeKeyboard.isAvailible() && us.bringardner.fsh.Console.isKeyboard(ctx.stdin) || ctx.stdin instanceof NativeKeyboard ) {
 			// a terminal: a spinner, or a mask (*) for each character typed
-			NativeKeyboard kb = new NativeKeyboard();
-			kb.setLineTerminator('\n');
-			kb.setPrompt(prompt);
-			char[] ret = mask == SPIN ? kb.readSpinning() : mask == 0 ? kb.readSilent() : kb.readMasked(mask);
-			return ret;
+			try (NativeKeyboard kb = new NativeKeyboard()) {
+				kb.setLineTerminator('\n');
+				kb.setPrompt(prompt);
+				return mask == SPIN ? kb.readSpinning() : mask == 0 ? kb.readSilent() : kb.readMasked(mask);
+			}
 		}
 		List<Read.Options> silent = new ArrayList<>(List.of(Read.Options.s, Read.Options.r));
 		String line;
