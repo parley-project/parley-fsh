@@ -146,7 +146,7 @@ public class ManageTestFiles {
 			String tmp = parts[4].substring(parts[4].indexOf('=')+1);
 			String perms [] = tmp.split(":");
 
-			FileSource fs = FileSourceFactory.getDefaultFactory().createFileSource(file.getAbsolutePath());
+			FileSource fs = FileSourceFactory.fileProxyFactory.createFileSource(file.getAbsolutePath());
 			fs.setCreateTime(create);
 			fs.setLastAccessTime(lastAccess);
 			fs.setLastModifiedTime(lastMod);

@@ -13,7 +13,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.test.AbstractConsoleTest.OperatingSystem;
 
@@ -24,7 +23,7 @@ public class TestWc {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
+		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		File file = new File("WcTestFiles").getCanonicalFile();
 
 		System.setProperty("user.home", file.getAbsolutePath());

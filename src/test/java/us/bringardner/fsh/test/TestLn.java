@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 import us.bringardner.fsh.Console;
 
 @TestMethodOrder(OrderAnnotation.class)
@@ -49,7 +48,7 @@ public class TestLn extends AbstractConsoleTest{
 	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
+		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		// a copy of the test files in the scratch folder, with the links' folder (out) beside it: hard
 		// links can't cross file systems, and the tests never change the files in the project
 		testFilesDir = copyTree(new File("LnTestFiles").getCanonicalFile().toPath(), scratchDir().toPath().resolve("LnTestFiles")).toFile();

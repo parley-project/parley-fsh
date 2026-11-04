@@ -6,13 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.commands.Ls;
@@ -50,11 +48,6 @@ public class TestLsWc extends AbstractConsoleTest{
 		
 	}
 
-	@AfterAll
-	public static void afterAll() {
-		// the memory file system must not stay the default for the test classes that run next
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-	}
 	
 	@Test
 	public void testLs() throws IOException {
