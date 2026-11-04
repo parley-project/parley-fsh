@@ -61,34 +61,49 @@ public class TestFind extends AbstractConsoleTest {
 		}
 	}
 	
-	//@Test
+	/**
+	 * -size, on a file of 1024 bytes in the scratch folder, found by its path: setup() is not
+	 * called again, so the other tests still run in TestFiles.
+	 */
+	@Test
 	public void testFind00() throws IOException {
-		AbstractConsoleTest.setup(scratchDir().getPath());
-		FileSource targetDir = console.getCurrentDirectory();
-		FileSource findDir = targetDir.getChild("FindTestFiles");
-		
+		FileSource findDir = console.createFileSource(scratchPath("FindTestFiles"));
 		if(!findDir.exists()) {
 			assertTrue(findDir.mkdirs());
 		}
-		
-		//  create some files with a variety of sizes
 		FileSource k1 = findDir.getChild("k1");
 		k1.delete();
-		
 		try(IRandomAccessStream ras = k1.getRandomAccessStream("rw")){
 			ras.seek(1023);
 			ras.write('\n');
 		}
-		
-		//  test size equal
-		String cmd = "find . -size 1024c";
-		ExecuteResult res = executeCommand(cmd, "", 0);
-		String expect = "";
-		String out = res.getStdOut();
-		System.out.println("out"+out);
+		assertEquals(1024, k1.length());
+
+		String dir = "'"+findDir.getAbsolutePath()+"' -type f";
+		// Nc: exactly N bytes
+		assertEquals("k1", found("find "+dir+" -size 1024c"));
+		assertEquals("", found("find "+dir+" -size 1023c"));
+		assertEquals("", found("find "+dir+" -size 1025c"));
+		// Nk: in 1024-byte blocks, rounded up (1024 bytes is 1k); - is less than, + more than
+		assertEquals("k1", found("find "+dir+" -size 1k"));
+		assertEquals("k1", found("find "+dir+" -size -2k"));
+		assertEquals("", found("find "+dir+" -size +1k"));
+		assertEquals("k1", found("find "+dir+" -size +1023c"));
 	}
-	
-	
+
+	/** the names find prints for cmd (without their folders), after checking it ran without errors */
+	private static String found(String cmd) throws IOException {
+		ExecuteResult res = executeCommand(cmd, "", 0);
+		assertEquals("", res.getStdErr().trim(), cmd);
+		StringBuilder ret = new StringBuilder();
+		for(String line : res.getStdOut().replace("\r", "").split("\n")) {
+			if( !line.isEmpty()) {
+				ret.append(ret.length() > 0 ? "\n" : "").append(line.substring(line.lastIndexOf('/')+1));
+			}
+		}
+		return ret.toString();
+	}
+
 	@Test
 	public void testFind01() throws IOException {
 		String cmd = "find";
