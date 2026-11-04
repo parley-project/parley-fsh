@@ -13,7 +13,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 
 
 @TestMethodOrder(OrderAnnotation.class)
@@ -303,7 +302,7 @@ public class TestIfStatement extends AbstractConsoleTest{
 		String home = testFilesDir.getAbsolutePath();
 		
 		System.setProperty("user.home", home);
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
+		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 
 		FileSource dir = FileSourceFactory.getDefaultFactory().createFileSource(home);
 		FileSource file = dir.getChild("AbcFileA.js");

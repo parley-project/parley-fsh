@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 import us.bringardner.fsh.Console;
 
 public class TestPwd extends AbstractConsoleTest{
@@ -18,7 +17,7 @@ public class TestPwd extends AbstractConsoleTest{
 	public static void beforeAll() throws IOException {
 		// can't use AbstractConsoleTest.beforeAll because in uses a canonical file
 		String home = "TestFiles/SymLink2Folder01";		
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
+		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		testFilesDir = new File(home);;
 
 		System.setProperty("user.home", testFilesDir.getAbsolutePath());

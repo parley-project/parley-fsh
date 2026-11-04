@@ -17,11 +17,11 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 import us.bringardner.fsh.Console;
 import us.bringardner.fsh.job.IJob;
 import us.bringardner.fsh.test.utilities.ManageTestFiles;
@@ -71,9 +71,21 @@ public abstract class AbstractConsoleTest {
 	public static File testFilesDir;
 
 
+	/**
+	 * A test class's file system (a MemoryFileSourceFactory, say) does not stay the default for the
+	 * classes that run after it: the default is again the one FileSourceFactory gives by itself.
+	 */
+	@AfterAll
+	public static void restoreDefaultFactory() {
+		FileSourceFactory.setDefaultFactory(null);
+	}
+
+	/**
+	 * home is the folder the tests run in (user.home), on the default file system: setup does not
+	 * choose it, so a class can set one (a MemoryFileSourceFactory) before calling it.
+	 */
 	public static void setup(String home) throws IOException {
 		manageTesTFiles();
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
 		File tmp = new File(home).getCanonicalFile();
 		testFilesDir = tmp;
 		

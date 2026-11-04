@@ -1,13 +1,12 @@
 package us.bringardner.fsh.test;
 
 
-import org.junit.jupiter.api.io.TempDir;
-import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -17,37 +16,44 @@ import org.junit.jupiter.api.TestMethodOrder;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
+import us.bringardner.parley.files.memory.MemoryFileSourceFactory;
 
+/** find, on a memory file system: TestFiles' tree is made there, so nothing is written to the disk */
 @TestMethodOrder(OrderAnnotation.class)
 public class TestFind extends AbstractConsoleTest {
 
-	/** This class's scratch folder: everything the tests write goes here, not into target/ */
-	@TempDir
-	static Path scratch;
+	/** TestFiles' files (the folders are made for them), and SymLink2Folder01, a link to Folder01 */
+	private static final String [] FILES = {
+			"AbcFile.js", "AbcFile.php", "AbcFile.properties", "Hotel California.txt",
+			"Folder01/AbcFile.php", "Folder01/AbcFile.properties", "Folder01/Hotel California.txt",
+			"Folder01/Folder01abc.1/AbcFile.php", "Folder01/Folder01abc.1/AbcFile.properties",
+			"Folder01/Folder01abc.1/Hotel California.txt",
+			"Folder01/Folder01abc.1/Folder01ghi/AbcFile.php", "Folder01/Folder01abc.1/Folder01ghi/AbcFile.properties",
+			"Folder01/Folder01abc.1/Folder01ghi/Hotel California.txt",
+			"Folder01/Folder01abc.1/Folder01jkl/AbcFile.php", "Folder01/Folder01abc.1/Folder01jkl/AbcFile.properties",
+			"Folder01/Folder01abc.1/Folder01jkl/Hotel California.txt",
+			"Folder01/Folder01def.2/AbcFile.php", "Folder01/Folder01def.2/AbcFile.properties",
+			"Folder01/Folder01def.2/Hotel California.txt"
+	};
 
-	/** @return the scratch folder's real path (on macOS /var is a link to /private/var) */
-	static File scratchDir() {
-		try {
-			return scratch.toFile().getCanonicalFile();
-		} catch (IOException e) {
-			throw new java.io.UncheckedIOException(e);
-		}
-	}
-
-	/** @return the path of a file in the scratch folder */
-	static String scratchPath(String name) {
-		return new File(scratchDir(), name).getPath();
-	}
-
-	
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
-		AbstractConsoleTest.setup("TestFiles");		
-		
+		MemoryFileSourceFactory memory = new MemoryFileSourceFactory();
+		FileSourceFactory.setDefaultFactory(memory);
+		String home = new File("TestFiles").getCanonicalPath();
+		FileSource dir = memory.createFileSource(home);
+		assertTrue(dir.mkdirs());
+		for(String name : FILES) {
+			FileSource file = memory.createFileSource(home+"/"+name);
+			file.getParentFile().mkdirs();
+			try(OutputStream out = file.getOutputStream()) {
+				out.write(name.getBytes());
+			}
+		}
+		memory.createSymbolicLink(dir.getChild("SymLink2Folder01"), dir.getChild("Folder01"));
+		AbstractConsoleTest.setup(home);
 	}
-	
+
 	private static void compare(String expect1, String stdOut1) {
 		String expect [] = expect1.replaceAll("\r", "").replaceAll("\\r", "/").split("\n");
 		String stdOut [] = stdOut1.replaceAll("\r", "").replaceAll("\\r", "/").split("\n");
@@ -62,12 +68,12 @@ public class TestFind extends AbstractConsoleTest {
 	}
 	
 	/**
-	 * -size, on a file of 1024 bytes in the scratch folder, found by its path: setup() is not
+	 * -size, on a file of 1024 bytes in a folder of its own, found by its path: setup() is not
 	 * called again, so the other tests still run in TestFiles.
 	 */
 	@Test
 	public void testFind00() throws IOException {
-		FileSource findDir = console.createFileSource(scratchPath("FindTestFiles"));
+		FileSource findDir = console.createFileSource(new File("FindTestFiles").getCanonicalPath());
 		if(!findDir.exists()) {
 			assertTrue(findDir.mkdirs());
 		}

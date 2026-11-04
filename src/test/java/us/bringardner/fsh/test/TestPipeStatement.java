@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 import us.bringardner.fsh.Console;
 
 
@@ -20,7 +19,7 @@ public class TestPipeStatement extends AbstractConsoleTest{
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
-		FileSourceFactory.setDefaultFactory(new FileProxyFactory());
+		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		AbstractConsoleTest.setup("WcTestFiles");		
 	}
 	
