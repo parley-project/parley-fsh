@@ -50,9 +50,6 @@ public class Kill extends ShellCommand{
 		List<IJob> jobs = new ArrayList<>();
 		// process ids that are not jobs: the shell itself ($$) or another process
 		List<Long> processes = new ArrayList<>();
-		boolean list = false;
-		Integer exitStatus= null;
-		String listName = null;
 		JobManager jm = ctx.console.jobManager;
 
 		final String usage = "kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]";
@@ -150,46 +147,19 @@ public class Kill extends ShellCommand{
 			}
 		}
 
-		if( list ) {
-
-			if( exitStatus!=null && exitStatus < 0 && listName != null ) {
-				// kill -l TERM: the number
-				int number = signalNumber(listName);
-				if( number < 0 ) {
-					ctx.error("kill: "+listName+": invalid signal specification");
-					return 1;
-				}
-				ctx.stdout.println(""+number);
-			} else if( exitStatus!=null) {
-				String name = signals.get(exitStatus > 128 ? exitStatus-128 : exitStatus);
-				if(name == null) {
-					ctx.error("kill: ("+exitStatus+") - No such signal");
-				} else {
-					ctx.stdout.println(""+name);
-				}
-			} else {
-				List<String> tmp = new ArrayList<>();
-				for(Entry<Integer, String> e : signals.entrySet()) {
-					tmp.add(e.getValue());					
-				}
-				ctx.stdout.println(toColumns(ctx, tmp).trim());
-			}
-		} else {
-
-			int sig = signum == null ? 15 : signum;
-			for(long pid : processes) {
-				ret |= signalProcess(ctx, pid, sig);
-			}
-			if( jobs.isEmpty() && (!processes.isEmpty() || ret != 0)) {
-				return ret;
-			}
-			if( jobs.size()==0) {
-				ctx.stderr.println(usage);
-				return 2;
-			}
-			for(IJob job: jobs) {
-				signalJob(ctx, job, sig);
-			}
+		int sig = signum == null ? 15 : signum;
+		for(long pid : processes) {
+			ret |= signalProcess(ctx, pid, sig);
+		}
+		if( jobs.isEmpty() && (!processes.isEmpty() || ret != 0)) {
+			return ret;
+		}
+		if( jobs.size()==0) {
+			ctx.stderr.println(usage);
+			return 2;
+		}
+		for(IJob job: jobs) {
+			signalJob(ctx, job, sig);
 		}
 
 		return ret;
