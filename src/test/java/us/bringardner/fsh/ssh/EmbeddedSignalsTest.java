@@ -18,7 +18,6 @@ import us.bringardner.parley.ssh.client.PasswordAuth;
 import us.bringardner.parley.ssh.client.SessionChannel;
 import us.bringardner.parley.ssh.client.SshClient;
 import us.bringardner.parley.ssh.server.HostKeyProviders;
-import us.bringardner.parley.ssh.server.SshPrincipal;
 import us.bringardner.parley.ssh.server.SshServer;
 
 /**
@@ -33,7 +32,7 @@ public class EmbeddedSignalsTest {
 		System.setProperty("java.awt.headless", "true");
 		SshServer server = new SshServer(0);
 		server.setHostKeyProvider(HostKeyProviders.ephemeral());
-		server.setPasswordAuthenticator((user, pw, ctx) -> "secret".equals(new String(pw)) ? new SshPrincipal(user) : null);
+		server.setUserRegistry(TestUsers.alice());
 		server.setShellFactory(new FshShellFactory());
 		server.startAndWait(10000);
 		try (SshClient client = new SshClient()) {
