@@ -2,6 +2,13 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-06: parley-ssh on parley-iam)
+
+- The embedded SSH tests (`FshShellFactoryTest`, `EmbeddedSignalsTest`) give their server a parley-iam user
+  registry (`server.setUserRegistry`, a `FileUserRegistry` with the test user holding `shell` and `exec`):
+  parley-ssh 2.0.0 logs in only users its registry knows, and `setPasswordAuthenticator` / `SshPrincipal` are gone.
+  fsh's own code is unchanged.
+
 ### Added
 
 - Watchpoints for debuggers: `DebugContext.variableRead(name, ctx)` and
