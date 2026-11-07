@@ -49,6 +49,10 @@ public class ConsolePanel extends JPanel implements KeyboardReader, ConsoleIO.Vi
 		textArea = new JTextPane();
 		textArea.setFont(new Font(Font.MONOSPACED, Font.ITALIC, 12));
 		scrollPane.setViewportView(textArea);
+		// a popup menu set on the panel (setComponentPopupMenu) shows over the text too
+		scrollPane.setInheritsPopupMenu(true);
+		scrollPane.getViewport().setInheritsPopupMenu(true);
+		textArea.setInheritsPopupMenu(true);
 		textArea.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
