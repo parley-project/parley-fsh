@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
+import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.net.server.FileUserRegistry;
 
 /**
@@ -22,7 +23,7 @@ final class TestUsers {
 		users.deleteOnExit();
 		Files.write(users.toPath(), "alice, secret, shell|exec\n".getBytes(StandardCharsets.UTF_8));
 		FileUserRegistry registry = new FileUserRegistry();
-		registry.initialize(users);
+		registry.initialize(FileSource.of(users));
 		return registry;
 	}
 }
