@@ -2,6 +2,12 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-10: logging through System.Logger, To-Do 19.5)
+
+- **parley-logging** (To-Do 19.5): fsh includes parley-logging, so what Parley's objects log is
+  written by its `ParleyLogger` (`parley.log.file`); `Console.main` sets `parley.log.level=WARN` when
+  it isn't set (with no level, Parley's objects would log everything).
+
 ### Changed (2026-11-06: parley-ssh on parley-iam)
 
 - The embedded SSH tests (`FshShellFactoryTest`, `EmbeddedSignalsTest`) give their server a parley-iam user

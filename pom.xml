@@ -501,6 +501,13 @@
 			<artifactId>parley-core</artifactId>
 			<version>${parley.version}</version>
 		</dependency>
+		<!-- The JVM's System.Logger (fsh is an application): what Parley's objects log is written by
+		     parley-logging's ParleyLogger (parley.log.file, parley.log.level) -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-logging</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
 		<!-- The FileSource API -->
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
