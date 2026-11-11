@@ -2582,8 +2582,24 @@ $
 	// only for debugging
 	public Map<String,Object> getVariables() {
 		Map<String,Object> ret = new TreeMap<>();
-		ret.putAll(console.getEnvironmentVariable());
-		ret.putAll(console.variables);
+		// (a pipe stage's own changes to the environment included)
+		ret.putAll(getEnvironmentVariables());
+		if( !snapshot ) {
+			ret.putAll(console.variables);
+		}
+		// in a pipe stage (or a subshell in one): its own variables, over the shell's or, when it
+		// began with a copy of them, instead of them. (They were left out, so set, declare -p,
+		// ${!prefix*}, completion and debuggers didn't see what a stage set, such as the variables
+		// of cmd | while read ...; do ...; done.)
+		if( isolated != null ) {
+			for(Map.Entry<String,Object> e : isolated.entrySet()) {
+				if( e.getValue() == UNSET ) {
+					ret.remove(e.getKey());
+				} else {
+					ret.put(e.getKey(), e.getValue());
+				}
+			}
+		}
 		Map<Object, Object> map = commandStack.peek();
 		@SuppressWarnings("unchecked")
 		Map<String,Object> local = (Map<String, Object>) map.get(LOCAL_VARIABLES);

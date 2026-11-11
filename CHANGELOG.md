@@ -112,6 +112,10 @@ ativekeyboard.dll`, rebuilt
 
 ### Fixed
 
+- A pipe stage's own variables are listed there: `set`, `declare -p`, `${!prefix*}`, completion
+  and debuggers (`ShellContext.getVariables`) left out what a stage had set (or showed what it had
+  unset), such as the variables of `cmd | while read ...; do ...; done`, though the stage itself
+  read them correctly.
 - An SSH server whose sessions are fsh (parley-ssh with `FshShellFactory`) now stops on SIGTERM, as
   a service manager stops it: fsh took the process's OS signals (TERM, INT, HUP ...) as soon as it
   loaded, so the server ignored them. The new system property `parley.fsh.osSignals=false` keeps
