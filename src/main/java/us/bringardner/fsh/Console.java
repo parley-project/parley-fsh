@@ -1,5 +1,7 @@
 package us.bringardner.fsh;
 
+import us.bringardner.parley.core.BaseObject;
+import us.bringardner.parley.core.LogLevel;
 import java.awt.GraphicsEnvironment;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -1167,9 +1169,21 @@ delimiter
 		return NativeKeyboard.isAvailible() && (NativeKeyboard.inputIsTerminal() || NativeKeyboard.inputIsPipeOrFile());
 	}
 
+	/**
+	 * Parley's objects log warnings and errors unless parley.log.level says otherwise: with no level
+	 * set, BaseObject lets everything through, and parley-logging's ParleyLogger writes it all.
+	 */
+	static void defaultLogLevel() {
+		if( System.getProperty(BaseObject.PROPERTY_LOG_LEVEL) == null ) {
+			System.setProperty(BaseObject.PROPERTY_LOG_LEVEL, LogLevel.WARN.name());
+			BaseObject.refreshLogLevels();
+		}
+	}
+
 	public static void main(String args[]) throws IOException {
 		// (what the shell was given, before the runtime and the shell open their own)
 		NativeKeyboard.noteOpenAtStart();
+		defaultLogLevel();
 		// the plugins, before anything looks up the file systems (fsh -r: not the user's)
 		boolean restricted = false;
 		try {
