@@ -2,6 +2,13 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-11: no logging level set at startup, To-Do 19.5)
+
+- `Console.main` no longer sets `parley.log.level=WARN` when it isn't set: parley-logging's loggers
+  now let only `WARN` and `ERROR` through when no `parley.log.level` covers them, so fsh, fsh-ide and
+  the files viewers get the same default without setting anything. `-Dparley.log.level=DEBUG` (or
+  `parley.log.level.<module>`) still shows more.
+
 ### Changed (2026-11-10: logging through System.Logger, To-Do 19.5)
 
 - **parley-logging** (To-Do 19.5): fsh includes parley-logging, so what Parley's objects log is
