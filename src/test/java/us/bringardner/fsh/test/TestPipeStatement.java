@@ -342,4 +342,54 @@ public class TestPipeStatement extends AbstractConsoleTest{
 		assertEquals("[       1\nb]\n", res.getStdOut());
 		assertEquals(0, res.exitCode);
 	}
+
+	/**
+	 * A pipe stage's own variables are listed there (set, declare -p, ${!prefix*}) and seen by a
+	 * debugger (getVariables), as the stage itself reads them; and not by the shell afterwards.
+	 */
+	@Test
+	public void testAPipeStagesVariablesAreListed() throws Exception{
+		java.util.List<java.util.Map<String,Object>> seen = new java.util.ArrayList<>();
+		us.bringardner.fsh.DebugContext before = console.getDebugContext();
+		console.setDebugContext(new us.bringardner.fsh.DebugContext() {
+			@Override
+			public synchronized void before(us.bringardner.fsh.syntax.Ast.Node node, String source, us.bringardner.fsh.ShellContext ctx) {
+				if( node.text(source).startsWith("echo \"names:")) {
+					seen.add(ctx.getVariables());
+				}
+			}
+		});
+		ExecuteResult res;
+		try {
+			res = executeCommand("stageouter=o\n"
+					+ "stagegone=g\n"
+					+ "printf 'a\\nb\\n' | while read -r stagefolder; do\n"
+					+ "  if ! stageup=$(echo up-$stagefolder); then continue; fi\n"
+					+ "  unset stagegone\n"
+					+ "  echo \"names: ${!stage*}\"\n"
+					+ "  declare -p stageup\n"
+					+ "  set | grep '^stagefolder='\n"
+					+ "done\n"
+					+ "echo \"after: ${!stage*}\"\n", "");
+		} finally {
+			console.setDebugContext(before);
+		}
+		assertEquals("", res.getStdErr());
+		assertEquals("names: stagefolder stageouter stageup\n"
+				+ "declare -- stageup=\"up-a\"\n"
+				+ "stagefolder=a\n"
+				+ "names: stagefolder stageouter stageup\n"
+				+ "declare -- stageup=\"up-b\"\n"
+				+ "stagefolder=b\n"
+				+ "after: stagegone stageouter\n", res.getStdOut());
+		assertEquals(0, res.exitCode);
+		// what a debugger stopped in the loop shows
+		assertEquals(2, seen.size());
+		assertEquals("a", String.valueOf(seen.get(0).get("stagefolder")));
+		assertEquals("up-a", String.valueOf(seen.get(0).get("stageup")));
+		assertEquals("o", String.valueOf(seen.get(0).get("stageouter")));
+		assertTrue(!seen.get(0).containsKey("stagegone"));
+		assertEquals("up-b", String.valueOf(seen.get(1).get("stageup")));
+		assertTrue(seen.get(0).containsKey("IFS") && seen.get(0).containsKey("PATH") && seen.get(0).containsKey("$0"));
+	}
 }
