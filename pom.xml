@@ -40,6 +40,9 @@
 		<!-- set by the native-PLATFORM profile for this machine, when its native files are built -->
 		<fsh.platform>none</fsh.platform>
 		<fsh.native.dir>none</fsh.native.dir>
+		<!-- native files built elsewhere, handed in for this build: natives/PLATFORM/fshexec ... (see
+		     the native jars below, and tools/fetch-natives.sh) -->
+		<fsh.natives.dir>${basedir}/natives</fsh.natives.dir>
 	</properties>
 
 	<profiles>
@@ -219,6 +222,20 @@
 		    mvn -Prelease clean deploy
 		  Kept out of normal builds so day-to-day work needs no GPG key or Central token.
 		-->
+		<!-- A -SNAPSHOT to Maven Central's snapshot repository, where parley-launcher downloads a SNAPSHOT
+		     that isn't installed on the machine: mvn -Psnapshots deploy (the server "central" in
+		     ~/.m2/settings.xml, as for the release profile). With natives/ filled (parley-build's
+		     workflow does both), it carries every platform's native jar. -->
+		<profile>
+			<id>snapshots</id>
+			<distributionManagement>
+				<snapshotRepository>
+					<id>central</id>
+					<name>Maven Central snapshots</name>
+					<url>https://central.sonatype.com/repository/maven-snapshots/</url>
+				</snapshotRepository>
+			</distributionManagement>
+		</profile>
 		<profile>
 			<id>release</id>
 			<build>
@@ -359,9 +376,13 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of this platform
-			     (compile.sh in linux/ or macos/), which parley-launcher unpacks for fsh. Made only where
-			     they have been built (a native-PLATFORM profile); else there is nothing to put in it. -->
+			<!-- fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of a platform
+			     (compile.sh in linux/ or macos/, compile.cmd in windows/), which parley-launcher unpacks
+			     for fsh. This machine's is made only where they have been built (a native-PLATFORM
+			     profile). The others' are made from the files handed in as natives/PLATFORM/
+			     (fsh.natives.dir), which parley-build's workflow builds on each platform:
+			     tools/fetch-natives.sh fetches them before a release is deployed, so that the one
+			     deploy has every platform's native jar. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
@@ -388,6 +409,31 @@
 							</resources>
 						</configuration>
 					</execution>
+					<!-- the other platforms' (built on those platforms, by parley-build's workflow, and put
+					     in natives/PLATFORM/), so one deploy carries every platform's native jar. They
+					     come after this machine's own and replace them: a deploy is all from one build -->
+					<execution>
+						<id>handed-in-native-files</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/native</outputDirectory>
+							<overwrite>true</overwrite>
+							<resources>
+								<resource>
+									<directory>${fsh.natives.dir}</directory>
+									<includes>
+										<include>*/libnativekeyboard.so</include>
+										<include>*/libnativekeyboard.dylib</include>
+										<include>*/nativekeyboard.dll</include>
+										<include>*/fshexec</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 			<plugin>
@@ -395,15 +441,97 @@
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>3.4.2</version>
 				<executions>
+					<!-- (one for each platform; only those whose files are in target/native/PLATFORM are made:
+					     this machine's own, when built, and those handed in) -->
 					<execution>
-						<id>native-jar</id>
+						<id>native-jar-linux-x86_64</id>
 						<phase>package</phase>
 						<goals>
 							<goal>jar</goal>
 						</goals>
 						<configuration>
-							<classesDirectory>${project.build.directory}/native/${fsh.platform}</classesDirectory>
-							<classifier>${fsh.platform}</classifier>
+							<classesDirectory>${project.build.directory}/native/linux-x86_64</classesDirectory>
+							<classifier>linux-x86_64</classifier>
+							<skipIfEmpty>true</skipIfEmpty>
+							<archive>
+								<addMavenDescriptor>false</addMavenDescriptor>
+								<manifest>
+									<addClasspath>false</addClasspath>
+									<mainClass combine.self="override"/>
+								</manifest>
+								<manifestEntries combine.self="override"/>
+							</archive>
+						</configuration>
+					</execution>
+					<execution>
+						<id>native-jar-linux-aarch64</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classesDirectory>${project.build.directory}/native/linux-aarch64</classesDirectory>
+							<classifier>linux-aarch64</classifier>
+							<skipIfEmpty>true</skipIfEmpty>
+							<archive>
+								<addMavenDescriptor>false</addMavenDescriptor>
+								<manifest>
+									<addClasspath>false</addClasspath>
+									<mainClass combine.self="override"/>
+								</manifest>
+								<manifestEntries combine.self="override"/>
+							</archive>
+						</configuration>
+					</execution>
+					<execution>
+						<id>native-jar-macos-x86_64</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classesDirectory>${project.build.directory}/native/macos-x86_64</classesDirectory>
+							<classifier>macos-x86_64</classifier>
+							<skipIfEmpty>true</skipIfEmpty>
+							<archive>
+								<addMavenDescriptor>false</addMavenDescriptor>
+								<manifest>
+									<addClasspath>false</addClasspath>
+									<mainClass combine.self="override"/>
+								</manifest>
+								<manifestEntries combine.self="override"/>
+							</archive>
+						</configuration>
+					</execution>
+					<execution>
+						<id>native-jar-macos-aarch64</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classesDirectory>${project.build.directory}/native/macos-aarch64</classesDirectory>
+							<classifier>macos-aarch64</classifier>
+							<skipIfEmpty>true</skipIfEmpty>
+							<archive>
+								<addMavenDescriptor>false</addMavenDescriptor>
+								<manifest>
+									<addClasspath>false</addClasspath>
+									<mainClass combine.self="override"/>
+								</manifest>
+								<manifestEntries combine.self="override"/>
+							</archive>
+						</configuration>
+					</execution>
+					<execution>
+						<id>native-jar-windows-x86_64</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classesDirectory>${project.build.directory}/native/windows-x86_64</classesDirectory>
+							<classifier>windows-x86_64</classifier>
 							<skipIfEmpty>true</skipIfEmpty>
 							<archive>
 								<addMavenDescriptor>false</addMavenDescriptor>
