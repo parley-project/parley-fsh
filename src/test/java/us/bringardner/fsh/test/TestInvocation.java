@@ -130,4 +130,27 @@ public class TestInvocation {
 		assertEquals("fsh: -c: option requires an argument\n", c.err());
 		assertEquals(2, c.status());
 	}
+
+	/** --wait-for-debugger: fsh has no debugger of its own (fsh-loupe provides one); without one, the script does not run. */
+	@Test
+	public void waitForDebuggerNeedsADebuggerAndAScript() throws Exception {
+		File dir = Files.createTempDirectory("inv").toFile();
+		File f = new File(dir, "s.sh");
+		try {
+			Files.writeString(f.toPath(), "echo ran\n");
+			Result none = run("", "--wait-for-debugger", "0", f.getAbsolutePath());
+			assertEquals(2, none.status());
+			assertEquals("", none.out());
+			assertEquals("fsh: --wait-for-debugger: no debugger is installed (fsh-loupe provides one)\n", none.err());
+			Result noScript = run("echo typed\n", "--wait-for-debugger", "0");
+			assertEquals(2, noScript.status());
+			assertEquals("fsh: --wait-for-debugger: a script file is required\n", noScript.err());
+			Result noPort = run("", "--wait-for-debugger");
+			assertEquals(2, noPort.status());
+			assertEquals("fsh: --wait-for-debugger: option requires an argument\n", noPort.err());
+		} finally {
+			f.delete();
+			dir.delete();
+		}
+	}
 }

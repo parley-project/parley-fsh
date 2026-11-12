@@ -67,6 +67,11 @@ public final class Invocation {
 	public boolean version;
 	/** --native-status: what native support there is (not in USAGE, which is bash's) */
 	public boolean nativeStatus;
+	/**
+	 * --wait-for-debugger [address:]port: the script waits there for a debugger to attach before
+	 * its first command (not in USAGE, which is bash's)
+	 */
+	public String waitForDebugger;
 	/** set's options, in order: {letter or name, "-" or "+"} */
 	public final List<String[]> options = new ArrayList<>();
 	/** what follows the options and the command or file: $0 (for -c) and the arguments */
@@ -98,6 +103,12 @@ public final class Invocation {
 						throw new Bad(w+": option requires an argument");
 					}
 					ret.rcfile = words[++i];
+				} break;
+				case "--wait-for-debugger": {
+					if( i+1 >= words.length ) {
+						throw new Bad(w+": option requires an argument");
+					}
+					ret.waitForDebugger = words[++i];
 				} break;
 				case "--pretty-print": ret.prettyPrint = true; break;
 				case "--restricted": ret.restricted = true; break;
