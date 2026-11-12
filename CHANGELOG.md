@@ -2,6 +2,24 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-12: the native image's settings redone, To-Do 19.5)
+
+- **Native image**: its settings no longer name fsh's or Parley's classes and files, so a rename can't
+  leave a stale name behind (they still named `BjlLogger`). `tools/native-reflect.py` lists them from
+  the jars as the image is built: every class, as before, and now every other file in the jars too
+  (settings, `META-INF/services`, `version.properties`). What the JDK needs is recorded again, on
+  GraalVM 25, into one `reachability-metadata.json` (it replaces the five `*-config.json` files);
+  `tools/record-native-config.sh` records it.
+- **Native image**: built with parley-logging: its `System.LoggerFinder` is in the image
+  (`--initialize-at-build-time` for `us.bringardner.parley.logging` and `LogLevel`), which the build
+  failed without.
+
+### Fixed (2026-11-12)
+
+- `build-native` (Linux, macOS, Windows) and the `fsh` scripts took `fsh-VERSION-PLATFORM.jar` (the
+  keyboard library's jar, the newest in `target`) for fsh's jar, so the native image wasn't built
+  ("Main entry point class 'us.bringardner.fsh.Console' neither found on classpath").
+
 ### Changed (2026-11-11: no logging level set at startup, To-Do 19.5)
 
 - `Console.main` no longer sets `parley.log.level=WARN` when it isn't set: parley-logging's loggers

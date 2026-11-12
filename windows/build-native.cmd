@@ -41,7 +41,7 @@ rem of GraalVM 25 expands it into separate arguments, which it takes for options
 if exist target\native-libs rmdir /s /q target\native-libs
 mkdir target\native-libs target\native target\native-tmp target\native-config
 set jar=
-for /f "delims=" %%i in ('dir /b /o-d target\fsh-*.jar') do if not defined jar set jar=target\%%i
+for /f "delims=" %%i in ('dir /b /o-d target\fsh-*.jar ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=target\%%i
 copy /y "%jar%" target\native-libs\ >nul || exit /b 1
 powershell -NoProfile -Command "(Get-Content target\runtime-classpath.txt -Raw).Trim() -split ';' | Where-Object { $_ } | ForEach-Object { Copy-Item $_ target\native-libs\ -Force }" || exit /b 1
 

@@ -44,7 +44,8 @@ if [ -z "$graal" ] || [ ! -x "$graal/bin/native-image" ]; then
 fi
 
 mvn -q package -DskipTests || exit 1
-jar=$(ls -t target/fsh-*.jar | head -1)
+# (not fsh-VERSION-PLATFORM.jar, the keyboard library's jar, which is newer)
+jar=$(ls -t target/fsh-*.jar | grep -v -E -- '-(linux|macos|windows)-' | head -1)
 mvn -q dependency:build-classpath -Dparley.fsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt || exit 1
 mkdir -p target/native target/native-tmp target/native-config
 # (all of fsh's and parley's classes for reflection, besides what tools/aot-training.sh used)
