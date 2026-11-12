@@ -1,34 +1,41 @@
 # The Windows installer: dist\fsh-VERSION-windows-ARCH.msi (and its .sha256, in sha256sum's
 # format), made with jpackage: fsh with a Java runtime of its own (jlink: only the modules fsh
-# needs), the keyboard library, and fsh.exe, a console program, with a Start menu entry. It
-# installs to C:\Program Files\fsh (the installer asks), and a newer one replaces an older.
+# needs), the keyboard library, and fsh.exe, a console program. It installs to
+# C:\Program Files\fsh (the installer asks), and a newer one replaces an older.
 #
-# Usage: tools\build-msi.ps1 [-Version 2.0.0] [-Arch x86_64]
+# fsh is a command, not a desktop application: the installer makes no Start menu entry and no
+# desktop shortcut. It adds the folder it installs to to the system's PATH (taken out again when
+# fsh is removed), so fsh is there in a new terminal.
+#
+# Usage: tools\build-msi.ps1 [-Version 2.0.0] [-Arch x86_64] [-DbRepo ..\fshdb]
 #   Version  the pom's, without -SNAPSHOT
+#   DbRepo   a checkout of fshdb, the console debugger: fshdb.exe, a command beside fsh.exe on
+#            the same Java runtime. Its jars (not the JavaFX ones, nor those fsh.jar has inside)
+#            go in apps, on the class path.
 #
 # Needs a JDK in JAVA_HOME (17 or later for the keychain), the WiX Toolset for jpackage (3, or 4
 # and later with JDK 24 and later), and windows\nativekeyboard.dll (windows\compile.cmd, in an
 # "x64 Native Tools Command Prompt"; built here when it isn't there and cl is on the PATH).
 # fsh.exe is jpackage's launcher: Windows has no fshexec, so it is started as windows\fsh.cmd
-# starts it. The installer does not put fsh on PATH: add C:\Program Files\fsh to it. The .msi is
-# not signed. macOS: tools/build-jpackage.sh; Linux: tools/build-linux-packages.sh.
+# starts it. The .msi is not signed. macOS: tools/build-macos-pkg.sh; Linux:
+# tools/build-linux-packages.sh.
+#
+# PATH: jpackage has no option for it, so its WiX source for the installer (main.wxs, read from
+# the JDK) is given back to it (--resource-dir) with one more component, an Environment entry.
+# If a JDK's main.wxs is not as expected, the build stops and says so.
 #
 # The file browser (browse, view, edit, search) is in fsh.jar itself. The plugins built in, on
 # fsh's class path: the jars FSH_PLUGINS names (separated by ;), else the Lanterna browser plugin
 # from the Maven repository (fsh's version: mvn install in parley-files-viewer-tui), else those in
 # %USERPROFILE%\.parley\fsh\plugins and %ProgramData%\Parley\fsh\plugins; with none, fsh is
 # built without.
-# More programs in the same installer, on the same Java runtime, each its own launcher (an .exe) and
-# Start menu entry, all in the Start menu folder MenuGroup (default Parley): -IdeRepo (a checkout of
-# fsh-ide: fsh-ide.exe, the Swing IDE, a window program) and -DbRepo (fshdb: fshdb.exe, the console
-# debugger) and -ViewerRepo (parley-files-viewer: parley-files-viewer.exe, the Swing file browser). Their jars (not the JavaFX ones, nor those fsh.jar has inside) go in apps, on the class path.
+#
+# The window programs, fsh-ide and parley-files-viewer, are not in this installer: each has one
+# of its own, with its own Java runtime (parley-build's packaging).
 param(
 	[string] $Version = '',
 	[string] $Arch = 'x86_64',
-	[string] $IdeRepo = '',
-	[string] $DbRepo = '',
-	[string] $ViewerRepo = '',
-	[string] $MenuGroup = 'Parley'
+	[string] $DbRepo = ''
 )
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
@@ -53,18 +60,17 @@ Write-Output "JDK $major ($jdk), windows $Arch, fsh $Version"
 if ($LASTEXITCODE -ne 0) { throw 'mvn package failed' }
 if (-not (Test-Path target\fsh.jar)) { throw 'mvn package made no target\fsh.jar' }
 
-# the other programs' jars: each one's own, and its dependencies that fsh.jar (and the others) don't have
+# fshdb's jars: its own, and its dependencies that fsh.jar doesn't have
 $fshCp = @()
 $apps = @()
 foreach ($def in @(
-		@{ Name = 'fsh-ide'; Repo = $IdeRepo; Pattern = 'fsh-ide-*.jar'; Class = 'us.bringardner.fsh.ide.FshIDE'; Console = $false;
-			Description = 'fsh-ide, an editor and debugger for shell scripts' },
-		@{ Name = 'fshdb'; Repo = $DbRepo; Pattern = 'fshdb-*.jar'; Class = 'us.bringardner.fshdb.Fshdb'; Console = $true;
-			Description = 'fshdb, a debugger for shell scripts that runs in a terminal' },
-		@{ Name = 'parley-files-viewer'; Repo = $ViewerRepo; Pattern = 'parley-files-viewer-*.jar'; Class = 'us.bringardner.parley.files.viewer.FileSourceViewer'; Console = $false;
-			Description = 'parley-files-viewer, a file browser for any file system' })) {
+		@{ Name = 'fshdb'; Repo = $DbRepo; Pattern = 'fshdb-*.jar'; Class = 'us.bringardner.fshdb.Fshdb';
+			Description = 'fshdb, a debugger for shell scripts that runs in a terminal' })) {
 	if (-not $def.Repo) { continue }
 	if (-not $fshCp) {
+		# (the jars fsh.jar has inside: fsh's own class path)
+		& mvn -q dependency:build-classpath '-Dmdep.includeScope=runtime' '-Dmdep.outputFile=target\runtime-classpath.txt'
+		if ($LASTEXITCODE -ne 0) { throw "fsh's class path: mvn dependency:build-classpath failed" }
 		$fshCp = (Get-Content (Join-Path $project 'target\runtime-classpath.txt') -Raw) -split '[;:\r\n]' |
 			Where-Object { $_ } | ForEach-Object { Split-Path -Leaf $_ }
 	}
@@ -87,7 +93,7 @@ foreach ($def in @(
 	}
 	Pop-Location
 	if (-not $main) { throw "no $($def.Name) jar built in $repo" }
-	# (not fsh itself, JavaFX and what only it needs: the programs here are Swing or console)
+	# (not fsh itself, JavaFX and what only it needs: fshdb is a console program)
 	$skip = '^(fsh-\d.*|javafx-.*|richtextfx-.*|flowless-.*|reactfx-.*|undofx-.*|wellbehavedfx-.*|bringardner-fx-widgets-.*|parley-files-fx-.*)\.jar$'
 	$jars = @($main) + @($cp | Where-Object { $leaf = Split-Path -Leaf $_; ($fshCp -notcontains $leaf) -and ($leaf -notmatch $skip) })
 	$apps += @{ Def = $def; Main = $main; Jars = $jars }
@@ -162,16 +168,60 @@ if ($apps) {
 	Copy-Item $appJars $appDir
 	foreach ($app in $apps) {
 		$def = $app.Def
-		# (not headless for a window program; the same options otherwise. jpackage puts every jar of the input on every launcher's class path)
-		$appOptions = if ($def.Console) { $options } else { $options | Where-Object { $_ -ne '-Djava.awt.headless=true' } }
+		# (a console program, as fsh.exe: the same options, no Start menu entry or shortcut.
+		# jpackage puts every jar of the input on every launcher's class path)
 		$props = Join-Path $work "$($def.Name).properties"
-		@("main-jar=apps/$(Split-Path -Leaf $app.Main)", "main-class=$($def.Class)", "win-console=$($def.Console.ToString().ToLower())",
-			'win-menu=true', 'win-shortcut=false', "description=$($def.Description)",
+		@("main-jar=apps/$(Split-Path -Leaf $app.Main)", "main-class=$($def.Class)", 'win-console=true',
+			'win-menu=false', 'win-shortcut=false', "description=$($def.Description)",
 			"icon=$((Join-Path $project 'windows\fsh.ico').Replace('\', '/'))",
-			"java-options=$($appOptions -join ' ')") | Set-Content -Encoding ASCII $props
+			"java-options=$($options -join ' ')") | Set-Content -Encoding ASCII $props
 		$extraLauncher += @('--add-launcher', "$($def.Name)=$props")
 	}
 }
+
+# PATH: jpackage's own WiX source (main.wxs, a resource of the JDK's jdk.jpackage module), with a
+# component that adds the installation folder to the system's PATH, in the feature that is
+# installed; jpackage takes it from --resource-dir in place of its own.
+$resources = Join-Path $work 'resources'
+New-Item -ItemType Directory -Force $resources | Out-Null
+$extract = Join-Path $work 'ExtractWxs.java'
+@'
+import java.net.URI;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+public class ExtractWxs {
+	public static void main(String[] args) throws Exception {
+		Path wxs = FileSystems.getFileSystem(URI.create("jrt:/"))
+				.getPath("/modules/jdk.jpackage/jdk/jpackage/internal/resources/main.wxs");
+		Files.copy(wxs, Path.of(args[0]), StandardCopyOption.REPLACE_EXISTING);
+	}
+}
+'@ | Set-Content -Encoding ASCII $extract
+$mainWxs = Join-Path $resources 'main.wxs'
+& (Join-Path $jdk 'bin\java.exe') $extract $mainWxs
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path $mainWxs)) { throw "PATH: could not read jpackage's main.wxs from the JDK ($jdk)" }
+$wxs = Get-Content $mainWxs -Raw
+$feature = [regex] '<Feature\s+Id="DefaultFeature"[^>]*>'
+$end = [regex] '</(Product|Package)>\s*</Wix>'
+if (-not $feature.IsMatch($wxs) -or -not $end.IsMatch($wxs) -or $wxs -notmatch 'INSTALLDIR') {
+	throw "PATH: the JDK's main.wxs (JDK $major) is not as expected: no DefaultFeature, INSTALLDIR or closing Product/Package (see tools\build-msi.ps1)"
+}
+# (the component's Guid is the same for every version, as the upgrade code below)
+$pathComponent = @'
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="FshPath" Guid="8d5f6a0e-2c47-5b1d-9e63-4a7b1c2d3e05" KeyPath="yes">
+        <Environment Id="FshPathEntry" Name="PATH" Value="[INSTALLDIR]" Action="set" Part="last" Permanent="no" System="yes"/>
+      </Component>
+    </DirectoryRef>
+
+'@
+$wxs = $feature.Replace($wxs, { param($m) $m.Value + "`n      <ComponentRef Id=`"FshPath`"/>" }, 1)
+$wxs = $end.Replace($wxs, { param($m) $pathComponent + '  ' + $m.Value }, 1)
+[System.IO.File]::WriteAllText($mainWxs, $wxs)
+
 $jpackageArgs = @('--type', 'msi', '--dest', (Join-Path $work 'out'), '--name', 'fsh',
 	'--app-version', $Version, '--vendor', 'Tony Bringardner',
 	'--copyright', "Copyright 2004-$((Get-Date).Year) Tony Bringardner",
@@ -180,7 +230,8 @@ $jpackageArgs = @('--type', 'msi', '--dest', (Join-Path $work 'out'), '--name', 
 	'--runtime-image', (Join-Path $work 'runtime'), '--license-file', 'LICENSE',
 	# (Parley's tower with the >_ badge: parley-brand's parley-icon-terminal PNGs, as one .ico)
 	'--icon', 'windows\fsh.ico',
-	'--win-console', '--win-dir-chooser', '--win-menu', '--win-menu-group', $MenuGroup,
+	# (a command: no Start menu entry, no shortcut; PATH from main.wxs in --resource-dir)
+	'--win-console', '--win-dir-chooser', '--resource-dir', $resources,
 	# (the same for every version, so a newer installer replaces an older one)
 	'--win-upgrade-uuid', '54bf2305-171a-559a-8f13-c0db046304c4',
 	'--temp', (Join-Path $work 'temp'))
