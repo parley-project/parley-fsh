@@ -8,12 +8,12 @@ for %%i in ("%LIB_DIR%\..") do set PROJECT_DIR=%%~fi
 set cp_file=%PROJECT_DIR%\target\runtime-classpath.txt
 
 set jar=
-for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\fsh-*.jar" 2^>nul') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
+for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\fsh-*.jar" 2^>nul ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
 if not defined jar (
 	pushd "%PROJECT_DIR%"
 	call mvn -q package -DskipTests || (popd & exit /b 1)
 	popd
-	for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\fsh-*.jar"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
+	for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\fsh-*.jar" ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
 )
 if not exist "%cp_file%" (
 	pushd "%PROJECT_DIR%"
