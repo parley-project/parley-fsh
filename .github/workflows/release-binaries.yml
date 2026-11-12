@@ -1,18 +1,19 @@
 # When a release is published, the installers of fsh are built on each platform and attached to
 # that release:
 #
-#   fsh-VERSION-macos-aarch64.dmg     fsh_VERSION_amd64.deb   fsh-VERSION-1.x86_64.rpm     fsh-VERSION-windows-x86_64.msi
-#   fsh-VERSION-macos-x86_64.dmg      fsh_VERSION_arm64.deb   fsh-VERSION-1.aarch64.rpm
+#   fsh-VERSION-macos-aarch64.pkg     fsh_VERSION_amd64.deb   fsh-VERSION-1.x86_64.rpm     fsh-VERSION-windows-x86_64.msi
+#   fsh-VERSION-macos-x86_64.pkg      fsh_VERSION_arm64.deb   fsh-VERSION-1.aarch64.rpm
 #
 # each with a .sha256 beside it: fsh with a Java runtime of its own (tools/build-jlink.sh), made
-# by tools/build-jpackage.sh (macOS), tools/build-linux-packages.sh and tools/build-msi.ps1. Each
-# carries the Lanterna browser plugin (fsh has its own file browser built in: browse, view, edit,
-# search, from parley-files-viewer-tui) and, on the same runtime, fsh-ide, fshdb and parley-files-viewer
-# (tools/build-installers-with-plugins.sh on macOS and Linux, tools/build-msi-with-plugins.ps1 on
-# Windows), all in a Parley folder: the disk image's, the application menu's, the Start menu's. Run
-# by hand (Actions > release-binaries > Run workflow) it builds the same and keeps them as workflow
-# artifacts; with a tag it also attaches them to that release. VERSION is the tag's (v2.0.0:
-# 2.0.0), else the pom's without -SNAPSHOT.
+# by tools/build-macos-pkg.sh (macOS), tools/build-linux-packages.sh and tools/build-msi.ps1. Each
+# installs commands only: fsh, with the Lanterna browser plugin (fsh has its own file browser
+# built in: browse, view, edit, search, from parley-files-viewer-tui), and fshdb on the same
+# runtime (tools/build-installers-with-plugins.sh on macOS and Linux,
+# tools/build-msi-with-plugins.ps1 on Windows). No desktop application, menu entry or shortcut:
+# the window programs, fsh-ide and parley-files-viewer, have installers of their own
+# (parley-build's packaging). Run by hand (Actions > release-binaries > Run workflow) it builds
+# the same and keeps them as workflow artifacts; with a tag it also attaches them to that release.
+# VERSION is the tag's (v2.0.0: 2.0.0), else the pom's without -SNAPSHOT.
 #
 # Needs one secret, PACKAGES_TOKEN: a token that can read the Parley packages
 # (https://maven.pkg.github.com/tony-bringardner/tony-bringardner), which fsh builds against; the
@@ -57,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # A JDK with jlink and jpackage (25: the AOT cache, the fastest start)
+      # A JDK with jlink, and jpackage for the Windows installer (25: the AOT cache, the fastest start)
       - uses: actions/setup-java@v4
         with:
           java-version: '25'
@@ -139,8 +140,8 @@ jobs:
 
       # The installers carry more than fsh, each built from its own repository (the default
       # branch; a tag of the same name in each would pin a release): the Lanterna browser plugin
-      # (from parley-files-viewer-tui, checked out above), and the programs beside fsh: fsh-ide,
-      # fshdb and parley-files-viewer (fsh-loupe is fsh-ide's dependency)
+      # (from parley-files-viewer-tui, checked out above), and fshdb beside fsh (fshdb builds
+      # against fsh-ide, and fsh-ide against fsh-loupe: neither is in the installers)
       - name: Checkout fsh-loupe
         uses: actions/checkout@v4
         with:
@@ -162,50 +163,40 @@ jobs:
           path: fshdb
           token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
-      - name: Checkout parley-files-viewer
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-files-viewer
-          path: parley-files-viewer
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
-      # (fsh with its own runtime, the plugin and the other programs, then the disk image or the
-      # packages)
-      - name: The disk image
+      # (fsh with its own runtime, the plugin and fshdb, then the package or the packages)
+      - name: The package
         if: matrix.platform == 'macos'
         run: >
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui
-          --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb --viewer-repo parley-files-viewer
-          dmg $VERSION
+          --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb
+          pkg $VERSION
 
-      - name: Smoke test (the disk image)
+      - name: Smoke test (the package)
         if: matrix.platform == 'macos'
         run: |
-          mnt=$(mktemp -d)
-          hdiutil attach -nobrowse -mountpoint "$mnt" dist/fsh-*.dmg
-          app=$mnt/Parley/fsh.app/Contents/app
-          out=$("$app/fsh" -c 'echo smoke-ok')
-          # the other programs are there, and the Lanterna browser plugin loaded
-          for a in fsh-ide fshdb parley-files-viewer; do
-            test -x "$mnt/Parley/$a.app/Contents/MacOS/$a" || { echo "no $a.app"; exit 1; }
-            test -x "$app/$a" || { echo "no $a command in fsh.app"; exit 1; }
-          done
-          db=$("$app/fshdb" --help 2>&1 || true)
-          browsers=$("$app/fsh" -c 'browse --list')
-          hdiutil detach "$mnt"
+          sudo installer -pkg dist/fsh-*.pkg -target /
+          out=$(/usr/local/bin/fsh -c 'echo smoke-ok')
           echo "$out"
           test "$out" = smoke-ok
+          grep -qx /usr/local/bin/fsh /etc/shells
+          # commands only: no application in /Applications
+          test ! -e /Applications/fsh.app
+          test ! -e /Applications/Parley
+          # fshdb is there, and the Lanterna browser plugin loaded
+          test -x /usr/local/bin/fshdb || { echo "no /usr/local/bin/fshdb"; exit 1; }
+          db=$(/usr/local/bin/fshdb --help 2>&1 || true)
           echo "$db" | grep -q 'Usage: fshdb' || { echo "fshdb: unexpected output: $db"; exit 1; }
+          browsers=$(/usr/local/bin/fsh -c 'browse --list')
           echo "$browsers"
-          echo "$browsers" | grep -q terminal || { echo "fsh's own file browser is not in the disk image"; exit 1; }
-          echo "$browsers" | grep -q lanterna || { echo "the Lanterna browser plugin is not in the disk image"; exit 1; }
+          echo "$browsers" | grep -q terminal || { echo "fsh's own file browser is not in the package"; exit 1; }
+          echo "$browsers" | grep -q lanterna || { echo "the Lanterna browser plugin is not in the package"; exit 1; }
 
       - name: The packages
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get install -y rpm
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui \
-            --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb --viewer-repo parley-files-viewer \
+            --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb \
             all $VERSION
 
       - name: Smoke test (the .deb)
@@ -216,13 +207,12 @@ jobs:
           echo "$out"
           test "$out" = smoke-ok
           grep -qx /usr/bin/fsh /etc/shells
-          # the other programs are there, in the menu's Parley folder, and the Lanterna browser plugin loaded
-          for a in fsh-ide fshdb parley-files-viewer; do
-            test -x /usr/bin/$a || { echo "no /usr/bin/$a"; exit 1; }
-          done
-          ls /usr/share/applications/parley-fsh.desktop /usr/share/applications/parley-fsh-ide.desktop \
-            /usr/share/applications/parley-fshdb.desktop /usr/share/applications/parley-files-viewer.desktop \
-            /etc/xdg/menus/applications-merged/parley.menu
+          # commands only: nothing in the desktop's application menu
+          test -z "$(ls /usr/share/applications/parley-*.desktop 2>/dev/null)"
+          test ! -e /etc/xdg/menus/applications-merged/parley.menu
+          test ! -e /usr/bin/fsh-ide
+          # fshdb is there, and the Lanterna browser plugin loaded
+          test -x /usr/bin/fshdb || { echo "no /usr/bin/fshdb"; exit 1; }
           /usr/bin/fshdb --help 2>&1 | grep -q 'Usage: fshdb'
           browsers=$(/usr/bin/fsh -c 'browse --list')
           echo "$browsers"
@@ -246,7 +236,7 @@ jobs:
         run: >
           .\tools\build-msi-with-plugins.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
           -PluginsRepo parley-files-viewer-tui -LoupeRepo fsh-loupe -IdeRepo fsh-ide
-          -DbRepo fshdb -ViewerRepo parley-files-viewer
+          -DbRepo fshdb
 
       - name: Smoke test (the installer)
         if: matrix.platform == 'windows'
@@ -257,10 +247,15 @@ jobs:
           $out = (& 'C:\Program Files\fsh\fsh.exe' -c 'echo smoke-ok') -join "`n"
           Write-Output $out
           if ($out.Trim() -ne 'smoke-ok') { Get-Content msi.log -Tail 40; throw "unexpected output: $out" }
-          # the other programs are there, and the Lanterna browser plugin loaded
-          foreach ($exe in 'fsh-ide', 'fshdb', 'parley-files-viewer') {
-            if (-not (Test-Path "C:\Program Files\fsh\$exe.exe")) { throw "$exe.exe is not installed" }
+          # commands only: on the system's PATH, no Start menu folder, no window program
+          $path = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          if (($path -split ';' | ForEach-Object { $_.TrimEnd('\') }) -notcontains 'C:\Program Files\fsh') { throw "C:\Program Files\fsh is not on the system's PATH: $path" }
+          if (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Parley") { throw 'the installer made a Start menu folder' }
+          foreach ($exe in 'fsh-ide', 'parley-files-viewer') {
+            if (Test-Path "C:\Program Files\fsh\$exe.exe") { throw "$exe.exe is installed" }
           }
+          # fshdb is there, and the Lanterna browser plugin loaded
+          if (-not (Test-Path 'C:\Program Files\fsh\fshdb.exe')) { throw 'fshdb.exe is not installed' }
           $db = (& 'C:\Program Files\fsh\fshdb.exe' --help) -join "`n"
           if ($db -notmatch 'Usage: fshdb') { throw "fshdb: unexpected output: $db" }
           $browsers = (& 'C:\Program Files\fsh\fsh.exe' -c 'browse --list') -join "`n"
