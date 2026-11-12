@@ -207,7 +207,8 @@ parley-files-viewer (a file browser for any file system), have installers of the
   `/usr/local/lib/parley/fsh`, links `fsh` and `fshdb` from `/usr/local/bin` (on `PATH` in a new
   terminal), and adds `/usr/local/bin/fsh` to `/etc/shells`, so `chsh -s /usr/local/bin/fsh`
   makes it the login shell. To remove it:
-  `sudo rm -rf /usr/local/lib/parley/fsh /usr/local/bin/fsh /usr/local/bin/fshdb`, take
+  in `/usr/local/lib/parley/fsh`, `sudo rm -rf bin lib runtime LICENSE` (its `plugins` folder is
+  fsh's system plugin folder, yours to keep or remove), `sudo rm -f /usr/local/bin/fsh /usr/local/bin/fshdb`, take
   `/usr/local/bin/fsh` out of `/etc/shells`, and `sudo pkgutil --forget us.bringardner.fsh`.
 - **Linux:** `sudo apt install ./fsh_VERSION_amd64.deb` or `sudo dnf install ./fsh-VERSION-1.x86_64.rpm`.
   `/usr/bin/fsh` is added to `/etc/shells`, so `chsh -s /usr/bin/fsh` makes it the login shell.

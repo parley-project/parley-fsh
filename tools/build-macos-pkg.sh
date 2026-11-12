@@ -12,12 +12,18 @@
 #
 # and adds /usr/local/bin/fsh to /etc/shells (chsh -s /usr/local/bin/fsh), as the Linux packages
 # do for /usr/bin/fsh. /usr/local/bin is on macOS's PATH (/etc/paths), so the commands are there
-# in a new terminal. A newer package replaces an older one: /usr/local/lib/parley/fsh is removed
-# before the new files are written.
+# in a new terminal. A newer package replaces an older one: its bin, lib and runtime folders are
+# removed before the new files are written. Nothing else in /usr/local/lib/parley/fsh is touched:
+# plugins and plugins.list there are fsh's system plugin folder and list, an administrator's.
+#
+# parley-launcher installed for everyone links its programs from /usr/local/bin too: this
+# package's fsh and fshdb links replace the launcher's links of those names, and parley-launcher
+# add fsh replaces this package's.
 #
 # To remove fsh:
 #
-#   sudo rm -rf /usr/local/lib/parley/fsh /usr/local/bin/fsh /usr/local/bin/fshdb
+#   cd /usr/local/lib/parley/fsh && sudo rm -rf bin lib runtime LICENSE
+#   sudo rm -f /usr/local/bin/fsh /usr/local/bin/fshdb
 #   sudo sed -i '' '\|^/usr/local/bin/fsh$|d' /etc/shells
 #   sudo pkgutil --forget us.bringardner.fsh
 #
@@ -70,10 +76,11 @@ mkdir -p "$work/root" "$work/scripts" dist
 cp -Rp "$image" "$work/root/fsh"
 chmod -R u=rwX,go=rX "$work/root/fsh"
 
-# (an older version's files, so none of its jars is left on the class path beside the new ones)
+# (an older version's files, so none of its jars is left on the class path beside the new ones;
+# not the whole folder: plugins and plugins.list in it are the administrator's)
 cat > "$work/scripts/preinstall" <<SH
 #!/bin/sh
-rm -rf $home
+rm -rf $home/bin $home/lib $home/runtime $home/LICENSE
 exit 0
 SH
 {
