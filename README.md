@@ -428,6 +428,7 @@ What a plugin can provide:
 |---|---|
 | `us.bringardner.fsh.spi.CommandProvider` | Commands (`ShellCommand`s) |
 | `us.bringardner.fsh.spi.BrowserProvider` | A file browser for `browse`, besides fsh's own terminal browser: it uses the one of the highest priority that can run here (a window when there is a display, else a terminal one; fsh's own before a plugin's of the same priority); `browse --with NAME` picks one, `browse --list` lists them |
+| `us.bringardner.fsh.spi.DebuggerProvider` | A debugger for `fsh --wait-for-debugger` (fsh-loupe) |
 | `us.bringardner.parley.files.FileSourceFactory` | A file system for `connect` (parley-files-sftp, -ftp, -jdbc) |
 | `us.bringardner.parley.files.credentials.CredentialProvider` | A credential store |
 | `java.sql.Driver` | A JDBC driver |
@@ -491,6 +492,15 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 The script editor and debugger is a separate project,
 [fsh-ide](https://github.com/parley-project/parley-fsh-ide). fsh exposes the debugger
 hooks it uses (`DebugContext`, `DebugController`).
+
+`fsh --wait-for-debugger [address:]port script [arguments]` starts the script as `fsh script`
+does (its options, startup file, input and output), then waits at that port for a debugger to
+attach before the script's first command; fsh-ide's Debug Remote attaches to it. The debugger
+is [fsh-loupe](https://github.com/parley-project/parley-fsh-loupe)'s, which must be on fsh's
+class path or in a plugin folder (the installers carry it). A port alone is reachable from
+this machine only; `address:port` (`0.0.0.0:port` for every address) lets another machine
+attach, with no login and no encryption, so only on a network where everyone who can reach
+the port is trusted. When the debugger goes, the script runs on without it.
 
 ## License
 

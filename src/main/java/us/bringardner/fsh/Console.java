@@ -1112,6 +1112,7 @@ delimiter
 	public static volatile boolean exitJvm = true;
 
 	public static void exit(Console console,int exitCode) {
+		console.debuggerEnded(exitCode);
 		console.runLogout();
 		if( console.isRunning()) {
 			console.stop();
@@ -1146,7 +1147,7 @@ delimiter
 				return i+1 < args.length;
 			}
 			if( a.startsWith("--")) {
-				if( a.equals("--rcfile") || a.equals("--init-file")) {
+				if( a.equals("--rcfile") || a.equals("--init-file") || a.equals("--wait-for-debugger")) {
 					i++;
 				}
 				continue;
@@ -1577,13 +1578,78 @@ delimiter
 				inCommandString = false;
 			}
 		}
+		if( inv.waitForDebugger != null ) {
+			if( inv.file == null ) {
+				stdErr.println("fsh: --wait-for-debugger: a script file is required");
+				return 2;
+			}
+			debuggerWhere = inv.waitForDebugger;
+		}
 		if( inv.file != null ) {
-			return runFile(inv.file);
+			try {
+				int ret = runFile(inv.file);
+				debuggerEnded(ret);
+				return ret;
+			} finally {
+				// (an error on the way out: the debugger is not left waiting)
+				debuggerEnded(1);
+			}
 		}
 		if( isInteractive ) {
 			return status();
 		}
 		return runStandardInput();
+	}
+
+	/** --wait-for-debugger's [address:]port, until the script's text is read */
+	private String debuggerWhere;
+	/** the debugger attached to the script (--wait-for-debugger), until the script ends */
+	private volatile us.bringardner.fsh.spi.DebuggerProvider.Session debuggerSession;
+
+	/** the script ended (or the shell is exiting): an attached debugger is told, once */
+	private void debuggerEnded(int status) {
+		us.bringardner.fsh.spi.DebuggerProvider.Session s = debuggerSession;
+		debuggerSession = null;
+		if( s != null ) {
+			try {
+				s.ended(status);
+			} catch (RuntimeException e) {
+				// the debugger has gone
+			}
+		}
+	}
+
+	/**
+	 * --wait-for-debugger: waits for a debugger to attach, before the script (its text is code)
+	 * runs its first command.
+	 * @return 0, or the status the shell ends with when there is no debugger to wait for
+	 */
+	private int waitForDebugger(String name, String code) {
+		String where = debuggerWhere;
+		debuggerWhere = null;
+		if( where == null ) {
+			return 0;
+		}
+		List<String> notes = new ArrayList<>();
+		List<us.bringardner.fsh.spi.DebuggerProvider> found = pluginProviders(
+				us.bringardner.fsh.spi.DebuggerProvider.class, e -> notes.add(String.valueOf(e)));
+		if( found.isEmpty()) {
+			stdErr.println("fsh: --wait-for-debugger: no debugger is installed (fsh-loupe provides one)");
+			for(String n : notes) {
+				stdErr.println("fsh: "+n);
+			}
+			return 2;
+		}
+		try {
+			debuggerSession = found.get(0).waitForDebugger(this, where, name, code);
+			return 0;
+		} catch (IllegalArgumentException e) {
+			stdErr.println("fsh: --wait-for-debugger: "+e.getMessage());
+			return 2;
+		} catch (IOException e) {
+			stdErr.println("fsh: --wait-for-debugger "+where+": "+e.getMessage());
+			return 1;
+		}
 	}
 
 	/** after execute: the shell goes on to read typed commands (run) */
@@ -1747,7 +1813,9 @@ delimiter
 			java.io.File local = new java.io.File(name);
 			if( !file.exists() && local.isAbsolute() && local.isFile()) {
 				// the command line names a local file (the shell's files may be another file system)
-				return runCommands(us.bringardner.fsh.RawUtf8.toText(java.nio.file.Files.readAllBytes(local.toPath())));
+				String text = us.bringardner.fsh.RawUtf8.toText(java.nio.file.Files.readAllBytes(local.toPath()));
+				int waited = waitForDebugger(name, text);
+				return waited != 0 ? waited : runCommands(text);
 			}
 			if( !file.exists()) {
 				stdErr.println("fsh: "+name+": No such file or directory");
@@ -1766,7 +1834,9 @@ delimiter
 				stdErr.println(name+": "+name+": cannot execute binary file");
 				return 126;
 			}
-			return runCommands(us.bringardner.fsh.RawUtf8.toText(bytes));
+			String text = us.bringardner.fsh.RawUtf8.toText(bytes);
+			int waited = waitForDebugger(name, text);
+			return waited != 0 ? waited : runCommands(text);
 		} catch (IOException e) {
 			stdErr.println("fsh: "+name+": "+e.getMessage());
 			return 126;

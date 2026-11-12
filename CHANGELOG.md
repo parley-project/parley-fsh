@@ -24,6 +24,13 @@
 
 ### Added
 
+- `fsh --wait-for-debugger [address:]port script [arguments]`: the script is started as
+  `fsh script` starts it, and waits at that port for a debugger to attach before its first
+  command (remote debugging: attach to a script). fsh has no debugger protocol of its own: a
+  `us.bringardner.fsh.spi.DebuggerProvider` on the class path or in a plugin folder waits and
+  attaches (fsh-loupe's, a Loupe debugger); without one the shell says so and ends with status 2.
+  The debugger is told the script's status when it ends, however it ends (`exit` included).
+
 - Watchpoints for debuggers: `DebugContext.variableRead(name, ctx)` and
   `variableWritten(name, ctx)` are told of each variable the script reads and each it sets or
   unsets (an array's name for its elements), and returning true stops the script there, as at a
