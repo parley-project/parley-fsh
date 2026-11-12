@@ -46,8 +46,7 @@ jobs:
         include:
           - { runner: macos-15,         platform: macos,   arch: aarch64 }
           - { runner: macos-15-intel,   platform: macos,   arch: x86_64 }
-          # (the oldest Ubuntu offered: the keyboard library and fshexec need the glibc they were
-          # linked with, or later)
+          # (the oldest Ubuntu offered: the Java runtime in the packages needs its glibc or later)
           - { runner: ubuntu-22.04,     platform: linux,   arch: x86_64 }
           - { runner: ubuntu-22.04-arm, platform: linux,   arch: aarch64 }
           - { runner: windows-2022,     platform: windows, arch: x86_64 }
@@ -134,8 +133,16 @@ jobs:
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
 
       # ---- macOS and Linux
+      # (zig's C and C++ compilers build the Linux native files for FSH_GLIBC: that glibc and every
+      # later one, whatever the runner's own is)
+      - name: zig (the Linux native files)
+        if: matrix.platform == 'linux'
+        run: python3 -m pip install --user ziglang==0.13.0 || python3 -m pip install --user --break-system-packages ziglang==0.13.0
+
       - name: Build the keyboard library and fshexec
         if: matrix.platform != 'windows'
+        env:
+          FSH_GLIBC: '2.17'
         run: sh ${{ matrix.platform }}/compile.sh
 
       # The installers carry more than fsh, each built from its own repository (the default
