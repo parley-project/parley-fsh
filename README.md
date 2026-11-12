@@ -190,29 +190,31 @@ nothing else needs to be installed, and each file has a `.sha256` beside it:
 
 | Platform | File | Installs |
 |---|---|---|
-| macOS, Apple silicon | `fsh-VERSION-macos-aarch64.dmg` | the `Parley` folder (`fsh.app` and the others), to drag to Applications |
-| macOS, Intel | `fsh-VERSION-macos-x86_64.dmg` | the same |
-| Linux, x86-64 | `fsh_VERSION_amd64.deb`, `fsh-VERSION-1.x86_64.rpm` | `/opt/fsh`, `/usr/bin/fsh` and the others, and a Parley menu folder |
+| macOS, Apple silicon | `fsh-VERSION-macos-aarch64.pkg` | `/usr/local/lib/parley/fsh`, `/usr/local/bin/fsh` and `fshdb` |
+| macOS, Intel | `fsh-VERSION-macos-x86_64.pkg` | the same |
+| Linux, x86-64 | `fsh_VERSION_amd64.deb`, `fsh-VERSION-1.x86_64.rpm` | `/opt/fsh`, `/usr/bin/fsh` and `fshdb` |
 | Linux, ARM64 | `fsh_VERSION_arm64.deb`, `fsh-VERSION-1.aarch64.rpm` | the same |
-| Windows, x64 | `fsh-VERSION-windows-x86_64.msi` | `C:\Program Files\fsh\fsh.exe` and the others, and a Parley Start menu folder |
+| Windows, x64 | `fsh-VERSION-windows-x86_64.msi` | `C:\Program Files\fsh\fsh.exe` and `fshdb.exe`, on `PATH` |
 
-Each installer carries, beside fsh and on the same Java runtime, fsh-ide (an editor and
-debugger for shell scripts), fshdb (a debugger for shell scripts that runs in a terminal) and
-parley-files-viewer (a file browser for any file system), all in one Parley folder.
+fsh is a command, not a desktop application: the installers put commands on `PATH` and nothing
+in the Applications folder, the Start menu or the desktop's application menu. Each carries,
+beside fsh and on the same Java runtime, fshdb (a debugger for shell scripts that runs in a
+terminal). The window programs, fsh-ide (an editor and debugger for shell scripts) and
+parley-files-viewer (a file browser for any file system), have installers of their own.
 
-- **macOS:** the `Parley` folder holds `fsh.app`, `fsh-ide.app`, `fshdb.app` and
-  `parley-files-viewer.app`; keep them together (the others start their programs in `fsh.app`,
-  which carries the Java runtime). Opened from the Finder, `fsh.app` (and `fshdb.app`) opens a
-  Terminal window. To run `fsh` in any terminal, link its command from a directory on `PATH`,
-  once: `sudo ln -sf /Applications/Parley/fsh.app/Contents/app/fsh /usr/local/bin/fsh` (the
-  other programs' commands are beside it; the disk image's README.txt says this too). The apps
-  aren't notarized: macOS asks before opening each the first time (right-click it, Open).
+- **macOS:** open the `.pkg` (it isn't notarized: right-click it, Open), or
+  `sudo installer -pkg fsh-VERSION-macos-ARCH.pkg -target /`. It installs
+  `/usr/local/lib/parley/fsh`, links `fsh` and `fshdb` from `/usr/local/bin` (on `PATH` in a new
+  terminal), and adds `/usr/local/bin/fsh` to `/etc/shells`, so `chsh -s /usr/local/bin/fsh`
+  makes it the login shell. To remove it:
+  in `/usr/local/lib/parley/fsh`, `sudo rm -rf bin lib runtime LICENSE` (its `plugins` folder is
+  fsh's system plugin folder, yours to keep or remove), `sudo rm -f /usr/local/bin/fsh /usr/local/bin/fshdb`, take
+  `/usr/local/bin/fsh` out of `/etc/shells`, and `sudo pkgutil --forget us.bringardner.fsh`.
 - **Linux:** `sudo apt install ./fsh_VERSION_amd64.deb` or `sudo dnf install ./fsh-VERSION-1.x86_64.rpm`.
   `/usr/bin/fsh` is added to `/etc/shells`, so `chsh -s /usr/bin/fsh` makes it the login shell.
-  `/usr/bin/fsh-ide`, `fshdb` and `parley-files-viewer` are the other programs; the application
-  menu has all four in a Parley folder (fsh and fshdb open in a terminal).
-- **Windows:** the installer doesn't change `PATH`; add `C:\Program Files\fsh` to it to run
-  `fsh` (and `fsh-ide`, `fshdb`, `parley-files-viewer`) from any console.
+  `/usr/bin/fshdb` is the debugger.
+- **Windows:** the installer adds the folder it installs to (`C:\Program Files\fsh`) to the
+  system's `PATH`, so `fsh` and `fshdb` run from any new console; removing fsh takes it out again.
 
 Each release also has the native binary for every platform (a GraalVM native image, which starts
 in about 0.03 s, with its keyboard library, and the file browser built in: `browse`, `view`,
@@ -234,7 +236,7 @@ download as quarantined and the files are not notarized: once, after unpacking,
 The installers are built by `.github/workflows/release-binaries.yml` when a release is
 published: `compile` in `macos/`, `linux/` or `windows/` (the keyboard library and `fshexec`),
 then `tools/build-installers-with-plugins.sh` (macOS and Linux: `tools/build-jlink.sh`, then
-`tools/build-jpackage.sh` or `tools/build-linux-packages.sh`) or `tools/build-msi-with-plugins.ps1`
+`tools/build-macos-pkg.sh` or `tools/build-linux-packages.sh`) or `tools/build-msi-with-plugins.ps1`
 (Windows: `tools/build-msi.ps1`). The native binaries are made where all of Parley is built
 (the Lanterna browser plugin is built after fsh): `build-native --builtin` in the same folders,
 packaged by `tools/package-native.sh` (`.ps1` on Windows). The behaviour of the native library each one carries
@@ -336,21 +338,20 @@ CDS archive before that). The installers are made from it.
 ```sh
 tools/build-jlink.sh                     # target/jlink/fsh: run target/jlink/fsh/bin/fsh
 tools/build-jlink.sh --package 2.0.0     # also dist/fsh-2.0.0-PLATFORM-ARCH-jvm.tar.gz
-tools/build-jlink.sh --ide ../fsh-ide --db ../fshdb --viewer ../parley-files-viewer
-                                         # with bin/fsh-ide, bin/fshdb, bin/parley-files-viewer
-tools/build-jpackage.sh                  # macOS: dist/fsh-VERSION-macos-ARCH.dmg (or pkg, app-image)
+tools/build-jlink.sh --db ../fshdb       # with bin/fshdb
+tools/build-macos-pkg.sh                 # macOS: dist/fsh-VERSION-macos-ARCH.pkg
 tools/build-linux-packages.sh            # Linux: the .deb and the .rpm (or deb, rpm)
 tools\build-msi.ps1                      # Windows: the .msi (needs the WiX Toolset)
 ```
 
-With `--ide`, `--db` and `--viewer` (checkouts of fsh-ide, fshdb and parley-files-viewer, which
-build against fsh: install it, and fsh-loupe for fsh-ide, to the local Maven repository first),
-the other programs go in the same folder on the same runtime: their jars in `lib/apps` and a
-command for each in `bin`. The installers made from it carry them too: on macOS a `Parley`
-folder with `fsh.app` (the runtime, and the commands in `Contents/app`) and a small app for each
-(`fsh-ide.app`, `fshdb.app`, `parley-files-viewer.app`) that starts its command in `fsh.app`; on
-Linux `/opt/fsh/bin` with a link in `/usr/bin` for each, and an application menu entry for each in a
-Parley folder (`/etc/xdg/menus/applications-merged/parley.menu`), with fsh's icon from `linux/icons`.
+With `--db` (a checkout of fshdb, which builds against fsh and fsh-ide: install them, and
+fsh-loupe for fsh-ide, to the local Maven repository first), fshdb goes in the same folder on the
+same runtime: its jars in `lib/apps` and its command, `bin/fshdb`. The installers made from it
+carry it too. They install commands only: on macOS `/usr/local/lib/parley/fsh` with links in
+`/usr/local/bin`, on Linux `/opt/fsh` with links in `/usr/bin`, on Windows `fsh.exe` and
+`fshdb.exe` in a folder the installer adds to `PATH`. fsh-ide and parley-files-viewer are not
+built in: they are desktop applications with installers of their own, each with its own Java
+runtime.
 
 The runtime is the JDK in `JAVA_HOME` (on macOS, else `/usr/libexec/java_home`'s): use a plain
 JDK such as Temurin (GraalVM's adds its own compiler, about 40 MB), 17 or later for the keychain,
@@ -378,31 +379,29 @@ tools\build-msi-with-plugins.ps1
 
 It installs parley-files-viewer-tui's library (the file browser fsh builds in), fsh and
 fsh-loupe to the local Maven repository, builds the Lanterna plugin, names it in `FSH_PLUGINS`
-and runs `tools\build-msi.ps1`. The installer carries more programs too, each from a
-checkout beside this one and with its own `.exe` beside `fsh.exe` on the same Java runtime:
-`fsh-ide.exe` (the Swing IDE; `-IdeRepo`, `-NoIde`), `fshdb.exe` (the console debugger; `-DbRepo`,
-`-NoDb`) and `parley-files-viewer.exe` (the Swing file browser; `-ViewerRepo`, `-NoViewer`). They are
-all in one Start menu folder, `Parley` (`-MenuGroup` names another). The output says `plugins built in: ...`; if it says
+and runs `tools\build-msi.ps1`. The installer carries fshdb too, from a checkout beside this
+one: `fshdb.exe` (the console debugger; `-DbRepo`, `-NoDb`), beside `fsh.exe` on the same Java
+runtime. fshdb builds against fsh-ide, so that is installed to the local Maven repository first
+(`-IdeRepo`, `-LoupeRepo`). There is no Start menu entry: the installer adds its folder to
+`PATH`. The output says `plugins built in: ...`; if it says
 `no plugins built in`, the installer has only fsh's own browser.
 
 On macOS and Linux, from checkouts of the same projects beside this one, the same is
 
 ```sh
-tools/build-installers-with-plugins.sh          # macOS: the .dmg (or pkg, app-image); Linux: the .deb and .rpm (or deb, rpm)
+tools/build-installers-with-plugins.sh          # macOS: the .pkg; Linux: the .deb and .rpm (or deb, rpm)
 ```
 
 It installs parley-files-viewer-tui's library, fsh, fsh-loupe and fsh-ide to the local Maven
-repository, builds the Lanterna plugin and names it in `FSH_PLUGINS`, runs `tools/build-jlink.sh` with `--ide`, `--db` and `--viewer`, then
-`tools/build-jpackage.sh` or `tools/build-linux-packages.sh`. `--plugins-repo`, `--loupe-repo`,
-`--ide-repo`, `--db-repo` and `--viewer-repo` name other checkouts; `--no-ide`, `--no-db` and
-`--no-viewer` leave a program out; the type `none` stops after the jlink build.
+repository, builds the Lanterna plugin and names it in `FSH_PLUGINS`, runs `tools/build-jlink.sh` with `--db`, then
+`tools/build-macos-pkg.sh` or `tools/build-linux-packages.sh`. `--plugins-repo`, `--loupe-repo`,
+`--ide-repo` and `--db-repo` name other checkouts; `--no-db` leaves fshdb out; the type `none`
+stops after the jlink build.
 
 The command each installer puts on `PATH` is `bin/fsh`'s launcher, which starts Java through
 `fshexec -j` (so signals the shell's caller ignored are seen as ignored, as bash sees them).
-What the Finder starts (`fsh.app/Contents/MacOS/fsh`) opens Terminal on that command, so fsh
-runs in a terminal and `browse`'s full-screen browsers work. On Windows the command is
-jpackage's `fsh.exe` (Windows has no `fshexec`). None of the installers is signed (`fsh.app` is
-signed ad hoc only).
+On Windows the command is jpackage's `fsh.exe` (Windows has no `fshexec`). None of the
+installers is signed.
 
 ## Plugins
 
@@ -483,9 +482,9 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 - `.../fsh/commands` — the builtins
 - `tools/bash-suite`, `tools/real-world`, `tools/interactive` — the comparisons with bash
   described above
-- `tools/build-jlink.sh`, `tools/build-jpackage.sh`, `tools/build-linux-packages.sh`,
+- `tools/build-jlink.sh`, `tools/build-macos-pkg.sh`, `tools/build-linux-packages.sh`,
   `tools/build-installers-with-plugins.sh` — fsh with its own Java runtime, and installers of it
-  (with fsh-ide, fshdb and parley-files-viewer)
+  (commands only: fsh and fshdb)
 
 ## The IDE
 
