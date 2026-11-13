@@ -326,6 +326,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `complete` | `complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [name ...]` | How Tab completes each name's arguments. |
 | `compopt` | `compopt [-o\|+o option] [-DEI] [name ...]` | Turn completion options of each name on (-o) or off (+o); with no option, show them. |
 | `continue` | `continue [n]` | Go on with the next pass of the innermost loop, or of the nth enclosing loop. |
+| `cut` | `cut OPTION... [FILE ...]` | Print the selected parts of each line of each FILE (standard input with no FILE or -). |
 | `declare` | `declare [-aAfFgiIlnrtux] [name[=value] ...] or declare -p [-aAfFilnrtux] [name ...]` | Set variables and their attributes, or show them (-p). |
 | `dirs` | `dirs [-clpv] [+N] [-N]` | Print the directory stack, the current directory first: -l without ~, -p one per line, -v numbered, +N or -N one entry (counted from the left or right); -c clears it. |
 | `disown` | `disown [-ar] [-h] [id ...]` | Without options, remove each id from the table of active jobs. |
@@ -342,6 +343,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `getopts` | `getopts optstring name [arg ...]` | Read the next option from the positional parameters (or the args) into name, its argument (for a letter followed by : in optstring) into OPTARG, and the index of the next parameter into OPTIND. |
 | `grep` | `grep [OPTION]... PATTERNS [FILE ...]` | Print the lines of each FILE (or standard input) that match PATTERNS. |
 | `hash` | `hash [-lr] [-p pathname] [-dt] [name ...]` | Remember or display program locations. |
+| `head` | `head [-qv] [-n [-]NUM \| -c [-]NUM] [FILE ...]` | Print the first 10 lines of each FILE (standard input with no FILE or -). |
 | `help` | `help [-dms] [pattern ...]` | Show what the builtins matching pattern (a glob, or the start of a name) do; with no pattern, list them. |
 | `history` | `history [n]` | With no options, display the history list with line numbers. |
 | `jobs` | `jobs [-rs] [jobspec]` | The first form lists the active jobs. |
@@ -364,10 +366,14 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `set` | `set [-abCefhmnuvx] [argument...]` | If no options or arguments are supplied, set displays the names and values of all shell variables and functions, sorted according to the current locale, in a format that may be reused as input for setting or resetting the currently-set variables. |
 | `shift` | `shift [n]` | The positional parameters shall be shifted. |
 | `shopt` | `shopt [-s\|-u] [-pq] [optname ...]` | Set (-s) or unset (-u) shell options, or show them (-p as shopt commands). |
+| `sort` | `sort [OPTION]... [FILE ...]` | Write the sorted lines of all the FILEs (standard input with no FILE or -). |
 | `source` | `source filename [arguments]` | Read and execute commands from filename in the current shell environment and return the exit status of the last command executed from filename. |
 | `suspend` | `suspend [-f]` | Suspend the shell until it receives a SIGCONT. |
+| `tail` | `tail [-fqv] [-n [+]NUM \| -c [+]NUM] [FILE ...]` | Print the last 10 lines of each FILE (standard input with no FILE or -). |
+| `tee` | `tee [-ai] [FILE ...]` | Copy standard input to standard output and to each FILE. |
 | `test` | `test [expr]` | Exit with status 0 (true) or 1 (false) depending on expr; 2 if expr is invalid. |
 | `times` | `times` | Print the user and system time used by the shell, then by the commands it ran. |
+| `tr` | `tr [-cdst] SET1 [SET2]` | Translate, squeeze or delete the characters of standard input. |
 | `trap` | `trap [-lpP] [action] [sigspec ...]` | The action is a command that is read and executed when the shell receives any of the signals sigspec. |
 | `true` | `true [arguments]` | Do nothing, successfully. |
 | `type` | `type [-afptP] name [name ...]` | Say how each name would be run: alias, keyword, function, builtin or file. |
@@ -375,6 +381,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `ulimit` | `ulimit [-SHa] [-cdflmnstuv] [limit]` | Print a resource limit (-a: all of them), or set it: -S the soft limit, -H the hard one (both without either). |
 | `umask` | `umask [-p] [-S] [mode]` | Print the file creation mask (-S: as u=rwx,g=rx,o=rx), or set it to mode (octal or symbolic). |
 | `unalias` | `unalias [-a] [name …]` | Remove one or more aliases or all with -a option. |
+| `uniq` | `uniq [OPTION]... [INPUT [OUTPUT]]` | Filter the adjacent matching lines of INPUT (standard input with no INPUT or -) to OUTPUT (standard output). |
 | `unset` | `unset [-f] [-v] [name ...]` | Remove each variable or function name. |
 | `view` | `view [-c] [-x] FILE ...` | Show each FILE, on any connected file system, in a full-screen viewer (Esc or q to close). |
 | `wait` | `wait [-fn] [-p varname] [id ...]` | Wait until the child process specified by each id exits and return the exit status of the last id. |
