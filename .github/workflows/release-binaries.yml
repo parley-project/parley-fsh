@@ -156,11 +156,11 @@ jobs:
           path: fsh-loupe
           token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
-      - name: Checkout fsh-ide
+      - name: Checkout Fsh Studio
         uses: actions/checkout@v4
         with:
-          repository: parley-project/parley-fsh-ide
-          path: fsh-ide
+          repository: parley-project/parley-fsh-studio
+          path: parley-fsh-studio
           token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
       - name: Checkout fshdb
@@ -175,7 +175,7 @@ jobs:
         if: matrix.platform == 'macos'
         run: >
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui
-          --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb
+          --loupe-repo fsh-loupe --ide-repo parley-fsh-studio --db-repo fshdb
           pkg $VERSION
 
       - name: Smoke test (the package)
@@ -203,7 +203,7 @@ jobs:
         run: |
           sudo apt-get install -y rpm
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui \
-            --loupe-repo fsh-loupe --ide-repo fsh-ide --db-repo fshdb \
+            --loupe-repo fsh-loupe --ide-repo parley-fsh-studio --db-repo fshdb \
             all $VERSION
 
       - name: Smoke test (the .deb)
@@ -242,7 +242,7 @@ jobs:
         shell: pwsh
         run: >
           .\tools\build-msi-with-plugins.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
-          -PluginsRepo parley-files-viewer-tui -LoupeRepo fsh-loupe -IdeRepo fsh-ide
+          -PluginsRepo parley-files-viewer-tui -LoupeRepo fsh-loupe -IdeRepo parley-fsh-studio
           -DbRepo fshdb
 
       - name: Smoke test (the installer)
