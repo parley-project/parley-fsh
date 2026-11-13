@@ -107,6 +107,38 @@ final class TextFiles {
 		}
 	}
 
+	/** all the lines of files (standard input with none), without their line ends; status[0] is forEach's */
+	static List<String> readLines(ShellContext ctx, String cmd, List<String> files, int [] status) throws IOException {
+		List<String> out = new ArrayList<>();
+		status[0] = forEach(ctx, cmd, files, (label, file, in) -> {
+			InputStream bin = new java.io.BufferedInputStream(in);
+			byte [] line;
+			while( (line = line(bin)) != null ) {
+				out.add(chomp(line));
+			}
+		});
+		return out;
+	}
+
+	/** all the bytes of one file, or of standard input for -; null (after a message) if it can't be read */
+	static byte [] readAll(ShellContext ctx, String cmd, String path) throws IOException {
+		if( path.equals("-")) {
+			return ctx.stdin.readAllBytes();
+		}
+		FileSource f = ctx.console.createFileSource(path);
+		if( !f.exists()) {
+			ctx.stderr.println(cmd+": "+path+": No such file or directory");
+			return null;
+		}
+		if( f.isDirectory()) {
+			ctx.stderr.println(cmd+": "+path+": Is a directory");
+			return null;
+		}
+		try (InputStream in = f.getInputStream()) {
+			return in.readAllBytes();
+		}
+	}
+
 	/** skip n bytes of in, or all of it if it is shorter */
 	static void skip(InputStream in, long n) throws IOException {
 		while( n > 0 ) {

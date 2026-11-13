@@ -744,6 +744,53 @@ delimiter
 			registerCommand(new Sort());
 			registerCommand(new Tail());
 			registerCommand(new Head());
+			registerCommand(new us.bringardner.fsh.commands.Tac());
+			registerCommand(new us.bringardner.fsh.commands.Rev());
+			registerCommand(new us.bringardner.fsh.commands.Nl());
+			registerCommand(new us.bringardner.fsh.commands.Paste());
+			registerCommand(new us.bringardner.fsh.commands.Fold());
+			registerCommand(new us.bringardner.fsh.commands.Comm());
+			registerCommand(new us.bringardner.fsh.commands.Join());
+			registerCommand(new us.bringardner.fsh.commands.Cmp());
+			registerCommand(new us.bringardner.fsh.commands.Diff());
+			registerCommand(new us.bringardner.fsh.commands.Basename());
+			registerCommand(new us.bringardner.fsh.commands.Dirname());
+			registerCommand(new us.bringardner.fsh.commands.Realpath());
+			registerCommand(new us.bringardner.fsh.commands.Readlink());
+			registerCommand(new us.bringardner.fsh.commands.Stat());
+			registerCommand(new us.bringardner.fsh.commands.Du());
+			registerCommand(new us.bringardner.fsh.commands.Df());
+			registerCommand(new us.bringardner.fsh.commands.FileType());
+			registerCommand(new us.bringardner.fsh.commands.Split());
+			registerCommand(new us.bringardner.fsh.commands.Truncate());
+			registerCommand(new us.bringardner.fsh.commands.Which());
+			registerCommand(new us.bringardner.fsh.commands.Chmod());
+			registerCommand(new us.bringardner.fsh.commands.Env());
+			registerCommand(new us.bringardner.fsh.commands.Printenv());
+			registerCommand(new us.bringardner.fsh.commands.Date());
+			registerCommand(new us.bringardner.fsh.commands.Seq());
+			registerCommand(new us.bringardner.fsh.commands.Yes());
+			registerCommand(new us.bringardner.fsh.commands.Whoami());
+			registerCommand(new us.bringardner.fsh.commands.Hostname());
+			registerCommand(new us.bringardner.fsh.commands.Uname());
+			registerCommand(new us.bringardner.fsh.commands.Base64());
+			registerCommand(new us.bringardner.fsh.commands.Xxd());
+			registerCommand(new us.bringardner.fsh.commands.Hexdump());
+			registerCommand(new us.bringardner.fsh.commands.Od());
+			registerCommand(new us.bringardner.fsh.commands.Gzip());
+			registerCommand(new us.bringardner.fsh.commands.Zip());
+			registerCommand(new us.bringardner.fsh.commands.Unzip());
+			registerCommand(new us.bringardner.fsh.commands.Tar());
+			registerCommand(new us.bringardner.fsh.commands.Curl());
+			registerCommand(new us.bringardner.fsh.commands.Wget());
+			registerCommand(new us.bringardner.fsh.commands.Xargs());
+			registerCommand(new us.bringardner.fsh.commands.Gunzip());
+			registerCommand(new us.bringardner.fsh.commands.Zcat());
+			registerCommand(new us.bringardner.fsh.commands.Md5sum());
+			registerCommand(new us.bringardner.fsh.commands.Sha1sum());
+			registerCommand(new us.bringardner.fsh.commands.Sha256sum());
+			registerCommand(new us.bringardner.fsh.commands.Sha512sum());
+
 		}
 		
 		// (not where fsh runs inside another program, whose signals are that program's)
