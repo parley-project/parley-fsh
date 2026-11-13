@@ -18,7 +18,7 @@ import us.bringardner.parley.files.credentials.Credentials;
  * <p>
  * The prompter is JVM-wide, so it asks only for the shell whose command is running on this
  * thread ({@link #with}); anywhere else it hands over to the prompter that was there before
- * (fsh-ide's dialog, say). A shell that isn't interactive (a script, fsh -c, cron) can't be
+ * (Fsh Studio's dialog, say). A shell that isn't interactive (a script, fsh -c, cron) can't be
  * asked: the prompt fails at once instead of waiting.
  */
 public final class CredentialPrompts {

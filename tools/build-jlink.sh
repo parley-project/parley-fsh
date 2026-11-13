@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build fsh with a Java runtime of its own (jlink): target/jlink/fsh, a folder that runs on this
 # platform with no Java installed, started the way macos/fsh starts it. The installers are made
-# from it: tools/build-jpackage.sh (macOS .dmg), tools/build-linux-packages.sh (.deb, .rpm).
+# from it: tools/build-macos-pkg.sh (macOS .pkg), tools/build-linux-packages.sh (.deb, .rpm).
 #
 #   target/jlink/fsh/bin/fsh                    the launcher (link to it from a directory on PATH)
 #   target/jlink/fsh/lib/fsh.jar                fsh and everything it needs (mvn package)
@@ -10,19 +10,19 @@
 #   target/jlink/fsh/lib/plugins                the plugin jars built in, on fsh's class path
 #   target/jlink/fsh/runtime                    the Java runtime: only the modules fsh needs
 #
-# Usage: tools/build-jlink.sh [--debug] [--package VERSION] [--ide DIR] [--db DIR] [--viewer DIR]
+# Usage: tools/build-jlink.sh [--debug] [--package VERSION] [--db DIR]
 #   --debug              also put the debugger agent in the runtime (FSH_DEBUG=8001 bin/fsh)
 #   --package VERSION    also make dist/fsh-VERSION-PLATFORM-ARCH-jvm.tar.gz and its .sha256
-#   --ide DIR            a checkout of fsh-ide: bin/fsh-ide, the Swing IDE (a window program)
 #   --db DIR             a checkout of fshdb: bin/fshdb, the console debugger
-#   --viewer DIR         a checkout of parley-files-viewer: bin/parley-files-viewer, the Swing
-#                        file browser (a window program)
 #
-# The other programs (--ide, --db, --viewer) run on the same Java runtime, each with its own
-# command in bin, as the Windows installer has them (tools/build-msi.ps1). Each is built in its
-# checkout (it builds against fsh: tools/build-installers-with-plugins.sh installs what it needs
-# first); its jar and the dependencies fsh.jar doesn't have go in lib/apps (not the JavaFX ones:
-# the programs here are Swing or console programs).
+# fshdb (--db) runs on the same Java runtime, with its own command in bin, as the Windows
+# installer has it (tools/build-msi.ps1). It is built in its checkout (it builds against fsh and
+# parley-fsh-debug: tools/build-installers-with-plugins.sh installs what it needs first); its jar and the
+# dependencies fsh.jar doesn't have go in lib/apps.
+#
+# fsh and fshdb are commands, not desktop applications. The window programs, parley-fsh-studio and
+# parley-files-viewer, are not built in here: each has an installer of its own, with its own Java
+# runtime (parley-build's packaging).
 #
 # The file browser (browse, view, edit and search) is in fsh.jar itself. The plugins built in are
 # the jars FSH_PLUGINS names (separated by spaces), else the Lanterna browser plugin from the Maven
@@ -40,48 +40,29 @@ cd "$PROJECT_DIR"
 
 debug=""
 version=""
-ide_repo=""
 db_repo=""
-viewer_repo=""
-usage="usage: $0 [--debug] [--package VERSION] [--ide DIR] [--db DIR] [--viewer DIR]"
+usage="usage: $0 [--debug] [--package VERSION] [--db DIR]"
 while [ $# -gt 0 ]; do
 	case $1 in
 	--debug) debug=yes ;;
 	--package) version=${2#v}; [ -n "$version" ] || { echo "$0: --package needs a version" >&2; exit 2; }; shift ;;
-	--ide|--db|--viewer)
+	--db)
 		[ -n "$2" ] || { echo "$0: $1 needs a folder" >&2; exit 2; }
-		case $1 in
-		--ide) ide_repo=$2 ;;
-		--db) db_repo=$2 ;;
-		--viewer) viewer_repo=$2 ;;
-		esac
+		db_repo=$2
 		shift ;;
 	*) echo "$usage" >&2; exit 2 ;;
 	esac
 	shift
 done
 
-# the other programs: each one's checkout, main class, and whether it is a console program
+# the other program on the runtime: fshdb, its checkout and main class
 apps=""
-[ -n "$ide_repo" ] && apps="$apps fsh-ide"
-[ -n "$db_repo" ] && apps="$apps fshdb"
-[ -n "$viewer_repo" ] && apps="$apps parley-files-viewer"
+[ -n "$db_repo" ] && apps=fshdb
 app_repo() {
-	case $1 in
-	fsh-ide) echo "$ide_repo" ;;
-	fshdb) echo "$db_repo" ;;
-	parley-files-viewer) echo "$viewer_repo" ;;
-	esac
+	echo "$db_repo"
 }
 app_class() {
-	case $1 in
-	fsh-ide) echo us.bringardner.fsh.ide.FshIDE ;;
-	fshdb) echo us.bringardner.fshdb.Fshdb ;;
-	parley-files-viewer) echo us.bringardner.parley.files.viewer.FileSourceViewer ;;
-	esac
-}
-app_console() {
-	[ "$1" = fshdb ]
+	echo us.bringardner.fshdb.Fshdb
 }
 for a in $apps; do
 	if [ ! -f "$(app_repo $a)/pom.xml" ]; then
@@ -124,16 +105,16 @@ fi
 mvn -q package -DskipTests
 [ -f target/fsh.jar ] || { echo "$0: mvn package made no target/fsh.jar" >&2; exit 1; }
 
-# the other programs' jars, in target/apps: each one's own (its name in NAME.main), and its
-# dependencies that fsh.jar doesn't have inside
+# fshdb's jars, in target/apps: its own (its name in fshdb.main), and its dependencies that
+# fsh.jar doesn't have inside
 apps_dir=$PROJECT_DIR/target/apps
 rm -rf "$apps_dir"
 if [ -n "$apps" ]; then
 	mkdir -p "$apps_dir"
 	mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt
 	fsh_jars=$(tr ':' '\n' < target/runtime-classpath.txt | sed 's|.*/||')
-	# (not fsh itself, JavaFX and what only it needs)
-	skip='^(fsh-[0-9].*|javafx-.*|richtextfx-.*|flowless-.*|reactfx-.*|undofx-.*|wellbehavedfx-.*|bringardner-fx-widgets-.*|parley-files-fx-.*)\.jar$'
+	# (not fsh itself)
+	skip='^(fsh-[0-9].*)\.jar$'
 	for a in $apps; do
 		repo=$(cd "$(app_repo $a)" && pwd)
 		if ! (cd "$repo" && mvn -q package -DskipTests dependency:build-classpath -Dmdep.includeScope=runtime \
@@ -142,7 +123,7 @@ if [ -n "$apps" ]; then
 			exit 1
 		fi
 		# (the jar this build made: its version from Maven's record of it, as target can hold older
-		# ones, fsh-ide-1.0.0.jar beside fsh-ide-2.0.0-SNAPSHOT.jar; else the newest)
+		# ones, parley-fsh-debug-1.0.0.jar beside parley-fsh-debug-2.0.0-SNAPSHOT.jar; else the newest)
 		v=$(sed -n 's/^version=//p' "$repo/target/maven-archiver/pom.properties" 2>/dev/null | tr -d '\r')
 		main=$repo/target/$a-$v.jar
 		if [ -z "$v" ] || [ ! -f "$main" ]; then
@@ -177,7 +158,7 @@ fi
 #  jdk.zipfs           zip and jar files as file systems
 #  jdk.naming.dns      DNS through JNDI (an SSH or FTP host given by an SRV record)
 #  jdk.jdwp.agent      (--debug) the debugger
-#  (and what the other programs use, with --ide, --db or --viewer: the desktop for the windows)
+#  (and what fshdb's jars use, with --db)
 set -- target/fsh.jar
 [ -n "$apps" ] && set -- "$@" "$apps_dir"/*.jar
 modules=$("$JAVA_HOME/bin/jdeps" -q --multi-release "$major" --ignore-missing-deps --print-module-deps "$@")
@@ -238,7 +219,8 @@ cat > "$out/bin/fsh" <<'SH'
 #!/bin/sh
 # fsh with its own Java runtime (tools/build-jlink.sh). Keep the folder together; it may be moved,
 # and this file linked from a directory on PATH. The same file is the command in the installers:
-# /opt/fsh/bin/fsh (.deb, .rpm), and fsh.app/Contents/app/fsh (macOS), next to fsh.jar.
+# /opt/fsh/bin/fsh (.deb, .rpm: /usr/bin/fsh is a link to it) and /usr/local/lib/parley/fsh/bin/fsh
+# (the macOS .pkg: /usr/local/bin/fsh is a link to it).
 # FSH_DEBUG=PORT listens for a debugger on localhost:PORT (a runtime built with --debug).
 self=$0
 while [ -L "$self" ]; do
@@ -249,14 +231,9 @@ while [ -L "$self" ]; do
 	esac
 done
 here=$(cd "$(dirname "$self")" && pwd)
-# (the jar and libraries: beside this in an app, else in ../lib; the runtime beside those)
-if [ -f "$here/fsh.jar" ]; then
-	lib=$here
-else
-	lib=$(cd "$here/../lib" && pwd)
-fi
+# (the jar and libraries in ../lib; the runtime beside it)
+lib=$(cd "$here/../lib" && pwd)
 java=$lib/../runtime/bin/java
-[ -x "$java" ] || java=$lib/../runtime/Contents/Home/bin/java
 
 # (the plugins built in: on the class path after fsh)
 cp=$lib/fsh.jar
@@ -288,22 +265,18 @@ sed "s|@NATIVE_ACCESS@|$native_access|" "$out/bin/fsh" > "$out/bin/fsh.tmp"
 mv "$out/bin/fsh.tmp" "$out/bin/fsh"
 chmod 755 "$out/bin/fsh"
 
-# The other programs: their jars in lib/apps, and a command for each in bin, found the same way as
-# bin/fsh (beside fsh.jar in an app, else in ../lib). Each one's class path: its jar, fsh.jar,
-# lib/apps and the plugins built in.
+# fshdb: its jars in lib/apps, and its command in bin, found the same way as bin/fsh. Its class
+# path: its jar, fsh.jar, lib/apps and the plugins built in.
 if [ -n "$apps" ]; then
 	mkdir -p "$out/lib/apps"
 	cp -p "$apps_dir"/*.jar "$out/lib/apps/"
 fi
 for a in $apps; do
 	main_jar=$(cat "$apps_dir/$a.main")
-	headless=""
-	app_console $a && headless=-Djava.awt.headless=true
 	cat > "$out/bin/$a" <<'SH'
 #!/bin/sh
-# @NAME@ on fsh's Java runtime (tools/build-jlink.sh --@OPTION@). Keep the folder together; this
-# file may be linked from a directory on PATH. The installers' command: /opt/fsh/bin/@NAME@ (.deb,
-# .rpm) and fsh.app/Contents/app/@NAME@ (macOS), next to fsh.jar.
+# @NAME@ on fsh's Java runtime (tools/build-jlink.sh --db). Keep the folder together; this file
+# may be linked from a directory on PATH, as the installers link it, beside fsh.
 self=$0
 while [ -L "$self" ]; do
 	link=$(readlink "$self")
@@ -313,41 +286,24 @@ while [ -L "$self" ]; do
 	esac
 done
 here=$(cd "$(dirname "$self")" && pwd)
-if [ -f "$here/fsh.jar" ]; then
-	lib=$here
-else
-	lib=$(cd "$here/../lib" && pwd)
-fi
+lib=$(cd "$here/../lib" && pwd)
 java=$lib/../runtime/bin/java
-[ -x "$java" ] || java=$lib/../runtime/Contents/Home/bin/java
 
 cp=$lib/apps/@MAIN_JAR@:$lib/fsh.jar:$lib/apps/*
 [ -d "$lib/plugins" ] && cp="$cp:$lib/plugins/*"
 set -- -cp "$cp" @CLASS@ "$@"
-# (macOS: the Dock shows the program's name, and fsh.app's icon when it is there)
-if [ "$(uname -s)" = Darwin ]; then
-	set -- -Xdock:name=@NAME@ "$@"
-	[ -f "$lib/../Resources/fsh.icns" ] && set -- "-Xdock:icon=$lib/../Resources/fsh.icns" "$@"
-fi
-# (bin/fsh's options; a window program is not headless)
+# (bin/fsh's options: a console program, never a window)
 set -- @NATIVE_ACCESS@ "-Djava.library.path=$lib" -Xss16m \
 	-XX:+UseSerialGC -Xmn16m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 \
-	-XX:-MaxFDLimit @HEADLESS@ "$@"
-SH
-	if app_console $a; then
-		# (a console program starts programs too: through fshexec -j, as bin/fsh)
-		cat >> "$out/bin/$a" <<'SH'
+	-XX:-MaxFDLimit -Djava.awt.headless=true "$@"
+# (it starts programs too: through fshexec -j, as bin/fsh)
 if [ -x "$lib/fshexec" ]; then
 	exec "$lib/fshexec" -j "$java" "$@"
 fi
+exec "$java" "$@"
 SH
-	fi
-	echo 'exec "$java" "$@"' >> "$out/bin/$a"
-	option=ide
-	[ $a = fshdb ] && option=db
-	[ $a = parley-files-viewer ] && option=viewer
-	sed -e "s|@NAME@|$a|g" -e "s|@OPTION@|$option|" -e "s|@MAIN_JAR@|$main_jar|" -e "s|@CLASS@|$(app_class $a)|" \
-		-e "s|@NATIVE_ACCESS@|$native_access|" -e "s|@HEADLESS@|$headless|" "$out/bin/$a" > "$out/bin/$a.tmp"
+	sed -e "s|@NAME@|$a|g" -e "s|@MAIN_JAR@|$main_jar|" -e "s|@CLASS@|$(app_class $a)|" \
+		-e "s|@NATIVE_ACCESS@|$native_access|" "$out/bin/$a" > "$out/bin/$a.tmp"
 	mv "$out/bin/$a.tmp" "$out/bin/$a"
 	chmod 755 "$out/bin/$a"
 done
@@ -372,8 +328,8 @@ if [ "$("$out/bin/fsh" -c 'echo $((6 * 7))')" != 42 ]; then
 	echo "$0: $out/bin/fsh -c 'echo \$((6 * 7))' did not print 42" >&2
 	exit 1
 fi
-# and the other programs: java --dry-run loads each one's main class (and what it needs to start)
-# from its class path, without running it (no window opens)
+# and fshdb: java --dry-run loads its main class (and what it needs to start) from its class
+# path, without running it
 for a in $apps; do
 	cp=$out/lib/apps/$(cat "$apps_dir/$a.main"):$out/lib/fsh.jar:$out/lib/apps/*
 	[ -d "$out/lib/plugins" ] && cp="$cp:$out/lib/plugins/*"
@@ -398,6 +354,12 @@ Run bin/fsh. Everything it needs is in this folder; keep it together. Put bin on
 or link bin/fsh from a directory that is.
 
 TXT
+	if [ -n "$apps" ]; then
+		cat >> "$dist/$name/README.txt" <<'TXT'
+bin/fshdb is the console debugger for shell scripts, on the same Java runtime.
+
+TXT
+	fi
 	if [ "$platform" = macos ]; then
 		cat >> "$dist/$name/README.txt" <<'TXT'
 macOS marks a download as quarantined, and these files are not notarized. Once, after

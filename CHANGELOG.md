@@ -2,6 +2,33 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-13: fshdb builds against parley-fsh-debug)
+
+- `tools/build-installers-with-plugins.sh` and `tools/build-msi-with-plugins.ps1` install
+  parley-fsh-debug before building fshdb (`--debug-repo`, `-DebugRepo`), instead of
+  parley-fsh-studio and fsh-loupe: fshdb no longer builds against Fsh Studio. `--ide-repo`,
+  `--loupe-repo`, `-IdeRepo` and `-LoupeRepo` are gone, and the release workflow checks out
+  parley-fsh-debug in their place.
+
+### Changed (2026-11-12: the installers install commands, not applications)
+
+- fsh and fshdb are commands, not desktop applications, on every platform. The installers no
+  longer carry fsh-ide and parley-files-viewer (each has an installer of its own, with its own
+  Java runtime) and make no application, Start menu entry or application-menu entry:
+  - **macOS**: a `.pkg` in place of the `.dmg` (`tools/build-macos-pkg.sh`, which replaces
+    `tools/build-jpackage.sh`): `/usr/local/lib/parley/fsh`, with `fsh` and `fshdb` linked from
+    `/usr/local/bin`, and `/usr/local/bin/fsh` added to `/etc/shells`. No `fsh.app`, no `Parley`
+    folder in Applications.
+  - **Linux** (`.deb`, `.rpm`): `/opt/fsh`, `/usr/bin/fsh` and `/usr/bin/fshdb` as before; no
+    menu entries, icons or Parley menu folder.
+  - **Windows** (`.msi`): `fsh.exe` and `fshdb.exe`; no Start menu folder. The installer now adds
+    its folder to the system's `PATH` (it did not change `PATH` before).
+- `tools/build-jlink.sh`: `--ide` and `--viewer` are gone (`--db` stays);
+  `tools/build-installers-with-plugins.sh`: `--viewer-repo`, `--no-ide` and `--no-viewer` are gone
+  (`--ide-repo` stays: fshdb builds against fsh-ide), and the macOS type is `pkg`;
+  `tools\build-msi.ps1` and `tools\build-msi-with-plugins.ps1`: `-ViewerRepo`, `-NoIde`,
+  `-NoViewer` and `-MenuGroup` are gone.
+
 ### Changed (2026-11-12: the native image's settings redone, To-Do 19.5)
 
 - **Native image**: its settings no longer name fsh's or Parley's classes and files, so a rename can't
@@ -162,7 +189,7 @@ ativekeyboard.dll`, rebuilt
 
 ## 1.1.0 (unreleased)
 
-Needs swing-widgets 1.1.0.
+Needs swing-widgets 2.0.0.
 
 ### Changed
 

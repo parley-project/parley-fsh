@@ -13,7 +13,7 @@
 package us.bringardner.fsh;
 
 /**
- * Debugger controls a front end (such as fsh-ide) drives. Implemented by {@link DebugContext}.
+ * Debugger controls a front end (such as Fsh Studio) drives. Implemented by {@link DebugContext}.
  * Was DebugControlPanel.DebugController in the IDE package; it lives here so fsh
  * doesn't depend on the IDE.
  */
