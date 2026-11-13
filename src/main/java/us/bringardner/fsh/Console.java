@@ -68,6 +68,13 @@ import us.bringardner.fsh.commands.Fg;
 import us.bringardner.fsh.commands.Find;
 import us.bringardner.fsh.commands.Getopts;
 import us.bringardner.fsh.commands.Grep;
+import us.bringardner.fsh.commands.Tee;
+import us.bringardner.fsh.commands.Tr;
+import us.bringardner.fsh.commands.Cut;
+import us.bringardner.fsh.commands.Uniq;
+import us.bringardner.fsh.commands.Sort;
+import us.bringardner.fsh.commands.Tail;
+import us.bringardner.fsh.commands.Head;
 import us.bringardner.fsh.commands.Hash;
 import us.bringardner.fsh.commands.Help;
 import us.bringardner.fsh.commands.History;
@@ -730,6 +737,13 @@ delimiter
 			registerCommand(new Cat());
 			registerCommand(new Grep());
 			registerCommand(new Sed());
+			registerCommand(new Tee());
+			registerCommand(new Tr());
+			registerCommand(new Cut());
+			registerCommand(new Uniq());
+			registerCommand(new Sort());
+			registerCommand(new Tail());
+			registerCommand(new Head());
 		}
 		
 		// (not where fsh runs inside another program, whose signals are that program's)
