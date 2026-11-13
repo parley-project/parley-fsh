@@ -319,6 +319,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (connections included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in fsh's own full-screen terminal browser, or in one a plugin provides (a window when there is a display). |
 | `builtin` | `builtin name [args]` | Run the shell builtin name (not a function or program with that name). |
 | `caller` | `caller [n]` | In a function, print where it was called from: with n, "line function file" for the call n frames up (0 is the current function's caller); without, "line file". |
+| `cat` | `cat [-AbeEnstTuv] [FILE ...]` | Concatenate FILEs to standard output. |
 | `cd` | `cd [-L\|-P] [dir]` | Change the current directory (to $HOME without dir). |
 | `command` | `command [-v\|-V] name [args]` | Run name, skipping functions. |
 | `compgen` | `compgen [-V varname] [-abcdefgjksuv] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [word]` | The completions of word, one a line, as complete's options say (see complete). |
@@ -339,6 +340,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `fc` | `fc [-e ename] [-lnr] [first] [last] or fc -s [pat=rep] [command]` | List (-l, -n without numbers, -r in reverse) or edit and run again the commands from first to last of the history (a number, a negative offset, or the start of a command). |
 | `fg` | `fg [jobspec]` | Resume the job jobspec in the foreground and make it the current job. |
 | `getopts` | `getopts optstring name [arg ...]` | Read the next option from the positional parameters (or the args) into name, its argument (for a letter followed by : in optstring) into OPTARG, and the index of the next parameter into OPTIND. |
+| `grep` | `grep [OPTION]... PATTERNS [FILE ...]` | Print the lines of each FILE (or standard input) that match PATTERNS. |
 | `hash` | `hash [-lr] [-p pathname] [-dt] [name ...]` | Remember or display program locations. |
 | `help` | `help [-dms] [pattern ...]` | Show what the builtins matching pattern (a glob, or the start of a name) do; with no pattern, list them. |
 | `history` | `history [n]` | With no options, display the history list with line numbers. |
@@ -358,6 +360,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `readonly` | `readonly [-aAf] [name[=value] ...] or readonly -p` | Make each name readonly, after setting it to value if one is given (-a an indexed array, -A an associative one, -f functions). |
 | `return` | `return [n]` | End a function or a sourced file, with status n (the last command's status without n). |
 | `search` | `search [-i] [-a] [-l] [-n NAME] [-t TEXT] [DIR ...]` | List the files below each DIR (default .) whose name matches the glob NAME and that contain TEXT; with neither, every file and directory. |
+| `sed` | `sed [OPTION]... {SCRIPT-ONLY-IF-NO-OTHER-SCRIPT} [FILE ...]` | Edit a stream: for each line of FILE (or standard input) run the SCRIPT and print the result. |
 | `set` | `set [-abCefhmnuvx] [argument...]` | If no options or arguments are supplied, set displays the names and values of all shell variables and functions, sorted according to the current locale, in a format that may be reused as input for setting or resetting the currently-set variables. |
 | `shift` | `shift [n]` | The positional parameters shall be shifted. |
 | `shopt` | `shopt [-s\|-u] [-pq] [optname ...]` | Set (-s) or unset (-u) shell options, or show them (-p as shopt commands). |
