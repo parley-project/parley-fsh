@@ -33,44 +33,82 @@ import sun.misc.Signal;
 import us.bringardner.fsh.ShellContext.LoopControl;
 import us.bringardner.fsh.commands.Alias;
 import us.bringardner.fsh.commands.Bg;
+import us.bringardner.fsh.commands.Bind;
+import us.bringardner.fsh.commands.BracketTest;
+import us.bringardner.fsh.commands.Browse;
+import us.bringardner.fsh.commands.Builtin;
+import us.bringardner.fsh.commands.Caller;
+import us.bringardner.fsh.commands.Cat;
 import us.bringardner.fsh.commands.Cd;
 import us.bringardner.fsh.commands.Clear;
+import us.bringardner.fsh.commands.Colon;
+import us.bringardner.fsh.commands.CommandCmd;
+import us.bringardner.fsh.commands.Compgen;
+import us.bringardner.fsh.commands.Complete;
+import us.bringardner.fsh.commands.Compopt;
 import us.bringardner.fsh.commands.Connect;
 import us.bringardner.fsh.commands.Cp;
+import us.bringardner.fsh.commands.Cred;
+import us.bringardner.fsh.commands.CredentialPrompts;
 import us.bringardner.fsh.commands.Dirs;
 import us.bringardner.fsh.commands.Disconnect;
 import us.bringardner.fsh.commands.Disown;
+import us.bringardner.fsh.commands.Dot;
 import us.bringardner.fsh.commands.Echo;
+import us.bringardner.fsh.commands.Edit;
+import us.bringardner.fsh.commands.Enable;
 import us.bringardner.fsh.commands.Eval;
 import us.bringardner.fsh.commands.Exec;
 import us.bringardner.fsh.commands.Exit;
 import us.bringardner.fsh.commands.Export;
 import us.bringardner.fsh.commands.Expr;
+import us.bringardner.fsh.commands.False;
+import us.bringardner.fsh.commands.Fc;
 import us.bringardner.fsh.commands.Fg;
 import us.bringardner.fsh.commands.Find;
+import us.bringardner.fsh.commands.Getopts;
+import us.bringardner.fsh.commands.Grep;
+import us.bringardner.fsh.commands.Hash;
 import us.bringardner.fsh.commands.Help;
 import us.bringardner.fsh.commands.History;
 import us.bringardner.fsh.commands.Jobs;
 import us.bringardner.fsh.commands.Kill;
 import us.bringardner.fsh.commands.Let;
 import us.bringardner.fsh.commands.Ln;
+import us.bringardner.fsh.commands.Logout;
 import us.bringardner.fsh.commands.Ls;
+import us.bringardner.fsh.commands.Mapfile;
 import us.bringardner.fsh.commands.Mkdir;
 import us.bringardner.fsh.commands.Mv;
+import us.bringardner.fsh.commands.PluginsCommand;
 import us.bringardner.fsh.commands.Popd;
+import us.bringardner.fsh.commands.Printf;
 import us.bringardner.fsh.commands.Pushd;
 import us.bringardner.fsh.commands.Pwd;
 import us.bringardner.fsh.commands.Read;
+import us.bringardner.fsh.commands.Readarray;
+import us.bringardner.fsh.commands.Readonly;
 import us.bringardner.fsh.commands.Return;
 import us.bringardner.fsh.commands.Rm;
+import us.bringardner.fsh.commands.Search;
+import us.bringardner.fsh.commands.Sed;
 import us.bringardner.fsh.commands.Set;
 import us.bringardner.fsh.commands.Shift;
+import us.bringardner.fsh.commands.Shopt;
 import us.bringardner.fsh.commands.Sleep;
 import us.bringardner.fsh.commands.Source;
+import us.bringardner.fsh.commands.Suspend;
+import us.bringardner.fsh.commands.Test;
+import us.bringardner.fsh.commands.Times;
 import us.bringardner.fsh.commands.Touch;
 import us.bringardner.fsh.commands.Trap;
+import us.bringardner.fsh.commands.True;
+import us.bringardner.fsh.commands.Type;
+import us.bringardner.fsh.commands.Ulimit;
+import us.bringardner.fsh.commands.Umask;
 import us.bringardner.fsh.commands.Unalias;
 import us.bringardner.fsh.commands.Unset;
+import us.bringardner.fsh.commands.View;
 import us.bringardner.fsh.commands.Wait;
 import us.bringardner.fsh.commands.Wc;
 import us.bringardner.fsh.job.ForgroundJob;
@@ -591,17 +629,18 @@ delimiter
 		commands = new TreeMap<>();
 		
 		registerCommand(new Alias());
-		registerCommand(new us.bringardner.fsh.commands.Logout());
-		registerCommand(new us.bringardner.fsh.commands.Fc());
+		registerCommand(new Logout());
+		registerCommand(new Fc());
 
 		registerCommand(new Bg());
-		registerCommand(new us.bringardner.fsh.commands.Bind());
+		registerCommand(new Bind());
 
 		registerCommand(new Clear());
+		
 		registerCommand(new Cd());
 		registerCommand(new Cp());
 		registerCommand(new Connect());
-		registerCommand(new us.bringardner.fsh.commands.Cred());
+		registerCommand(new Cred());
 		
 		registerCommand(new Dirs());
 		registerCommand(new Disown());
@@ -617,6 +656,7 @@ delimiter
 		registerCommand(new Find());
 		
 		registerCommand(new Help());
+	
 		registerCommand(new History());
 
 		registerCommand(new Jobs());
@@ -638,6 +678,7 @@ delimiter
 		registerCommand(new Rm());
 		registerCommand(new Read());
 
+		
 		registerCommand(new Set());
 		registerCommand(new Shift());
 		registerCommand(new Sleep());
@@ -648,43 +689,49 @@ delimiter
 		registerCommand(new Trap());
 
 		registerCommand(new Unalias());
-		registerCommand(new us.bringardner.fsh.commands.True());
-		registerCommand(new us.bringardner.fsh.commands.False());
-		registerCommand(new us.bringardner.fsh.commands.Colon());
-		registerCommand(new us.bringardner.fsh.commands.Test());
-		registerCommand(new us.bringardner.fsh.commands.Readonly());
-		registerCommand(new us.bringardner.fsh.commands.Printf());
-		registerCommand(new us.bringardner.fsh.commands.Getopts());
-		registerCommand(new us.bringardner.fsh.commands.Mapfile());
-		registerCommand(new us.bringardner.fsh.commands.Readarray());
-		registerCommand(new us.bringardner.fsh.commands.Shopt());
-		registerCommand(new us.bringardner.fsh.commands.Type());
-		registerCommand(new us.bringardner.fsh.commands.Hash());
-		registerCommand(new us.bringardner.fsh.commands.Dot());
-		registerCommand(new us.bringardner.fsh.commands.Builtin());
-		registerCommand(new us.bringardner.fsh.commands.CommandCmd());
-		registerCommand(new us.bringardner.fsh.commands.Caller());
-		registerCommand(new us.bringardner.fsh.commands.BracketTest());
+		registerCommand(new True());
+		registerCommand(new False());
+		registerCommand(new Colon());
+		registerCommand(new Test());
+		registerCommand(new Readonly());
+		registerCommand(new Printf());
+		registerCommand(new Getopts());
+		registerCommand(new Mapfile());
+		registerCommand(new Readarray());
+		registerCommand(new Shopt());
+		registerCommand(new Type());
+		registerCommand(new Hash());
+		registerCommand(new Dot());
+		registerCommand(new Builtin());
+		registerCommand(new CommandCmd());
+		registerCommand(new Caller());
+		registerCommand(new BracketTest());
 		registerCommand(new Disconnect());
 		registerCommand(new Unset());
 
 		registerCommand(new Wait());
-		registerCommand(new us.bringardner.fsh.commands.Compgen());
-		registerCommand(new us.bringardner.fsh.commands.Complete());
-		registerCommand(new us.bringardner.fsh.commands.Times());
-		registerCommand(new us.bringardner.fsh.commands.Suspend());
-		registerCommand(new us.bringardner.fsh.commands.Compopt());
-		registerCommand(new us.bringardner.fsh.commands.Enable());
-		registerCommand(new us.bringardner.fsh.commands.Umask());
-		registerCommand(new us.bringardner.fsh.commands.Ulimit());
+		registerCommand(new Compgen());
+		registerCommand(new Complete());
+		registerCommand(new Times());
+		registerCommand(new Suspend());
+		registerCommand(new Compopt());
+		registerCommand(new Enable());
+		registerCommand(new Umask());
+		registerCommand(new Ulimit());
 		registerCommand(new Wc());
-		registerCommand(new us.bringardner.fsh.commands.PluginsCommand());
-		registerCommand(new us.bringardner.fsh.commands.Browse());
+		registerCommand(new PluginsCommand());
+		registerCommand(new Browse());
 		// (the terminal browser's commands, built in with it: parley-files-viewer-tui)
-		registerCommand(new us.bringardner.fsh.commands.View());
-		registerCommand(new us.bringardner.fsh.commands.Edit());
-		registerCommand(new us.bringardner.fsh.commands.Search());
+		registerCommand(new View());
+		registerCommand(new Edit());
+		registerCommand(new Search());
 
+		if( FileSourceFactory.isWindows()) {
+			registerCommand(new Cat());
+			registerCommand(new Grep());
+			registerCommand(new Sed());
+		}
+		
 		// (not where fsh runs inside another program, whose signals are that program's)
 		if( !"false".equals(System.getProperty(PROP_OS_SIGNALS)) ) {
 			registerSignals();
@@ -2598,7 +2645,7 @@ delimiter
 			if( !file.exists() && inputrc == null ) {
 				file = new java.io.File("/etc/inputrc");
 			}
-			us.bringardner.fsh.commands.Bind.readFile(file);
+			Bind.readFile(file);
 			applyEditingMode();
 		}
 		started = running = true;
@@ -3518,7 +3565,7 @@ delimiter
 		if( ignoreSpace && (typed.startsWith(" ") || typed.startsWith("\t"))) {
 			return;
 		}
-		if( us.bringardner.fsh.commands.CredentialPrompts.holdsPlainSecret(typed)) {
+		if( CredentialPrompts.holdsPlainSecret(typed)) {
 			// a password typed on the command line would be saved in the history file
 			if( !warnedPlainSecret ) {
 				warnedPlainSecret = true;
@@ -4923,7 +4970,7 @@ delimiter
 			}
 		};
 		meta.accept(ConsoleMetaSignal.Exit, "EXIT");
-		Map<Integer,String> names = us.bringardner.fsh.commands.Trap.getLocalSignals();
+		Map<Integer,String> names = Trap.getLocalSignals();
 		for(Map.Entry<Integer, List<ConsoleSignalHandler>> e : osTraps().entrySet()) {
 			if( !e.getValue().isEmpty()) {
 				String n = names.get(e.getKey());
