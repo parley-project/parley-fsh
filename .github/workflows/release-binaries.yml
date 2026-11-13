@@ -10,7 +10,7 @@
 # built in: browse, view, edit, search, from parley-files-viewer-tui), and fshdb on the same
 # runtime (tools/build-installers-with-plugins.sh on macOS and Linux,
 # tools/build-msi-with-plugins.ps1 on Windows). No desktop application, menu entry or shortcut:
-# the window programs, fsh-ide and parley-files-viewer, have installers of their own
+# the window programs, Fsh Studio and parley-files-viewer, have installers of their own
 # (parley-build's packaging). Run by hand (Actions > release-binaries > Run workflow) it builds
 # the same and keeps them as workflow artifacts; with a tag it also attaches them to that release.
 # VERSION is the tag's (v2.0.0: 2.0.0), else the pom's without -SNAPSHOT.
@@ -217,7 +217,7 @@ jobs:
           # commands only: nothing in the desktop's application menu
           test -z "$(ls /usr/share/applications/parley-*.desktop 2>/dev/null)"
           test ! -e /etc/xdg/menus/applications-merged/parley.menu
-          test ! -e /usr/bin/fsh-ide
+          test ! -e /usr/bin/fshstudio
           # fshdb is there, and the Lanterna browser plugin loaded
           test -x /usr/bin/fshdb || { echo "no /usr/bin/fshdb"; exit 1; }
           /usr/bin/fshdb --help 2>&1 | grep -q 'Usage: fshdb'
@@ -258,7 +258,7 @@ jobs:
           $path = [Environment]::GetEnvironmentVariable('Path', 'Machine')
           if (($path -split ';' | ForEach-Object { $_.TrimEnd('\') }) -notcontains 'C:\Program Files\fsh') { throw "C:\Program Files\fsh is not on the system's PATH: $path" }
           if (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Parley") { throw 'the installer made a Start menu folder' }
-          foreach ($exe in 'fsh-ide', 'parley-files-viewer') {
+          foreach ($exe in 'fshstudio', 'Fsh Studio', 'parley-files-viewer') {
             if (Test-Path "C:\Program Files\fsh\$exe.exe") { throw "$exe.exe is installed" }
           }
           # fshdb is there, and the Lanterna browser plugin loaded

@@ -40,7 +40,7 @@ you build**, using the library the same way your own application would. It was c
 - **An interactive shell** with a bash-style line editor (emacs keys, history search,
   completion, the "Display all N possibilities?" pager).
 - **Embeddable.** It is a Java library: a program can run scripts in it, and the
-  [fsh-ide](https://github.com/parley-project/parley-fsh-ide) script editor and debugger use its
+  [Fsh Studio](https://github.com/parley-project/parley-fsh-ide) script editor and debugger use its
   debugger hooks.
 
 ## Why a shell in Java
@@ -51,7 +51,7 @@ you build**, using the library the same way your own application would. It was c
   `sftp`, `lftp`) or a kernel mount; fsh does it inside the shell.
 - **Running inside Java programs.** An application can embed fsh as its scripting language,
   hand it its own file systems and stream objects, and debug scripts step by step, which the
-  fsh-ide project does.
+  Fsh Studio project does.
 - **Java's libraries.** FTP, SFTP and JDBC come from existing Java libraries, and new file
   systems are Parley plug-ins rather than shell code.
 
@@ -199,7 +199,7 @@ nothing else needs to be installed, and each file has a `.sha256` beside it:
 fsh is a command, not a desktop application: the installers put commands on `PATH` and nothing
 in the Applications folder, the Start menu or the desktop's application menu. Each carries,
 beside fsh and on the same Java runtime, fshdb (a debugger for shell scripts that runs in a
-terminal). The window programs, fsh-ide (an editor and debugger for shell scripts) and
+terminal). The window programs, Fsh Studio (an editor and debugger for shell scripts) and
 parley-files-viewer (a file browser for any file system), have installers of their own.
 
 - **macOS:** open the `.pkg` (it isn't notarized: right-click it, Open), or
@@ -349,7 +349,7 @@ fsh-loupe for fsh-ide, to the local Maven repository first), fshdb goes in the s
 same runtime: its jars in `lib/apps` and its command, `bin/fshdb`. The installers made from it
 carry it too. They install commands only: on macOS `/usr/local/lib/parley/fsh` with links in
 `/usr/local/bin`, on Linux `/opt/fsh` with links in `/usr/bin`, on Windows `fsh.exe` and
-`fshdb.exe` in a folder the installer adds to `PATH`. fsh-ide and parley-files-viewer are not
+`fshdb.exe` in a folder the installer adds to `PATH`. Fsh Studio and parley-files-viewer are not
 built in: they are desktop applications with installers of their own, each with its own Java
 runtime.
 
@@ -489,12 +489,12 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 ## The IDE
 
 The script editor and debugger is a separate project,
-[fsh-ide](https://github.com/parley-project/parley-fsh-ide). fsh exposes the debugger
+[Fsh Studio](https://github.com/parley-project/parley-fsh-ide). fsh exposes the debugger
 hooks it uses (`DebugContext`, `DebugController`).
 
 `fsh --wait-for-debugger [address:]port script [arguments]` starts the script as `fsh script`
 does (its options, startup file, input and output), then waits at that port for a debugger to
-attach before the script's first command; fsh-ide's Debug Remote attaches to it. The debugger
+attach before the script's first command; Fsh Studio's Debug Remote attaches to it. The debugger
 is [fsh-loupe](https://github.com/parley-project/parley-fsh-loupe)'s, which must be on fsh's
 class path or in a plugin folder (the installers carry it). A port alone is reachable from
 this machine only; `address:port` (`0.0.0.0:port` for every address) lets another machine
