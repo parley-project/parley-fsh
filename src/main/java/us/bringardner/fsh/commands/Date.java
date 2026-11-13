@@ -207,7 +207,8 @@ public class Date extends ShellCommand{
 			case 'U': s = pad((t.getDayOfYear()+6-(t.getDayOfWeek().getValue()%7))/7, 2, '0'); break;
 			case 'V': s = pad(t.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR), 2, '0'); break;
 			case 'G': s = Integer.toString(t.get(IsoFields.WEEK_BASED_YEAR)); break;
-			case 'Z': s = t.getZone().getDisplayName(TextStyle.SHORT, Locale.ENGLISH); break;
+			// (zzz is EST or EDT as the date is; the zone's own short name would be ET)
+			case 'Z': s = t.getOffset().getTotalSeconds() == 0 && t.getZone() instanceof ZoneOffset ? "UTC" : java.time.format.DateTimeFormatter.ofPattern("zzz", Locale.ENGLISH).format(t); break;
 			case 'z': {
 				int secs = t.getOffset().getTotalSeconds();
 				String sign = secs < 0 ? "-" : "+";
