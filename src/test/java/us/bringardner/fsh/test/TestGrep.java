@@ -26,6 +26,8 @@ public class TestGrep {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
+		// these commands are built in on Windows only; elsewhere the system has its own
+		org.junit.jupiter.api.Assumptions.assumeTrue(FileSourceFactory.isWindows(), "the built in commands are Windows only");
 		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		console = new Console();
 	}

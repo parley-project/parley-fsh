@@ -37,6 +37,8 @@ public class TestMoreCommands {
 
 	@BeforeAll
 	public static void beforeAll() throws IOException {
+		// these commands are built in on Windows only; elsewhere the system has its own
+		org.junit.jupiter.api.Assumptions.assumeTrue(FileSourceFactory.isWindows(), "the built in commands are Windows only");
 		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		console = new Console();
 
@@ -59,7 +61,9 @@ public class TestMoreCommands {
 
 	@AfterAll
 	public static void afterAll() {
-		server.stop(0);
+		if( server != null ) {
+			server.stop(0);
+		}
 	}
 
 	private static void reply(com.sun.net.httpserver.HttpExchange ex, int code, String body) throws IOException {
@@ -836,7 +840,6 @@ public class TestMoreCommands {
 	/** the registry makes a command with its constructor without arguments: each name has to come out as its own command */
 	@Test
 	public void testEveryCommandIsABuiltin() throws IOException {
-		org.junit.jupiter.api.Assumptions.assumeTrue(FileSourceFactory.isWindows());
 		String [] names = {"cat", "grep", "sed", "head", "tail", "sort", "uniq", "cut", "tr", "tee",
 				"tac", "rev", "nl", "paste", "fold", "comm", "join", "cmp", "diff", "basename", "dirname", "realpath", "readlink",
 				"stat", "du", "df", "file", "split", "truncate", "which", "chmod", "env", "printenv", "date", "seq", "yes", "whoami",
