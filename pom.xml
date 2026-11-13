@@ -336,110 +336,9 @@
 						</manifest>
 					</archive>
 				</configuration>
-			</plugin>
-			<!-- target/fsh.jar: fsh and everything it needs in one runnable jar (java -jar target/fsh.jar).
-			     Built by Maven so it always matches the pom, including the keychain profile; the
-			     META-INF/services files of the libraries are merged, so every factory and credential
-			     store is found. (An IDE's "export runnable jar" packs whatever its classpath held.) -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.6.0</version>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-						<configuration>
-							<outputFile>${project.build.directory}/fsh.jar</outputFile>
-							<createDependencyReducedPom>false</createDependencyReducedPom>
-							<transformers>
-								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<mainClass>us.bringardner.fsh.Console</mainClass>
-								</transformer>
-							</transformers>
-							<filters>
-								<filter>
-									<artifact>*:*</artifact>
-									<excludes>
-										<exclude>META-INF/*.SF</exclude>
-										<exclude>META-INF/*.DSA</exclude>
-										<exclude>META-INF/*.RSA</exclude>
-										<exclude>META-INF/versions/*/module-info.class</exclude>
-										<exclude>module-info.class</exclude>
-									</excludes>
-								</filter>
-							</filters>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<!-- fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of a platform
-			     (compile.sh in linux/ or macos/, compile.cmd in windows/), which parley-launcher unpacks
-			     for fsh. This machine's is made only where they have been built (a native-PLATFORM
-			     profile). The others' are made from the files handed in as natives/PLATFORM/
-			     (fsh.natives.dir), which parley-build's workflow builds on each platform:
-			     tools/fetch-natives.sh fetches them before a release is deployed, so that the one
-			     deploy has every platform's native jar. -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.3.1</version>
-				<executions>
-					<execution>
-						<id>native-files</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${project.build.directory}/native/${fsh.platform}</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${basedir}/${fsh.native.dir}</directory>
-									<includes>
-										<include>libnativekeyboard.so</include>
-										<include>libnativekeyboard.dylib</include>
-										<include>nativekeyboard.dll</include>
-										<include>fshexec</include>
-									</includes>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-					<!-- the other platforms' (built on those platforms, by parley-build's workflow, and put
-					     in natives/PLATFORM/), so one deploy carries every platform's native jar. They
-					     come after this machine's own and replace them: a deploy is all from one build -->
-					<execution>
-						<id>handed-in-native-files</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${project.build.directory}/native</outputDirectory>
-							<overwrite>true</overwrite>
-							<resources>
-								<resource>
-									<directory>${fsh.natives.dir}</directory>
-									<includes>
-										<include>*/libnativekeyboard.so</include>
-										<include>*/libnativekeyboard.dylib</include>
-										<include>*/nativekeyboard.dll</include>
-										<include>*/fshexec</include>
-									</includes>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<version>3.4.2</version>
+				<!-- fsh-VERSION-PLATFORM.jar, attached: the native jars, from the files the resources
+				     plugin below puts in target/native/PLATFORM (see there). In this declaration, not one
+				     of their own: a plugin is declared once in a build -->
 				<executions>
 					<!-- (one for each platform; only those whose files are in target/native/PLATFORM are made:
 					     this machine's own, when built, and those handed in) -->
@@ -541,6 +440,105 @@
 								</manifest>
 								<manifestEntries combine.self="override"/>
 							</archive>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- target/fsh.jar: fsh and everything it needs in one runnable jar (java -jar target/fsh.jar).
+			     Built by Maven so it always matches the pom, including the keychain profile; the
+			     META-INF/services files of the libraries are merged, so every factory and credential
+			     store is found. (An IDE's "export runnable jar" packs whatever its classpath held.) -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.6.0</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<outputFile>${project.build.directory}/fsh.jar</outputFile>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<mainClass>us.bringardner.fsh.Console</mainClass>
+								</transformer>
+							</transformers>
+							<filters>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/*.SF</exclude>
+										<exclude>META-INF/*.DSA</exclude>
+										<exclude>META-INF/*.RSA</exclude>
+										<exclude>META-INF/versions/*/module-info.class</exclude>
+										<exclude>module-info.class</exclude>
+									</excludes>
+								</filter>
+							</filters>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of a platform
+			     (compile.sh in linux/ or macos/, compile.cmd in windows/), which parley-launcher unpacks
+			     for fsh. This machine's is made only where they have been built (a native-PLATFORM
+			     profile). The others' are made from the files handed in as natives/PLATFORM/
+			     (fsh.natives.dir), which parley-build's workflow builds on each platform:
+			     tools/fetch-natives.sh fetches them before a release is deployed, so that the one
+			     deploy has every platform's native jar. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.3.1</version>
+				<executions>
+					<execution>
+						<id>native-files</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/native/${fsh.platform}</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${basedir}/${fsh.native.dir}</directory>
+									<includes>
+										<include>libnativekeyboard.so</include>
+										<include>libnativekeyboard.dylib</include>
+										<include>nativekeyboard.dll</include>
+										<include>fshexec</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+					<!-- the other platforms' (built on those platforms, by parley-build's workflow, and put
+					     in natives/PLATFORM/), so one deploy carries every platform's native jar. They
+					     come after this machine's own and replace them: a deploy is all from one build -->
+					<execution>
+						<id>handed-in-native-files</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/native</outputDirectory>
+							<overwrite>true</overwrite>
+							<resources>
+								<resource>
+									<directory>${fsh.natives.dir}</directory>
+									<includes>
+										<include>*/libnativekeyboard.so</include>
+										<include>*/libnativekeyboard.dylib</include>
+										<include>*/nativekeyboard.dll</include>
+										<include>*/fshexec</include>
+									</includes>
+								</resource>
+							</resources>
 						</configuration>
 					</execution>
 				</executions>
