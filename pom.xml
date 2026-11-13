@@ -306,7 +306,7 @@
 
 	<build>
 		<!-- Eclipse has resources/ as a source folder; Maven has to be told (BJL-25).
-		     The IDE (and its images) moved to fsh-ide (BJL-88). -->
+		     The IDE (and its images) moved to Fsh Studio, parley-fsh-studio (BJL-88). -->
 		<resources>
 			<resource>
 				<directory>resources</directory>

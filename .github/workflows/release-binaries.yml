@@ -148,19 +148,12 @@ jobs:
       # The installers carry more than fsh, each built from its own repository (the default
       # branch; a tag of the same name in each would pin a release): the Lanterna browser plugin
       # (from parley-files-viewer-tui, checked out above), and fshdb beside fsh (fshdb builds
-      # against fsh-ide, and fsh-ide against fsh-loupe: neither is in the installers)
-      - name: Checkout fsh-loupe
+      # against parley-fsh-debug, which isn't in the installers)
+      - name: Checkout parley-fsh-debug
         uses: actions/checkout@v4
         with:
-          repository: parley-project/parley-fsh-loupe
-          path: fsh-loupe
-          token: ${{ secrets.PACKAGES_TOKEN || github.token }}
-
-      - name: Checkout Fsh Studio
-        uses: actions/checkout@v4
-        with:
-          repository: parley-project/parley-fsh-studio
-          path: parley-fsh-studio
+          repository: parley-project/parley-fsh-debug
+          path: parley-fsh-debug
           token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
       - name: Checkout fshdb
@@ -175,7 +168,7 @@ jobs:
         if: matrix.platform == 'macos'
         run: >
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui
-          --loupe-repo fsh-loupe --ide-repo parley-fsh-studio --db-repo fshdb
+          --debug-repo parley-fsh-debug --db-repo fshdb
           pkg $VERSION
 
       - name: Smoke test (the package)
@@ -203,7 +196,7 @@ jobs:
         run: |
           sudo apt-get install -y rpm
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui \
-            --loupe-repo fsh-loupe --ide-repo parley-fsh-studio --db-repo fshdb \
+            --debug-repo parley-fsh-debug --db-repo fshdb \
             all $VERSION
 
       - name: Smoke test (the .deb)
@@ -242,7 +235,7 @@ jobs:
         shell: pwsh
         run: >
           .\tools\build-msi-with-plugins.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
-          -PluginsRepo parley-files-viewer-tui -LoupeRepo fsh-loupe -IdeRepo parley-fsh-studio
+          -PluginsRepo parley-files-viewer-tui -DebugRepo parley-fsh-debug
           -DbRepo fshdb
 
       - name: Smoke test (the installer)

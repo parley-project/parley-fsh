@@ -80,7 +80,7 @@ foreach ($def in @(
 	if ($LASTEXITCODE -ne 0) { Pop-Location; throw "building $($def.Name) failed" }
 	$cp = (Get-Content 'target\app-classpath.txt' -Raw) -split ';' | Where-Object { $_ }
 	# (the jar this build made: its version from Maven's record of it, as target can hold older
-	# ones, parley-fsh-studio-1.0.0.jar beside parley-fsh-studio-2.0.0-SNAPSHOT.jar; else the newest)
+	# ones, parley-fsh-debug-1.0.0.jar beside parley-fsh-debug-2.0.0-SNAPSHOT.jar; else the newest)
 	$main = $null
 	$record = 'target\maven-archiver\pom.properties'
 	if (Test-Path $record) {
