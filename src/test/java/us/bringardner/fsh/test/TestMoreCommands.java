@@ -453,6 +453,9 @@ public class TestMoreCommands {
 		assertEquals(1, lastStatus);
 		String now = run("date +%Y").trim();
 		assertEquals(4, now.length());
+		assertEquals("UTC\n", run("date -u +%Z"));
+		// the default format ends with a zone name of 3 or 4 letters (EST, not ET) and the year
+		assertTrue(run("date").matches("[A-Z][a-z]{2} [A-Z][a-z]{2} [ \\d]\\d \\d\\d:\\d\\d:\\d\\d [A-Z]{3,5} \\d{4}\\n"), run("date"));
 		assertEquals("+0000\n", run("date -u +%z"));
 		assertEquals("+00:00\n", run("date -u +%:z"));
 		assertEquals("2020-02-29T13:04:05+00:00\n", run("date -u -d '2020-02-29 13:04:05' -Iseconds"));
@@ -756,7 +759,11 @@ public class TestMoreCommands {
 		File out = new File(dir, "out.txt");
 		assertEquals("", run("curl -s -o "+path(out)+" "+base+"/hello"));
 		assertEquals("hi there\n", read(out));
-		run("curl -s -O "+base+"/dir/list.txt");
+		// -O saves in the current directory: go to the temp directory for it, and back
+		String here = run("pwd").trim();
+		run("cd "+path(dir)+" && curl -s -O "+base+"/dir/list.txt");
+		run("cd "+here);
+		assertEquals("listing\n", read(new File(dir, "list.txt")));
 		run("curl -s -I "+base+"/hello");
 		assertEquals(0, lastStatus);
 		String withHeaders = run("curl -si "+base+"/hello");
