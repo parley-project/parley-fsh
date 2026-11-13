@@ -10,7 +10,7 @@
 # Usage: tools\build-msi.ps1 [-Version 2.0.0] [-Arch x86_64] [-DbRepo ..\fshdb]
 #   Version  the pom's, without -SNAPSHOT
 #   DbRepo   a checkout of fshdb, the console debugger: fshdb.exe, a command beside fsh.exe on
-#            the same Java runtime. Its jars (not the JavaFX ones, nor those fsh.jar has inside)
+#            the same Java runtime. Its jars (not those fsh.jar has inside)
 #            go in apps, on the class path.
 #
 # Needs a JDK in JAVA_HOME (17 or later for the keychain), the WiX Toolset for jpackage (3, or 4
@@ -93,8 +93,8 @@ foreach ($def in @(
 	}
 	Pop-Location
 	if (-not $main) { throw "no $($def.Name) jar built in $repo" }
-	# (not fsh itself, JavaFX and what only it needs: fshdb is a console program)
-	$skip = '^(fsh-\d.*|javafx-.*|richtextfx-.*|flowless-.*|reactfx-.*|undofx-.*|wellbehavedfx-.*|bringardner-fx-widgets-.*|parley-files-fx-.*)\.jar$'
+	# (not fsh itself)
+	$skip = '^(fsh-\d.*)\.jar$'
 	$jars = @($main) + @($cp | Where-Object { $leaf = Split-Path -Leaf $_; ($fshCp -notcontains $leaf) -and ($leaf -notmatch $skip) })
 	$apps += @{ Def = $def; Main = $main; Jars = $jars }
 	Write-Output "$($def.Name): $main, and $($jars.Count - 1) more jars"
