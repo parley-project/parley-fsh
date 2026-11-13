@@ -17,7 +17,7 @@
 #
 # fshdb (--db) runs on the same Java runtime, with its own command in bin, as the Windows
 # installer has it (tools/build-msi.ps1). It is built in its checkout (it builds against fsh and
-# parley-fsh-studio: tools/build-installers-with-plugins.sh installs what it needs first); its jar and the
+# parley-fsh-debug: tools/build-installers-with-plugins.sh installs what it needs first); its jar and the
 # dependencies fsh.jar doesn't have go in lib/apps (not the JavaFX ones: fshdb is a console
 # program).
 #
@@ -124,7 +124,7 @@ if [ -n "$apps" ]; then
 			exit 1
 		fi
 		# (the jar this build made: its version from Maven's record of it, as target can hold older
-		# ones, parley-fsh-studio-1.0.0.jar beside parley-fsh-studio-2.0.0-SNAPSHOT.jar; else the newest)
+		# ones, parley-fsh-debug-1.0.0.jar beside parley-fsh-debug-2.0.0-SNAPSHOT.jar; else the newest)
 		v=$(sed -n 's/^version=//p' "$repo/target/maven-archiver/pom.properties" 2>/dev/null | tr -d '\r')
 		main=$repo/target/$a-$v.jar
 		if [ -z "$v" ] || [ ! -f "$main" ]; then

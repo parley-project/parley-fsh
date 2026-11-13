@@ -16,10 +16,8 @@
 #   --plugins-repo DIR  a checkout of parley-files-viewer-tui (default: beside this one)
 #   --db-repo DIR       a checkout of fshdb, the console debugger (default: beside this one;
 #                       --no-db leaves it out)
-#   --ide-repo DIR      a checkout of parley-fsh-studio, which fshdb builds against, so it is installed to
-#                       the local Maven repository first (default: beside this one). parley-fsh-studio
-#                       itself is not in the installers.
-#   --loupe-repo DIR    a checkout of fsh-loupe, which parley-fsh-studio needs (default: beside this one)
+#   --debug-repo DIR    a checkout of parley-fsh-debug, which fshdb builds against, so it is installed
+#                       to the local Maven repository first (default: beside this one)
 #
 # Needs what those scripts need (a JDK in JAVA_HOME; dpkg-deb and rpmbuild on Linux), and Maven.
 # fsh builds against the file browser, and the plugin and fshdb build against fsh, so each is
@@ -30,20 +28,18 @@ PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 BESIDE=$(dirname "$PROJECT_DIR")
 
 plugins_repo=""
-loupe_repo=""
-ide_repo=""
+debug_repo=""
 db_repo=""
 no_db=""
 type=""
 version=""
 while [ $# -gt 0 ]; do
 	case $1 in
-	--plugins-repo|--loupe-repo|--ide-repo|--db-repo)
+	--plugins-repo|--debug-repo|--db-repo)
 		[ -n "$2" ] || { echo "$0: $1 needs a folder" >&2; exit 2; }
 		case $1 in
 		--plugins-repo) plugins_repo=$2 ;;
-		--loupe-repo) loupe_repo=$2 ;;
-		--ide-repo) ide_repo=$2 ;;
+		--debug-repo) debug_repo=$2 ;;
 		--db-repo) db_repo=$2 ;;
 		esac
 		shift ;;
@@ -86,8 +82,8 @@ if [ -n "$no_db" ]; then
 	db_repo=""
 else
 	db_repo=$(checkout "${db_repo:-$BESIDE/fshdb}" fshdb "--db-repo, or --no-db") || exit 1
-	# (fshdb is built against parley-fsh-studio, and parley-fsh-studio against fsh-loupe)
-	ide_repo=$(checkout "${ide_repo:-$BESIDE/parley-fsh-studio}" parley-fsh-studio "--ide-repo: fshdb builds against it; or --no-db") || exit 1
+	# (fshdb is built against parley-fsh-debug)
+	debug_repo=$(checkout "${debug_repo:-$BESIDE/parley-fsh-debug}" parley-fsh-debug "--debug-repo: fshdb builds against it; or --no-db") || exit 1
 fi
 
 install_module() {
@@ -120,13 +116,9 @@ fi
 export FSH_PLUGINS
 
 if [ -n "$db_repo" ]; then
-	# (parley-fsh-studio's dependency, built against fsh: not in a Maven repository until it is installed)
-	loupe=${loupe_repo:-$BESIDE/fsh-loupe}
-	if [ -f "$loupe/pom.xml" ]; then
-		install_module "$loupe" fsh-loupe
-	fi
-	# (fshdb is built against parley-fsh-studio)
-	install_module "$ide_repo" parley-fsh-studio
+	# (fshdb is built against parley-fsh-debug, which is built against fsh: not in a Maven
+	# repository until it is installed)
+	install_module "$debug_repo" parley-fsh-debug
 fi
 
 set --

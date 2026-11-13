@@ -322,7 +322,7 @@ public class TestFunction extends AbstractConsoleTest{
 
 	@Test
 	public void testLeadingBlankLinesCountForLineNumbers() throws IOException {
-		// code run as a string (as fsh-ide and fshdb run scripts) keeps its leading blank lines
+		// code run as a string (as Fsh Studio and fshdb run scripts) keeps its leading blank lines
 		ExecuteResult res = executeCommand("\n\n  \necho \"line $LINENO\"\nf() { echo \"from $BASH_LINENO\"; }\nf\n", "");
 		assertEquals("line 4\nfrom 6\n", res.getStdOut());
 	}

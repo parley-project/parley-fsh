@@ -6,14 +6,12 @@
 # parley-files-viewer, have installers of their own (parley-build's packaging).
 #
 # Usage: tools\build-msi-with-plugins.ps1 [-PluginsRepo ..\parley-files-viewer-tui] [-Version 2.0.0] [-Arch x86_64]
-#            [-DbRepo ..\fshdb | -NoDb] [-IdeRepo ..\parley-fsh-studio] [-LoupeRepo ..\fsh-loupe]
+#            [-DbRepo ..\fshdb | -NoDb] [-DebugRepo ..\parley-fsh-debug]
 #   PluginsRepo  a checkout of parley-files-viewer-tui (default: beside this one)
 #   DbRepo       a checkout of fshdb, the console debugger (default: beside this one; -NoDb leaves it
 #                out)
-#   IdeRepo      a checkout of parley-fsh-studio, which fshdb builds against, so it is installed to the local
-#                Maven repository first (default: beside this one). parley-fsh-studio itself is not in the
-#                installer.
-#   LoupeRepo    a checkout of fsh-loupe, which parley-fsh-studio needs (default: beside this one)
+#   DebugRepo    a checkout of parley-fsh-debug, which fshdb builds against, so it is installed to the
+#                local Maven repository first (default: beside this one)
 #
 # Needs what build-msi.ps1 needs (JAVA_HOME, the WiX Toolset on the PATH), and Maven. The plugin
 # and fshdb build against fsh, so fsh is installed to the local Maven repository first (tests
@@ -22,8 +20,7 @@ param(
 	[string] $PluginsRepo = '',
 	[string] $Version = '',
 	[string] $Arch = 'x86_64',
-	[string] $LoupeRepo = '',
-	[string] $IdeRepo = '',
+	[string] $DebugRepo = '',
 	[string] $DbRepo = '',
 	[switch] $NoDb
 )
@@ -68,12 +65,10 @@ if (-not $DbRepo -and -not $NoDb) { $DbRepo = Join-Path $beside 'fshdb' }
 if ($NoDb) { $DbRepo = '' }
 if ($DbRepo) {
 	if (-not (Test-Path (Join-Path $DbRepo 'pom.xml'))) { throw "no fshdb checkout at $DbRepo (-DbRepo, or -NoDb)" }
-	# (parley-fsh-studio's dependency, built against fsh: not in a Maven repository until it is installed)
-	$loupe = if ($LoupeRepo) { $LoupeRepo } else { Join-Path $beside 'fsh-loupe' }
-	if (Test-Path (Join-Path $loupe 'pom.xml')) { Install-Module $loupe 'fsh-loupe' }
-	# (fshdb is built against parley-fsh-studio)
-	$ide = if ($IdeRepo) { $IdeRepo } else { Join-Path $beside 'parley-fsh-studio' }
-	if (-not (Test-Path (Join-Path $ide 'pom.xml'))) { throw "no parley-fsh-studio checkout at $ide (-IdeRepo: fshdb builds against it; or -NoDb)" }
-	Install-Module $ide 'parley-fsh-studio'
+	# (fshdb is built against parley-fsh-debug, which is built against fsh: not in a Maven
+	# repository until it is installed)
+	$debug = if ($DebugRepo) { $DebugRepo } else { Join-Path $beside 'parley-fsh-debug' }
+	if (-not (Test-Path (Join-Path $debug 'pom.xml'))) { throw "no parley-fsh-debug checkout at $debug (-DebugRepo: fshdb builds against it; or -NoDb)" }
+	Install-Module $debug 'parley-fsh-debug'
 }
 & (Join-Path $PSScriptRoot 'build-msi.ps1') -Version $Version -Arch $Arch -DbRepo $DbRepo

@@ -2,6 +2,14 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-13: fshdb builds against parley-fsh-debug)
+
+- `tools/build-installers-with-plugins.sh` and `tools/build-msi-with-plugins.ps1` install
+  parley-fsh-debug before building fshdb (`--debug-repo`, `-DebugRepo`), instead of
+  parley-fsh-studio and fsh-loupe: fshdb no longer builds against Fsh Studio. `--ide-repo`,
+  `--loupe-repo`, `-IdeRepo` and `-LoupeRepo` are gone, and the release workflow checks out
+  parley-fsh-debug in their place.
+
 ### Changed (2026-11-12: the installers install commands, not applications)
 
 - fsh and fshdb are commands, not desktop applications, on every platform. The installers no
