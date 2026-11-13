@@ -20,3 +20,6 @@ dist/
 linux/*.o
 linux/*.so
 linux/fshexec
+
+# Native files built on other platforms, handed in for a deploy (tools/fetch-natives.sh)
+/natives/
