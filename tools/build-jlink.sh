@@ -18,8 +18,7 @@
 # fshdb (--db) runs on the same Java runtime, with its own command in bin, as the Windows
 # installer has it (tools/build-msi.ps1). It is built in its checkout (it builds against fsh and
 # parley-fsh-debug: tools/build-installers-with-plugins.sh installs what it needs first); its jar and the
-# dependencies fsh.jar doesn't have go in lib/apps (not the JavaFX ones: fshdb is a console
-# program).
+# dependencies fsh.jar doesn't have go in lib/apps.
 #
 # fsh and fshdb are commands, not desktop applications. The window programs, parley-fsh-studio and
 # parley-files-viewer, are not built in here: each has an installer of its own, with its own Java
@@ -114,8 +113,8 @@ if [ -n "$apps" ]; then
 	mkdir -p "$apps_dir"
 	mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt
 	fsh_jars=$(tr ':' '\n' < target/runtime-classpath.txt | sed 's|.*/||')
-	# (not fsh itself, JavaFX and what only it needs)
-	skip='^(fsh-[0-9].*|javafx-.*|richtextfx-.*|flowless-.*|reactfx-.*|undofx-.*|wellbehavedfx-.*|bringardner-fx-widgets-.*|parley-files-fx-.*)\.jar$'
+	# (not fsh itself)
+	skip='^(fsh-[0-9].*)\.jar$'
 	for a in $apps; do
 		repo=$(cd "$(app_repo $a)" && pwd)
 		if ! (cd "$repo" && mvn -q package -DskipTests dependency:build-classpath -Dmdep.includeScope=runtime \
