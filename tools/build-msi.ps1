@@ -30,7 +30,7 @@
 # %USERPROFILE%\.parley\fsh\plugins and %ProgramData%\Parley\fsh\plugins; with none, fsh is
 # built without.
 #
-# The window programs, fsh-ide and parley-files-viewer, are not in this installer: each has one
+# The window programs, parley-fsh-studio and parley-files-viewer, are not in this installer: each has one
 # of its own, with its own Java runtime (parley-build's packaging).
 param(
 	[string] $Version = '',
@@ -80,7 +80,7 @@ foreach ($def in @(
 	if ($LASTEXITCODE -ne 0) { Pop-Location; throw "building $($def.Name) failed" }
 	$cp = (Get-Content 'target\app-classpath.txt' -Raw) -split ';' | Where-Object { $_ }
 	# (the jar this build made: its version from Maven's record of it, as target can hold older
-	# ones, fsh-ide-1.0.0.jar beside fsh-ide-2.0.0-SNAPSHOT.jar; else the newest)
+	# ones, parley-fsh-studio-1.0.0.jar beside parley-fsh-studio-2.0.0-SNAPSHOT.jar; else the newest)
 	$main = $null
 	$record = 'target\maven-archiver\pom.properties'
 	if (Test-Path $record) {

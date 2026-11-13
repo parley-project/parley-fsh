@@ -40,7 +40,7 @@ you build**, using the library the same way your own application would. It was c
 - **An interactive shell** with a bash-style line editor (emacs keys, history search,
   completion, the "Display all N possibilities?" pager).
 - **Embeddable.** It is a Java library: a program can run scripts in it, and the
-  [Fsh Studio](https://github.com/parley-project/parley-fsh-ide) script editor and debugger use its
+  [Fsh Studio](https://github.com/parley-project/parley-fsh-studio) script editor and debugger use its
   debugger hooks.
 
 ## Why a shell in Java
@@ -344,8 +344,8 @@ tools/build-linux-packages.sh            # Linux: the .deb and the .rpm (or deb,
 tools\build-msi.ps1                      # Windows: the .msi (needs the WiX Toolset)
 ```
 
-With `--db` (a checkout of fshdb, which builds against fsh and fsh-ide: install them, and
-fsh-loupe for fsh-ide, to the local Maven repository first), fshdb goes in the same folder on the
+With `--db` (a checkout of fshdb, which builds against fsh and parley-fsh-studio: install them, and
+fsh-loupe for parley-fsh-studio, to the local Maven repository first), fshdb goes in the same folder on the
 same runtime: its jars in `lib/apps` and its command, `bin/fshdb`. The installers made from it
 carry it too. They install commands only: on macOS `/usr/local/lib/parley/fsh` with links in
 `/usr/local/bin`, on Linux `/opt/fsh` with links in `/usr/bin`, on Windows `fsh.exe` and
@@ -381,7 +381,7 @@ It installs parley-files-viewer-tui's library (the file browser fsh builds in), 
 fsh-loupe to the local Maven repository, builds the Lanterna plugin, names it in `FSH_PLUGINS`
 and runs `tools\build-msi.ps1`. The installer carries fshdb too, from a checkout beside this
 one: `fshdb.exe` (the console debugger; `-DbRepo`, `-NoDb`), beside `fsh.exe` on the same Java
-runtime. fshdb builds against fsh-ide, so that is installed to the local Maven repository first
+runtime. fshdb builds against parley-fsh-studio, so that is installed to the local Maven repository first
 (`-IdeRepo`, `-LoupeRepo`). There is no Start menu entry: the installer adds its folder to
 `PATH`. The output says `plugins built in: ...`; if it says
 `no plugins built in`, the installer has only fsh's own browser.
@@ -392,7 +392,7 @@ On macOS and Linux, from checkouts of the same projects beside this one, the sam
 tools/build-installers-with-plugins.sh          # macOS: the .pkg; Linux: the .deb and .rpm (or deb, rpm)
 ```
 
-It installs parley-files-viewer-tui's library, fsh, fsh-loupe and fsh-ide to the local Maven
+It installs parley-files-viewer-tui's library, fsh, fsh-loupe and parley-fsh-studio to the local Maven
 repository, builds the Lanterna plugin and names it in `FSH_PLUGINS`, runs `tools/build-jlink.sh` with `--db`, then
 `tools/build-macos-pkg.sh` or `tools/build-linux-packages.sh`. `--plugins-repo`, `--loupe-repo`,
 `--ide-repo` and `--db-repo` name other checkouts; `--no-db` leaves fshdb out; the type `none`
@@ -489,7 +489,7 @@ Scripts can start with `#!fsh`; `#!fssh` is still accepted.
 ## The IDE
 
 The script editor and debugger is a separate project,
-[Fsh Studio](https://github.com/parley-project/parley-fsh-ide). fsh exposes the debugger
+[Fsh Studio](https://github.com/parley-project/parley-fsh-studio). fsh exposes the debugger
 hooks it uses (`DebugContext`, `DebugController`).
 
 `fsh --wait-for-debugger [address:]port script [arguments]` starts the script as `fsh script`
