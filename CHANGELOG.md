@@ -189,7 +189,7 @@ ativekeyboard.dll`, rebuilt
 
 ## 1.1.0 (unreleased)
 
-Needs swing-widgets 1.1.0.
+Needs swing-widgets 2.0.0.
 
 ### Changed
 
