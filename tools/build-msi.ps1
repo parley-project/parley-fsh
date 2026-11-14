@@ -7,7 +7,7 @@
 # desktop shortcut. It adds the folder it installs to to the system's PATH (taken out again when
 # fsh is removed), so fsh is there in a new terminal.
 #
-# Usage: tools\build-msi.ps1 [-Version 2.0.0] [-Arch x86_64] [-DbRepo ..\fshdb]
+# Usage: tools\build-msi.ps1 [-Version 2.0.0] [-Arch x86_64] [-DbRepo ..\parley-fshdb]
 #   Version  the pom's, without -SNAPSHOT
 #   DbRepo   a checkout of fshdb, the console debugger: fshdb.exe, a command beside fsh.exe on
 #            the same Java runtime. Its jars (not those fsh.jar has inside)

@@ -6,7 +6,7 @@
 # parley-files-viewer, have installers of their own (parley-build's packaging).
 #
 # Usage: tools\build-msi-with-plugins.ps1 [-PluginsRepo ..\parley-files-viewer-tui] [-Version 2.0.0] [-Arch x86_64]
-#            [-DbRepo ..\fshdb | -NoDb] [-DebugRepo ..\parley-fsh-debug]
+#            [-DbRepo ..\parley-fshdb | -NoDb] [-DebugRepo ..\parley-fsh-debug]
 #   PluginsRepo  a checkout of parley-files-viewer-tui (default: beside this one)
 #   DbRepo       a checkout of fshdb, the console debugger (default: beside this one; -NoDb leaves it
 #                out)
@@ -61,7 +61,7 @@ $env:FSH_PLUGINS = ($jars | ForEach-Object { $_.FullName }) -join ';'
 
 Set-Location $project
 # fshdb goes in the same installer, from a checkout beside this one
-if (-not $DbRepo -and -not $NoDb) { $DbRepo = Join-Path $beside 'fshdb' }
+if (-not $DbRepo -and -not $NoDb) { $DbRepo = Join-Path $beside 'parley-fshdb' }
 if ($NoDb) { $DbRepo = '' }
 if ($DbRepo) {
 	if (-not (Test-Path (Join-Path $DbRepo 'pom.xml'))) { throw "no fshdb checkout at $DbRepo (-DbRepo, or -NoDb)" }

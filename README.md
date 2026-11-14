@@ -338,7 +338,7 @@ CDS archive before that). The installers are made from it.
 ```sh
 tools/build-jlink.sh                     # target/jlink/fsh: run target/jlink/fsh/bin/fsh
 tools/build-jlink.sh --package 2.0.0     # also dist/fsh-2.0.0-PLATFORM-ARCH-jvm.tar.gz
-tools/build-jlink.sh --db ../fshdb       # with bin/fshdb
+tools/build-jlink.sh --db ../parley-fshdb  # with bin/fshdb
 tools/build-macos-pkg.sh                 # macOS: dist/fsh-VERSION-macos-ARCH.pkg
 tools/build-linux-packages.sh            # Linux: the .deb and the .rpm (or deb, rpm)
 tools\build-msi.ps1                      # Windows: the .msi (needs the WiX Toolset)
