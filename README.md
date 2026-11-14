@@ -33,6 +33,17 @@ you build**, using the library the same way your own application would. It was c
 - **A shell over any file system.** `connect` connects a `FileSource` (FTP, SFTP, a database,
   memory) at a path, and `disconnect` removes it and closes the connection. fsh's own file builtins (`ls`, `cp`, `mv`,
   `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every connected file system.
+- **The same commands on every system.** fsh has its own versions of 56 programs most systems
+  have (`cat`, `grep`, `sed`, `sort`, `tar`, `curl`, `wget`, `sha256sum` and the rest, listed under
+  [Utilities in COMMANDS.md](COMMANDS.md#utilities)). Where the system has no such program (all of
+  them on Windows; `tac` and `wget` on macOS) fsh's version is the builtin. Elsewhere the system's
+  program runs, unless you turn fsh's on:
+  - `enable wget` turns one on, and `enable -n wget` turns it off again.
+  - `shopt -s fshutils` turns on all of them, so a script gets the same options and output on
+    Windows, macOS and Linux. `shopt -u fshutils` goes back to the defaults.
+  - To use them always, put `shopt -s fshutils` in `~/.fshrc`, or start fsh with `-O fshutils`.
+
+  `enable -n` with no names lists the ones that are off, and `type NAME` shows which one runs.
 - **Every builtin is described** in [COMMANDS.md](COMMANDS.md), made from the same help text
   that `help NAME` shows in the shell.
 - **No passwords in scripts.** A connect setting can name its secret instead of holding it, and
@@ -110,6 +121,9 @@ again. The todo file records what each fix involved.
   `sleep`, `expr`, `clear`, `connect`, `cred` and `disconnect` are builtins (so they work on connected file
   systems), with their own help texts, collected in [COMMANDS.md](COMMANDS.md). Programs of the
   same names are still reachable by path or with `enable -n`.
+- **`fshutils`,** fsh's own `shopt` option: it makes fsh's versions of `cat`, `grep`, `wget` and
+  the other [utilities](#what-fsh-is) the builtins even where the system has those programs. Bash
+  has no such option; it is off unless you turn it on.
 - **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and
   no bash identity variables (`BASH_VERSION`, `BASH_VERSINFO`, `BASH`). Scripts that refuse to run
   without them (Homebrew does) can be given them in an `FSH_ENV` file.

@@ -9,6 +9,8 @@ Everything here is also in the shell: `help NAME` shows a command's text, and `h
 - [File commands](#file-commands): fsh's versions of ls, cp, mv and the rest, which work on every
   connected file system
 - [Other commands](#other-commands): commands that are separate programs in bash
+- [Utilities](#utilities): fsh's versions of cat, grep, sed, wget and other programs, for the
+  same commands on every system
 - [Bash builtins](#bash-builtins): the builtins that work as they do in bash
 
 ## fsh's own commands
@@ -302,6 +304,74 @@ clear
 Clear the terminal screen.
 ```
 
+## Utilities
+
+fsh's own versions of programs most systems have. Each one is a builtin where the system has no
+such program (all of them on Windows; `tac` and `wget` on macOS). Elsewhere the system's program
+runs, until `enable NAME` turns fsh's on (`enable -n NAME` turns it off again) or
+`shopt -s fshutils` turns on all of them, so a script has the same commands, options and output
+on every system. `shopt -u fshutils` goes back to the defaults; a name turned off with `enable -n`
+stays off.
+
+| Command | Usage | What it does |
+|---|---|---|
+| `base64` | `base64 [-di] [-w COLS] [FILE]` | Encode FILE (standard input with no FILE or -) as base64, or with -d decode it. |
+| `basename` | `basename NAME [SUFFIX]` | Print NAME without its leading directories and, if given, without SUFFIX. |
+| `cat` | `cat [-AbeEnstTuv] [FILE ...]` | Concatenate FILEs to standard output. |
+| `chmod` | `chmod [-Rv] MODE FILE...` | Change the permissions of each FILE (local files only). |
+| `cmp` | `cmp [-ls] [-n LIMIT] FILE1 FILE2` | Compare two files byte by byte (- is standard input) and say where the first difference is. |
+| `comm` | `comm [-123i] FILE1 FILE2` | Compare the sorted files FILE1 and FILE2 line by line. |
+| `curl` | `curl [OPTIONS] URL...` | Transfer the URL (http, https or file) to standard output. |
+| `cut` | `cut OPTION... [FILE ...]` | Print the selected parts of each line of each FILE (standard input with no FILE or -). |
+| `date` | `date [-u] [-d STRING] [-r FILE] [-I[FMT]] [-R] [+FORMAT]` | Print the current date and time in FORMAT (default: like Fri Nov 13 16:43:21 PST 2026). |
+| `df` | `df [-hkT] [FILE ...]` | Show the space on the file system of each FILE (every local file system with no FILE). |
+| `diff` | `diff [OPTION]... FILE1 FILE2` | Compare two files line by line, or the files of two directories. |
+| `dirname` | `dirname [-z] NAME...` | Print NAME without its last component: the directory it is in (. |
+| `du` | `du [-abcdhksx] [FILE ...]` | Show the space used by each FILE and, for a directory, by each directory under it. |
+| `env` | `env [-0] [-u NAME] [NAME=VALUE]... [COMMAND [ARG]...]` | With no COMMAND print the environment, one NAME=VALUE a line (with NAME=VALUE operands added to it). |
+| `file` | `file [-bi] FILE...` | Guess what kind of data each FILE holds, from its first bytes. |
+| `fold` | `fold [-bs] [-w WIDTH] [FILE ...]` | Wrap the lines of each FILE (standard input with no FILE or -) to WIDTH columns (default 80). |
+| `grep` | `grep [OPTION]... PATTERNS [FILE ...]` | Print the lines of each FILE (or standard input) that match PATTERNS. |
+| `gunzip` | `gunzip [-cfkv] [FILE ...]` | Decompress each FILE.gz to FILE and remove FILE.gz (same as gzip -d; options as gzip). |
+| `gzip` | `gzip [-cdfkv] [-1..-9] [FILE ...]` | Compress each FILE to FILE.gz and remove FILE (standard input to standard output with no FILE or -). |
+| `head` | `head [-qv] [-n [-]NUM \| -c [-]NUM] [FILE ...]` | Print the first 10 lines of each FILE (standard input with no FILE or -). |
+| `hexdump` | `hexdump [-Cv] [-n LENGTH] [-s OFFSET] [FILE ...]` | Show the bytes of each FILE (standard input with no FILE or -) in hex. |
+| `hostname` | `hostname [-sfi]` | Print the name of this computer. |
+| `join` | `join [OPTION]... FILE1 FILE2` | For each pair of lines with identical join fields, write a line with the join field, the rest of the line of FILE1 and the rest of the line of FILE2. |
+| `md5sum` | `md5sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the MD5 checksum of each FILE (standard input with no FILE or -). |
+| `nl` | `nl [OPTION]... [FILE ...]` | Write each FILE (standard input with no FILE or -) with line numbers added. |
+| `od` | `od [OPTION]... [FILE ...]` | Dump the bytes of each FILE (standard input with no FILE or -), 16 to a line, in octal 2 byte words. |
+| `paste` | `paste [-s] [-d LIST] [FILE ...]` | Write the corresponding lines of the FILEs, separated by tabs (- is standard input). |
+| `printenv` | `printenv [-0] [NAME...]` | Print the value of each environment variable NAME, or with none the whole environment. |
+| `readlink` | `readlink [-fenmqs] FILE...` | Print where the symbolic link FILE points to (nothing and status 1 if it isn't a link). |
+| `realpath` | `realpath [-emqs] FILE...` | Print the absolute path of each FILE with . |
+| `rev` | `rev [FILE ...]` | Copy each FILE (standard input with no FILE or -) reversing the characters of every line. |
+| `sed` | `sed [OPTION]... {SCRIPT-ONLY-IF-NO-OTHER-SCRIPT} [FILE ...]` | Edit a stream: for each line of FILE (or standard input) run the SCRIPT and print the result. |
+| `seq` | `seq [OPTION]... [FIRST [INCREMENT]] LAST` | Print the numbers from FIRST (1) to LAST in steps of INCREMENT (1). |
+| `sha1sum` | `sha1sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the SHA-1 checksum of each FILE (standard input with no FILE or -). |
+| `sha256sum` | `sha256sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the SHA-256 checksum of each FILE (standard input with no FILE or -). |
+| `sha512sum` | `sha512sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the SHA-512 checksum of each FILE (standard input with no FILE or -). |
+| `sort` | `sort [OPTION]... [FILE ...]` | Write the sorted lines of all the FILEs (standard input with no FILE or -). |
+| `split` | `split [OPTION]... [FILE [PREFIX]]` | Write the pieces of FILE (standard input with no FILE or -) to PREFIXaa, PREFIXab, ... |
+| `stat` | `stat [-L] [-c FORMAT] FILE...` | Show the status of each FILE. |
+| `tac` | `tac [FILE ...]` | Print each FILE (standard input with no FILE or -) with its lines in reverse order. |
+| `tail` | `tail [-fqv] [-n [+]NUM \| -c [+]NUM] [FILE ...]` | Print the last 10 lines of each FILE (standard input with no FILE or -). |
+| `tar` | `tar -c\|-x\|-t [-zvO] [-f ARCHIVE] [-C DIR] [--strip-components=N] [FILE ...]` | Make (-c), extract (-x) or list (-t) a tar archive. |
+| `tee` | `tee [-ai] [FILE ...]` | Copy standard input to standard output and to each FILE. |
+| `tr` | `tr [-cdst] SET1 [SET2]` | Translate, squeeze or delete the characters of standard input. |
+| `truncate` | `truncate -s SIZE [-c] FILE...` | Shrink or extend (with zeros) each FILE to SIZE bytes; a file that doesn't exist is created. |
+| `uname` | `uname [-asnrvmpo]` | Print facts about the system (the kernel name with no option). |
+| `uniq` | `uniq [OPTION]... [INPUT [OUTPUT]]` | Filter the adjacent matching lines of INPUT (standard input with no INPUT or -) to OUTPUT (standard output). |
+| `unzip` | `unzip [-lonpq] [-d DIR] ZIPFILE [FILE ...]` | Extract the files of the archive ZIPFILE (the ones that match the FILEs, if any are given). |
+| `wget` | `wget [OPTION]... URL...` | Download each URL to a file named like the end of the URL (index.html for a directory). |
+| `which` | `which [-a] COMMAND...` | Print the full path of each COMMAND, the file that would run: the first in the directories of the PATH (on Windows with the extensions of PATHEXT). |
+| `whoami` | `whoami` | Print the name of the user who is running the shell. |
+| `xargs` | `xargs [OPTION]... [COMMAND [INITIAL-ARGS]...]` | Run COMMAND (echo by default) with the items read from standard input added as arguments. |
+| `xxd` | `xxd [-pru] [-c COLS] [-g BYTES] [-l LEN] [-s SEEK] [FILE]` | Make a hex dump of FILE (standard input with no FILE or -). |
+| `yes` | `yes [STRING ...]` | Print STRING (the arguments joined by spaces; y if there are none) on a line, over and over, until the command is stopped or what reads its output (head, for one) is done. |
+| `zcat` | `zcat [FILE ...]` | Decompress each FILE.gz to standard output (same as gzip -dc). |
+| `zip` | `zip [-rjq] [-0..9] ZIPFILE FILE...` | Add the FILEs to the archive ZIPFILE (.zip is added to the name if it has no extension), creating it if it doesn't exist. |
+
 ## Bash builtins
 
 These work as they do in bash; the [bash manual](https://www.gnu.org/software/bash/manual/bash.html#Shell-Builtin-Commands)
@@ -313,38 +383,24 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `:` | `: [arguments]` | Do nothing, successfully (the arguments are expanded and ignored). |
 | `[` | `[ expression ]` | The same as test, with a ] as its last argument. |
 | `alias` | `alias [-p] [name[=value] …]` | Without arguments or with the -p option, alias prints the list of aliases on the standard output in a form that allows them to be reused as input. |
-| `base64` | `base64 [-di] [-w COLS] [FILE]` | Encode FILE (standard input with no FILE or -) as base64, or with -d decode it. |
-| `basename` | `basename NAME [SUFFIX]` | Print NAME without its leading directories and, if given, without SUFFIX. |
 | `bg` | `bg [jobspec ...]` | Resume each suspended job jobspec in the background, as if it had been started with ‘&’. |
 | `bind` | `bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command]` | Set what the line editor's keys do, or show it. |
 | `break` | `break [n]` | Leave the innermost loop, or the n enclosing loops. |
 | `browse` | `browse [-1] [-c] [--with NAME] [DIR [DIR2]]  or  browse --list` | Browse the shell's file tree (connections included) with DIR (default .) on the left and DIR2 (default $HOME) on the right, in fsh's own full-screen terminal browser, or in one a plugin provides (a window when there is a display). |
 | `builtin` | `builtin name [args]` | Run the shell builtin name (not a function or program with that name). |
 | `caller` | `caller [n]` | In a function, print where it was called from: with n, "line function file" for the call n frames up (0 is the current function's caller); without, "line file". |
-| `cat` | `cat [-AbeEnstTuv] [FILE ...]` | Concatenate FILEs to standard output. |
 | `cd` | `cd [-L\|-P] [dir]` | Change the current directory (to $HOME without dir). |
-| `chmod` | `chmod [-Rv] MODE FILE...` | Change the permissions of each FILE (local files only). |
-| `cmp` | `cmp [-ls] [-n LIMIT] FILE1 FILE2` | Compare two files byte by byte (- is standard input) and say where the first difference is. |
-| `comm` | `comm [-123i] FILE1 FILE2` | Compare the sorted files FILE1 and FILE2 line by line. |
 | `command` | `command [-v\|-V] name [args]` | Run name, skipping functions. |
 | `compgen` | `compgen [-V varname] [-abcdefgjksuv] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [word]` | The completions of word, one a line, as complete's options say (see complete). |
 | `complete` | `complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [name ...]` | How Tab completes each name's arguments. |
 | `compopt` | `compopt [-o\|+o option] [-DEI] [name ...]` | Turn completion options of each name on (-o) or off (+o); with no option, show them. |
 | `continue` | `continue [n]` | Go on with the next pass of the innermost loop, or of the nth enclosing loop. |
-| `curl` | `curl [OPTIONS] URL...` | Transfer the URL (http, https or file) to standard output. |
-| `cut` | `cut OPTION... [FILE ...]` | Print the selected parts of each line of each FILE (standard input with no FILE or -). |
-| `date` | `date [-u] [-d STRING] [-r FILE] [-I[FMT]] [-R] [+FORMAT]` | Print the current date and time in FORMAT (default: like Fri Nov 13 16:43:21 PST 2026). |
 | `declare` | `declare [-aAfFgiIlnrtux] [name[=value] ...] or declare -p [-aAfFilnrtux] [name ...]` | Set variables and their attributes, or show them (-p). |
-| `df` | `df [-hkT] [FILE ...]` | Show the space on the file system of each FILE (every local file system with no FILE). |
-| `diff` | `diff [OPTION]... FILE1 FILE2` | Compare two files line by line, or the files of two directories. |
-| `dirname` | `dirname [-z] NAME...` | Print NAME without its last component: the directory it is in (. |
 | `dirs` | `dirs [-clpv] [+N] [-N]` | Print the directory stack, the current directory first: -l without ~, -p one per line, -v numbered, +N or -N one entry (counted from the left or right); -c clears it. |
 | `disown` | `disown [-ar] [-h] [id ...]` | Without options, remove each id from the table of active jobs. |
-| `du` | `du [-abcdhksx] [FILE ...]` | Show the space used by each FILE and, for a directory, by each directory under it. |
 | `echo` | `echo [-neE] [string ...]` | Write arguments to the standard output |
 | `edit` | `edit FILE` | Edit FILE with $VISUAL, else $EDITOR, else vi. |
 | `enable` | `enable [-a] [-dnps] [-f filename] [name ...]` | Turn on the builtins named, or turn them off with -n (the name then runs a program of that name). |
-| `env` | `env [-0] [-u NAME] [NAME=VALUE]... [COMMAND [ARG]...]` | With no COMMAND print the environment, one NAME=VALUE a line (with NAME=VALUE operands added to it). |
 | `eval` | `eval [arguments]` | The arguments are concatenated together into a single command, separated by spaces. |
 | `exec` | `exec [-cl] [-a name] [command [arguments]]` | If command is supplied, it replaces the shell without creating a new process. |
 | `exit` | `exit [n]` | End the shell, with status n (the last command's status without n). |
@@ -352,82 +408,40 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `false` | `false [arguments]` | Do nothing, unsuccessfully. |
 | `fc` | `fc [-e ename] [-lnr] [first] [last] or fc -s [pat=rep] [command]` | List (-l, -n without numbers, -r in reverse) or edit and run again the commands from first to last of the history (a number, a negative offset, or the start of a command). |
 | `fg` | `fg [jobspec]` | Resume the job jobspec in the foreground and make it the current job. |
-| `file` | `file [-bi] FILE...` | Guess what kind of data each FILE holds, from its first bytes. |
-| `fold` | `fold [-bs] [-w WIDTH] [FILE ...]` | Wrap the lines of each FILE (standard input with no FILE or -) to WIDTH columns (default 80). |
 | `getopts` | `getopts optstring name [arg ...]` | Read the next option from the positional parameters (or the args) into name, its argument (for a letter followed by : in optstring) into OPTARG, and the index of the next parameter into OPTIND. |
-| `grep` | `grep [OPTION]... PATTERNS [FILE ...]` | Print the lines of each FILE (or standard input) that match PATTERNS. |
-| `gunzip` | `gunzip [-cfkv] [FILE ...]` | Decompress each FILE.gz to FILE and remove FILE.gz (same as gzip -d; options as gzip). |
-| `gzip` | `gzip [-cdfkv] [-1..-9] [FILE ...]` | Compress each FILE to FILE.gz and remove FILE (standard input to standard output with no FILE or -). |
 | `hash` | `hash [-lr] [-p pathname] [-dt] [name ...]` | Remember or display program locations. |
-| `head` | `head [-qv] [-n [-]NUM \| -c [-]NUM] [FILE ...]` | Print the first 10 lines of each FILE (standard input with no FILE or -). |
 | `help` | `help [-dms] [pattern ...]` | Show what the builtins matching pattern (a glob, or the start of a name) do; with no pattern, list them. |
-| `hexdump` | `hexdump [-Cv] [-n LENGTH] [-s OFFSET] [FILE ...]` | Show the bytes of each FILE (standard input with no FILE or -) in hex. |
 | `history` | `history [n]` | With no options, display the history list with line numbers. |
-| `hostname` | `hostname [-sfi]` | Print the name of this computer. |
 | `jobs` | `jobs [-rs] [jobspec]` | The first form lists the active jobs. |
-| `join` | `join [OPTION]... FILE1 FILE2` | For each pair of lines with identical join fields, write a line with the join field, the rest of the line of FILE1 and the rest of the line of FILE2. |
 | `kill` | `kill [-s sigspec] [-n signum] [-sigspec] id [...]` | Send a signal specified by sigspec or signum to the processes named by each id. |
 | `let` | `let arg [arg ...]` | Each arg is an arithmetic expression to be evaluated, as in $((arg)); name=expression assigns the value to name. |
 | `local` | `local [option] name[=value] ...` | Make each name a variable of the function it is used in (and of the functions it calls), with declare's options. |
 | `logout` | `logout [n]` | Exit a login shell with status n (the last command's if n is not given). |
 | `mapfile` | `mapfile [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]` | Read lines from standard input (or fd with -u) into the indexed array (MAPFILE if none is named). |
-| `md5sum` | `md5sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the MD5 checksum of each FILE (standard input with no FILE or -). |
-| `nl` | `nl [OPTION]... [FILE ...]` | Write each FILE (standard input with no FILE or -) with line numbers added. |
-| `od` | `od [OPTION]... [FILE ...]` | Dump the bytes of each FILE (standard input with no FILE or -), 16 to a line, in octal 2 byte words. |
-| `paste` | `paste [-s] [-d LIST] [FILE ...]` | Write the corresponding lines of the FILEs, separated by tabs (- is standard input). |
 | `plugins` | `plugins` | List fsh's plugin folders, in the order they are searched, and each jar in them: loaded (a plugin or a library), skipped and why, or shadowed by a jar of the same name found first. |
 | `popd` | `popd [-n] [+N \| -N]` | Take the top directory off the stack and go to the new top, or take off entry N (counted from the left or right of dirs' list). |
-| `printenv` | `printenv [-0] [NAME...]` | Print the value of each environment variable NAME, or with none the whole environment. |
 | `printf` | `printf [-v var] format [arguments]` | Write the arguments under control of format: %s %b (with backslash escapes) %q (quoted) %c %d %i %u %o %x %X %f %e %E %g %G %%, with flags - + space 0 #, a width and a precision (* takes them from the arguments). |
 | `pushd` | `pushd [-n] [+N \| -N \| dir]` | Add dir to the top of the directory stack (going there), or rotate the stack (+N, -N, counted from the left or right of dirs' list) so that entry is on top. |
 | `pwd` | `pwd [-LP]` | Print the current directory. |
 | `read` | `read [-Eers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] [-t timeout] [-u fd] [name ...]` | One line is read from the standard input, or from the file descriptor fd supplied as an argument to the -u option, split into words as described under Word Splitting, and the first word is assigned to the first name, the	second word to the second name, and so on. |
 | `readarray` | `readarray [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]` | Read lines from standard input (or fd with -u) into the indexed array (MAPFILE if none is named). |
-| `readlink` | `readlink [-fenmqs] FILE...` | Print where the symbolic link FILE points to (nothing and status 1 if it isn't a link). |
 | `readonly` | `readonly [-aAf] [name[=value] ...] or readonly -p` | Make each name readonly, after setting it to value if one is given (-a an indexed array, -A an associative one, -f functions). |
-| `realpath` | `realpath [-emqs] FILE...` | Print the absolute path of each FILE with . |
 | `return` | `return [n]` | End a function or a sourced file, with status n (the last command's status without n). |
-| `rev` | `rev [FILE ...]` | Copy each FILE (standard input with no FILE or -) reversing the characters of every line. |
 | `search` | `search [-i] [-a] [-l] [-n NAME] [-t TEXT] [DIR ...]` | List the files below each DIR (default .) whose name matches the glob NAME and that contain TEXT; with neither, every file and directory. |
-| `sed` | `sed [OPTION]... {SCRIPT-ONLY-IF-NO-OTHER-SCRIPT} [FILE ...]` | Edit a stream: for each line of FILE (or standard input) run the SCRIPT and print the result. |
-| `seq` | `seq [OPTION]... [FIRST [INCREMENT]] LAST` | Print the numbers from FIRST (1) to LAST in steps of INCREMENT (1). |
 | `set` | `set [-abCefhmnuvx] [argument...]` | If no options or arguments are supplied, set displays the names and values of all shell variables and functions, sorted according to the current locale, in a format that may be reused as input for setting or resetting the currently-set variables. |
-| `sha1sum` | `sha1sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the SHA-1 checksum of each FILE (standard input with no FILE or -). |
-| `sha256sum` | `sha256sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the SHA-256 checksum of each FILE (standard input with no FILE or -). |
-| `sha512sum` | `sha512sum [-bt] [--quiet] [--status] [-c] [FILE ...]` | Print the SHA-512 checksum of each FILE (standard input with no FILE or -). |
 | `shift` | `shift [n]` | The positional parameters shall be shifted. |
 | `shopt` | `shopt [-s\|-u] [-pq] [optname ...]` | Set (-s) or unset (-u) shell options, or show them (-p as shopt commands). |
-| `sort` | `sort [OPTION]... [FILE ...]` | Write the sorted lines of all the FILEs (standard input with no FILE or -). |
 | `source` | `source filename [arguments]` | Read and execute commands from filename in the current shell environment and return the exit status of the last command executed from filename. |
-| `split` | `split [OPTION]... [FILE [PREFIX]]` | Write the pieces of FILE (standard input with no FILE or -) to PREFIXaa, PREFIXab, ... |
-| `stat` | `stat [-L] [-c FORMAT] FILE...` | Show the status of each FILE. |
 | `suspend` | `suspend [-f]` | Suspend the shell until it receives a SIGCONT. |
-| `tac` | `tac [FILE ...]` | Print each FILE (standard input with no FILE or -) with its lines in reverse order. |
-| `tail` | `tail [-fqv] [-n [+]NUM \| -c [+]NUM] [FILE ...]` | Print the last 10 lines of each FILE (standard input with no FILE or -). |
-| `tar` | `tar -c\|-x\|-t [-zvO] [-f ARCHIVE] [-C DIR] [--strip-components=N] [FILE ...]` | Make (-c), extract (-x) or list (-t) a tar archive. |
-| `tee` | `tee [-ai] [FILE ...]` | Copy standard input to standard output and to each FILE. |
 | `test` | `test [expr]` | Exit with status 0 (true) or 1 (false) depending on expr; 2 if expr is invalid. |
 | `times` | `times` | Print the user and system time used by the shell, then by the commands it ran. |
-| `tr` | `tr [-cdst] SET1 [SET2]` | Translate, squeeze or delete the characters of standard input. |
 | `trap` | `trap [-lpP] [action] [sigspec ...]` | The action is a command that is read and executed when the shell receives any of the signals sigspec. |
 | `true` | `true [arguments]` | Do nothing, successfully. |
-| `truncate` | `truncate -s SIZE [-c] FILE...` | Shrink or extend (with zeros) each FILE to SIZE bytes; a file that doesn't exist is created. |
 | `type` | `type [-afptP] name [name ...]` | Say how each name would be run: alias, keyword, function, builtin or file. |
 | `typeset` | `typeset [-aAfFgiIlnrtux] [name[=value] ...] or typeset -p [-aAfFilnrtux] [name ...]` | Set variables and their attributes, or show them (-p). |
 | `ulimit` | `ulimit [-SHa] [-cdflmnstuv] [limit]` | Print a resource limit (-a: all of them), or set it: -S the soft limit, -H the hard one (both without either). |
 | `umask` | `umask [-p] [-S] [mode]` | Print the file creation mask (-S: as u=rwx,g=rx,o=rx), or set it to mode (octal or symbolic). |
 | `unalias` | `unalias [-a] [name …]` | Remove one or more aliases or all with -a option. |
-| `uname` | `uname [-asnrvmpo]` | Print facts about the system (the kernel name with no option). |
-| `uniq` | `uniq [OPTION]... [INPUT [OUTPUT]]` | Filter the adjacent matching lines of INPUT (standard input with no INPUT or -) to OUTPUT (standard output). |
 | `unset` | `unset [-f] [-v] [name ...]` | Remove each variable or function name. |
-| `unzip` | `unzip [-lonpq] [-d DIR] ZIPFILE [FILE ...]` | Extract the files of the archive ZIPFILE (the ones that match the FILEs, if any are given). |
 | `view` | `view [-c] [-x] FILE ...` | Show each FILE, on any connected file system, in a full-screen viewer (Esc or q to close). |
 | `wait` | `wait [-fn] [-p varname] [id ...]` | Wait until the child process specified by each id exits and return the exit status of the last id. |
-| `wget` | `wget [OPTION]... URL...` | Download each URL to a file named like the end of the URL (index.html for a directory). |
-| `which` | `which [-a] COMMAND...` | Print the full path of each COMMAND, the file that would run: the first in the directories of the PATH (on Windows with the extensions of PATHEXT). |
-| `whoami` | `whoami` | Print the name of the user who is running the shell. |
-| `xargs` | `xargs [OPTION]... [COMMAND [INITIAL-ARGS]...]` | Run COMMAND (echo by default) with the items read from standard input added as arguments. |
-| `xxd` | `xxd [-pru] [-c COLS] [-g BYTES] [-l LEN] [-s SEEK] [FILE]` | Make a hex dump of FILE (standard input with no FILE or -). |
-| `yes` | `yes [STRING ...]` | Print STRING (the arguments joined by spaces; y if there are none) on a line, over and over, until the command is stopped or what reads its output (head, for one) is done. |
-| `zcat` | `zcat [FILE ...]` | Decompress each FILE.gz to standard output (same as gzip -dc). |
-| `zip` | `zip [-rjq] [-0..9] ZIPFILE FILE...` | Add the FILEs to the archive ZIPFILE (.zip is added to the name if it has no extension), creating it if it doesn't exist. |
