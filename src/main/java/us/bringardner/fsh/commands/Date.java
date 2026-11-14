@@ -29,6 +29,7 @@ public class Date extends ShellCommand{
 			+ "\t                    yesterday, tomorrow, \"3 days ago\", \"2 weeks\", \"+1 month\"\n"
 			+ "\t-r, --reference=FILE   show the last modification time of FILE\n"
 			+ "\t-u, --utc           use UTC\n"
+			+ "\t/T                  as Windows's date /T: Fri 11/13/2026\n"
 			+ "\t-I[date|hours|minutes|seconds]   ISO 8601 output\n"
 			+ "\t-R, --rfc-email     RFC 5322 output\n"
 			+ "\tFORMAT: %Y %m %d %H %M %S %y %b %B %a %A %j %e %k %l %I %p %Z %z %s %N %F %T %D %R %c %x %X %u %w %U %V %G %n %t %%";
@@ -76,6 +77,9 @@ public class Date extends ShellCommand{
 		for (String op : a.operands) {
 			if( op.startsWith("+")) {
 				format = op.substring(1);
+			} else if( op.equalsIgnoreCase("/t")) {
+				// Windows's date /T: the day and the date, like Fri 11/13/2026
+				format = "%a %m/%d/%Y";
 			} else {
 				ctx.stderr.println("date: invalid date '"+op+"' (setting the date is not supported)");
 				return 1;
