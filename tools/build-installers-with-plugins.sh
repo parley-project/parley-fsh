@@ -81,7 +81,7 @@ plugins_repo=$(checkout "${plugins_repo:-$BESIDE/parley-files-viewer-tui}" parle
 if [ -n "$no_db" ]; then
 	db_repo=""
 else
-	db_repo=$(checkout "${db_repo:-$BESIDE/fshdb}" fshdb "--db-repo, or --no-db") || exit 1
+	db_repo=$(checkout "${db_repo:-$BESIDE/parley-fshdb}" fshdb "--db-repo, or --no-db") || exit 1
 	# (fshdb is built against parley-fsh-debug)
 	debug_repo=$(checkout "${debug_repo:-$BESIDE/parley-fsh-debug}" parley-fsh-debug "--debug-repo: fshdb builds against it; or --no-db") || exit 1
 fi

@@ -160,7 +160,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: parley-project/parley-fshdb
-          path: fshdb
+          path: parley-fshdb
           token: ${{ secrets.PACKAGES_TOKEN || github.token }}
 
       # (fsh with its own runtime, the plugin and fshdb, then the package or the packages)
@@ -168,7 +168,7 @@ jobs:
         if: matrix.platform == 'macos'
         run: >
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui
-          --debug-repo parley-fsh-debug --db-repo fshdb
+          --debug-repo parley-fsh-debug --db-repo parley-fshdb
           pkg $VERSION
 
       - name: Smoke test (the package)
@@ -196,7 +196,7 @@ jobs:
         run: |
           sudo apt-get install -y rpm
           sh tools/build-installers-with-plugins.sh --plugins-repo parley-files-viewer-tui \
-            --debug-repo parley-fsh-debug --db-repo fshdb \
+            --debug-repo parley-fsh-debug --db-repo parley-fshdb \
             all $VERSION
 
       - name: Smoke test (the .deb)
@@ -236,7 +236,7 @@ jobs:
         run: >
           .\tools\build-msi-with-plugins.ps1 -Arch ${{ matrix.arch }} -Version "$env:VERSION"
           -PluginsRepo parley-files-viewer-tui -DebugRepo parley-fsh-debug
-          -DbRepo fshdb
+          -DbRepo parley-fshdb
 
       - name: Smoke test (the installer)
         if: matrix.platform == 'windows'

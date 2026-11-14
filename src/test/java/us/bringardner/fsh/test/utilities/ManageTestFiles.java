@@ -83,9 +83,11 @@ public class ManageTestFiles {
 		//5 permissions=OWNER_READ:GROUP_READ:OWNER_WRITE:OTHERS_READ:OWNER_EXECUTE:GROUP_EXECUTE:OTHERS_EXECUTE:
 
 		String []parts = line.split("[,]");
-		// the path after the project directory (/.../fsh/TestFiles/... gives TestFiles/...)
-		int idx = parts[0].indexOf("/fsh/");
-		String fileName = parts[0].substring(idx+5).trim();
+		// the path after the project directory (/.../parley-fsh/TestFiles/... gives TestFiles/...;
+		// the data recorded before the folder was renamed has /.../fsh/TestFiles/...)
+		String dir = parts[0].contains("/parley-fsh/") ? "/parley-fsh/" : "/fsh/";
+		int idx = parts[0].indexOf(dir);
+		String fileName = parts[0].substring(idx+dir.length()).trim();
 		
 		File file = new File(fileName);
 		
