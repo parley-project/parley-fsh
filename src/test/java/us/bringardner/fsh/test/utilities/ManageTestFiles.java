@@ -7,6 +7,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
@@ -64,13 +65,60 @@ public class ManageTestFiles {
 	}
 
 	public static void restore() throws IOException, ParseException {
-		String [] lines = null;
-		try(	InputStream in = ManageTestFiles.class.getResourceAsStream("/TestFileData.txt")){
-			lines = new String(in.readAllBytes()).split("\n");
-		}
-
-		for(String line : lines) {
+		for(String line : lines()) {
 			restore(line);			
+		}
+	}
+
+	/** TestFileData.txt's lines */
+	private static String [] lines() throws IOException {
+		try(	InputStream in = ManageTestFiles.class.getResourceAsStream("/TestFileData.txt")){
+			return new String(in.readAllBytes()).split("\n");
+		}
+	}
+
+	/**
+	 * The test data's symbolic links (SymLink2X, a link to X beside it): each one is made again if it
+	 * is missing or does not point at X. Cheap, so the tests do this every time they run.
+	 */
+	public static void restoreLinks() throws IOException {
+		for(String line : lines()) {
+			File file = new File(fileName(line.split("[,]")[0]));
+			if( file.getName().startsWith("SymLink2")) {
+				symbolicLink(file);
+			}
+		}
+	}
+
+	/** the path after the project directory */
+	private static String fileName(String recorded) {
+		// (/.../parley-fsh/TestFiles/... gives TestFiles/...; the data recorded before the folder was
+		// renamed has /.../fsh/TestFiles/...)
+		String project = recorded.contains("/parley-fsh/") ? "/parley-fsh/" : "/fsh/";
+		int idx = recorded.indexOf(project);
+		return recorded.substring(idx+project.length()).trim();
+	}
+
+	/** file, SymLink2X, as a link to X beside it, unless it already is one */
+	private static void symbolicLink(File file) throws IOException {
+		Path link = file.toPath();
+		// relative (X, in the link's folder), so it still works when the project folder is renamed or moved
+		Path target = Paths.get(file.getName().substring(8));
+		if( Files.isSymbolicLink(link) && Files.readSymbolicLink(link).equals(target) && Files.exists(link)) {
+			return;
+		}
+		// (Files, not file.exists(): that looks through the link, and a broken link is not deleted)
+		Files.deleteIfExists(link);
+		try {
+			Files.createSymbolicLink(link, target);
+		} catch (IOException | UnsupportedOperationException e) {
+			if( FileSourceFactory.isWindows()) {
+				throw new IOException("Can't create symbolic link to : "+file+" Windows MUST be in developer mode.\nSettings->System->Advanced : Toggle Developer mode", e);
+			}
+			throw new IOException("Can't create symbolic link to : "+file, e);
+		}
+		if( !Files.exists(link)) {
+			throw new IOException("Can't create symbolic link to : "+file);
 		}
 	}
 
@@ -83,11 +131,7 @@ public class ManageTestFiles {
 		//5 permissions=OWNER_READ:GROUP_READ:OWNER_WRITE:OTHERS_READ:OWNER_EXECUTE:GROUP_EXECUTE:OTHERS_EXECUTE:
 
 		String []parts = line.split("[,]");
-		// the path after the project directory (/.../parley-fsh/TestFiles/... gives TestFiles/...;
-		// the data recorded before the folder was renamed has /.../fsh/TestFiles/...)
-		String project = parts[0].contains("/parley-fsh/") ? "/parley-fsh/" : "/fsh/";
-		int idx = parts[0].indexOf(project);
-		String fileName = parts[0].substring(idx+project.length()).trim();
+		String fileName = fileName(parts[0]);
 		
 		File file = new File(fileName);
 		
@@ -119,22 +163,7 @@ public class ManageTestFiles {
 				throw new IOException("Can't create hard link to : "+file);
 			}			 	
 		} else if( file.getName().startsWith("SymLink2")) {
-			if( file.exists()) {
-				if( !file.delete()) {
-					throw new IOException("Can't delete existing symbolic link test file: "+file);
-				}
-			}
-			File dir = file.getParentFile();
-			File target = new File(dir,file.getName().substring(8)).getCanonicalFile();
-			
-			Path path = Files.createSymbolicLink(file.toPath(),target.toPath());
-			if( path == null || !Files.exists(path)) {
-				if( FileSourceFactory.isWindows()) {
-					throw new IOException("Can't create symbolic link to : "+file+" Windoes MUST be in developer mode.\nSettings->System->Advanced : Toggle Developer mode");
-				} else {
-					throw new IOException("Can't create symbolic link to : "+file);
-				}
-			}
+			symbolicLink(file);
 		} else {
 			String str = parts[1].substring(parts[1].indexOf('=')+1);
 			long create =  dateFmt.parse(str).getTime();

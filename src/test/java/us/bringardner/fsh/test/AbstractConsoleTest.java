@@ -98,6 +98,8 @@ public abstract class AbstractConsoleTest {
 	}
 
 	private static void manageTesTFiles() throws IOException {
+		// (every time: a link made in another folder, or before the folder was renamed, is broken)
+		ManageTestFiles.restoreLinks();
 		File dir = new File("LsTestFiles");
 		File file = new File(dir,"Folder01");
 		//lastModifiedTime=11-05-2022 00:57:07
