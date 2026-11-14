@@ -493,6 +493,11 @@ delimiter
 	private final Map<String,Object> environmentVariables = new ConcurrentSkipListMap<>();
 	private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase().startsWith("windows");
 
+	/** true when fsh is running on macOS */
+	public static boolean isMacos() {
+		return System.getProperty("os.name", "").toLowerCase().startsWith("mac");
+	}
+
 	/**
 	 * The key that the environment variable name is stored under: name itself, or on Windows, when name
 	 * is in capitals and the environment has it with other case (PATH for Path), that key.
@@ -658,7 +663,6 @@ delimiter
 			registerCommand(new Sort());
 			registerCommand(new Tail());
 			registerCommand(new Head());
-			registerCommand(new Tac());
 			registerCommand(new Rev());
 			registerCommand(new Nl());
 			registerCommand(new Paste());
@@ -696,7 +700,6 @@ delimiter
 			registerCommand(new Unzip());
 			registerCommand(new Tar());
 			registerCommand(new Curl());
-			registerCommand(new Wget());
 			registerCommand(new Xargs());
 			registerCommand(new Gunzip());
 			registerCommand(new Zcat());
@@ -705,6 +708,11 @@ delimiter
 			registerCommand(new Sha256sum());
 			registerCommand(new Sha512sum());
 
+		}
+		// (macOS has the commands above but not tac or wget)
+		if( FileSourceFactory.isWindows() || isMacos() ) {
+			registerCommand(new Tac());
+			registerCommand(new Wget());
 		}
 		
 		// (not where fsh runs inside another program, whose signals are that program's)
