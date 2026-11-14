@@ -13,6 +13,7 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import us.bringardner.fsh.Console;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
@@ -40,7 +41,10 @@ public class TestFind extends AbstractConsoleTest {
 	public static void beforeAll() throws IOException {
 		MemoryFileSourceFactory memory = new MemoryFileSourceFactory();
 		FileSourceFactory.setDefaultFactory(memory);
-		String home = new File("TestFiles").getCanonicalPath();
+		// a path the memory file system understands on every platform: the real TestFiles is C:\...
+		// on Windows, which it takes for a folder with that name under /
+		String home = "/TestFiles";
+		System.setProperty("user.home", home);
 		FileSource dir = memory.createFileSource(home);
 		assertTrue(dir.mkdirs());
 		for(String name : FILES) {
@@ -51,7 +55,9 @@ public class TestFind extends AbstractConsoleTest {
 			}
 		}
 		memory.createSymbolicLink(dir.getChild("SymLink2Folder01"), dir.getChild("Folder01"));
-		AbstractConsoleTest.setup(home);
+		memory.setCurrentDirectory(dir);
+		// (nothing here is on disk, so there are no test file dates to restore)
+		console = new Console();
 	}
 
 	private static void compare(String expect1, String stdOut1) {
@@ -73,7 +79,8 @@ public class TestFind extends AbstractConsoleTest {
 	 */
 	@Test
 	public void testFind00() throws IOException {
-		FileSource findDir = console.createFileSource(new File("FindTestFiles").getCanonicalPath());
+		// (beside TestFiles, not in it; not the real path of FindTestFiles, which is C:\... on Windows)
+		FileSource findDir = console.createFileSource("/FindTestFiles");
 		if(!findDir.exists()) {
 			assertTrue(findDir.mkdirs());
 		}
