@@ -241,6 +241,8 @@ public class Help extends ShellCommand{
 		.append("- [File commands](#file-commands): fsh's versions of ls, cp, mv and the rest, which work on every\n")
 		.append("  connected file system\n")
 		.append("- [Other commands](#other-commands): commands that are separate programs in bash\n")
+		.append("- [Utilities](#utilities): fsh's versions of cat, grep, sed, wget and other programs, for the\n")
+		.append("  same commands on every system\n")
 		.append("- [Bash builtins](#bash-builtins): the builtins that work as they do in bash\n\n");
 
 		md.append("## fsh's own commands\n\n");
@@ -260,14 +262,30 @@ public class Help extends ShellCommand{
 		for(String n : OTHER_COMMANDS) {
 			section(md, n, topics.get(n));
 		}
-		md.append("## Bash builtins\n\n")
+		md.append("## Utilities\n\n")
+		.append("fsh's own versions of programs most systems have. Each one is a builtin where the system has no\n")
+		.append("such program (all of them on Windows; `tac` and `wget` on macOS). Elsewhere the system's program\n")
+		.append("runs, until `enable NAME` turns fsh's on (`enable -n NAME` turns it off again) or\n")
+		.append("`shopt -s fshutils` turns on all of them, so a script has the same commands, options and output\n")
+		.append("on every system. `shopt -u fshutils` goes back to the defaults; a name turned off with `enable -n`\n")
+		.append("stays off.\n\n")
+		.append("| Command | Usage | What it does |\n")
+		.append("|---|---|---|\n");
+		for(Map.Entry<String, String> e : topics.entrySet()) {
+			String n = e.getKey();
+			if( Console.UTILITIES.contains(n)) {
+				md.append("| `").append(cell(n)).append("` | `").append(cell(usage(n, e.getValue())))
+				.append("` | ").append(cell(sentence(n, e.getValue(), topics.keySet()))).append(" |\n");
+			}
+		}
+		md.append("\n## Bash builtins\n\n")
 		.append("These work as they do in bash; the [bash manual](https://www.gnu.org/software/bash/manual/bash.html#Shell-Builtin-Commands)\n")
 		.append("describes them in full, and `help NAME` shows fsh's summary.\n\n")
 		.append("| Command | Usage | What it does |\n")
 		.append("|---|---|---|\n");
 		for(Map.Entry<String, String> e : topics.entrySet()) {
 			String n = e.getKey();
-			if( FSH_COMMANDS.contains(n) || FILE_COMMANDS.contains(n) || OTHER_COMMANDS.contains(n)) {
+			if( FSH_COMMANDS.contains(n) || FILE_COMMANDS.contains(n) || OTHER_COMMANDS.contains(n) || Console.UTILITIES.contains(n)) {
 				continue;
 			}
 			md.append("| `").append(cell(n)).append("` | `").append(cell(usage(n, e.getValue())))
