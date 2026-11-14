@@ -70,13 +70,64 @@ public class Console extends SignalEnabledThread {
 	/** builtins turned off with enable -n: the name runs a program (or nothing) instead */
 	public final java.util.Set<String> disabledBuiltins = ConcurrentHashMap.newKeySet();
 
-	/** the builtin named name, or null (none, or enable -n turned it off) */
+	/**
+	 * fsh's own versions of programs a system usually has (cat, grep, sed, wget, ...). One is a
+	 * builtin where the system has no such program (all of them on Windows; tac and wget on macOS),
+	 * after enable name, or, all of them, with shopt -s fshutils: so a script can have the same
+	 * commands, with the same options, on every system.
+	 */
+	public static final java.util.Set<String> UTILITIES = new java.util.concurrent.ConcurrentSkipListSet<>();
+
+	/** the utilities macOS has no program for */
+	private static final java.util.Set<String> NOT_ON_MACOS = java.util.Set.of("tac", "wget");
+
+	/** the shopt option that makes all of the utilities builtins */
+	public static final String FSHUTILS = "fshutils";
+
+	/** utilities turned on one at a time with enable name */
+	public final java.util.Set<String> enabledUtilities = ConcurrentHashMap.newKeySet();
+
+	/** true when the system has no program for the utility name, so fsh's is the builtin */
+	public static boolean systemLacks(String name) {
+		return FileSourceFactory.isWindows() || isMacos() && NOT_ON_MACOS.contains(name);
+	}
+
+	/** whether the builtin registered as key (BRACKET_TEST for [) is on */
+	public boolean isEnabled(String key) {
+		if( disabledBuiltins.contains(key)) {
+			return false;
+		}
+		if( UTILITIES.contains(key)) {
+			return systemLacks(key) || enabledUtilities.contains(key) || Boolean.TRUE.equals(getShellOptions().get(FSHUTILS));
+		}
+		return true;
+	}
+
+	/** enable key (on) or enable -n key */
+	public void setEnabled(String key, boolean on) {
+		if( on ) {
+			disabledBuiltins.remove(key);
+			if( UTILITIES.contains(key)) {
+				enabledUtilities.add(key);
+			}
+		} else {
+			disabledBuiltins.add(key);
+			enabledUtilities.remove(key);
+		}
+	}
+
+	/** true when fsh is running on macOS */
+	public static boolean isMacos() {
+		return System.getProperty("os.name", "").toLowerCase().startsWith("mac");
+	}
+
+	/** the builtin named name, or null (none, or it is off: enable -n, or a utility not turned on) */
 	public Constructor<? extends ShellCommand> builtin(String name) {
 		if( name.equals("[")) {
 			// ([ is test's other name)
 			name = BRACKET_TEST;
 		}
-		return disabledBuiltins.contains(name) ? null : commands.get(name);
+		return isEnabled(name) ? commands.get(name) : null;
 	}
 
 	/** $_: the last argument of the last simple command */
@@ -493,11 +544,6 @@ delimiter
 	private final Map<String,Object> environmentVariables = new ConcurrentSkipListMap<>();
 	private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase().startsWith("windows");
 
-	/** true when fsh is running on macOS */
-	public static boolean isMacos() {
-		return System.getProperty("os.name", "").toLowerCase().startsWith("mac");
-	}
-
 	/**
 	 * The key that the environment variable name is stored under: name itself, or on Windows, when name
 	 * is in capitals and the environment has it with other case (PATH for Path), that key.
@@ -652,68 +698,64 @@ delimiter
 		registerCommand(new Edit());
 		registerCommand(new Search());
 
-		if( FileSourceFactory.isWindows()) {
-			registerCommand(new Cat());
-			registerCommand(new Grep());
-			registerCommand(new Sed());
-			registerCommand(new Tee());
-			registerCommand(new Tr());
-			registerCommand(new Cut());
-			registerCommand(new Uniq());
-			registerCommand(new Sort());
-			registerCommand(new Tail());
-			registerCommand(new Head());
-			registerCommand(new Rev());
-			registerCommand(new Nl());
-			registerCommand(new Paste());
-			registerCommand(new Fold());
-			registerCommand(new Comm());
-			registerCommand(new Join());
-			registerCommand(new Cmp());
-			registerCommand(new Diff());
-			registerCommand(new Basename());
-			registerCommand(new Dirname());
-			registerCommand(new Realpath());
-			registerCommand(new Readlink());
-			registerCommand(new Stat());
-			registerCommand(new Du());
-			registerCommand(new Df());
-			registerCommand(new FileType());
-			registerCommand(new Split());
-			registerCommand(new Truncate());
-			registerCommand(new Which());
-			registerCommand(new Chmod());
-			registerCommand(new Env());
-			registerCommand(new Printenv());
-			registerCommand(new us.bringardner.fsh.commands.Date());
-			registerCommand(new Seq());
-			registerCommand(new Yes());
-			registerCommand(new Whoami());
-			registerCommand(new Hostname());
-			registerCommand(new Uname());
-			registerCommand(new Base64());
-			registerCommand(new Xxd());
-			registerCommand(new Hexdump());
-			registerCommand(new Od());
-			registerCommand(new Gzip());
-			registerCommand(new Zip());
-			registerCommand(new Unzip());
-			registerCommand(new Tar());
-			registerCommand(new Curl());
-			registerCommand(new Xargs());
-			registerCommand(new Gunzip());
-			registerCommand(new Zcat());
-			registerCommand(new Md5sum());
-			registerCommand(new Sha1sum());
-			registerCommand(new Sha256sum());
-			registerCommand(new Sha512sum());
-
-		}
-		// (macOS has the commands above but not tac or wget)
-		if( FileSourceFactory.isWindows() || isMacos() ) {
-			registerCommand(new Tac());
-			registerCommand(new Wget());
-		}
+		// fsh's own versions of the system's programs: builtins where the system has none, or when
+		// turned on (enable name, shopt -s fshutils); see UTILITIES
+		registerUtility(new Cat());
+		registerUtility(new Grep());
+		registerUtility(new Sed());
+		registerUtility(new Tee());
+		registerUtility(new Tr());
+		registerUtility(new Cut());
+		registerUtility(new Uniq());
+		registerUtility(new Sort());
+		registerUtility(new Tail());
+		registerUtility(new Head());
+		registerUtility(new Rev());
+		registerUtility(new Nl());
+		registerUtility(new Paste());
+		registerUtility(new Fold());
+		registerUtility(new Comm());
+		registerUtility(new Join());
+		registerUtility(new Cmp());
+		registerUtility(new Diff());
+		registerUtility(new Basename());
+		registerUtility(new Dirname());
+		registerUtility(new Realpath());
+		registerUtility(new Readlink());
+		registerUtility(new Stat());
+		registerUtility(new Du());
+		registerUtility(new Df());
+		registerUtility(new FileType());
+		registerUtility(new Split());
+		registerUtility(new Truncate());
+		registerUtility(new Which());
+		registerUtility(new Chmod());
+		registerUtility(new Env());
+		registerUtility(new Printenv());
+		registerUtility(new us.bringardner.fsh.commands.Date());
+		registerUtility(new Seq());
+		registerUtility(new Yes());
+		registerUtility(new Whoami());
+		registerUtility(new Hostname());
+		registerUtility(new Uname());
+		registerUtility(new Base64());
+		registerUtility(new Xxd());
+		registerUtility(new Hexdump());
+		registerUtility(new Od());
+		registerUtility(new Gzip());
+		registerUtility(new Zip());
+		registerUtility(new Unzip());
+		registerUtility(new Tar());
+		registerUtility(new Curl());
+		registerUtility(new Xargs());
+		registerUtility(new Gunzip());
+		registerUtility(new Zcat());
+		registerUtility(new Md5sum());
+		registerUtility(new Sha1sum());
+		registerUtility(new Sha256sum());
+		registerUtility(new Sha512sum());
+		registerUtility(new Tac());
+		registerUtility(new Wget());
 		
 		// (not where fsh runs inside another program, whose signals are that program's)
 		if( !"false".equals(System.getProperty(PROP_OS_SIGNALS)) ) {
@@ -2496,6 +2538,12 @@ delimiter
 			e.printStackTrace();
 		}
 
+	}
+
+	/** registers cmd as one of the UTILITIES */
+	private static void registerUtility(ShellCommand cmd) {
+		registerCommand(cmd);
+		UTILITIES.add(cmd.getName());
 	}
 
 	private static void registerCommand(ShellCommand cmd) {
@@ -4601,6 +4649,8 @@ delimiter
 		shellOptions.put("login_shell", false);
 		// a prompt's $x, $(cmd) and $((n)) are expanded
 		shellOptions.put("promptvars", true);
+		// fsh's: all of the UTILITIES are builtins
+		shellOptions.put(FSHUTILS, false);
 	}
 
 	public Map<String,Boolean> getShellOptions() {

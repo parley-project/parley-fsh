@@ -19,7 +19,9 @@ public class Enable extends ShellCommand{
 			+ "	of that name). With no names, print the enabled builtins (-n: the disabled ones,\n"
 			+ "	-a: all). -f loads the names from filename as bash does (looked for on\n"
 			+ "	BASH_LOADABLES_PATH without a /); fsh cannot run bash's loadable builtins, so this\n"
-			+ "	reports why the file cannot be loaded, or that it cannot be used."
+			+ "	reports why the file cannot be loaded, or that it cannot be used.\n"
+			+ "	fsh's own versions of the system's programs (cat, grep, sed, wget, ...) are off where\n"
+			+ "	the system has the program: enable name turns one on (shopt -s fshutils: all of them)."
 			;
 
 	/** posix's special builtins (and source), as enable -s lists them */
@@ -86,7 +88,7 @@ public class Enable extends ShellCommand{
 				if( n.startsWith("__") || special && !SPECIAL.contains(n)) {
 					continue;
 				}
-				boolean off = ctx.console.disabledBuiltins.contains(n.equals("[") ? Console.BRACKET_TEST : n);
+				boolean off = !ctx.console.isEnabled(n.equals("[") ? Console.BRACKET_TEST : n);
 				if( all || off == disable ) {
 					ctx.stdout.println("enable "+(off ? "-n " : "")+n);
 				}
@@ -103,9 +105,9 @@ public class Enable extends ShellCommand{
 				ctx.error("enable: "+n+": not dynamically loaded");
 				ret = 1;
 			} else if( disable ) {
-				ctx.console.disabledBuiltins.add(n.equals("[") ? Console.BRACKET_TEST : n);
+				ctx.console.setEnabled(n.equals("[") ? Console.BRACKET_TEST : n, false);
 			} else {
-				ctx.console.disabledBuiltins.remove(n.equals("[") ? Console.BRACKET_TEST : n);
+				ctx.console.setEnabled(n.equals("[") ? Console.BRACKET_TEST : n, true);
 			}
 		}
 		return ret;
