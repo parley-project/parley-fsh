@@ -453,6 +453,12 @@ public class TestMoreCommands {
 		assertEquals(1, lastStatus);
 		String now = run("date +%Y").trim();
 		assertEquals(4, now.length());
+		// Windows's own form
+		assertEquals("Sat 02/29/2020\n", run("date -u -d 2020-02-29 /T"));
+		assertTrue(run("date /T").matches("[A-Z][a-z]{2} \\d\\d/\\d\\d/\\d{4}\\n"), run("date /T"));
+		// (what TestEval runs where there is no Unix date on the PATH)
+		assertTrue(run("command=\"echo $(date /T)\"\neval \"$command\"").matches("[A-Z][a-z]{2} \\d\\d/\\d\\d/\\d{4}\\n"));
+		assertEquals("", lastErr);
 		assertEquals("UTC\n", run("date -u +%Z"));
 		// the default format ends with a zone name of 3 or 4 letters (EST, not ET) and the year
 		assertTrue(run("date").matches("[A-Z][a-z]{2} [A-Z][a-z]{2} [ \\d]\\d \\d\\d:\\d\\d:\\d\\d [A-Z]{3,5} \\d{4}\\n"), run("date"));
