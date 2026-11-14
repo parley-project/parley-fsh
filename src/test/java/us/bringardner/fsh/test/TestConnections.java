@@ -1,7 +1,7 @@
 package us.bringardner.fsh.test;
 
 import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
-import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.DelegatingFileSource;
 import us.bringardner.parley.files.tree.LocalFiles;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -123,7 +123,7 @@ public class TestConnections extends AbstractConsoleTest {
 		run("connect memory '"+d+"/conn' >/dev/null");
 		try {
 			FileSource f = console.createFileSource(d);
-			assertTrue(f instanceof TreeFile, f.getClass().getName());
+			assertTrue(f instanceof DelegatingFileSource, f.getClass().getName());
 			assertEquals(dir, LocalFiles.of(f));
 			assertNull(LocalFiles.of(console.createFileSource(d+"/conn")));
 			assertEquals(d+"\n"+d+"\n"+d+"\n", run("cd '"+d+"'; /bin/pwd; pwd -P; cd conn; cd ..; /bin/pwd"));
@@ -148,7 +148,7 @@ public class TestConnections extends AbstractConsoleTest {
 		assertNull(tree.disconnectAt("/nothing"));
 		assertEquals(top, tree.disconnectAt("/w1"));
 		// (the one in it stays, at its path)
-		assertTrue(tree.createFileSource("/w1/in") instanceof TreeFile);
+		assertTrue(tree.createFileSource("/w1/in") instanceof DelegatingFileSource);
 		assertEquals("/w1/in", tree.createFileSource("/w1/in").getAbsolutePath());
 	}
 

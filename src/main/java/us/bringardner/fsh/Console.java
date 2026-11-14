@@ -43,7 +43,7 @@ import us.bringardner.fsh.signal.LoopControlException;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.DelegatingFileSource;
 import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
 import us.bringardner.parley.term.line.LineEditor;
 import us.bringardner.swing.gradient.GradientLook;
@@ -2567,7 +2567,7 @@ delimiter
 		if(at == null || at.isEmpty() || at.charAt(0) != '/' && !VirtualFileSourceFactory.isDrivePath(at)){
 			throw new IOException("a connection is at a path such as /sftp (or C:/sftp on Windows): "+at);
 		}
-		return tree.connectAt(at, TreeFile.unwrap(f));
+		return tree.connectAt(at, DelegatingFileSource.unwrap(f));
 	}
 
 	/**
@@ -2577,7 +2577,7 @@ delimiter
 	 */
 	public void startIn(FileSource dir) throws IOException {
 		FileSourceFactory f = dir.getFileSourceFactory();
-		if( dir instanceof TreeFile || f == null || f == FileSourceFactory.getDefaultFactory() || f == tree ) {
+		if( dir instanceof DelegatingFileSource || f == null || f == FileSourceFactory.getDefaultFactory() || f == tree ) {
 			setCurrentDirectory(dir);
 			return;
 		}

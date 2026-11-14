@@ -186,7 +186,7 @@ public class Ln extends ShellCommand{
 	}
 
 	private int createSymbolicLink(ShellContext ctx, List<Arguments> options, FileSource target, FileSource source) throws IOException {
-		FileSource link = source.getFileSourceFactory().createSymbolicLink(us.bringardner.parley.files.tree.TreeFile.unwrap(target), us.bringardner.parley.files.tree.TreeFile.unwrap(source));
+		FileSource link = source.getFileSourceFactory().createSymbolicLink(us.bringardner.parley.files.tree.DelegatingFileSource.unwrap(target), us.bringardner.parley.files.tree.DelegatingFileSource.unwrap(source));
 		if( link == null || !link.exists()) {
 			return -1;
 		}
