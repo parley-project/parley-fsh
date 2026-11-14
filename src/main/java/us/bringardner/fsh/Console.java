@@ -43,7 +43,7 @@ import us.bringardner.fsh.signal.LoopControlException;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.tree.DelegatingFileSource;
+import us.bringardner.parley.files.DelegatingFileSource;
 import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
 import us.bringardner.parley.term.line.LineEditor;
 import us.bringardner.swing.gradient.GradientLook;

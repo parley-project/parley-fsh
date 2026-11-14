@@ -2,6 +2,11 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-14: DelegatingFileSource's package)
+
+- `DelegatingFileSource` is imported from `us.bringardner.parley.files`, where parley-files moved
+  it (no change in behavior). Needs the parley-files branch delegating-filesource2.
+
 ### Changed (2026-11-14: TreeFile is DelegatingFileSource)
 
 - The console, `ln`, `mv` and the tree tests use parley-files' `tree.DelegatingFileSource`, the
