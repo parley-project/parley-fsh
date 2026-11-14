@@ -1,7 +1,7 @@
 package us.bringardner.fsh.test;
 
 import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
-import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.DelegatingFileSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -65,7 +65,7 @@ public class TestVirtualPaths {
 	@Test
 	public void connectedRootsUseTheSharedIsChildOfMine() throws IOException {
 		assertThrows(NoSuchMethodException.class,
-				() -> TreeFile.class.getDeclaredMethod("isChildOfMine", FileSource.class));
+				() -> DelegatingFileSource.class.getDeclaredMethod("isChildOfMine", FileSource.class));
 
 		MemoryFileSourceFactory mem = new MemoryFileSourceFactory();
 		FileSource primary = dir(mem, "/primary", "p.txt");

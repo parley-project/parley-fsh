@@ -1,7 +1,7 @@
 package us.bringardner.fsh.test;
 
 import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
-import us.bringardner.parley.files.tree.TreeFile;
+import us.bringardner.parley.files.tree.DelegatingFileSource;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,7 +70,7 @@ public class TestConnectionTree extends AbstractConsoleTest {
 
 		String expectName = "/mem";
 		FileSource data = factory.createFileSource(expectName);
-		assertEquals(TreeFile.class, data.getClass());
+		assertEquals(DelegatingFileSource.class, data.getClass());
 		assertEquals(expectName, data.getAbsolutePath());
 		assertTrue(data.exists(),expectName+" does not exists");
 
@@ -115,7 +115,7 @@ public class TestConnectionTree extends AbstractConsoleTest {
 		FileSource root1 = factory.createFileSource(rootName1);
 		FileSource dir1 = root1;
 
-		assertEquals(TreeFile.class, dir1.getClass());
+		assertEquals(DelegatingFileSource.class, dir1.getClass());
 		assertEquals(rootName1, dir1.getAbsolutePath());
 		assertTrue(dir1.exists(),rootName1+" does not exists");
 		int levels = 20;
@@ -139,7 +139,7 @@ public class TestConnectionTree extends AbstractConsoleTest {
 		}
 
 		FileSource dir = factory.createFileSource(rootName1);
-		assertEquals(TreeFile.class, dir.getClass());
+		assertEquals(DelegatingFileSource.class, dir.getClass());
 		assertEquals(rootName1, dir.getAbsolutePath());
 		assertTrue(dir.exists(),rootName1+" does not exists");
 
