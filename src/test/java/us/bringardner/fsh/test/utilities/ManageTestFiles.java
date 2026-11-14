@@ -85,9 +85,9 @@ public class ManageTestFiles {
 		String []parts = line.split("[,]");
 		// the path after the project directory (/.../parley-fsh/TestFiles/... gives TestFiles/...;
 		// the data recorded before the folder was renamed has /.../fsh/TestFiles/...)
-		String dir = parts[0].contains("/parley-fsh/") ? "/parley-fsh/" : "/fsh/";
-		int idx = parts[0].indexOf(dir);
-		String fileName = parts[0].substring(idx+dir.length()).trim();
+		String project = parts[0].contains("/parley-fsh/") ? "/parley-fsh/" : "/fsh/";
+		int idx = parts[0].indexOf(project);
+		String fileName = parts[0].substring(idx+project.length()).trim();
 		
 		File file = new File(fileName);
 		
