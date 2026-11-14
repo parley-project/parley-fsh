@@ -607,7 +607,7 @@ public class Completion implements LineEditor.Completer {
 				case "enabled":
 				case "disabled":
 					for(String b : builtinNames()) {
-						if( action.equals("builtin") || console.disabledBuiltins.contains(b) == action.equals("disabled")) {
+						if( action.equals("builtin") || !console.isEnabled(b) == action.equals("disabled")) {
 							names.add(b);
 						}
 					}

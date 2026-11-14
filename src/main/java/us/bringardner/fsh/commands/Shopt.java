@@ -13,7 +13,10 @@ public class Shopt extends ShellCommand{
 	static String help = "shopt [-s|-u] [-pq] [optname ...]\n"
 			+ "	Set (-s) or unset (-u) shell options, or show them (-p as shopt commands). -q only sets\n"
 			+ "	the exit status: 0 if every optname is set. The options are recorded; which of them\n"
-			+ "	change what the shell does is listed in help for each feature."
+			+ "	change what the shell does is listed in help for each feature.\n"
+			+ "	fshutils (fsh's own): fsh's versions of the system's programs (cat, grep, sed, wget, ...)\n"
+			+ "	are the builtins even where the system has the program, so a script has the same\n"
+			+ "	commands and options everywhere. Off at the start (enable name: one of them)."
 			;
 
 	public Shopt() {
