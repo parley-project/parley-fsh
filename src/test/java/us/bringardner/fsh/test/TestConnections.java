@@ -1,7 +1,7 @@
 package us.bringardner.fsh.test;
 
 import us.bringardner.parley.files.tree.VirtualFileSourceFactory;
-import us.bringardner.parley.files.tree.DelegatingFileSource;
+import us.bringardner.parley.files.DelegatingFileSource;
 import us.bringardner.parley.files.tree.LocalFiles;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
