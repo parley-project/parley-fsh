@@ -23,7 +23,6 @@ package us.bringardner.fsh.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.InputStream;
@@ -37,11 +36,10 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import us.bringardner.fsh.Console;
 
 /**
- * fsh's own versions of the system's programs (Console.UTILITIES): builtins where the system has
- * no such program, and otherwise only after enable name or shopt -s fshutils.
+ * fsh's own versions of the system's programs (Console.UTILITIES): builtins on every system, until
+ * enable -n turns one off.
  */
 public class TestFshUtils {
 
@@ -78,33 +76,17 @@ public class TestFshUtils {
 	}
 
 	@Test
-	public void offWhereTheSystemHasThem() throws Exception {
-		assumeFalse(System.getProperty("os.name", "").toLowerCase().startsWith("windows"));
-		assertEquals("file\nbuiltin\nfile\n",
-				fsh("type -t cat; enable cat; type -t cat; enable -n cat; type -t cat"));
+	public void builtinOnEverySystem() throws Exception {
+		assertEquals("builtin\nbuiltin\nbuiltin\nbuiltin\n",
+				fsh("type -t cat; type -t sha256sum; type -t tac; type -t wget"));
+		// (none is off at the start)
+		assertTrue(fsh("enable -n").isEmpty());
 	}
 
 	@Test
-	public void shoptFshutils() throws Exception {
+	public void enableNTurnsOneOff() throws Exception {
 		assumeFalse(System.getProperty("os.name", "").toLowerCase().startsWith("windows"));
-		assertEquals("1\nbuiltin\nbuiltin\n0\nfile\n",
-				fsh("shopt -q fshutils; echo $?; shopt -s fshutils; type -t cat; type -t sha256sum; "
-						+ "shopt -q fshutils; echo $?; shopt -u fshutils; type -t cat"));
-		// (enable -n wins: that one stays off)
-		assertEquals("file\n", fsh("enable -n cat; shopt -s fshutils; type -t cat"));
-	}
-
-	@Test
-	public void alwaysOnWhereTheSystemHasNone() throws Exception {
-		assumeTrue(Console.isMacos() || System.getProperty("os.name", "").toLowerCase().startsWith("windows"));
-		assertEquals("builtin\nbuiltin\n", fsh("type -t tac; type -t wget"));
-	}
-
-	@Test
-	public void enableLists() throws Exception {
-		assumeFalse(System.getProperty("os.name", "").toLowerCase().startsWith("windows"));
-		String off = fsh("enable -n");
-		assertTrue(off.contains("enable -n cat\n"), off);
-		assertTrue(fsh("shopt -s fshutils; enable -n").isEmpty());
+		assertEquals("file\nenable -n cat\nbuiltin\n",
+				fsh("enable -n cat; type -t cat; enable -n; enable cat; type -t cat"));
 	}
 }
