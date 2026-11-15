@@ -18,6 +18,7 @@ you build**, using the library the same way your own application would. It was c
 - [Why a shell in Java](#why-a-shell-in-java)
 - [Why bash is the target](#why-bash-is-the-target)
 - [How close to bash it is, and how that is tested](#how-close-to-bash-it-is-and-how-that-is-tested)
+- [Commands that are always available](#commands-that-are-always-available)
 - [Known differences from bash](#known-differences-from-bash)
 - [Performance](#performance)
 - [Requirements](#requirements), [Build and run](#build-and-run), [Files](#files), [Layout](#layout)
@@ -34,16 +35,10 @@ you build**, using the library the same way your own application would. It was c
   memory) at a path, and `disconnect` removes it and closes the connection. fsh's own file builtins (`ls`, `cp`, `mv`,
   `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`) work on every connected file system.
 - **The same commands on every system.** fsh has its own versions of 56 programs most systems
-  have (`cat`, `grep`, `sed`, `sort`, `tar`, `curl`, `wget`, `sha256sum` and the rest, listed under
-  [Utilities in COMMANDS.md](COMMANDS.md#utilities)). Where the system has no such program (all of
-  them on Windows; `tac` and `wget` on macOS) fsh's version is the builtin. Elsewhere the system's
-  program runs, unless you turn fsh's on:
-  - `enable wget` turns one on, and `enable -n wget` turns it off again.
-  - `shopt -s fshutils` turns on all of them, so a script gets the same options and output on
-    Windows, macOS and Linux. `shopt -u fshutils` goes back to the defaults.
-  - To use them always, put `shopt -s fshutils` in `~/.fshrc`, or start fsh with `-O fshutils`.
-
-  `enable -n` with no names lists the ones that are off, and `type NAME` shows which one runs.
+  have (`cat`, `grep`, `sed`, `sort`, `tar`, `curl`, `wget`, `sha256sum` and the rest), and they are
+  always the builtins: on Windows, macOS and Linux a script gets the same commands with the same
+  GNU options and output, and they work on every connected file system. See
+  [Commands that are always available](#commands-that-are-always-available).
 - **Every builtin is described** in [COMMANDS.md](COMMANDS.md), made from the same help text
   that `help NAME` shows in the shell.
 - **No passwords in scripts.** A connect setting can name its secret instead of holding it, and
@@ -113,6 +108,50 @@ None of the remaining differences in bash's test suite is an open bug. Most of t
 done in rounds: run the suites, take the differences one by one, fix fsh and run everything
 again. The todo file records what each fix involved.
 
+## Commands that are always available
+
+These commands are built into fsh, so they are there on every system fsh runs on, whatever the
+system has installed, and they work on every connected file system (see `connect`), including
+when the current directory is on a remote one. [COMMANDS.md](COMMANDS.md) describes each one, and
+`help NAME` shows the same text in the shell.
+
+1. **fsh's own commands:** `connect`, `disconnect`, `cred`.
+2. **File commands:** `ls`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `ln`, `find`, `wc`.
+3. **Other commands** (separate programs in bash): `sleep`, `expr`, `clear`.
+4. **Utilities** (56):
+   1. Text: `cat`, `tac`, `head`, `tail`, `grep`, `sed`, `tr`, `cut`, `paste`, `join`, `sort`,
+      `uniq`, `comm`, `rev`, `nl`, `fold`, `tee`, `split`, `xargs`.
+   2. Comparing: `cmp`, `diff`.
+   3. Files and paths: `basename`, `dirname`, `realpath`, `readlink`, `stat`, `file`, `du`, `df`,
+      `chmod`, `truncate`, `which`.
+   4. Encoding and checksums: `base64`, `xxd`, `hexdump`, `od`, `md5sum`, `sha1sum`, `sha256sum`,
+      `sha512sum`.
+   5. Archives: `tar`, `zip`, `unzip`, `gzip`, `gunzip`, `zcat`.
+   6. Network: `curl`, `wget`.
+   7. System and environment: `env`, `printenv`, `date`, `seq`, `yes`, `whoami`, `hostname`,
+      `uname`.
+5. **Bash's builtins** (`cd`, `echo`, `printf`, `read`, `test`, `set`, `shopt` and the rest), as
+   in bash.
+
+**They are the GNU versions, not what the system provides.** fsh's commands follow the GNU tools
+(GNU coreutils, grep, sed, tar, ...) that Linux has: the same option names and output on every
+system. On macOS that means GNU options where the system's programs are BSD ones (for example
+`sed -i` takes no argument and `stat -c FORMAT`, not `stat -f`), and on Windows they are there even
+though Windows has none of these programs. Each command has the options its help lists; any other
+option is an error, not passed on to a program.
+
+To run the system's program instead, give its path (`/usr/bin/sed`) or turn fsh's off with
+`enable -n NAME` (`enable NAME` turns it back on; `enable -n` with no names lists the ones that are
+off, and `type NAME` shows which one runs). The system's program works only on the local disk.
+
+**Programs run only on the local disk.** Any program that isn't built into fsh (`python3`, `make`,
+`/usr/bin/sed`, ...) is a local process and can't see a connected file system. So fsh doesn't start
+one when the current directory, or a file named in one of its arguments, is on a remote file system:
+it says so and the status is 126, for example
+`fsh: python3: cannot run: the current directory /prod/app is on a remote file system; programs run
+only on the local disk (fsh's own commands, such as ls, cp and grep, work there)`. A program stored
+on a remote file system can't be started either; fsh scripts there still run, in fsh.
+
 ## Known differences from bash
 
 **Deliberate:**
@@ -121,9 +160,9 @@ again. The todo file records what each fix involved.
   `sleep`, `expr`, `clear`, `connect`, `cred` and `disconnect` are builtins (so they work on connected file
   systems), with their own help texts, collected in [COMMANDS.md](COMMANDS.md). Programs of the
   same names are still reachable by path or with `enable -n`.
-- **`fshutils`,** fsh's own `shopt` option: it makes fsh's versions of `cat`, `grep`, `wget` and
-  the other [utilities](#what-fsh-is) the builtins even where the system has those programs. Bash
-  has no such option; it is off unless you turn it on.
+- **fsh's own utilities.** `cat`, `grep`, `sed`, `wget` and the other
+  [utilities](#commands-that-are-always-available) are builtins, so fsh runs its own GNU-style
+  version, not the system's program of that name (bash runs the program).
 - **fsh's own name, help and version texts,** startup files (`~/.fshrc`, `~/.fsh_logout`), and
   no bash identity variables (`BASH_VERSION`, `BASH_VERSINFO`, `BASH`). Scripts that refuse to run
   without them (Homebrew does) can be given them in an `FSH_ENV` file.

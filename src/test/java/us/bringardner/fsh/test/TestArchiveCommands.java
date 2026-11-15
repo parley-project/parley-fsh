@@ -23,8 +23,7 @@ import us.bringardner.parley.files.FileSourceFactory;
 
 /**
  * fsh's archive commands: tar, zip, unzip, gzip, gunzip and zcat, built on parley-files-archive.
- * They are built in on Windows only; shopt -s fshutils turns fsh's own on, so these run on every
- * system.
+ * They are builtins on every system.
  */
 public class TestArchiveCommands {
 
@@ -36,7 +35,6 @@ public class TestArchiveCommands {
 	public static void beforeAll() throws IOException {
 		FileSourceFactory.setDefaultFactory(FileSourceFactory.fileProxyFactory);
 		console = new Console();
-		console.executeScript("shopt -s fshutils");
 	}
 
 	@AfterAll
