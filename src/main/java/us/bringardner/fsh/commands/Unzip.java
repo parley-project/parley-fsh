@@ -6,14 +6,16 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.files.FileSource;
+import us.bringardner.parley.files.archive.FileSourceSources;
+import us.bringardner.parley.files.archive.format.SeekableSource;
+import us.bringardner.parley.files.archive.zip.ZipArchiveEntry;
+import us.bringardner.parley.files.archive.zip.ZipReader;
 
-/** unzip, modeled on the Info-ZIP unzip: lists and extracts zip archives. */
+/** unzip, modeled on the Info-ZIP unzip: lists and extracts zip archives (parley-files-archive's ZipReader, with random access). */
 public class Unzip extends ShellCommand{
 	static String name = "unzip";
 	static String help = "unzip [-lonpq] [-d DIR] ZIPFILE [FILE ...]\n"
@@ -61,17 +63,17 @@ public class Unzip extends ShellCommand{
 		} else if( !quiet && !toStdout ) {
 			out.append("Archive:  ").append(zipName).append('\n');
 		}
-		try (ZipInputStream in = new ZipInputStream(zip.getInputStream())) {
-			ZipEntry e;
-			while( (e = in.getNextEntry()) != null ) {
-				String entry = e.getName();
+		// random access: the index is read from the end, and only the entries wanted are read
+		try (SeekableSource src = FileSourceSources.open(zip); ZipReader in = ZipReader.open(src)) {
+			for (ZipArchiveEntry e : in.getEntries()) {
+				String entry = e.getRawName()+(e.isDirectory() ? "/" : "");
 				if( !wanted.isEmpty() && !matches(wanted, entry)) {
 					continue;
 				}
 				if( list ) {
-					byte [] data = e.isDirectory() ? new byte[0] : in.readAllBytes();
-					out.append(String.format("%9d  %s   %s%n", data.length, new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(e.getTime())), entry));
-					totalSize += data.length;
+					long size = e.isDirectory() ? 0 : e.getSize();
+					out.append(String.format("%9d  %s   %s%n", size, new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(e.getLastModified())), entry));
+					totalSize += size;
 					count++;
 					continue;
 				}
@@ -84,7 +86,9 @@ public class Unzip extends ShellCommand{
 				}
 				if( toStdout ) {
 					if( !e.isDirectory()) {
-						in.transferTo(ctx.stdout);
+						try (InputStream data = in.openStream(e, src)) {
+							data.transferTo(ctx.stdout);
+						}
 					}
 					continue;
 				}
@@ -105,14 +109,14 @@ public class Unzip extends ShellCommand{
 				if( parent != null && !parent.exists()) {
 					parent.mkdirs();
 				}
-				try (OutputStream os = target.getOutputStream()) {
-					in.transferTo(os);
+				try (InputStream data = in.openStream(e, src); OutputStream os = target.getOutputStream()) {
+					data.transferTo(os);
 				}
-				if( e.getTime() > 0 ) {
-					target.setLastModifiedTime(e.getTime());
+				if( e.getLastModified() > 0 ) {
+					target.setLastModifiedTime(e.getLastModified());
 				}
 				if( !quiet ) {
-					out.append(target.exists() && overwrite ? "  inflating: " : "  inflating: ").append(dir).append(clean).append('\n');
+					out.append("  inflating: ").append(dir).append(clean).append('\n');
 				}
 			}
 		}

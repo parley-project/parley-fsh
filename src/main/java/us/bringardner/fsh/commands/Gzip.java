@@ -1,15 +1,13 @@
 package us.bringardner.fsh.commands;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.files.FileSource;
+import us.bringardner.parley.files.archive.compress.Compression;
 
 /** gzip, gunzip and zcat, modeled on the GNU commands. */
 public class Gzip extends ShellCommand{
@@ -130,22 +128,28 @@ public class Gzip extends ShellCommand{
 		return ret;
 	}
 
+	/** gzip's streams are parley-files-archive's Compression.GZIP, shared with tar */
 	private static void copy(InputStream in, OutputStream out, boolean decompress) throws IOException {
-		byte [] buf = new byte[65536];
-		int n;
 		if( decompress ) {
-			try (InputStream gz = new GZIPInputStream(new BufferedInputStream(in))) {
-				while( (n = gz.read(buf)) >= 0 ) {
-					out.write(buf, 0, n);
-				}
+			try (InputStream gz = Compression.GZIP.decompress(in)) {
+				gz.transferTo(out);
 			}
 		} else {
-			GZIPOutputStream gz = new GZIPOutputStream(out);
-			while( (n = in.read(buf)) >= 0 ) {
-				gz.write(buf, 0, n);
-			}
-			gz.finish();
-			out.flush();
+			// (not closed: that would close out, which may be standard output)
+			OutputStream gz = Compression.GZIP.compress(new java.io.FilterOutputStream(out) {
+				@Override
+				public void write(byte[] b, int off, int len) throws IOException {
+					out.write(b, off, len);
+				}
+
+				@Override
+				public void close() throws IOException {
+					flush();
+				}
+			});
+			in.transferTo(gz);
+			gz.close();
 		}
+		out.flush();
 	}
 }
