@@ -2,6 +2,13 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-15: no programs on a remote file system)
+
+- A program (anything not built into fsh) is not started when the current directory, or a file an
+  argument names, is on a connected (remote) file system, or when the program itself is stored on
+  one: fsh gives an error that says why and the status is 126. Before, the program ran in the
+  directory fsh was started in and failed with "No such file or directory". `clear` still runs.
+
 ### Changed (2026-11-15: fsh's utilities are always the builtins)
 
 - fsh's own versions of `cat`, `grep`, `sed`, `wget` and the other 52 utilities are builtins on
