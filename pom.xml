@@ -640,6 +640,13 @@
 			<artifactId>parley-files</artifactId>
 			<version>${parley.version}</version>
 		</dependency>
+		<!-- Archives and compression (zip, tar, gzip): the shared code the tar, zip, unzip and gzip
+		     commands are built on -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-files-archive</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
 		<!-- The keyboard and terminal (raw mode, keys, size, lending the terminal) and the line editor -->
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
