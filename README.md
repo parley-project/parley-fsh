@@ -144,6 +144,14 @@ To run the system's program instead, give its path (`/usr/bin/sed`) or turn fsh'
 `enable -n NAME` (`enable NAME` turns it back on; `enable -n` with no names lists the ones that are
 off, and `type NAME` shows which one runs). The system's program works only on the local disk.
 
+**Programs run only on the local disk.** Any program that isn't built into fsh (`python3`, `make`,
+`/usr/bin/sed`, ...) is a local process and can't see a connected file system. So fsh doesn't start
+one when the current directory, or a file named in one of its arguments, is on a remote file system:
+it says so and the status is 126, for example
+`fsh: python3: cannot run: the current directory /prod/app is on a remote file system; programs run
+only on the local disk (fsh's own commands, such as ls, cp and grep, work there)`. A program stored
+on a remote file system can't be started either; fsh scripts there still run, in fsh.
+
 ## Known differences from bash
 
 **Deliberate:**

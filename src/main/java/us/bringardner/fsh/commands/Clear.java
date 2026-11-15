@@ -28,7 +28,7 @@ public class Clear extends ShellCommand{
 			frame.clear();			
 		} else {
 			List<String> cmd = Arrays.asList("clear");
-			ret = Programs.execute(cmd, ctx);			
+			ret = Programs.executeWithoutFiles(cmd, ctx);			
 		}
 		
 		return ret;
