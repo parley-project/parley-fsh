@@ -2,6 +2,15 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-15: fsh's utilities are always the builtins)
+
+- fsh's own versions of `cat`, `grep`, `sed`, `wget` and the other 52 utilities are builtins on
+  every system, not only where the system lacks the program, so a script gets the same GNU options
+  and output everywhere, and they work in a remote current directory. `enable -n NAME` still runs
+  the system's program instead. The `fshutils` shopt option is gone.
+- README: a new section lists the commands that are always available and says they follow the GNU
+  versions, not the system's.
+
 ### Changed (2026-11-14: Maven coordinates)
 
 - Maven coordinates: `us.bringardner:fsh` → `us.bringardner:parley-fsh`, so the jars are
