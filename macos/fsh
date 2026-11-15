@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run the shell from its packaged jar (target/fsh-*.jar: mvn package), passing the arguments to it,
+# Run the shell from its packaged jar (target/parley-fsh-*.jar: mvn package), passing the arguments to it,
 # or its native image (target/native/fsh: macos/build-native.sh) when that is as new as the jar.
 # FSH_RUNTIME chooses for one run: native (the native image), jvm (the jar on Java), or auto (the
 # default: the native image when it is as new as the jar).
@@ -25,11 +25,11 @@ jvm|auto) ;;
 	exit 2 ;;
 esac
 
-# (not fsh-VERSION-PLATFORM.jar, the keyboard library's jar)
-jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar 2>/dev/null | grep -v -E -- '-(linux|macos|windows)-' | head -1)
+# (not parley-fsh-VERSION-PLATFORM.jar, the keyboard library's jar)
+jar=$(ls -t "$PROJECT_DIR"/target/parley-fsh-*.jar 2>/dev/null | grep -v -E -- '-(linux|macos|windows)-' | head -1)
 if [ -z "$jar" ]; then
 	(cd "$PROJECT_DIR" && mvn -q package -DskipTests) || exit 1
-	jar=$(ls -t "$PROJECT_DIR"/target/fsh-*.jar | grep -v -E -- '-(linux|macos|windows)-' | head -1)
+	jar=$(ls -t "$PROJECT_DIR"/target/parley-fsh-*.jar | grep -v -E -- '-(linux|macos|windows)-' | head -1)
 fi
 # (auto) the native image (macos/build-native.sh), unless the jar was built after it
 if [ "${FSH_RUNTIME:-auto}" = auto ] && [ -x "$native" ] && [ ! "$jar" -nt "$native" ]; then

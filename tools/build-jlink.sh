@@ -64,6 +64,10 @@ app_repo() {
 app_class() {
 	echo us.bringardner.fshdb.Fshdb
 }
+# (its artifactId, the start of its jar's name)
+app_artifact() {
+	echo parley-fshdb
+}
 for a in $apps; do
 	if [ ! -f "$(app_repo $a)/pom.xml" ]; then
 		echo "$0: no $a checkout at $(app_repo $a)" >&2
@@ -114,7 +118,7 @@ if [ -n "$apps" ]; then
 	mvn -q dependency:build-classpath -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt
 	fsh_jars=$(tr ':' '\n' < target/runtime-classpath.txt | sed 's|.*/||')
 	# (not fsh itself)
-	skip='^(fsh-[0-9].*)\.jar$'
+	skip='^(parley-fsh-[0-9].*)\.jar$'
 	for a in $apps; do
 		repo=$(cd "$(app_repo $a)" && pwd)
 		if ! (cd "$repo" && mvn -q package -DskipTests dependency:build-classpath -Dmdep.includeScope=runtime \
@@ -125,9 +129,9 @@ if [ -n "$apps" ]; then
 		# (the jar this build made: its version from Maven's record of it, as target can hold older
 		# ones, parley-fsh-debug-1.0.0.jar beside parley-fsh-debug-2.0.0-SNAPSHOT.jar; else the newest)
 		v=$(sed -n 's/^version=//p' "$repo/target/maven-archiver/pom.properties" 2>/dev/null | tr -d '\r')
-		main=$repo/target/$a-$v.jar
+		main=$repo/target/$(app_artifact $a)-$v.jar
 		if [ -z "$v" ] || [ ! -f "$main" ]; then
-			main=$(ls -t "$repo"/target/$a-*.jar 2>/dev/null | grep -Ev -- '-(sources|javadoc|tests|all|plugin)\.jar$' | head -1 || true)
+			main=$(ls -t "$repo"/target/$(app_artifact $a)-*.jar 2>/dev/null | grep -Ev -- '-(sources|javadoc|tests|all|plugin)\.jar$' | head -1 || true)
 		fi
 		[ -n "$main" ] || { echo "$0: no $a jar built in $repo" >&2; exit 1; }
 		cp -p "$main" "$apps_dir/"
@@ -190,7 +194,7 @@ cp -p target/fsh.jar "$out/lib/"
 # plugin folders. (Fetched, not dependencies: they depend on fsh.)
 plugins=$FSH_PLUGINS
 if [ -z "$plugins" ]; then
-	v=$(awk -F'[<>]' '/<artifactId>fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)
+	v=$(awk -F'[<>]' '/<artifactId>parley-fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)
 	rm -rf target/plugins
 	if mvn -q dependency:copy -Dmdep.useBaseVersion=true -DoutputDirectory=target/plugins \
 			-Dartifact=us.bringardner.parley:parley-files-viewer-tui-lanterna:$v:jar:plugin > /dev/null 2>&1; then

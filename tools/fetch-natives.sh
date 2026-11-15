@@ -1,7 +1,7 @@
 #!/bin/sh
 # Fetch every platform's native files (the keyboard library and fshexec) that parley-build's
 # preview workflow built, into natives/PLATFORM/, so that the next deploy from this machine has
-# every platform's native jar (fsh-VERSION-linux-x86_64.jar ...), not only this machine's:
+# every platform's native jar (parley-fsh-VERSION-linux-x86_64.jar ...), not only this machine's:
 #
 #   tools/fetch-natives.sh            from the newest preview run that succeeded
 #   tools/fetch-natives.sh RUN-ID     from that run (Actions > preview, the number in its address)

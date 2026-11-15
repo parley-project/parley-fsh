@@ -46,7 +46,7 @@
 	</properties>
 
 	<profiles>
-		<!-- fsh-VERSION-linux-x86_64.jar: this platform's keyboard library and fshexec (linux/compile.sh), which
+		<!-- parley-fsh-VERSION-linux-x86_64.jar: this platform's keyboard library and fshexec (linux/compile.sh), which
 		     parley-launcher unpacks for fsh; made only where they have been built -->
 		<profile>
 			<id>native-linux-x86_64</id>
@@ -65,7 +65,7 @@
 				<fsh.native.dir>linux</fsh.native.dir>
 			</properties>
 		</profile>
-		<!-- fsh-VERSION-linux-aarch64.jar: this platform's keyboard library and fshexec (linux/compile.sh), which
+		<!-- parley-fsh-VERSION-linux-aarch64.jar: this platform's keyboard library and fshexec (linux/compile.sh), which
 		     parley-launcher unpacks for fsh; made only where they have been built -->
 		<profile>
 			<id>native-linux-aarch64</id>
@@ -84,7 +84,7 @@
 				<fsh.native.dir>linux</fsh.native.dir>
 			</properties>
 		</profile>
-		<!-- fsh-VERSION-macos-x86_64.jar: this platform's keyboard library and fshexec (macos/compile.sh), which
+		<!-- parley-fsh-VERSION-macos-x86_64.jar: this platform's keyboard library and fshexec (macos/compile.sh), which
 		     parley-launcher unpacks for fsh; made only where they have been built -->
 		<profile>
 			<id>native-macos-x86_64</id>
@@ -103,7 +103,7 @@
 				<fsh.native.dir>macos</fsh.native.dir>
 			</properties>
 		</profile>
-		<!-- fsh-VERSION-macos-aarch64.jar: this platform's keyboard library and fshexec (macos/compile.sh), which
+		<!-- parley-fsh-VERSION-macos-aarch64.jar: this platform's keyboard library and fshexec (macos/compile.sh), which
 		     parley-launcher unpacks for fsh; made only where they have been built -->
 		<profile>
 			<id>native-macos-aarch64</id>
@@ -122,7 +122,7 @@
 				<fsh.native.dir>macos</fsh.native.dir>
 			</properties>
 		</profile>
-		<!-- fsh-VERSION-windows-x86_64.jar: this platform's keyboard library (windows/compile.cmd); there is no
+		<!-- parley-fsh-VERSION-windows-x86_64.jar: this platform's keyboard library (windows/compile.cmd); there is no
 		     fshexec on Windows. Made only where it has been built -->
 		<profile>
 			<id>native-windows-x86_64</id>
@@ -336,7 +336,7 @@
 						</manifest>
 					</archive>
 				</configuration>
-				<!-- fsh-VERSION-PLATFORM.jar, attached: the native jars, from the files the resources
+				<!-- parley-fsh-VERSION-PLATFORM.jar, attached: the native jars, from the files the resources
 				     plugin below puts in target/native/PLATFORM (see there). In this declaration, not one
 				     of their own: a plugin is declared once in a build -->
 				<executions>
@@ -483,7 +483,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of a platform
+			<!-- parley-fsh-VERSION-PLATFORM.jar, attached: the keyboard library and fshexec of a platform
 			     (compile.sh in linux/ or macos/, compile.cmd in windows/), which parley-launcher unpacks
 			     for fsh. This machine's is made only where they have been built (a native-PLATFORM
 			     profile). The others' are made from the files handed in as natives/PLATFORM/
