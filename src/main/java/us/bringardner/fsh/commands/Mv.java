@@ -156,7 +156,7 @@ public class Mv extends ShellCommand{
 		}
 
 
-		boolean renamed = source.renameTo(us.bringardner.parley.files.tree.TreeFile.unwrap(dest));
+		boolean renamed = source.renameTo(us.bringardner.parley.files.DelegatingFileSource.unwrap(dest));
 		if( !renamed ) {
 			// (copy lists each file it copies with -v, the source itself last)
 			copy(sc,source,dest,options);
