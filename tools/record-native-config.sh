@@ -33,8 +33,8 @@ mkdir -p "$out"
 
 mvn -B -q package -DskipTests
 mvn -B -q dependency:build-classpath -Dparley.fsh.noKeychain -Dmdep.includeScope=runtime -Dmdep.outputFile=target/runtime-classpath.txt
-# (not fsh-VERSION-PLATFORM.jar, the keyboard library's jar)
-jar=$(ls -t target/fsh-*.jar | grep -v -E -- '-(linux|macos|windows)-' | head -1)
+# (not parley-fsh-VERSION-PLATFORM.jar, the keyboard library's jar)
+jar=$(ls -t target/parley-fsh-*.jar | grep -v -E -- '-(linux|macos|windows)-' | head -1)
 cp="$jar:$(cat target/runtime-classpath.txt)"
 
 run() {

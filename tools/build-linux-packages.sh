@@ -33,7 +33,7 @@ deb|rpm) ;;
 all) types="deb rpm" ;;
 *) echo "usage: $0 [deb|rpm|all] [VERSION]" >&2; exit 2 ;;
 esac
-version=${2:-$(awk -F'[<>]' '/<artifactId>fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)}
+version=${2:-$(awk -F'[<>]' '/<artifactId>parley-fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)}
 version=${version%-SNAPSHOT}
 version=${version#v}
 case $(uname -m) in

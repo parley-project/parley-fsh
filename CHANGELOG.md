@@ -2,6 +2,14 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-14: Maven coordinates)
+
+- Maven coordinates: `us.bringardner:fsh` → `us.bringardner:parley-fsh`, so the jars are
+  `parley-fsh-VERSION.jar` and `parley-fsh-VERSION-PLATFORM.jar`. `fsh.jar`, the installers and
+  the archives keep their names. The `fsh` and `build-native` scripts, `record-native-config.sh`,
+  and `build-jlink.sh` and `build-msi.ps1` (which take fshdb's jar as `parley-fshdb-VERSION.jar`)
+  look for the new names.
+
 ### Changed (2026-11-14: DelegatingFileSource's package)
 
 - `DelegatingFileSource` is imported from `us.bringardner.parley.files`, where parley-files moved

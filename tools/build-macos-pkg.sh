@@ -47,7 +47,7 @@ if [ $# -gt 1 ]; then
 	echo "usage: $0 [VERSION]" >&2
 	exit 2
 fi
-version=${1:-$(awk -F'[<>]' '/<artifactId>fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)}
+version=${1:-$(awk -F'[<>]' '/<artifactId>parley-fsh<\/artifactId>/ { getline; print $3; exit }' pom.xml)}
 version=${version%-SNAPSHOT}
 version=${version#v}
 case $(uname -m) in

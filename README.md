@@ -331,13 +331,13 @@ jars `FSH_PLUGINS` names, else those in the plugin folders.
 (`~/.m2/repository`), fetched from Maven Central when they are missing:
 
 ```sh
-parley-launcher add fsh us.bringardner:fsh:2.0.0
+parley-launcher add fsh us.bringardner:parley-fsh:2.0.0
 fsh
 ```
 
 The build writes what it needs into the jar (`META-INF/parley/launcher.list`: fsh's options, as
 `linux/fsh` has them, and every jar fsh needs, with its SHA-256), and attaches
-`fsh-VERSION-PLATFORM.jar` (`linux-x86_64`, `macos-aarch64` ...) with this platform's keyboard
+`parley-fsh-VERSION-PLATFORM.jar` (`linux-x86_64`, `macos-aarch64` ...) with this platform's keyboard
 library and `fshexec` (on Windows `nativekeyboard.dll` alone: there is no `fshexec`). It is made only where `compile.sh` (in `linux/` or `macos/`) or `windowsmpile.cmd` has built them.
 The launcher unpacks it for fsh; without it, fsh uses JNA (see [Native support](#native-support)).
 
