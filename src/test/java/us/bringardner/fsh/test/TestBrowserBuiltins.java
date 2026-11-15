@@ -70,6 +70,11 @@ public class TestBrowserBuiltins {
 				// (no plugin folders: only what is on the class path)
 				"-Dparley.plugins.path="+tmp.resolve("no-plugins"),
 				"us.bringardner.fsh.Console", "-c", script));
+		// (as fsh's launch scripts do: Java 24+ warns on System.loadLibrary without it,
+		// which would end up in the output; Java 11 doesn't know the option)
+		if( Runtime.version().feature() >= 17 ) {
+			cmd.add(1, "--enable-native-access=ALL-UNNAMED");
+		}
 		ProcessBuilder pb = new ProcessBuilder(cmd).directory(tmp.toFile()).redirectErrorStream(true);
 		pb.environment().put("EDITOR", editor.getAbsolutePath());
 		pb.environment().remove("VISUAL");
