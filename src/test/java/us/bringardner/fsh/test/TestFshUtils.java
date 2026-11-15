@@ -29,6 +29,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -48,11 +50,16 @@ public class TestFshUtils {
 
 	/** stdout and stderr of fsh -c script, run in its own process with no plugins */
 	private String fsh(String script) throws Exception {
-		List<String> cmd = List.of(
+		List<String> cmd = new ArrayList<>(Arrays.asList(
 				new File(System.getProperty("java.home"), "bin/java").getPath(),
 				"-cp", System.getProperty("java.class.path"),
 				"-Dparley.plugins.path="+tmp.resolve("no-plugins"),
-				"us.bringardner.fsh.Console", "-c", script);
+				"us.bringardner.fsh.Console", "-c", script));
+		// (as fsh's launch scripts do: Java 24+ warns on System.loadLibrary without it,
+		// which would end up in the output; Java 11 doesn't know the option)
+		if( Runtime.version().feature() >= 17 ) {
+			cmd.add(1, "--enable-native-access=ALL-UNNAMED");
+		}
 		ProcessBuilder pb = new ProcessBuilder(cmd).directory(tmp.toFile()).redirectErrorStream(true);
 		pb.environment().remove("JAVA_TOOL_OPTIONS");
 		Process p = pb.start();
