@@ -64,7 +64,7 @@ if (-not (Test-Path target\fsh.jar)) { throw 'mvn package made no target\fsh.jar
 $fshCp = @()
 $apps = @()
 foreach ($def in @(
-		@{ Name = 'fshdb'; Repo = $DbRepo; Pattern = 'fshdb-*.jar'; Class = 'us.bringardner.fshdb.Fshdb';
+		@{ Name = 'fshdb'; Artifact = 'parley-fshdb'; Repo = $DbRepo; Pattern = 'parley-fshdb-*.jar'; Class = 'us.bringardner.fshdb.Fshdb';
 			Description = 'fshdb, a debugger for shell scripts that runs in a terminal' })) {
 	if (-not $def.Repo) { continue }
 	if (-not $fshCp) {
@@ -84,7 +84,7 @@ foreach ($def in @(
 	$main = $null
 	$record = 'target\maven-archiver\pom.properties'
 	if (Test-Path $record) {
-		$built = Join-Path (Get-Location) "target\$($def.Name)-$((Get-Content $record -Raw | ConvertFrom-StringData).version).jar"
+		$built = Join-Path (Get-Location) "target\$($def.Artifact)-$((Get-Content $record -Raw | ConvertFrom-StringData).version).jar"
 		if (Test-Path $built) { $main = $built }
 	}
 	if (-not $main) {
@@ -94,7 +94,7 @@ foreach ($def in @(
 	Pop-Location
 	if (-not $main) { throw "no $($def.Name) jar built in $repo" }
 	# (not fsh itself)
-	$skip = '^(fsh-\d.*)\.jar$'
+	$skip = '^(parley-fsh-\d.*)\.jar$'
 	$jars = @($main) + @($cp | Where-Object { $leaf = Split-Path -Leaf $_; ($fshCp -notcontains $leaf) -and ($leaf -notmatch $skip) })
 	$apps += @{ Def = $def; Main = $main; Jars = $jars }
 	Write-Output "$($def.Name): $main, and $($jars.Count - 1) more jars"
