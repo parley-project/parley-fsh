@@ -1,5 +1,5 @@
 @echo off
-rem Run the shell from its packaged jar (target\fsh-*.jar: mvn package), passing the arguments to it.
+rem Run the shell from its packaged jar (target\parley-fsh-*.jar: mvn package), passing the arguments to it.
 rem (No AOT cache, native image or fshexec here, as macos/fsh has: see compile.cmd.)
 
 setlocal
@@ -8,12 +8,12 @@ for %%i in ("%LIB_DIR%\..") do set PROJECT_DIR=%%~fi
 set cp_file=%PROJECT_DIR%\target\runtime-classpath.txt
 
 set jar=
-for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\fsh-*.jar" 2^>nul ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
+for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\parley-fsh-*.jar" 2^>nul ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
 if not defined jar (
 	pushd "%PROJECT_DIR%"
 	call mvn -q package -DskipTests || (popd & exit /b 1)
 	popd
-	for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\fsh-*.jar" ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
+	for /f "delims=" %%i in ('dir /b /o-d "%PROJECT_DIR%\target\parley-fsh-*.jar" ^| findstr /v "linux- macos- windows-"') do if not defined jar set jar=%PROJECT_DIR%\target\%%i
 )
 if not exist "%cp_file%" (
 	pushd "%PROJECT_DIR%"
