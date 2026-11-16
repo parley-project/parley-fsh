@@ -306,12 +306,12 @@ Clear the terminal screen.
 
 ## Utilities
 
-fsh's own versions of programs most systems have. They are builtins on every system (Windows,
-macOS and Linux), so a script gets the same commands, options and output everywhere. They follow
-the GNU versions (GNU coreutils, grep, sed, ...), not what the system provides: on macOS that
-means GNU options, not BSD ones. Like the file commands, they work on any FileSource, so they
-work in a remote directory too. `enable -n NAME` turns one off, so the name runs the system's
-program (which sees only the local disk); `enable NAME` turns it back on.
+fsh's own versions of programs most systems have. Each one is a builtin where the system has no
+such program (all of them on Windows; `tac` and `wget` on macOS). Elsewhere the system's program
+runs, until `enable NAME` turns fsh's on (`enable -n NAME` turns it off again) or
+`shopt -s fshutils` turns on all of them, so a script has the same commands, options and output
+on every system. `shopt -u fshutils` goes back to the defaults; a name turned off with `enable -n`
+stays off.
 
 | Command | Usage | What it does |
 |---|---|---|

@@ -20,8 +20,8 @@ public class Enable extends ShellCommand{
 			+ "	-a: all). -f loads the names from filename as bash does (looked for on\n"
 			+ "	BASH_LOADABLES_PATH without a /); fsh cannot run bash's loadable builtins, so this\n"
 			+ "	reports why the file cannot be loaded, or that it cannot be used.\n"
-			+ "	fsh's own versions of the system's programs (cat, grep, sed, wget, ...) are builtins on\n"
-			+ "	every system: enable -n name turns one off, so the name runs the system's program."
+			+ "	fsh's own versions of the system's programs (cat, grep, sed, wget, ...) are off where\n"
+			+ "	the system has the program: enable name turns one on (shopt -s fshutils: all of them)."
 			;
 
 	/** posix's special builtins (and source), as enable -s lists them */
