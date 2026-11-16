@@ -71,24 +71,48 @@ public class Console extends SignalEnabledThread {
 	public final java.util.Set<String> disabledBuiltins = ConcurrentHashMap.newKeySet();
 
 	/**
-	 * fsh's own versions of programs a system usually has (cat, grep, sed, wget, ...). They are
-	 * builtins on every system, so a script has the same commands, with the same (GNU) options and
-	 * output, on Windows, macOS and Linux, and they work on any FileSource (a remote current
-	 * directory included). enable -n name turns one off, so the name runs the system's program.
+	 * fsh's own versions of programs a system usually has (cat, grep, sed, wget, ...). One is a
+	 * builtin where the system has no such program (all of them on Windows; tac and wget on macOS),
+	 * after enable name, or, all of them, with shopt -s fshutils: so a script can have the same
+	 * commands, with the same options, on every system.
 	 */
 	public static final java.util.Set<String> UTILITIES = new java.util.concurrent.ConcurrentSkipListSet<>();
 
+	/** the utilities macOS has no program for */
+	private static final java.util.Set<String> NOT_ON_MACOS = java.util.Set.of("tac", "wget");
+
+	/** the shopt option that makes all of the utilities builtins */
+	public static final String FSHUTILS = "fshutils";
+
+	/** utilities turned on one at a time with enable name */
+	public final java.util.Set<String> enabledUtilities = ConcurrentHashMap.newKeySet();
+
+	/** true when the system has no program for the utility name, so fsh's is the builtin */
+	public static boolean systemLacks(String name) {
+		return FileSourceFactory.isWindows() || isMacos() && NOT_ON_MACOS.contains(name);
+	}
+
 	/** whether the builtin registered as key (BRACKET_TEST for [) is on */
 	public boolean isEnabled(String key) {
-		return !disabledBuiltins.contains(key);
+		if( disabledBuiltins.contains(key)) {
+			return false;
+		}
+		if( UTILITIES.contains(key)) {
+			return systemLacks(key) || enabledUtilities.contains(key) || Boolean.TRUE.equals(getShellOptions().get(FSHUTILS));
+		}
+		return true;
 	}
 
 	/** enable key (on) or enable -n key */
 	public void setEnabled(String key, boolean on) {
 		if( on ) {
 			disabledBuiltins.remove(key);
+			if( UTILITIES.contains(key)) {
+				enabledUtilities.add(key);
+			}
 		} else {
 			disabledBuiltins.add(key);
+			enabledUtilities.remove(key);
 		}
 	}
 
@@ -97,7 +121,7 @@ public class Console extends SignalEnabledThread {
 		return System.getProperty("os.name", "").toLowerCase().startsWith("mac");
 	}
 
-	/** the builtin named name, or null (none, or it is off: enable -n) */
+	/** the builtin named name, or null (none, or it is off: enable -n, or a utility not turned on) */
 	public Constructor<? extends ShellCommand> builtin(String name) {
 		if( name.equals("[")) {
 			// ([ is test's other name)
@@ -674,7 +698,8 @@ delimiter
 		registerCommand(new Edit());
 		registerCommand(new Search());
 
-		// fsh's own versions of the system's programs: builtins on every system; see UTILITIES
+		// fsh's own versions of the system's programs: builtins where the system has none, or when
+		// turned on (enable name, shopt -s fshutils); see UTILITIES
 		registerUtility(new Cat());
 		registerUtility(new Grep());
 		registerUtility(new Sed());
@@ -4624,6 +4649,8 @@ delimiter
 		shellOptions.put("login_shell", false);
 		// a prompt's $x, $(cmd) and $((n)) are expanded
 		shellOptions.put("promptvars", true);
+		// fsh's: all of the UTILITIES are builtins
+		shellOptions.put(FSHUTILS, false);
 	}
 
 	public Map<String,Boolean> getShellOptions() {

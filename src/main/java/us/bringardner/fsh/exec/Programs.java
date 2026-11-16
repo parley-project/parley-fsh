@@ -17,7 +17,6 @@ import us.bringardner.fsh.ShellContext;
 import us.bringardner.parley.core.BaseThread;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.tree.LocalFiles;
 
 /**
  * Programs: a command that is not a function or a builtin, found by its path or on $PATH.
@@ -90,11 +89,6 @@ public final class Programs {
 				}
 				return sc.executeSubShell(exec, all);
 			}
-			if( !LocalFiles.isLocal(exec)) {
-				// (a program runs on the local disk: one on a connected file system can't be started)
-				refuse(name, exec.getAbsolutePath()+" is on a remote file system", sc);
-				return 126;
-			}
 			String interpreter = missingInterpreter(exec, sc);
 			if( interpreter != null ) {
 				// (as bash says it: the system's error, after the shell's name)
@@ -104,7 +98,7 @@ public final class Programs {
 			List<String> cmd = new ArrayList<>();
 			cmd.add(exec.getAbsolutePath());
 			cmd.addAll(args);
-			return execute(cmd, sc, name);
+			return execute(cmd, sc);
 		}
 		if( name.contains("/")) {
 			sc.error(name+": No such file or directory");
@@ -128,7 +122,7 @@ public final class Programs {
 			cmd.add(0, "/r");
 			cmd.add(0, shell != null ? shell.getAbsolutePath() : "cmd");
 		}
-		return execute(cmd, sc, name);
+		return execute(cmd, sc);
 	}
 
 	/** the #! interpreter a script names, if there is no such file (else null) */
@@ -833,32 +827,7 @@ public final class Programs {
 
 	}
 
-	/**
-	 * Runs cmd as a program. A program runs on the local disk, so it is not started (status 126,
-	 * with an error saying why) when the current directory, or a file an argument names, is on a
-	 * connected (remote) file system.
-	 */
 	public static int execute(List<String> cmd, ShellContext ctx) throws IOException {
-		return execute(cmd, ctx, cmd == null || cmd.isEmpty() ? "" : cmd.get(0));
-	}
-
-	/** execute, with name (what the user typed) in the error when it can't run */
-	static int execute(List<String> cmd, ShellContext ctx, String name) throws IOException {
-		if( cmd != null && !cmd.isEmpty()) {
-			String reason = remoteReason(cmd, ctx);
-			if( reason != null ) {
-				refuse(name, reason, ctx);
-				return 126;
-			}
-		}
-		return executeWithoutFiles(cmd, ctx);
-	}
-
-	/**
-	 * Runs cmd as a program that uses no files (clear), so it runs even when the current directory
-	 * is on a remote file system (it then runs in the directory fsh was started in).
-	 */
-	public static int executeWithoutFiles(List<String> cmd, ShellContext ctx) throws IOException {
 		int ret = 0;
 		if(cmd!=null && cmd.size()>0) {
 			ExternalProcess ep = new ExternalProcess(cmd, ctx);
@@ -912,40 +881,6 @@ public final class Programs {
 	 * which, through the shell's table of the programs it has found (hash): a remembered one that
 	 * is still there is used (and counted); one found on PATH is remembered.
 	 */
-	/** the error for a program that can't run because reason (a file on a remote file system) */
-	private static void refuse(String name, String reason, ShellContext ctx) {
-		ctx.error(name+": cannot run: "+reason+"; programs run only on the local disk"
-				+" (fsh's own commands, such as ls, cp and grep, work there)");
-	}
-
-	/**
-	 * Why cmd can't run as a local program, or null: the current directory, or a file named by one
-	 * of its arguments, is on a connected (remote) file system. An argument counts as a file when the
-	 * shell resolves it to one on a remote file system (options, text and URLs are local paths that
-	 * don't matter, so they never count).
-	 */
-	static String remoteReason(List<String> cmd, ShellContext ctx) throws IOException {
-		FileSource dir = ctx.console.getCurrentDirectory();
-		if( dir != null && !LocalFiles.isLocal(dir)) {
-			return "the current directory "+dir.getAbsolutePath()+" is on a remote file system";
-		}
-		for(int i = 1; i < cmd.size(); i++) {
-			String arg = cmd.get(i);
-			if( arg.isEmpty() || arg.startsWith("-") || arg.length() > 4096 || arg.indexOf('\n') >= 0 ) {
-				continue;
-			}
-			try {
-				FileSource f = ctx.getFileSource(arg);
-				if( f != null && !LocalFiles.isLocal(f)) {
-					return arg+" is on a remote file system";
-				}
-			} catch (IOException | RuntimeException e) {
-				// not a path the shell can resolve: not a file
-			}
-		}
-		return null;
-	}
-
 	public static FileSource hashed(String name, ShellContext ctx) throws IOException {
 		if( name.contains("/")) {
 			return which(name, ctx);
