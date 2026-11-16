@@ -263,12 +263,12 @@ public class Help extends ShellCommand{
 			section(md, n, topics.get(n));
 		}
 		md.append("## Utilities\n\n")
-		.append("fsh's own versions of programs most systems have. They are builtins on every system (Windows,\n")
-		.append("macOS and Linux), so a script gets the same commands, options and output everywhere. They follow\n")
-		.append("the GNU versions (GNU coreutils, grep, sed, ...), not what the system provides: on macOS that\n")
-		.append("means GNU options, not BSD ones. Like the file commands, they work on any FileSource, so they\n")
-		.append("work in a remote directory too. `enable -n NAME` turns one off, so the name runs the system's\n")
-		.append("program (which sees only the local disk); `enable NAME` turns it back on.\n\n")
+		.append("fsh's own versions of programs most systems have. Each one is a builtin where the system has no\n")
+		.append("such program (all of them on Windows; `tac` and `wget` on macOS). Elsewhere the system's program\n")
+		.append("runs, until `enable NAME` turns fsh's on (`enable -n NAME` turns it off again) or\n")
+		.append("`shopt -s fshutils` turns on all of them, so a script has the same commands, options and output\n")
+		.append("on every system. `shopt -u fshutils` goes back to the defaults; a name turned off with `enable -n`\n")
+		.append("stays off.\n\n")
 		.append("| Command | Usage | What it does |\n")
 		.append("|---|---|---|\n");
 		for(Map.Entry<String, String> e : topics.entrySet()) {
