@@ -24,7 +24,10 @@ public class Cp extends ShellCommand{
 			+ "\t-p       keep the files' modification and access times\n"
 			+ "\t-v       show each file as it is copied\n"
 			+ "\t-x       when copying recursively, skip directories on a different kind of file system\n"
-			+ "\tThe last of -f, -i and -n given wins. -H, -L and -P are accepted; links are followed.";
+			+ "\tThe last of -f, -i and -n given wins.\n"
+			+ "\t-L       follow every link: the file it leads to is copied (the default without -R)\n"
+			+ "\t-H       follow a link given as an operand, copy the links in a directory as links\n"
+			+ "\t-P       copy a link as a link (the default with -R and -a); the last of -H, -L and -P wins";
 
 	public Cp() {
 		super(name, help);
@@ -33,6 +36,10 @@ public class Cp extends ShellCommand{
 	/** -f, -i or -n, and the others, as given */
 	private static class Choices {
 		boolean recursive, keepTimes, verbose, sameKind;
+		/** -H, -L or -P, whichever was given last; null when none */
+		Arguments links;
+		/** whether a link given as an operand, or one found in a directory, is followed */
+		boolean followOperand, followInTree;
 		Arguments overwrite = Arguments.f;
 		String rootType;
 	}
@@ -49,9 +56,14 @@ public class Cp extends ShellCommand{
 			case v: how.verbose = true; break;
 			case x: how.sameKind = true; break;
 			case f: case i: case n: how.overwrite = (Arguments) o; break;
-			default: break; // H, L, P: links are followed
+			case H: case L: case P: how.links = (Arguments) o; break;
+			default: break;
 			}
 		}
+		// as cp does: without -R a link is followed, with -R it is copied as a link unless -H or -L say not
+		Arguments mode = how.links != null ? how.links : how.recursive ? Arguments.P : Arguments.L;
+		how.followOperand = mode != Arguments.P;
+		how.followInTree = mode == Arguments.L;
 
 		List<String> paths = sa.paths;
 		if( paths.size() < 2 ) {
@@ -78,11 +90,14 @@ public class Cp extends ShellCommand{
 			List<FileSource> files = getFiles(ctx, path);
 			for(FileSource from : files) {
 				try {
-					if( !from.exists()) {
+					boolean asLink = !how.followOperand && from.getLinkedTo() != null;
+					if( !asLink && !from.exists()) {
 						throw new IOException("No such file or directory");
 					}
 					how.rootType = from.getFileSourceFactory().getTypeId();
-					if( from.isDirectory()) {
+					if( asLink ) {
+						copyLink(ctx, how, from, intoDir ? target.getChild(from.getName()) : target);
+					} else if( from.isDirectory()) {
 						if( !how.recursive ) {
 							throw new IOException("is a directory (not copied; use -R)");
 						}
@@ -130,7 +145,9 @@ public class Cp extends ShellCommand{
 		if( kids != null ) {
 			for(FileSource kid : kids) {
 				FileSource dest = to.getChild(kid.getName());
-				if( kid.isDirectory()) {
+				if( !how.followInTree && kid.getLinkedTo() != null ) {
+					copyLink(ctx, how, kid, dest);
+				} else if( kid.isDirectory()) {
 					if( how.sameKind && !kid.getFileSourceFactory().getTypeId().equals(how.rootType)) {
 						continue;
 					}
@@ -168,6 +185,37 @@ public class Cp extends ShellCommand{
 		if( how.keepTimes ) {
 			keepTimes(from, to);
 		}
+		if( how.verbose ) {
+			ctx.stdout.println(from+" -> "+to);
+		}
+	}
+
+	/** Copies a link as a link: the same text, so a relative link stays relative and a dangling one stays dangling. */
+	private void copyLink(ShellContext ctx, Choices how, FileSource from, FileSource to) throws IOException {
+		boolean there = to.exists() || to.getLinkedTo() != null;
+		if( there ) {
+			if( to.isDirectory() && to.getLinkedTo() == null ) {
+				throw new IOException("can't replace the directory "+to+" with a link");
+			}
+			if( how.overwrite == Arguments.n ) {
+				return;
+			}
+			if( how.overwrite == Arguments.i ) {
+				String answer = promptAndGetReponse(ctx, "overwrite "+to+"? (y/n [n])");
+				if( answer == null || !answer.trim().toLowerCase().startsWith("y")) {
+					ctx.stdout.println(to+" not overwritten.");
+					return;
+				}
+			}
+			if( !to.delete()) {
+				throw new IOException("can't replace "+to);
+			}
+		}
+		String text = from.getLinkText();
+		if( text == null ) {
+			throw new IOException("can't read the link");
+		}
+		to.getFileSourceFactory().createSymbolicLink(us.bringardner.parley.files.DelegatingFileSource.unwrap(to), text);
 		if( how.verbose ) {
 			ctx.stdout.println(from+" -> "+to);
 		}
