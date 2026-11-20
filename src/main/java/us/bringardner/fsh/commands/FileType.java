@@ -47,7 +47,7 @@ public class FileType extends ShellCommand{
 					d = new String[] {"directory", "inode/directory"};
 				} else {
 					try (InputStream in = f.getInputStream()) {
-						d = describe(in.readNBytes(4096), f.length() > 4096);
+						d = describe(in.readNBytes(4096), f.contentLength() > 4096);
 					}
 				}
 			}

@@ -105,7 +105,7 @@ public class Zip extends ShellCommand{
 						continue;
 					}
 					ZipArchiveEntry.Builder b = ZipArchiveEntry.builder(it.name).directory(it.dir).lastModified(it.file.lastModified());
-					long size = it.dir ? 0 : it.file.length();
+					long size = it.dir ? 0 : it.file.contentLength();
 					if( !it.dir && store ) {
 						// a stored entry's size and CRC-32 go before its data: read the file once for them
 						CRC32 crc = new CRC32();

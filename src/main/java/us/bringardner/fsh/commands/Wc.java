@@ -127,7 +127,7 @@ public class Wc extends ShellCommand{
 					}
 					Counts counts = new Counts();
 					if( useFileSize) {
-						counts.byteCount = file.length();
+						counts.byteCount = file.contentLength();
 					} else {
 						try(InputStream in = file.getInputStream()) {
 							doCount(counts,ctx, options, in);
