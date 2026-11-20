@@ -168,7 +168,12 @@ public class Ls extends ShellCommand {
 					ret = 1;
 				} else {
 					labels.put(file, label);
-					if( file.isDirectory() && !options.contains(LsArgument.d)) {
+					// as ls does: a link to a directory is listed as a link with -l (and no -L), unless it is
+					// named with a trailing slash, which says the directory
+					boolean slash = arg.length() > 1 && arg.endsWith("/");
+					boolean listAsLink = options.contains(LsArgument.l) && !options.contains(LsArgument.L) && !slash
+							&& file.getLinkedTo() != null;
+					if( file.isDirectory() && !options.contains(LsArgument.d) && !listAsLink ) {
 						dirs.add(file);
 					} else {
 						files.add(file);
@@ -480,10 +485,12 @@ public class Ls extends ShellCommand {
 		if( !present(file)) {
 			throw new IOException("ls: "+file+": no such file or directory");
 		}
-		if( args.contains(LsArgument.L)) {
+		// -L, or a name with a trailing slash: the file a link leads to
+		if( args.contains(LsArgument.L) || label != null && label.length() > 1 && label.endsWith("/")) {
 			FileSource link = file.getLinkedTo();
-			if( link !=null ) {
+			for(int hops = 0; link != null && hops < 40; hops++) {
 				file = link;
+				link = file.getLinkedTo();
 			}
 		}
 		// a hidden file is shown when it is named

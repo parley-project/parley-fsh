@@ -58,7 +58,7 @@ public class Touch extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		boolean access = false, modification = false, create = true;
+		boolean access = false, modification = false, create = true, noFollow = false;
 		String ref = null, tValue = null, dValue = null, aValue = null;
 		List<String> paths = new ArrayList<>();
 
@@ -85,7 +85,7 @@ public class Touch extends ShellCommand{
 					case 'm': modification = true; break;
 					case 'c': create = false; break;
 					// -h: the link itself, which isn't created either
-					case 'h': create = false; break;
+					case 'h': create = false; noFollow = true; break;
 					case 'r': case 't': case 'd': case 'A': {
 						// the value: the rest of this word (-t202001010000), or the next word
 						String value;
@@ -134,6 +134,10 @@ public class Touch extends ShellCommand{
 					throw new BadArgument(ref+": No such file or directory");
 				}
 				FileSource r = found.get(0);
+				// (with -h the link's own times, otherwise the file's it leads to)
+				if( !noFollow ) {
+					r = followed(r);
+				}
 				times = new long[] {r.lastAccessTime(), r.lastModified()};
 			} else if( tValue != null ) {
 				long t = parseT(tValue);
@@ -154,7 +158,8 @@ public class Touch extends ShellCommand{
 			for(String path : paths) {
 				for(FileSource file : getFiles(ctx, path)) {
 					try {
-						touch(file, times, offset, access, modification, create);
+						// as touch does: the file a link leads to, unless -h; a dangling link's file is created
+						touch(noFollow ? file : followed(file), times, offset, access, modification, create);
 					} catch (IOException e) {
 						ctx.stderr.println(name+": "+path+": "+e.getMessage());
 						ret = 1;
@@ -166,6 +171,19 @@ public class Touch extends ShellCommand{
 			ctx.stderr.println(name+": "+e.getMessage());
 			return 1;
 		}
+	}
+
+	/** The file at the end of a chain of links (the file itself when it is not a link); a loop or a very long chain stops at 40. */
+	private static FileSource followed(FileSource file) throws IOException {
+		FileSource f = file;
+		for(int hops = 0; hops < 40; hops++) {
+			FileSource next = f.getLinkedTo();
+			if( next == null ) {
+				return f;
+			}
+			f = next;
+		}
+		return f;
 	}
 
 	private static void touch(FileSource file, long[] times, long offset, boolean access, boolean modification,
