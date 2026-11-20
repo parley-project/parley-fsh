@@ -44,6 +44,29 @@ public class Stat extends ShellCommand{
 		return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS000000 Z").format(new Date(millis));
 	}
 
+	/** The file at the end of a chain of links (the file itself when it is not a link); stops at 40 links, as the system does. */
+	private static FileSource followed(FileSource file) throws IOException {
+		FileSource f = file;
+		for(int hops = 0; hops < 40; hops++) {
+			FileSource next = f.getLinkedTo();
+			if( next == null ) {
+				return f;
+			}
+			f = next;
+		}
+		return f;
+	}
+
+	/** what the link holds, as it was made (relative stays relative) */
+	private static String linkText(FileSource link) throws IOException {
+		String text = link.getLinkText();
+		if( text == null ) {
+			FileSource to = link.getLinkedTo();
+			text = to == null ? "?" : to.getAbsolutePath();
+		}
+		return text;
+	}
+
 	@Override
 	public int process(ShellContext ctx) throws IOException {
 		Args a = Args.parse(ctx, args, "L", "c", false, "dereference:L", "format=c");
@@ -56,35 +79,42 @@ public class Stat extends ShellCommand{
 		}
 		int ret = 0;
 		for (String p : a.operands) {
-			FileSource f = ctx.console.createFileSource(p);
-			if( !f.exists()) {
+			FileSource named = ctx.console.createFileSource(p);
+			// as GNU stat: a link is shown as itself (what lstat says) unless -L, which shows the file it leads to
+			boolean deref = a.has('L');
+			boolean isLink = !deref && named.getLinkedTo() != null;
+			FileSource f = deref ? followed(named) : named;
+			if( !isLink && !f.exists()) {
 				ctx.stderr.println("stat: cannot statx '"+p+"': No such file or directory");
 				ret = 1;
 				continue;
 			}
-			long size = f.isDirectory() ? 0 : f.length();
+			// (a link is not the directory it leads to, whatever isDirectory() says)
+			boolean dir = !isLink && f.isDirectory();
+			long size = dir ? 0 : f.length();
 			long mod = f.lastModified(), access = mod, birth = mod;
-			int perms = f.isDirectory() ? 0755 : 0644;
+			int perms = dir ? 0755 : 0644;
 			String owner = "?";
-			String type = f.isDirectory() ? "directory" : size == 0 ? "regular empty file" : "regular file";
-			char tc = f.isDirectory() ? 'd' : '-';
+			String type = dir ? "directory" : size == 0 ? "regular empty file" : "regular file";
+			char tc = dir ? 'd' : '-';
+			if( isLink ) {
+				type = "symbolic link";
+				tc = 'l';
+				perms = 0777;
+			}
 			if( LocalFiles.isLocal(f)) {
 				File file = LocalFiles.of(f);
 				Path path = file.toPath();
-				LinkOption [] lo = a.has('L') ? new LinkOption[0] : new LinkOption[] {LinkOption.NOFOLLOW_LINKS};
+				LinkOption [] lo = isLink ? new LinkOption[] {LinkOption.NOFOLLOW_LINKS} : new LinkOption[0];
 				try {
 					BasicFileAttributes at = Files.readAttributes(path, BasicFileAttributes.class, lo);
 					access = at.lastAccessTime().toMillis();
 					birth = at.creationTime().toMillis();
-					if( at.isSymbolicLink()) {
-						type = "symbolic link";
-						tc = 'l';
-					}
 				} catch (IOException e) {
 					// keep what the file source said
 				}
 				try {
-					Set<PosixFilePermission> ps = Files.getPosixFilePermissions(path);
+					Set<PosixFilePermission> ps = Files.getPosixFilePermissions(path, lo);
 					perms = 0;
 					for (PosixFilePermission pp : ps) {
 						perms |= 0400 >> pp.ordinal();
@@ -93,7 +123,7 @@ public class Stat extends ShellCommand{
 					perms = (file.canWrite() ? 0644 : 0444) | (file.canExecute() ? 0111 : 0);
 				}
 				try {
-					owner = Files.getOwner(path).getName();
+					owner = Files.getOwner(path, lo).getName();
 				} catch (IOException | UnsupportedOperationException e) {
 					// unknown
 				}
@@ -118,7 +148,7 @@ public class Stat extends ShellCommand{
 					char d = format.charAt(++i);
 					switch (d) {
 					case 'n': sb.append(p); break;
-					case 'N': sb.append('\'').append(p).append('\''); break;
+					case 'N': sb.append('\'').append(p).append('\''); if( isLink ) { sb.append(" -> '").append(linkText(f)).append('\''); } break;
 					case 's': sb.append(size); break;
 					case 'F': sb.append(type); break;
 					case 'a': sb.append(String.format("%o", perms)); break;
