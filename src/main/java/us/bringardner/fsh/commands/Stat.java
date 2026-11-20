@@ -108,6 +108,10 @@ public class Stat extends ShellCommand{
 				LinkOption [] lo = isLink ? new LinkOption[] {LinkOption.NOFOLLOW_LINKS} : new LinkOption[0];
 				try {
 					BasicFileAttributes at = Files.readAttributes(path, BasicFileAttributes.class, lo);
+					if( dir ) {
+						// what the system says a directory's size is (4096 on ext4, other on macOS), as stat shows it
+						size = at.size();
+					}
 					access = at.lastAccessTime().toMillis();
 					birth = at.creationTime().toMillis();
 				} catch (IOException e) {
