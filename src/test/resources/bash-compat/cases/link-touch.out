@@ -1,0 +1,5 @@
+ref f lf
+target-newer
+f ref lf
+target-still-newer-than-ref
+lf f ref

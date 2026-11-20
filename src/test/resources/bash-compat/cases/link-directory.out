@@ -1,0 +1,13 @@
+ld/a ld/b
+a
+b
+a
+b
+c
+item:ld/a
+item:ld/b
+item:ld/c
+ld
+dir
+is-dir
+is-link
