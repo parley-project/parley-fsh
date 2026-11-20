@@ -124,7 +124,10 @@ directory, each SOURCE is copied into it. Works between any connected file syste
 -p       keep the files' modification and access times
 -v       show each file as it is copied
 -x       when copying recursively, skip directories on a different kind of file system
-The last of -f, -i and -n given wins. -H, -L and -P are accepted; links are followed.
+The last of -f, -i and -n given wins.
+-L       follow every link: the file it leads to is copied (the default without -R)
+-H       follow a link given as an operand, copy the links in a directory as links
+-P       copy a link as a link (the default with -R and -a); the last of -H, -L and -P wins
 ```
 
 ### mv
