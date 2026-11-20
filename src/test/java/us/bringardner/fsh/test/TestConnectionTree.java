@@ -207,7 +207,8 @@ public class TestConnectionTree extends AbstractConsoleTest {
 					if( !name.startsWith("list")) {
 						if( !name.endsWith("Stream")) {
 							// (getAbsoluteFile: the file at the shell's path, /mem/..., as the path is)
-							if( !name.endsWith("Path") && !name.equals("getAbsoluteFile")) {
+							if( !name.endsWith("Path") && !name.equals("getAbsoluteFile")
+										&& !name.equals("followLinks")) {   // followLinks: the file a link leads to, at the shell's path
 								method.setAccessible(true);
 								Object r1 = method.invoke(child1);
 								Object r2 = method.invoke(child2);
