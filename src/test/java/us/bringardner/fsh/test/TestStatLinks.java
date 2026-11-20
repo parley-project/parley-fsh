@@ -23,7 +23,8 @@ import us.bringardner.parley.files.FileSourceFactory;
 /**
  * stat of a link is GNU stat's: the link itself (its own size, type, permissions and times, and
  * "'name' -> 'text'" for %N), also when it points at a directory or at nothing; with -L the file it leads
- * to. The expected values are what GNU coreutils 9.4 printed, and for a link's own permissions and times what
+ * to. (On macOS stat is the system's program, which is BSD's and has no -c: the test turns fsh's on with
+ * enable stat.) The expected values are what GNU coreutils 9.4 printed, and for a link's own permissions and times what
  * java.nio says without following it.
  */
 public class TestStatLinks extends AbstractConsoleTest {
@@ -78,7 +79,7 @@ public class TestStatLinks extends AbstractConsoleTest {
 	}
 
 	private static ExecuteResult stat(String options, String name) throws IOException {
-		return executeCommand("cd '"+dir.getPath()+"'\nstat "+options+" -c "+FORMAT+" "+name, "");
+		return executeCommand("enable stat\ncd '"+dir.getPath()+"'\nstat "+options+" -c "+FORMAT+" "+name, "");
 	}
 
 	private static Set<PosixFilePermission> ownPermissions(String name) throws IOException {
