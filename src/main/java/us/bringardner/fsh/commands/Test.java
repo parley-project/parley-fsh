@@ -451,7 +451,7 @@ public class Test extends ShellCommand{
 			case "-a": return file.exists();
 			case "-f": return file.isFile();
 			case "-d": return file.isDirectory();
-			case "-s": return file.exists() && file.length() > 0;
+			case "-s": return file.exists() && file.contentLength() > 0;
 			case "-r": return file.exists() && file.canRead();
 			case "-w": return file.exists() && file.canWrite();
 			case "-x": return file.exists() && file.canExecute();

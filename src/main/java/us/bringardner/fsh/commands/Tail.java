@@ -151,7 +151,7 @@ public class Tail extends ShellCommand{
 				Followed f = new Followed();
 				f.label = label;
 				f.file = file;
-				f.pos = file.length();
+				f.pos = file.contentLength();
 				followed.add(f);
 			}
 		});
@@ -170,7 +170,7 @@ public class Tail extends ShellCommand{
 		while( ctx.getException() == null && !ctx.hasPendingSignal()) {
 			ctx.sleep(millis);
 			for (Followed f : files) {
-				long len = f.file.length();
+				long len = f.file.contentLength();
 				if( len < f.pos ) {
 					ctx.stderr.println("tail: "+f.label+": file truncated");
 					f.pos = 0;

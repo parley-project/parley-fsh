@@ -59,7 +59,7 @@ public class Truncate extends ShellCommand{
 				ret = 1;
 				continue;
 			}
-			long current = f.length();
+			long current = f.contentLength();
 			long size = rel == '+' ? current+amount : rel == '-' ? Math.max(0, current-amount) : amount;
 			if( LocalFiles.isLocal(f)) {
 				try (RandomAccessFile raf = new RandomAccessFile(LocalFiles.of(f), "rw")) {

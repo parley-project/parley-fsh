@@ -107,7 +107,7 @@ public class Gzip extends ShellCommand{
 					ret = 1;
 					continue;
 				}
-				long before = f.length();
+				long before = f.contentLength();
 				try (InputStream in = f.getInputStream(); OutputStream os = out.getOutputStream()) {
 					copy(in, os, decompress);
 				}

@@ -168,7 +168,7 @@ public class Tar extends ShellCommand{
 			}
 			return ret;
 		}
-		long size = f.length();
+		long size = f.contentLength();
 		long written = 0;
 		try (OutputStream entry = out.putEntry(b.size(size).build())) {
 			try (InputStream in = f.getInputStream()) {
