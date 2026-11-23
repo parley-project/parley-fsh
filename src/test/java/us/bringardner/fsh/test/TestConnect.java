@@ -223,15 +223,12 @@ public class TestConnect extends AbstractConsoleTest {
 			sorted.sort(String.CASE_INSENSITIVE_ORDER);
 			assertEquals(sorted, ids, "sorted");
 		}
-		ExecuteResult res = executeCommand("connect --list extra", "");
-		assertEquals(2, res.exitCode);
-		assertTrue(res.getStdErr().contains("usage"), res.getStdErr());
 	}
 
-	/** connect --properties FACTORY (and -p) show the settings a file system connects with */
+	/** connect --list FACTORY (and -l) show the settings a file system connects with */
 	@Test
 	public void showProperties() throws Exception {
-		for(String opt : new String[] {"--properties", "-p"}) {
+		for(String opt : new String[] {"--list", "-l"}) {
 			ExecuteResult res = executeCommand("connect "+opt+" memory", "");
 			assertEquals(0, res.exitCode, res.getStdErr());
 			String out = res.getStdOut().trim();
@@ -244,10 +241,10 @@ public class TestConnect extends AbstractConsoleTest {
 
 	@Test
 	public void showPropertiesErrors() throws Exception {
-		ExecuteResult res = executeCommand("connect -p nosuchfs", "");
+		ExecuteResult res = executeCommand("connect -l nosuchfs", "");
 		assertEquals(1, res.exitCode);
 		assertTrue(res.getStdErr().contains("unknown file system 'nosuchfs'"), res.getStdErr());
-		res = executeCommand("connect -p", "");
+		res = executeCommand("connect -l a b", "");
 		assertEquals(2, res.exitCode);
 		assertTrue(res.getStdErr().contains("usage"), res.getStdErr());
 	}

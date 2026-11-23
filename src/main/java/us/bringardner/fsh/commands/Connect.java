@@ -14,8 +14,7 @@ import us.bringardner.fsh.ShellContext;
 public class Connect extends ShellCommand{
 	static String name = "connect";
 	static String help = "connect FACTORY [-f FILE] [name=value ...] [-] PATH\n"
-			+ "\tconnect -l | --list\n"
-			+ "\tconnect -p FACTORY | --properties FACTORY\n"
+			+ "\tconnect -l | --list [FACTORY]\n"
 			+ "\tConnect to a file system at PATH (a path such as /prod), where fsh's file\n"
 			+ "\tbuiltins (ls, cp, mv, rm, find, ...) can use it. FACTORY is the file system's id, such as memory,\n"
 			+ "\tsftp, ftp or jdbc (jdbc when fsh is built with it).\n"
@@ -28,7 +27,7 @@ public class Connect extends ShellCommand{
 			+ "\tOn success it prints \"FACTORY connected as PATH\"; disconnect undoes it.\n"
 			+ "\tWith no arguments it lists the shell's connections: PATH -> FILE SYSTEM.\n"
 			+ "\t-l, --list                 list the id of every registered file system, one per line\n"
-			+ "\t-p, --properties FACTORY   show the settings FACTORY connects with, as name=value lines\n"
+			+ "\t-l, --list FACTORY         show the settings FACTORY connects with, as name=value lines\n"
 			+ "\t                           (a connected file system shows its current values; a secret\n"
 			+ "\t                           shows as <hidden> when it has a value)\n"
 			+ "\tExamples:\n"
@@ -47,18 +46,14 @@ public class Connect extends ShellCommand{
 		if( args.length > 0 ) {
 			String first = ""+args[0].getValue(ctx);
 			if( first.equals("-l") || first.equals("--list")) {
-				if( args.length != 1 ) {
-					ctx.stderr.println("usage: connect -l | --list");
-					return 2;
+				if( args.length == 1 ) {
+					return list(ctx);
 				}
-				return list(ctx);
-			}
-			if( first.equals("-p") || first.equals("--properties")) {
-				if( args.length != 2 ) {
-					ctx.stderr.println("usage: connect -p FACTORY | --properties FACTORY");
-					return 2;
+				if( args.length == 2 ) {
+					return properties(ctx, ""+args[1].getValue(ctx));
 				}
-				return properties(ctx, ""+args[1].getValue(ctx));
+				ctx.stderr.println("usage: connect -l | --list [FACTORY]");
+				return 2;
 			}
 		}
 		boolean readStdin = false;
