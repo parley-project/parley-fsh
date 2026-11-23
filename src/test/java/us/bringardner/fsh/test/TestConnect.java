@@ -210,4 +210,45 @@ public class TestConnect extends AbstractConsoleTest {
 				+ " disconnect /mdesc >/dev/null; connect | grep -c mdesc", "");
 		assertEquals("/mdesc -> memory\n/mdesc -> memory\n0\n", res.getStdOut(), res.getStdErr());
 	}
+
+	/** connect --list (and -l) show the id of every registered file system, one per line, sorted */
+	@Test
+	public void listFactories() throws Exception {
+		for(String opt : new String[] {"--list", "-l"}) {
+			ExecuteResult res = executeCommand("connect "+opt, "");
+			assertEquals(0, res.exitCode, res.getStdErr());
+			java.util.List<String> ids = java.util.Arrays.asList(res.getStdOut().split("\n"));
+			assertTrue(ids.contains("memory"), res.getStdOut());
+			java.util.List<String> sorted = new java.util.ArrayList<>(ids);
+			sorted.sort(String.CASE_INSENSITIVE_ORDER);
+			assertEquals(sorted, ids, "sorted");
+		}
+		ExecuteResult res = executeCommand("connect --list extra", "");
+		assertEquals(2, res.exitCode);
+		assertTrue(res.getStdErr().contains("usage"), res.getStdErr());
+	}
+
+	/** connect --properties FACTORY (and -p) show the settings a file system connects with */
+	@Test
+	public void showProperties() throws Exception {
+		for(String opt : new String[] {"--properties", "-p"}) {
+			ExecuteResult res = executeCommand("connect "+opt+" memory", "");
+			assertEquals(0, res.exitCode, res.getStdErr());
+			String out = res.getStdOut().trim();
+			assertFalse(out.isEmpty(), "memory has a setting");
+			for(String line : out.split("\n")) {
+				assertTrue(line.contains("="), "name=value: "+line);
+			}
+		}
+	}
+
+	@Test
+	public void showPropertiesErrors() throws Exception {
+		ExecuteResult res = executeCommand("connect -p nosuchfs", "");
+		assertEquals(1, res.exitCode);
+		assertTrue(res.getStdErr().contains("unknown file system 'nosuchfs'"), res.getStdErr());
+		res = executeCommand("connect -p", "");
+		assertEquals(2, res.exitCode);
+		assertTrue(res.getStdErr().contains("usage"), res.getStdErr());
+	}
 }

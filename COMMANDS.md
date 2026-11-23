@@ -22,6 +22,8 @@ connect FACTORY [-f FILE] [name=value ...] [-] PATH
 ```
 
 ```text
+connect -l | --list
+connect -p FACTORY | --properties FACTORY
 Connect to a file system at PATH (a path such as /prod), where fsh's file
 builtins (ls, cp, mv, rm, find, ...) can use it. FACTORY is the file system's id, such as memory,
 sftp, ftp or jdbc (jdbc when fsh is built with it).
@@ -33,6 +35,10 @@ A secret setting such as password can name its secret instead of holding it: @en
 @file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).
 On success it prints "FACTORY connected as PATH"; disconnect undoes it.
 With no arguments it lists the shell's connections: PATH -> FILE SYSTEM.
+-l, --list                 list the id of every registered file system, one per line
+-p, --properties FACTORY   show the settings FACTORY connects with, as name=value lines
+(a connected file system shows its current values; a secret
+shows as <hidden> when it has a value)
 Examples:
 connect memory /mem
 connect sftp host=example.com user=deploy password=@keychain:parley/sftp/deploy@example.com /prod
