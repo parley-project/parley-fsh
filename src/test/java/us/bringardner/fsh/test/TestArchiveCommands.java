@@ -136,6 +136,48 @@ public class TestArchiveCommands {
 		assertEquals(9, lastStatus);
 	}
 
+	/** unzip writes each line as it goes (as Info-ZIP's does), not all of them at the end */
+	@Test
+	public void testUnzipWritesEachFileAsItGoes(@TempDir File dir) throws IOException {
+		write(dir, "src/a.txt", "alpha\n");
+		write(dir, "src/b.txt", "beta\n");
+		String zip = path(dir)+"/out.zip";
+		run("cd "+path(dir)+" && zip -rq "+zip+" src");
+		assertEquals(0, lastStatus, lastErr);
+		File out = new File(dir, "out");
+		java.util.List<String> lines = new java.util.ArrayList<>();
+		// when a.txt's line is written, b.txt isn't there yet
+		java.util.List<Boolean> bThereAtA = new java.util.ArrayList<>();
+		ByteArrayOutputStream line = new ByteArrayOutputStream();
+		java.io.OutputStream watch = new java.io.OutputStream() {
+			@Override
+			public void write(int c) {
+				if( c != '\n' ) {
+					line.write(c);
+					return;
+				}
+				String l = new String(line.toByteArray(), StandardCharsets.UTF_8);
+				line.reset();
+				lines.add(l);
+				if( l.endsWith("src/a.txt") ) {
+					bThereAtA.add(new File(out, "src/b.txt").exists());
+				}
+			}
+		};
+		ByteArrayOutputStream bae = new ByteArrayOutputStream();
+		try (PrintStream o = new PrintStream(watch, true); PrintStream e = new PrintStream(bae, true)) {
+			console.setStdOut(o);
+			console.setStdErr(e);
+			lastStatus = console.executeScript("unzip -d "+path(out)+" "+zip);
+		}
+		assertEquals(0, lastStatus, new String(bae.toByteArray(), StandardCharsets.UTF_8));
+		assertEquals("Archive:  "+zip, lines.get(0));
+		assertTrue(lines.contains("   creating: "+path(out)+"/src/"), lines.toString());
+		assertTrue(lines.contains("  inflating: "+path(out)+"/src/a.txt"), lines.toString());
+		assertTrue(lines.contains("  inflating: "+path(out)+"/src/b.txt"), lines.toString());
+		assertEquals(java.util.List.of(false), bThereAtA, lines.toString());
+	}
+
 	@Test
 	public void testZipOptions(@TempDir File dir) throws IOException {
 		write(dir, "x/y.txt", "yy\n");

@@ -61,7 +61,10 @@ public class Unzip extends ShellCommand{
 			out.append("Archive:  ").append(zipName).append('\n');
 			out.append("  Length      Date    Time    Name\n---------  ---------- -----   ----\n");
 		} else if( !quiet && !toStdout ) {
-			out.append("Archive:  ").append(zipName).append('\n');
+			// (extracting, each line is written as it happens, as Info-ZIP's unzip does: a program
+			// reading the output, such as the viewer's progress, sees each file as it is done)
+			ctx.stdout.println("Archive:  "+zipName);
+			ctx.stdout.flush();
 		}
 		// random access: the index is read from the end, and only the entries wanted are read
 		try (SeekableSource src = FileSourceSources.open(zip); ZipReader in = ZipReader.open(src)) {
@@ -96,7 +99,8 @@ public class Unzip extends ShellCommand{
 				if( e.isDirectory()) {
 					target.mkdirs();
 					if( !quiet ) {
-						out.append("   creating: ").append(dir).append(clean).append('\n');
+						ctx.stdout.println("   creating: "+dir+clean);
+						ctx.stdout.flush();
 					}
 					continue;
 				}
@@ -116,7 +120,8 @@ public class Unzip extends ShellCommand{
 					target.setLastModifiedTime(e.getLastModified());
 				}
 				if( !quiet ) {
-					out.append("  inflating: ").append(dir).append(clean).append('\n');
+					ctx.stdout.println("  inflating: "+dir+clean);
+					ctx.stdout.flush();
 				}
 			}
 		}
