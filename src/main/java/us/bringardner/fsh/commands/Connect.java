@@ -14,6 +14,7 @@ import us.bringardner.fsh.ShellContext;
 public class Connect extends ShellCommand{
 	static String name = "connect";
 	static String help = "connect FACTORY [-f FILE] [name=value ...] [-] PATH\n"
+			+ "\tconnect -l | --list [FACTORY]\n"
 			+ "\tConnect to a file system at PATH (a path such as /prod), where fsh's file\n"
 			+ "\tbuiltins (ls, cp, mv, rm, find, ...) can use it. FACTORY is the file system's id, such as memory,\n"
 			+ "\tsftp, ftp or jdbc (jdbc when fsh is built with it).\n"
@@ -25,6 +26,10 @@ public class Connect extends ShellCommand{
 			+ "\t@file:PATH, @keychain:SERVICE/ACCOUNT, @keystore:NAME, @prompt: or @cmd:COMMAND (see cred).\n"
 			+ "\tOn success it prints \"FACTORY connected as PATH\"; disconnect undoes it.\n"
 			+ "\tWith no arguments it lists the shell's connections: PATH -> FILE SYSTEM.\n"
+			+ "\t-l, --list                 list the id of every registered file system, one per line\n"
+			+ "\t-l, --list FACTORY         show the settings FACTORY connects with, as name=value lines\n"
+			+ "\t                           (a connected file system shows its current values; a secret\n"
+			+ "\t                           shows as <hidden> when it has a value)\n"
 			+ "\tExamples:\n"
 			+ "\tconnect memory /mem\n"
 			+ "\tconnect sftp host=example.com user=deploy password=@keychain:parley/sftp/deploy@example.com /prod\n"
@@ -38,6 +43,19 @@ public class Connect extends ShellCommand{
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
+		if( args.length > 0 ) {
+			String first = ""+args[0].getValue(ctx);
+			if( first.equals("-l") || first.equals("--list")) {
+				if( args.length == 1 ) {
+					return list(ctx);
+				}
+				if( args.length == 2 ) {
+					return properties(ctx, ""+args[1].getValue(ctx));
+				}
+				ctx.stderr.println("usage: connect -l | --list [FACTORY]");
+				return 2;
+			}
+		}
 		boolean readStdin = false;
 		// -f FILE, -fFILE and -f=FILE all become -f=FILE
 		List<String> args = new ArrayList<>();
@@ -129,12 +147,47 @@ public class Connect extends ShellCommand{
 		return 0;
 	}
 
+	/** The id of every registered FileSourceFactory, one per line. */
+	private int list(ShellContext ctx) {
+		String[] ids = FileSourceFactory.getRegisterdFactories();
+		java.util.Arrays.sort(ids, String.CASE_INSENSITIVE_ORDER);
+		for(String id : ids) {
+			ctx.stdout.println(id);
+		}
+		return 0;
+	}
+
+	/** The settings a factory connects with, as name=value lines (secrets hidden). */
+	private int properties(ShellContext ctx, String fid) {
+		FileSourceFactory factory = FileSourceFactory.getFileSourceFactory(fid);
+		if( factory == null ) {
+			ctx.stderr.println(name+": unknown file system '"+fid+"'; the known ones are "
+					+String.join(", ", FileSourceFactory.getRegisterdFactories()));
+			return 1;
+		}
+		Properties props = factory.getConnectProperties();
+		if( props == null || props.isEmpty()) {
+			ctx.stderr.println(name+": "+fid+" has no connection settings");
+			return 1;
+		}
+		List<String> names = new ArrayList<>(props.stringPropertyNames());
+		names.sort(String.CASE_INSENSITIVE_ORDER);
+		for(String key : names) {
+			String value = props.getProperty(key);
+			if( !value.isEmpty() && factory.isSecretProperty(key)) {
+				value = "<hidden>";
+			}
+			ctx.stdout.println(key+"="+value);
+		}
+		return 0;
+	}
+
 	private void processArg(ShellContext ctx,String arg, Properties props) throws IOException {
 		if( arg.startsWith("-f=")) {
 			String fileName=arg.substring(3).trim();
 			List<FileSource> files = getFiles(ctx, fileName);
 			if( files==null || files.size() == 0 ) {
-				throw new IOException("No property file after evauating "+fileName);
+				throw new IOException("No property file after evaluating "+fileName);
 			}
 			if( files.size() > 1 ) {
 				throw new IOException("Too many property files after evaluating  "+fileName);
