@@ -604,6 +604,8 @@
 							<!-- TestBashCompat writes its results (one line per case) here; everything else
 							     the tests write goes into JUnit @TempDir folders -->
 							<parley.fsh.test.reportDir>${project.build.directory}</parley.fsh.test.reportDir>
+							<!-- Parley's objects log through parley-logging's ParleyLogger: only errors show in a test -->
+							<parley.log.level>ERROR</parley.log.level>
 						</systemPropertyVariables>
 					</configuration>
 				</plugin>

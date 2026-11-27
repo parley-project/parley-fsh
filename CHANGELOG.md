@@ -2,6 +2,11 @@
 
 ## 2.0.0 (unreleased)
 
+### Changed (2026-11-27: logging through System.Logger only)
+
+- **Native image**: parley-core no longer has `LogLevel` (Parley logs only through the JDK's
+  `System.Logger`), so `--initialize-at-build-time` names only `us.bringardner.parley.logging`.
+
 ### Changed (2026-11-14: Maven coordinates)
 
 - Maven coordinates: `us.bringardner:fsh` → `us.bringardner:parley-fsh`, so the jars are
