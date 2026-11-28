@@ -165,7 +165,8 @@ public class Edit extends ShellCommand {
 				ctx.error(NAME+": the editor exited with "+code+"; "+words[0]+" was not copied back, your edited copy is kept in "+session.keepCopy());
 				return code;
 			}
-			if( session.isRemoteChanged()) {
+			boolean changedThere = session.isRemoteChanged();
+			if( changedThere ) {
 				String answer = promptAndGetReponse(ctx.stderr, ctx.stdin,
 						NAME+": "+words[0]+" was changed on the server while you edited it. Replace it? [y/N] ");
 				if( answer == null || !answer.trim().toLowerCase().startsWith("y")) {
@@ -174,7 +175,7 @@ public class Edit extends ShellCommand {
 				}
 			}
 			try {
-				session.writeBack();
+				session.writeBack(changedThere);
 			} catch (IOException e) {
 				ctx.error(NAME+": "+words[0]+": "+e.getMessage()+"; your edited copy is kept in "+session.keepCopy());
 				return 1;

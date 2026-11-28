@@ -13,6 +13,14 @@
   `$EDITOR`, else `vi`, on a temporary copy. An editor that fails is not replaced by another.
   `plugins` lists the editors. The editor plugin that uses it is Scribe (its own repository).
 
+### Changed (2026-11-28: safer save for the fallback edit)
+
+- The fallback `edit` (`$VISUAL`/`$EDITOR`/`vi` on a temporary copy) locks the file on the server
+  while it saves, saves by renaming a hidden file over it where the file system allows, and will
+  not copy a file bigger than 64 MiB (`-Dparley.files.viewer.edit.maxBytes`). A file changed on the
+  server since you began is not replaced unless you answer yes. Needs parley-files-viewer-tui's
+  new `EditSession.writeBack(boolean)` (branch edit-fixes).
+
 ### Fixed (2026-11-27: edit keeps what was typed)
 
 - `edit` of a file on a connected file system keeps the edited copy, and says where, when it can't
