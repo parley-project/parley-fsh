@@ -407,7 +407,7 @@ describes them in full, and `help NAME` shows fsh's summary.
 | `dirs` | `dirs [-clpv] [+N] [-N]` | Print the directory stack, the current directory first: -l without ~, -p one per line, -v numbered, +N or -N one entry (counted from the left or right); -c clears it. |
 | `disown` | `disown [-ar] [-h] [id ...]` | Without options, remove each id from the table of active jobs. |
 | `echo` | `echo [-neE] [string ...]` | Write arguments to the standard output |
-| `edit` | `edit FILE` | Edit FILE with $VISUAL, else $EDITOR, else vi. |
+| `edit` | `edit [--with NAME] FILE  or  edit --list` | Edit FILE with an editor a plugin provides, which works on the file where it is, or, when none can run here (a script, a pipe, no plugin), with $VISUAL, else $EDITOR, else vi. |
 | `enable` | `enable [-a] [-dnps] [-f filename] [name ...]` | Turn on the builtins named, or turn them off with -n (the name then runs a program of that name). |
 | `eval` | `eval [arguments]` | The arguments are concatenated together into a single command, separated by spaces. |
 | `exec` | `exec [-cl] [-a name] [command [arguments]]` | If command is supplied, it replaces the shell without creating a new process. |

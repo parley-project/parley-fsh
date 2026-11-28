@@ -7,6 +7,32 @@
 - **Native image**: parley-core no longer has `LogLevel` (Parley logs only through the JDK's
   `System.Logger`), so `--initialize-at-build-time` names only `us.bringardner.parley.logging`.
 
+### Added (2026-11-28: editor plugins for edit)
+
+- **`EditorProvider`** (`us.bringardner.fsh.spi`, with `EditRequest`): a plugin editor that
+  edits the file where it is, through its FileSource, and saves it itself. `edit --with NAME`
+  uses one; otherwise `edit` uses the first that can run here, in the order of the plugin folders
+  (the system folder before the user's), and `edit --list` lists them. A provider has no priority,
+  and no setting names a preferred one: an alias (`alias edit='edit --with NAME'`) makes one the
+  default. When none can run (a script, a pipe, no plugin) `edit` does what it did: `$VISUAL`, else
+  `$EDITOR`, else `vi`, on a temporary copy. An editor that fails is not replaced by another.
+  `plugins` lists the editors. The editor plugin that uses it is Scribe (its own repository).
+
+### Changed (2026-11-28: safer save for the fallback edit)
+
+- The fallback `edit` (`$VISUAL`/`$EDITOR`/`vi` on a temporary copy) locks the file on the server
+  while it saves, saves by renaming a hidden file over it where the file system allows, and will
+  not copy a file bigger than 64 MiB (`-Dparley.files.viewer.edit.maxBytes`). A file changed on the
+  server since you began is not replaced unless you answer yes. Needs parley-files-viewer-tui's
+  new `EditSession.writeBack(boolean)` (branch edit-fixes).
+
+### Fixed (2026-11-27: edit keeps what was typed)
+
+- `edit` of a file on a connected file system keeps the edited copy, and says where, when it can't
+  be copied back: the editor exited with an error after you changed it, the copy back failed, or you
+  answered no to replacing a file that changed on the server. It used to delete it. Needs
+  parley-files-viewer-tui's `EditSession.keepCopy()` (branch edit-fixes).
+
 ### Changed (2026-11-14: Maven coordinates)
 
 - Maven coordinates: `us.bringardner:fsh` → `us.bringardner:parley-fsh`, so the jars are

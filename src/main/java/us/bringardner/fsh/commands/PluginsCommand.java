@@ -7,6 +7,7 @@ import us.bringardner.fsh.Console;
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
 import us.bringardner.fsh.spi.BrowserProvider;
+import us.bringardner.fsh.spi.EditorProvider;
 import us.bringardner.parley.plugin.PluginReport;
 import us.bringardner.parley.plugin.Plugins;
 
@@ -16,7 +17,7 @@ public class PluginsCommand extends ShellCommand {
 	static final String HELP = "plugins\n"
 			+ "\tList fsh's plugin folders, in the order they are searched, and each jar in them: loaded\n"
 			+ "\t(a plugin or a library), skipped and why, or shadowed by a jar of the same name found\n"
-			+ "\tfirst. Then the commands and browsers the plugins added, and the commands not added\n"
+			+ "\tfirst. Then the commands, browsers and editors the plugins added, and the commands not added\n"
 			+ "\tbecause a builtin or an earlier plugin has the name.";
 
 	public PluginsCommand() {
@@ -52,6 +53,14 @@ public class PluginsCommand extends ShellCommand {
 				first = false;
 			}
 			ctx.stdout.println("  "+b.name()+" ("+Console.pluginSource(b.getClass())+")");
+		}
+		boolean firstEditor = true;
+		for(EditorProvider e : Edit.providers(ctx)) {
+			if( firstEditor ) {
+				ctx.stdout.println("editors:");
+				firstEditor = false;
+			}
+			ctx.stdout.println("  "+e.name()+" ("+Console.pluginSource(e.getClass())+")");
 		}
 		for(String note : Console.pluginNotes) {
 			ctx.stdout.println("note: "+note);
