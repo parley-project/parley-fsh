@@ -62,7 +62,7 @@ public class TestBrowserBuiltins {
 	}
 
 	/** as {@link #fsh(String)}, with an $EDITOR that runs editorScript (its $1 is the file to edit) */
-	private String fsh(String script, String editorScript) throws Exception {
+	private String fsh(String script, String editorScript, String... jvmArgs) throws Exception {
 		File editor = tmp.resolve("editor.sh").toFile();
 		// (no #! line on Windows, which has no /bin/sh: fsh runs the file as its own script)
 		String shebang = File.separatorChar == '\\' ? "" : "#!/bin/sh\n";
@@ -80,6 +80,7 @@ public class TestBrowserBuiltins {
 		if( Runtime.version().feature() >= 17 ) {
 			cmd.add(1, "--enable-native-access=ALL-UNNAMED");
 		}
+		cmd.addAll(1, Arrays.asList(jvmArgs));
 		ProcessBuilder pb = new ProcessBuilder(cmd).directory(tmp.toFile()).redirectErrorStream(true);
 		pb.environment().put("EDITOR", editor.getAbsolutePath());
 		pb.environment().remove("VISUAL");
@@ -150,6 +151,61 @@ public class TestBrowserBuiltins {
 		String none = fsh("connect memory /mem >/dev/null; mkdir /mem/w; edit /mem/w/none.txt; ls /mem/w", "true\n");
 		assertTrue(none.contains("edit: /mem/w/none.txt: not changed"), none);
 		assertFalse(none.contains("none.txt\n"), none);
+	}
+
+	private static final String EDITORS = "-Dfsh.test.editors=test-first,test-second,test-failing";
+
+	@Test
+	public void editUsesTheFirstEditorPluginThatCanRun() throws Exception {
+		// (a plugin's editor works on the file where it is, on a connected file system too; $EDITOR is not run)
+		assertEquals("hello world\ntest-first edited d/a.txt\n", edited("edit d/a.txt; cat d/a.txt", EDITORS));
+		String out = fsh("connect memory /mem >/dev/null; mkdir /mem/w; edit /mem/w/new.txt; view -c /mem/w/new.txt", "echo no >> \"$1\"\n", EDITORS);
+		assertEquals("test-first edited /mem/w/new.txt\n", out);
+	}
+
+	private String edited(String script, String... jvmArgs) throws Exception {
+		return fsh(script, "echo no >> \"$1\"\n", jvmArgs);
+	}
+
+	@Test
+	public void editWithChoosesAnEditorPlugin() throws Exception {
+		assertEquals("hello world\ntest-second edited d/a.txt\n", edited("edit --with test-second d/a.txt; cat d/a.txt", EDITORS));
+		assertEquals("Hello again\ntest-second edited d/sub/b.md\n", edited("edit --with=test-second d/sub/b.md; cat d/sub/b.md", EDITORS));
+		String none = edited("edit --with nope d/a.txt; echo rc=$?", EDITORS);
+		assertTrue(none.contains("edit: nope: no such editor (edit --list lists them)\nrc=1\n"), none);
+		// (one that can't run here is not used in place of another)
+		String cannot = edited("edit --with test-first d/a.txt; echo rc=$?", "-Dfsh.test.editors=test-second");
+		assertTrue(cannot.contains("edit: test-first: cannot run here\nrc=1\n"), cannot);
+	}
+
+	@Test
+	public void editListsTheEditorPlugins() throws Exception {
+		assertEquals("* test-first - a test editor\n  test-second - a test editor\n  test-failing - a test editor\n",
+				edited("edit --list", EDITORS));
+		// (the first that can run here is the one used)
+		assertEquals("  test-first - a test editor (cannot run here)\n* test-second - a test editor\n  test-failing - a test editor (cannot run here)\n",
+				edited("edit --list", "-Dfsh.test.editors=test-second"));
+		assertEquals("  test-first - a test editor (cannot run here)\n  test-second - a test editor (cannot run here)\n  test-failing - a test editor (cannot run here)\n",
+				edited("edit --list"));
+	}
+
+	@Test
+	public void editFallsBackToTheEditorVariableWhenNoPluginCanRun() throws Exception {
+		// (the test editors are on the class path but none can run: $EDITOR edits a copy as it always did)
+		fsh("edit d/a.txt");
+		assertEquals("hello world\nedited\n", new String(Files.readAllBytes(tmp.resolve("d/a.txt")), StandardCharsets.UTF_8).replace("\r", ""));
+	}
+
+	@Test
+	public void anEditorPluginThatFailsIsNotReplacedByAnother() throws Exception {
+		String out = edited("edit --with test-failing d/a.txt; echo rc=$?; cat d/a.txt", EDITORS);
+		assertTrue(out.contains("edit: d/a.txt: the disk is on fire\nrc=1\nhello world\n"), out);
+	}
+
+	@Test
+	public void pluginsListsTheEditors() throws Exception {
+		String out = edited("plugins", EDITORS);
+		assertTrue(out.contains("editors:\n  test-first ("), out);
 	}
 
 	@Test

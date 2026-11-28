@@ -25,21 +25,30 @@ import java.util.List;
 
 import us.bringardner.fsh.ShellCommand;
 import us.bringardner.fsh.ShellContext;
+import us.bringardner.fsh.spi.EditRequest;
+import us.bringardner.fsh.spi.EditorProvider;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.viewer.tui.EditSession;
 import us.bringardner.parley.files.viewer.tui.FileOps;
 
-/** edit: any file, on any connected file system, with $VISUAL / $EDITOR. */
+/**
+ * edit: any file, on any connected file system. An editor a plugin provides
+ * ({@link EditorProvider}) edits it where it is; without one, $VISUAL / $EDITOR edits a copy.
+ */
 public class Edit extends ShellCommand {
 
 	static final String NAME = "edit";
-	static final String HELP = "edit FILE\n"
-			+ "\tEdit FILE with $VISUAL, else $EDITOR, else vi. A file on a connected remote file system\n"
-			+ "\t(connect) is copied to a temporary local file for the editor and copied back if it was\n"
-			+ "\tsaved; if it was changed on the server meanwhile, edit asks before replacing it. A file\n"
-			+ "\tthat doesn't exist is created when it's saved. If the edited copy can't be copied back\n"
-			+ "\t(the editor failed, the copy failed, or you chose not to replace the file), edit keeps it\n"
-			+ "\tand says where.";
+	static final String USAGE = "edit [--with NAME] FILE  or  edit --list";
+	static final String HELP = USAGE+"\n"
+			+ "\tEdit FILE with an editor a plugin provides, which works on the file where it is, or, when\n"
+			+ "\tnone can run here (a script, a pipe, no plugin), with $VISUAL, else $EDITOR, else vi. A\n"
+			+ "\tfile on a connected remote file system (connect) is then copied to a temporary local file\n"
+			+ "\tfor the editor and copied back if it was saved; if it was changed on the server meanwhile,\n"
+			+ "\tedit asks before replacing it. A file that doesn't exist is created when it's saved. If the\n"
+			+ "\tedited copy can't be copied back (the editor failed, the copy failed, or you chose not to\n"
+			+ "\treplace the file), edit keeps it and says where.\n"
+			+ "\t--with NAME  use this editor plugin (an alias makes it the default: alias edit='edit --with NAME')\n"
+			+ "\t--list       list the editor plugins, which can run here, and which is used";
 
 	public Edit() {
 		super(NAME, HELP);
@@ -47,10 +56,62 @@ public class Edit extends ShellCommand {
 
 	@Override
 	public int process(ShellContext ctx) throws IOException {
-		String[] words = FshArgs.words(args, ctx);
+		String[] all = FshArgs.words(args, ctx);
+		String with = null;
+		boolean list = false;
+		int first = 0;
+		while( first < all.length && all[first].startsWith("-") && !all[first].equals("-")) {
+			String a = all[first];
+			if( a.equals("--")) {
+				first++;
+				break;
+			} else if( a.equals("--list")) {
+				list = true;
+			} else if( a.equals("--with")) {
+				if( ++first >= all.length ) {
+					ctx.error(NAME+": --with: needs an editor's name");
+					return 2;
+				}
+				with = all[first];
+			} else if( a.startsWith("--with=")) {
+				with = a.substring(7);
+			} else {
+				ctx.error(NAME+": "+a+": invalid option");
+				ctx.error(NAME+": usage: "+USAGE);
+				return 2;
+			}
+			first++;
+		}
+		String[] words = java.util.Arrays.copyOfRange(all, first, all.length);
+		List<EditorProvider> editors = providers(ctx);
+		EditorProvider use = choose(ctx, editors, with);
+		if( list ) {
+			if( words.length > 0 ) {
+				ctx.error(NAME+": usage: "+USAGE);
+				return 2;
+			}
+			for(EditorProvider e : editors) {
+				ctx.stdout.println((e == use ? "* " : "  ")+e.name()+" - "+e.description()
+						+(e.available(ctx) ? "" : " (cannot run here)"));
+			}
+			if( editors.isEmpty()) {
+				ctx.stdout.println("  (no editor plugin: edit uses $VISUAL, else $EDITOR, else vi)");
+			}
+			return 0;
+		}
 		if( words.length != 1 ) {
-			ctx.error(NAME+": usage: edit FILE");
+			ctx.error(NAME+": usage: "+USAGE);
 			return 2;
+		}
+		if( with != null ) {
+			if( use == null ) {
+				ctx.error(NAME+": "+with+": no such editor (edit --list lists them)");
+				return 1;
+			}
+			if( !use.available(ctx)) {
+				ctx.error(NAME+": "+with+": cannot run here");
+				return 1;
+			}
 		}
 		List<FileSource> files = getFiles(ctx, words[0]);
 		if( files.size() != 1 ) {
@@ -58,6 +119,21 @@ public class Edit extends ShellCommand {
 			return 2;
 		}
 		FileSource file = files.get(0);
+		if( use != null ) {
+			ctx.stdout.flush();
+			ctx.stderr.flush();
+			try {
+				// (the editor saves the file itself, and there is no falling back to another editor
+				// once it has started: what it did is shown, and the file is as it left it)
+				return use.edit(ctx, new EditRequest(file, words[0]));
+			} catch (IOException e) {
+				ctx.error(NAME+": "+words[0]+": "+e.getMessage());
+				return 1;
+			} catch (RuntimeException | LinkageError e) {
+				ctx.error(NAME+": "+use.name()+": "+e);
+				return 1;
+			}
+		}
 		// (a file under a connection reports the connected file system, so a remote one is staged)
 		FileSource real = file;
 		try (EditSession session = EditSession.open(real)) {
@@ -109,5 +185,21 @@ public class Edit extends ShellCommand {
 			ctx.error(NAME+": "+words[0]+": "+e.getMessage());
 			return 1;
 		}
+	}
+
+	/** the editors the plugins provide, in the order of the plugin folders (the system folder first) */
+	static List<EditorProvider> providers(ShellContext ctx) {
+		return us.bringardner.fsh.Console.pluginProviders(EditorProvider.class,
+				e -> ctx.error(NAME+": an editor cannot be loaded: "+e));
+	}
+
+	/** the one --with names (null if none has the name), else the first that can run here (null if none) */
+	static EditorProvider choose(ShellContext ctx, List<EditorProvider> editors, String with) {
+		for(EditorProvider e : editors) {
+			if( with != null ? e.name().equals(with) : e.available(ctx)) {
+				return e;
+			}
+		}
+		return null;
 	}
 }

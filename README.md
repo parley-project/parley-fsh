@@ -441,6 +441,7 @@ What a plugin can provide:
 |---|---|
 | `us.bringardner.fsh.spi.CommandProvider` | Commands (`ShellCommand`s) |
 | `us.bringardner.fsh.spi.BrowserProvider` | A file browser for `browse`, besides fsh's own terminal browser: it uses the one of the highest priority that can run here (a window when there is a display, else a terminal one; fsh's own before a plugin's of the same priority); `browse --with NAME` picks one, `browse --list` lists them |
+| `us.bringardner.fsh.spi.EditorProvider` | An editor for `edit` that works on the file where it is (any connected file system), with no temporary copy: `edit --with NAME` uses one, otherwise the first that can run here, in the order of the plugin folders (the system folder first); there is no priority. `edit --list` lists them. When none can run (a script, a pipe, no plugin), `edit` runs `$VISUAL`, else `$EDITOR`, else `vi` on a copy. An alias makes one the default: `alias edit='edit --with NAME'` |
 | `us.bringardner.fsh.spi.DebuggerProvider` | A debugger for `fsh --wait-for-debugger` (fsh-loupe) |
 | `us.bringardner.parley.files.FileSourceFactory` | A file system for `connect` (parley-files-sftp, -ftp, -jdbc) |
 | `us.bringardner.parley.files.credentials.CredentialProvider` | A credential store |

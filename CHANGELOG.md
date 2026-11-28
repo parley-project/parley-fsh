@@ -2,6 +2,17 @@
 
 ## 2.0.0 (unreleased)
 
+### Added (2026-11-28: editor plugins for edit)
+
+- **`EditorProvider`** (`us.bringardner.fsh.spi`, with `EditRequest`): a plugin editor that
+  edits the file where it is, through its FileSource, and saves it itself. `edit --with NAME`
+  uses one; otherwise `edit` uses the first that can run here, in the order of the plugin folders
+  (the system folder before the user's), and `edit --list` lists them. A provider has no priority,
+  and no setting names a preferred one: an alias (`alias edit='edit --with NAME'`) makes one the
+  default. When none can run (a script, a pipe, no plugin) `edit` does what it did: `$VISUAL`, else
+  `$EDITOR`, else `vi`, on a temporary copy. An editor that fails is not replaced by another.
+  `plugins` lists the editors. The editor plugin that uses it is Scribe (its own repository).
+
 ### Fixed (2026-11-27: edit keeps what was typed)
 
 - `edit` of a file on a connected file system keeps the edited copy, and says where, when it can't
