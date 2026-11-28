@@ -2,6 +2,13 @@
 
 ## 2.0.0 (unreleased)
 
+### Fixed (2026-11-27: edit keeps what was typed)
+
+- `edit` of a file on a connected file system keeps the edited copy, and says where, when it can't
+  be copied back: the editor exited with an error after you changed it, the copy back failed, or you
+  answered no to replacing a file that changed on the server. It used to delete it. Needs
+  parley-files-viewer-tui's `EditSession.keepCopy()` (branch edit-fixes).
+
 ### Changed (2026-11-14: Maven coordinates)
 
 - Maven coordinates: `us.bringardner:fsh` → `us.bringardner:parley-fsh`, so the jars are

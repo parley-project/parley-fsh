@@ -58,10 +58,15 @@ public class TestBrowserBuiltins {
 
 	/** stdout and stderr of fsh running script in tmp */
 	private String fsh(String script) throws Exception {
+		return fsh(script, "echo edited >> \"$1\"\n");
+	}
+
+	/** as {@link #fsh(String)}, with an $EDITOR that runs editorScript (its $1 is the file to edit) */
+	private String fsh(String script, String editorScript) throws Exception {
 		File editor = tmp.resolve("editor.sh").toFile();
 		// (no #! line on Windows, which has no /bin/sh: fsh runs the file as its own script)
 		String shebang = File.separatorChar == '\\' ? "" : "#!/bin/sh\n";
-		Files.write(editor.toPath(), (shebang+"echo edited >> \"$1\"\n").getBytes(StandardCharsets.UTF_8));
+		Files.write(editor.toPath(), (shebang+editorScript).getBytes(StandardCharsets.UTF_8));
 		editor.setExecutable(true);
 
 		List<String> cmd = new ArrayList<>(Arrays.asList(
@@ -114,6 +119,37 @@ public class TestBrowserBuiltins {
 		assertTrue(out.contains("edit: saved /mem/w/b.md to memory"), out);
 		assertTrue(out.endsWith("Hello again\nedited\n"), out);
 		assertEquals("Hello again\n", new String(Files.readAllBytes(tmp.resolve("d/sub/b.md")), StandardCharsets.UTF_8));
+	}
+
+	@Test
+	public void editKeepsWhatWasTypedWhenTheEditorFails() throws Exception {
+		String out = fsh("connect memory /mem >/dev/null; mkdir /mem/w; cp d/a.txt /mem/w/; edit /mem/w/a.txt; echo rc=$?; view -c /mem/w/a.txt",
+				"echo typed >> \"$1\"\nexit 3\n");
+		assertTrue(out.contains("edit: the editor exited with 3; /mem/w/a.txt was not copied back, your edited copy is kept in "), out);
+		assertTrue(out.contains("rc=3\n"), out);
+		// (the file on the connected file system is as it was)
+		assertTrue(out.endsWith("hello world\n"), out);
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("kept in (\\S+a\\.txt)").matcher(out);
+		assertTrue(m.find(), out);
+		File kept = new File(m.group(1));
+		try {
+			assertEquals("hello world\ntyped\n", new String(Files.readAllBytes(kept.toPath()), StandardCharsets.UTF_8).replace("\r", ""));
+		} finally {
+			kept.delete();
+			kept.getParentFile().delete();
+		}
+	}
+
+	@Test
+	public void editMakesAFileThatDoesNotExist() throws Exception {
+		String out = fsh("connect memory /mem >/dev/null; mkdir /mem/w; edit /mem/w/new.txt; view -c /mem/w/new.txt",
+				"echo made > \"$1\"\n");
+		assertTrue(out.contains("edit: saved /mem/w/new.txt to memory"), out);
+		assertTrue(out.endsWith("made\n"), out);
+		// (an editor that doesn't save leaves nothing behind)
+		String none = fsh("connect memory /mem >/dev/null; mkdir /mem/w; edit /mem/w/none.txt; ls /mem/w", "true\n");
+		assertTrue(none.contains("edit: /mem/w/none.txt: not changed"), none);
+		assertFalse(none.contains("none.txt\n"), none);
 	}
 
 	@Test

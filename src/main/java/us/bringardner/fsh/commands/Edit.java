@@ -37,7 +37,9 @@ public class Edit extends ShellCommand {
 			+ "\tEdit FILE with $VISUAL, else $EDITOR, else vi. A file on a connected remote file system\n"
 			+ "\t(connect) is copied to a temporary local file for the editor and copied back if it was\n"
 			+ "\tsaved; if it was changed on the server meanwhile, edit asks before replacing it. A file\n"
-			+ "\tthat doesn't exist is created when it's saved.";
+			+ "\tthat doesn't exist is created when it's saved. If the edited copy can't be copied back\n"
+			+ "\t(the editor failed, the copy failed, or you chose not to replace the file), edit keeps it\n"
+			+ "\tand says where.";
 
 	public Edit() {
 		super(NAME, HELP);
@@ -68,26 +70,39 @@ public class Edit extends ShellCommand {
 			}
 			// fsh starts the editor, so it gets the terminal as any program would
 			int code = ctx.console.executeScript(ctx, cmd.toString());
-			if( code != 0 ) {
-				ctx.error(NAME+": the editor exited with "+code+"; "+words[0]+(session.isRemote() ? " was not copied back" : ""));
+			if( !session.isRemote()) {
+				if( code != 0 ) {
+					ctx.error(NAME+": the editor exited with "+code);
+				}
 				return code;
 			}
-			if( !session.isRemote()) {
-				return 0;
-			}
 			if( !session.isChanged()) {
+				if( code != 0 ) {
+					ctx.error(NAME+": the editor exited with "+code+"; "+words[0]+" was not copied back");
+					return code;
+				}
 				ctx.stderr.println(NAME+": "+words[0]+": not changed");
 				return 0;
+			}
+			if( code != 0 ) {
+				// what was typed is not thrown away because the editor said it failed
+				ctx.error(NAME+": the editor exited with "+code+"; "+words[0]+" was not copied back, your edited copy is kept in "+session.keepCopy());
+				return code;
 			}
 			if( session.isRemoteChanged()) {
 				String answer = promptAndGetReponse(ctx.stderr, ctx.stdin,
 						NAME+": "+words[0]+" was changed on the server while you edited it. Replace it? [y/N] ");
 				if( answer == null || !answer.trim().toLowerCase().startsWith("y")) {
-					ctx.stderr.println(NAME+": your edit was not saved");
+					ctx.stderr.println(NAME+": your edit was not saved, your edited copy is kept in "+session.keepCopy());
 					return 1;
 				}
 			}
-			session.writeBack();
+			try {
+				session.writeBack();
+			} catch (IOException e) {
+				ctx.error(NAME+": "+words[0]+": "+e.getMessage()+"; your edited copy is kept in "+session.keepCopy());
+				return 1;
+			}
 			ctx.stderr.println(NAME+": saved "+words[0]+" to "+FileOps.describe(real.getFileSourceFactory()));
 			return 0;
 		} catch (IOException e) {
