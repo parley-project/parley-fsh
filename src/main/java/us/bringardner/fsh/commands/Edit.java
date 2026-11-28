@@ -21,6 +21,7 @@
 package us.bringardner.fsh.commands;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.fsh.ShellCommand;
@@ -113,16 +114,41 @@ public class Edit extends ShellCommand {
 				return 1;
 			}
 		}
-		// each file is edited in turn, as vi a b does; one that fails is reported and the rest are still edited
+		// each name is resolved first: a pattern names every file it matches
 		int status = 0;
+		List<String> names = new ArrayList<>();
+		List<FileSource> files = new ArrayList<>();
 		for(String word : words) {
-			List<FileSource> files = getFiles(ctx, word);
-			if( files.size() != 1 ) {
-				ctx.error(NAME+": "+word+": names "+files.size()+" files");
-				status = Math.max(status, 2);
-				continue;
+			List<FileSource> found = getFiles(ctx, word);
+			if( found.size() == 1 ) {
+				names.add(word);
+				files.add(found.get(0));
+			} else {
+				ctx.error(NAME+": "+word+": names "+found.size()+" files");
+				status = 2;
 			}
-			status = Math.max(status, editOne(ctx, use, files.get(0), word));
+		}
+		if( use != null && files.size() > 1 ) {
+			// (an editor with an argument list, vi's :n, gets them all at once)
+			List<EditRequest> requests = new ArrayList<>();
+			for(int i = 0; i < files.size(); i++) {
+				requests.add(new EditRequest(files.get(i), names.get(i)));
+			}
+			ctx.stdout.flush();
+			ctx.stderr.flush();
+			try {
+				return Math.max(status, use.edit(ctx, requests));
+			} catch (IOException e) {
+				ctx.error(NAME+": "+e.getMessage());
+				return Math.max(status, 1);
+			} catch (RuntimeException | LinkageError e) {
+				ctx.error(NAME+": "+use.name()+": "+e);
+				return Math.max(status, 1);
+			}
+		}
+		// each file is edited in turn, as vi a b does; one that fails is reported and the rest are still edited
+		for(int i = 0; i < files.size(); i++) {
+			status = Math.max(status, editOne(ctx, use, files.get(i), names.get(i)));
 		}
 		return status;
 	}

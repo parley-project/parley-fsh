@@ -12,8 +12,11 @@
 - `edit [--with NAME] FILE...` edits each file named, one after another (a pattern such as `*.xml`
   names every file it matches), as `vi a b` does. A file that can't be edited is reported and the
   rest are still edited; the status is the highest any of them gave. It works with the editor
-  plugins and with the `$VISUAL`/`$EDITOR` fallback, and `EditorProvider` is unchanged: it is
-  called once for each file.
+  plugins and with the `$VISUAL`/`$EDITOR` fallback. `EditorProvider` gets a second method,
+  `edit(ShellContext, List<EditRequest>)`, with a default that edits the files one after another
+  (so existing plugins work as they are and Parley-Plugin-Api stays 1); an editor with an argument
+  list overrides it to keep them in one session (vi: `:n`, `:N`, `:prev`, `:rew`, `:last`, `:args`,
+  `:wn`).
 
 ### Added (2026-11-28: editor plugins for edit)
 

@@ -1,6 +1,7 @@
 package us.bringardner.fsh.spi;
 
 import java.io.IOException;
+import java.util.List;
 
 import us.bringardner.fsh.ShellContext;
 
@@ -42,4 +43,25 @@ public interface EditorProvider {
 	 * fall back to another editor
 	 */
 	int edit(ShellContext ctx, EditRequest request) throws IOException;
+
+	/**
+	 * Edit the files edit was given (edit a b c), in order. An editor that has an argument list, as vi
+	 * has, overrides this to keep them in one session (:n goes to the next); the default edits them one
+	 * after another, each in its own session, and when one can't be read or written says so and goes on
+	 * with the rest.
+	 *
+	 * @return the highest status of any of them
+	 */
+	default int edit(ShellContext ctx, List<EditRequest> requests) throws IOException {
+		int status = 0;
+		for(EditRequest request : requests) {
+			try {
+				status = Math.max(status, edit(ctx, request));
+			} catch (IOException e) {
+				ctx.error("edit: "+request.name+": "+e.getMessage());
+				status = Math.max(status, 1);
+			}
+		}
+		return status;
+	}
 }
