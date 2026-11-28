@@ -168,6 +168,13 @@ public class TestBrowserBuiltins {
 	}
 
 	@Test
+	public void editEditsEachFileGivenInTurn() throws Exception {
+		// (a pattern names every file it matches, and so does a list of names; each is edited in turn)
+		assertEquals("hello world\ntest-first edited d/a.txt\nHello again\ntest-first edited d/sub/b.md\n",
+				edited("edit d/a.txt d/sub/b.md; cat d/a.txt d/sub/b.md", EDITORS));
+	}
+
+	@Test
 	public void editWithChoosesAnEditorPlugin() throws Exception {
 		assertEquals("hello world\ntest-second edited d/a.txt\n", edited("edit --with test-second d/a.txt; cat d/a.txt", EDITORS));
 		assertEquals("Hello again\ntest-second edited d/sub/b.md\n", edited("edit --with=test-second d/sub/b.md; cat d/sub/b.md", EDITORS));

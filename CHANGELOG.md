@@ -7,6 +7,14 @@
 - **Native image**: parley-core no longer has `LogLevel` (Parley logs only through the JDK's
   `System.Logger`), so `--initialize-at-build-time` names only `us.bringardner.parley.logging`.
 
+### Changed (2026-11-28: edit takes more than one file)
+
+- `edit [--with NAME] FILE...` edits each file named, one after another (a pattern such as `*.xml`
+  names every file it matches), as `vi a b` does. A file that can't be edited is reported and the
+  rest are still edited; the status is the highest any of them gave. It works with the editor
+  plugins and with the `$VISUAL`/`$EDITOR` fallback, and `EditorProvider` is unchanged: it is
+  called once for each file.
+
 ### Added (2026-11-28: editor plugins for edit)
 
 - **`EditorProvider`** (`us.bringardner.fsh.spi`, with `EditRequest`): a plugin editor that

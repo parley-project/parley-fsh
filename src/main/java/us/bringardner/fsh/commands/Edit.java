@@ -38,9 +38,9 @@ import us.bringardner.parley.files.viewer.tui.FileOps;
 public class Edit extends ShellCommand {
 
 	static final String NAME = "edit";
-	static final String USAGE = "edit [--with NAME] FILE  or  edit --list";
+	static final String USAGE = "edit [--with NAME] FILE...  or  edit --list";
 	static final String HELP = USAGE+"\n"
-			+ "\tEdit FILE with an editor a plugin provides, which works on the file where it is, or, when\n"
+			+ "\tEdit each FILE, one after another (a pattern such as *.xml names every file it matches), with an editor a plugin provides, which works on the file where it is, or, when\n"
 			+ "\tnone can run here (a script, a pipe, no plugin), with $VISUAL, else $EDITOR, else vi. A\n"
 			+ "\tfile on a connected remote file system (connect) is then copied to a temporary local file\n"
 			+ "\tfor the editor and copied back if it was saved; if it was changed on the server meanwhile,\n"
@@ -99,7 +99,7 @@ public class Edit extends ShellCommand {
 			}
 			return 0;
 		}
-		if( words.length != 1 ) {
+		if( words.length == 0 ) {
 			ctx.error(NAME+": usage: "+USAGE);
 			return 2;
 		}
@@ -113,21 +113,31 @@ public class Edit extends ShellCommand {
 				return 1;
 			}
 		}
-		List<FileSource> files = getFiles(ctx, words[0]);
-		if( files.size() != 1 ) {
-			ctx.error(NAME+": "+words[0]+": names "+files.size()+" files");
-			return 2;
+		// each file is edited in turn, as vi a b does; one that fails is reported and the rest are still edited
+		int status = 0;
+		for(String word : words) {
+			List<FileSource> files = getFiles(ctx, word);
+			if( files.size() != 1 ) {
+				ctx.error(NAME+": "+word+": names "+files.size()+" files");
+				status = Math.max(status, 2);
+				continue;
+			}
+			status = Math.max(status, editOne(ctx, use, files.get(0), word));
 		}
-		FileSource file = files.get(0);
+		return status;
+	}
+
+	/** edit one file, with the editor plugin if there is one, else $VISUAL / $EDITOR */
+	private int editOne(ShellContext ctx, EditorProvider use, FileSource file, String name) throws IOException {
 		if( use != null ) {
 			ctx.stdout.flush();
 			ctx.stderr.flush();
 			try {
 				// (the editor saves the file itself, and there is no falling back to another editor
 				// once it has started: what it did is shown, and the file is as it left it)
-				return use.edit(ctx, new EditRequest(file, words[0]));
+				return use.edit(ctx, new EditRequest(file, name));
 			} catch (IOException e) {
-				ctx.error(NAME+": "+words[0]+": "+e.getMessage());
+				ctx.error(NAME+": "+name+": "+e.getMessage());
 				return 1;
 			} catch (RuntimeException | LinkageError e) {
 				ctx.error(NAME+": "+use.name()+": "+e);
@@ -154,21 +164,21 @@ public class Edit extends ShellCommand {
 			}
 			if( !session.isChanged()) {
 				if( code != 0 ) {
-					ctx.error(NAME+": the editor exited with "+code+"; "+words[0]+" was not copied back");
+					ctx.error(NAME+": the editor exited with "+code+"; "+name+" was not copied back");
 					return code;
 				}
-				ctx.stderr.println(NAME+": "+words[0]+": not changed");
+				ctx.stderr.println(NAME+": "+name+": not changed");
 				return 0;
 			}
 			if( code != 0 ) {
 				// what was typed is not thrown away because the editor said it failed
-				ctx.error(NAME+": the editor exited with "+code+"; "+words[0]+" was not copied back, your edited copy is kept in "+session.keepCopy());
+				ctx.error(NAME+": the editor exited with "+code+"; "+name+" was not copied back, your edited copy is kept in "+session.keepCopy());
 				return code;
 			}
 			boolean changedThere = session.isRemoteChanged();
 			if( changedThere ) {
 				String answer = promptAndGetReponse(ctx.stderr, ctx.stdin,
-						NAME+": "+words[0]+" was changed on the server while you edited it. Replace it? [y/N] ");
+						NAME+": "+name+" was changed on the server while you edited it. Replace it? [y/N] ");
 				if( answer == null || !answer.trim().toLowerCase().startsWith("y")) {
 					ctx.stderr.println(NAME+": your edit was not saved, your edited copy is kept in "+session.keepCopy());
 					return 1;
@@ -177,13 +187,13 @@ public class Edit extends ShellCommand {
 			try {
 				session.writeBack(changedThere);
 			} catch (IOException e) {
-				ctx.error(NAME+": "+words[0]+": "+e.getMessage()+"; your edited copy is kept in "+session.keepCopy());
+				ctx.error(NAME+": "+name+": "+e.getMessage()+"; your edited copy is kept in "+session.keepCopy());
 				return 1;
 			}
-			ctx.stderr.println(NAME+": saved "+words[0]+" to "+FileOps.describe(real.getFileSourceFactory()));
+			ctx.stderr.println(NAME+": saved "+name+" to "+FileOps.describe(real.getFileSourceFactory()));
 			return 0;
 		} catch (IOException e) {
-			ctx.error(NAME+": "+words[0]+": "+e.getMessage());
+			ctx.error(NAME+": "+name+": "+e.getMessage());
 			return 1;
 		}
 	}
